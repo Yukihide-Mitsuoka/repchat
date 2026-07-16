@@ -1,0 +1,175 @@
+# ADR-0005: Dynamic rendering with layered cache and hybrid claim+revocation authorization
+
+| Field | Value |
+|-------|-------|
+| Status | proposed |
+| Date | 2026-07-16 |
+| Deciders | repository owner |
+| Author | Claude (AI agent) |
+| Supersedes / Superseded by | — |
+
+<!--
+  Note (repo governance): ADR-0002 requires English for docs/adr content. Repository
+  owner decision (2026-07-16): keep this ADR in Japanese for now as an early-stage
+  product-discovery record; translate to English before this moves past "proposed"
+  toward formal AI-agent-facing status. Not yet reshaped into the Context / Options
+  considered / Decision / Consequences structure from docs/adr/0000-template.md either
+  — same deferred-cleanup follow-up.
+-->
+
+## 【アーキ設計 v1】キャッシュ × 認可 — 具体設計
+
+> 目的：**「速い（キャッシュ）」と「テナント/ロールで安全（認可）」を、実装ミスが即漏洩にならない構造で両立させる**。
+> 対象読者：実装者。本書は §2 の設計原則が結論。以降は実装詳細と失敗モード。
+
+---
+
+## 1. 解くべき問題（一文）
+
+BIの応答は**すべて認可依存**（テナント・ロールで中身が変わる）。素朴にキャッシュするとテナント越境で情報漏洩する。しかしキャッシュしないと速度と原価が死ぬ。**「認可を壊さずにキャッシュする」**方法を決める。
+
+---
+
+## 2. 設計原則（これが結論・最重要）
+
+### 原則A：シェルとデータを分離する（Evidenceの使い方を変える）
+Evidenceは通常「ビルド時にデータをHTMLへ焼き込む」。マルチテナントではこれをやめる。
+
+- **シェル（テンプレート）**：レポートのレイアウト・チャート定義・JS/CSS。**テナント非依存**。`report_id + report_version` でキャッシュ。中身は機密でない。
+- **データ（結果セット）**：チャートを埋めるクエリ結果。**テナント依存・機密**。認可付きAPIで別途取得し、`tenant + scope + query + data_version` でキャッシュ。
+
+> この分離が全ての土台。データをシェルに焼き込まない限り、越境の面は「データAPI」だけに封じ込められる。
+
+### 原則B：キャッシュキーは「認証済みコンテキストの純粋関数」
+**キャッシュキーにクライアント入力を一切混ぜない。** `tenant_id`/`role` は必ず**サーバ側でセッションから解決した値**だけを使う。
+
+- 帰結：ユーザーは**自分のテナントのキャッシュエントリしかアドレスできない**。別テナントのキーは計算上作れない → キャッシュヒット自体が構造的にスコープされる。
+- これが「実装ミスが即漏洩にならない」安全性の核心。クライアントが `tenant_id` を渡せる設計にした瞬間、この保証は消える。
+
+### 原則C：多層防御（キャッシュ層だけを信用しない）
+1. **エッジ認可ゲート**：キー導出＋セッション検証。
+2. **MCP層**：SQLへ `tenant_id` 強制注入（ASTレベル）。
+3. **DB層**：Row Level Security（RLS）。
+4. **ペイロード自己検証**：キャッシュ値の中に `tenant_id` を埋め、読み出し時に `ctx.tenant_id` と一致を assert。キー導出バグを最後に捕まえる belt-and-suspenders。
+
+---
+
+## 3. キャッシュの3層
+
+| 層 | 中身 | キャッシュキー | 機密性 | TTL/失効 | 置き場所 |
+|---|---|---|---|---|---|
+| ①シェル | レポートのHTML/JS/チャート定義 | `report_id : report_version` | 低（テンプレのみ） | 長期・immutable | CDN Edge |
+| ②結果 | クエリ結果セット（集計値） | `tenant_id : scope_hash : query_id : params_hash : data_version` | **高** | version失効＋短TTL backstop | Edge KV / Redis |
+| ③認可コンテキスト | session→(tenant, roles, allowed reports/datasources) | `session_id` | 中 | **短TTL（例60s）＋失効イベント** | Edge KV（or 署名クレームに内包） |
+
+- BIのチャートは基本「集計後の小さな結果」なので②はKVに収まるサイズが大半。巨大結果はオブジェクトストレージに退避＋KVは参照だけ、で対応。
+
+---
+
+## 4. キャッシュキーの具体式（②結果層）
+
+```
+key = "v1:" + tenant_id + ":" + scope_hash + ":" + query_id + ":" +
+      sha256(params_normalized) + ":" + data_version
+
+  tenant_id      … セッションから解決（クライアント入力厳禁）
+  scope_hash     … ロール群を「データスコープ」に正規化したハッシュ（§6）
+  query_id       … レポート定義内のクエリ識別子（report_versionに紐づく）
+  params_hash    … フィルタ等のパラメータを正規化してハッシュ
+  data_version   … (tenant, datasource) ごとの単調増加トークン（§5）
+```
+
+- 先頭 `v1:` とテナント接頭辞で**名前空間化** → スキーマ変更時の一括無効化、テナント退会時の一括パージが可能。
+- キーは暗号学的ハッシュを含めて衝突を排除。
+
+---
+
+## 5. 失効（invalidation）— version token 方式
+
+**TTL頼みにしない。キーにバージョンを含め、"immutable key" で自動ミスさせる。**
+
+- `data_version`：`(tenant_id, datasource)` ごとの単調増加トークン。ETL実行・書き込みでインクリメント。
+  - データが変われば `data_version` が変わる → キーが変わる → 自動的にキャッシュミス → 常に最新。**明示パージ不要**でstale配信が起きない。
+- `report_version`：レポート定義（Markdown/SQL）が変わったら更新。**AIが編集した瞬間にbump** → シェル①と、当該レポートの②が自動で作り直される。
+- 短TTLは「バージョン更新漏れ」への保険としてのみ置く（例：結果②は5〜15分）。
+
+> 利点：明示パージのタイミングバグ（消し忘れ→古い値配信）を構造的に消せる。「消す」より「新しい鍵に移る」方が安全。
+
+---
+
+## 6. ロール爆発への対策：データスコープ等価類
+
+ロールごとに別キーだと、ロールが増えるほどキャッシュが断片化しヒット率が落ちる。
+
+- **ロールを「見えるデータの範囲（データスコープ）」に正規化**し、その等価類のハッシュ（`scope_hash`）をキーに使う。
+- 例：「店長A」「店長B」がどちらも "自店舗のみ" スコープなら、**別ロールでも同一 scope_hash → キャッシュ共有**。
+- ただし**行/列の見え方が実際に違うロールは必ず別 scope**（安全側に倒す）。「同じ結果を見るロールだけ」を束ねる。
+- 列マスキングもスコープに含める（見える列集合が違えば別スコープ）。
+
+---
+
+## 7. リクエストの流れ（シーケンス）
+
+```
+エンドユーザー(埋め込みiframe/SDK)
+   │  ①短命JWT（vendorのバックエンドが署名。tenant_id/user/rolesを含む）
+   ▼
+[エッジ認可ゲート]（常時稼働・薄い）
+   │  1. JWT検証（署名・exp・aud）。不正なら即拒否
+   │  2. 認可コンテキスト解決（③キャッシュ or クレーム展開）→ tenant_id, roles, allowed_reports
+   │  3. 要求レポートが allowed_reports に含まれるか判定（含まれなければ403）
+   │
+   ├─(シェル要求)→ ①キャッシュ（report_id:report_version）→ ヒットで即返却
+   │
+   └─(データ要求)→ 4. サーバ側で key を導出（§4。クライアントのtenant_idは無視）
+         │        5. ②キャッシュ参照
+         │            ├ ヒット → ペイロード内 tenant_id == ctx.tenant_id を assert → 返却
+         │            └ ミス  → 6. MCPへ（single-flightでstampede防止）
+         ▼
+      [MCP]  tenant_id をASTでSQLへ強制注入 → 検証 → 実行(DBはRLS有効) → 監査ログ
+         │   結果に tenant_id を埋めて②へ保存（data_version付きキー）→ 返却
+```
+
+### 埋め込み認証のキモ（原則Bの入口）
+`tenant_id` は**ブラウザではなく、顧客(vendor)のバックエンドが署名した短命JWT**から来る。ブラウザ経由の値は信用しない。これが崩れると全部崩れる。標準的な埋め込み分析の手法（signed JWT handoff）。
+
+---
+
+## 8. セキュリティ失敗モードと対策（レビュー観点）
+
+| 失敗モード | どう漏れる/壊れるか | 対策 |
+|---|---|---|
+| クライアント供給の tenant_id | 別テナント指定で越境 | キーは**セッション解決値のみ**。クライアント値は完全無視 |
+| キー衝突 | 別テナントの値を誤ヒット | 暗号学的ハッシュ＋`v1:`＋tenant接頭辞。ペイロード内tenant_id assert |
+| 認可の陳腐化（ロール剥奪後もキャッシュ） | 剥奪済み権限で閲覧継続 | ③認可キャッシュは短TTL＋剥奪イベントで即失効 |
+| データ陳腐化 | 古い数字を配信 | `data_version` をキーに内包（§5） |
+| キャッシュスタンピード | 人気キーのミス集中でDB過負荷 | single-flight（同一キーの取得を1本化） |
+| エラー応答のキャッシュ汚染 | 一時エラーを正解として配信 | 非200はキャッシュしない。負のキャッシュは超短TTLのみ |
+| キー導出バグでの共有 | 実装ミスで越境 | ペイロードに tenant_id を埋め、読み出し時 assert（多層防御④） |
+| 巨大結果でKV溢れ | 障害・切り捨て漏洩 | サイズ上限＋オブジェクトストレージ退避。切り捨て時はキャッシュしない |
+
+---
+
+## 9. 技術選定（v1の仮置き）
+
+- **エッジ認可ゲート**：Cloudflare Workers / Vercel Edge（常時稼働の薄い層。これはv1で0円を諦める箇所）。
+- **①シェル**：CDN（長TTL・immutable）。
+- **②結果**：Edge KV（小集計）＋必要に応じRedis/オブジェクトストレージ。
+- **③認可**：短TTL KV、または署名クレームに内包しゲートで展開。
+- **DB**：Postgres（Neon等）＋**RLS必須**。
+- **JWT**：vendorバックエンド署名の短命トークン（埋め込み）。社内ユーザー直利用はClerk/Supabase。
+
+---
+
+## 10. まだ決めていない（要スパイクで確定）
+1. **③認可を「短TTLキャッシュ」にするか「署名クレーム内包」にするか**：後者は失効が難しく前者はゲートのDB問い合わせが増える。トレードオフ実測で決める。
+2. **②結果のサイズ分布**：実レポートで測り、KV上限・退避方針を確定。
+3. **data_version の発火点**：ETL主導かDBトリガか。書き込み経路の棚卸しが必要。
+4. **scope_hash の粒度**：ロール→スコープの正規化ルール。安全側に倒しつつヒット率を測る。
+5. **Evidenceを動的データ供給に載せる統合方式**：シェルとデータAPIの結線（Evidenceのデータ層をどう差し替えるか）。ここは技術検証が要る本命。
+
+---
+
+## 11. まず作る"薄い縦串"（スパイクの成果物）
+1テナント2ロール・1レポートで、**①シェルキャッシュ＋②結果キャッシュ（version失効）＋認可越境テスト（別テナント/別スコープで確実に弾く）** が通る最小経路を1本作る。ここでヒット率・p95・越境ゼロを実測してからPhase1本開発へ。
+```
