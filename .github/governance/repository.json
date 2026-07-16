@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "overrides": {
+    "required_approvals": 0,
+    "delete_branch_on_merge": true
+  }
+}

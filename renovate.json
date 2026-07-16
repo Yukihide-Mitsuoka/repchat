@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Sole dependency-update automation (SEC-030/031). Dependabot version updates are disabled (.github/dependabot.yml is inert); Dependabot security alerts remain on via repository settings, not that file.",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests",
+    "schedule:weekly"
+  ],
+  "labels": ["type:dependencies"],
+  "pre-commit": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group non-major updates into one weekly PR to respect GR-020 review capacity",
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "description": "Major updates land one-per-PR with the COD-040 justification filled by the reviewer",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["type:security"],
+    "prPriority": 10
+  },
+  "osvVulnerabilityAlerts": true
+}

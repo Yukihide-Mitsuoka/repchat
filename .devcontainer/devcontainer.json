@@ -1,0 +1,32 @@
+// Dev Container for ai-dev-foundation.
+//
+// Why this exists: the Claude usage guide requires agents to run *inside* a container,
+// not on the host, so host credentials (~/.ssh, cloud configs) never enter the agent's
+// filesystem. This is a stack-agnostic starting point — pick the toolchain feature for
+// your profile (profiles/python-uv, profiles/typescript-node, profiles/terraform-gcp)
+// and delete the ones you do not need. See .devcontainer/README.md.
+{
+  "name": "ai-dev-foundation",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  "features": {
+    // Node is required only to install Claude Code (npm global). Add your stack's
+    // toolchain feature here — e.g. ghcr.io/devcontainers/features/python,
+    // ghcr.io/devcontainers/features/go, ghcr.io/devcontainers-contrib/features/uv.
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Install Claude Code in the container (guide: do not install on the host).
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && make doctor",
+
+  // Run as the unprivileged default user; do not add the host SSH agent or cloud
+  // credential mounts here — keeping them out of the container is the point.
+  "remoteUser": "vscode",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"]
+    }
+  }
+}

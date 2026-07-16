@@ -1,0 +1,44 @@
+---
+id: decision-log
+title: Decision Log
+authority: 4
+read_when: [architecture-change, planning, onboarding]
+---
+
+# Decision Log
+
+Append-only index of decisions. Newest first. Two kinds of entries:
+
+- **ADR-linked**: architectural decisions — full context lives in `docs/adr/`.
+- **Lightweight**: decisions too small for an ADR but worth remembering (COD-052).
+
+Rules: never edit or delete past entries; supersede with a new entry that references the
+old one. One line per entry. AI agents append entries in the same PR as the change.
+
+| Date | ID | Decision | Link |
+|------|----|----------|------|
+| 2026-07-16 | LOG-0019 | Template governance profiles auto-discover one explicit parent chain rooted at `ai-dev-foundation`; required checks merge monotonically in foundation-to-repository order with stable cross-layer deduplication for migration compatibility | [ADR-0004](../docs/adr/0004-harden-multi-level-template-inheritance.md) |
+| 2026-07-16 | ADR-0004 (accepted) | Repository owner approved the hardened direct-parent, manifest-owned, local-first inheritance architecture and solo-friendly governance defaults in PR #33 | [ADR-0004](../docs/adr/0004-harden-multi-level-template-inheritance.md) |
+| 2026-07-16 | ADR-0004 (proposed) | Keep direct-parent template topology but replace denylist-only scheduled writes with manifest-owned, local-first inheritance; add inheritable template policy profiles, monotonic required checks, and solo-friendly defaults | [ADR-0004](../docs/adr/0004-harden-multi-level-template-inheritance.md) |
+| 2026-07-16 | LOG-0018 | Superseding the fixed behavior in LOG-0003 and completing LOG-0017's migration condition, `scripts/setup-github.sh` is now a no-policy compatibility wrapper: dry-run delegates to `plan`, apply repeats and exactly matches the repository target before any GitHub read, and all exit codes and failures come from the reconciler | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-16 | LOG-0017 | Public governance apply requires exact target confirmation before reads; the fixed setup path remains until vulnerability alerts and private vulnerability reporting have policy-owned adapters, preventing a security downgrade during migration | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-16 | LOG-0016 | The internal governance execution boundary requires an exact target echo, executes one owned-field action at a time through local `gh`, verifies and replans from fresh state, and stops with redacted partial evidence rather than retrying or automatically weakening protections | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-16 | LOG-0015 | Existing managed ruleset updates preserve supported stricter review, merge-method, and check-integration constraints; unknown or additional constraints fail closed instead of being overwritten | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-16 | LOG-0014 | GitHub governance apply planning may create only the stable repository ruleset; it refuses existing-ruleset updates until stricter fields can be preserved, and uses documented API-only defaults for new rulesets | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-15 | LOG-0013 | GitHub governance comparison identifies the managed ruleset as `ai-dev-foundation: branch-governance` and distinguishes compliant, drift, and permission-limited unknown state without treating unmanaged rules as owned | [.github/governance/README.md](../.github/governance/README.md) |
+| 2026-07-15 | ADR-0003 (accepted) | Repository owner approved the layered GitHub governance policy and deterministic reconciler architecture in PR #19 | [ADR-0003](../docs/adr/0003-reconcile-github-governance-from-inherited-policy.md) |
+| 2026-07-15 | ADR-0003 (proposed) | Replace the one-time GitHub governance bootstrap with a layered, rule-ID-mapped policy and deterministic plan/audit/apply reconciler; keep administrator apply credentials local, preserve downstream overrides, and reject any weakening of foundation MUST controls | [ADR-0003](../docs/adr/0003-reconcile-github-governance-from-inherited-policy.md) |
+| 2026-07-13 | LOG-0012 | Ship a stack-agnostic Dev Container so agents run in a container, not on the host, keeping host credentials (`~/.ssh`, cloud configs) unreachable. `Co-Authored-By` AI trailers made a per-repo decision (WF-021): included by default here, disabled via a `commit-msg` hook on engagements where disclosure conflicts with the contract | [.devcontainer/README.md](../.devcontainer/README.md) |
+| 2026-07-13 | LOG-0011 | Read-tool deny-list extended to `*.p12`/`*.pfx`, `~/.ssh`, `~/.config/gcloud`, `~/.gemini` to match the org Claude usage guide | [.claude/settings.json](../.claude/settings.json) |
+| 2026-07-13 | LOG-0010 | GR-003 extended to the Bash path: `guard-bash.sh` blocks reading credential files to stdout (`cat .env`, `head *.key`, `cat ~/.ssh/*`) and full-environment dumps (`printenv`, bare `env`). Safe templates (`.env.example/.sample/.template`), single named vars (`printenv PATH`), and the `env FOO=1 cmd` prefix form stay allowed | [.claude/hooks/guard-bash.sh](../.claude/hooks/guard-bash.sh) |
+| 2026-07-11 | LOG-0009 | GR-011 guard exempts floating-tag moves: a force push passes only when the command's single `git push` targets explicit `refs/tags/` refspecs (canonical form `git push --force <remote> refs/tags/<tag>`). Bare tag names stay blocked as branch-ambiguous; extra refspecs or a second push behind `&&`/`;` stay blocked | [.claude/hooks/guard-bash.sh](../.claude/hooks/guard-bash.sh) |
+| 2026-07-10 | LOG-0008 | Deep-module interface design adopted as ARC-005 (interface = all a caller must know; deletion test; a seam needs a current second adapter; interface is the test surface). Glossary gains a banned-synonym *Avoid* column and a Resolved-ambiguities log, enforced via COD-002. Ideas from Ousterhout / Feathers, rewritten in this repo's rule system — not copied | [.ai/architecture.md](architecture.md) |
+| 2026-07-03 | LOG-0007 | Markdown formatting MUST be frontmatter-aware: mdformat pinned via pre-commit with `mdformat-frontmatter` + `mdformat-gfm`, config in `.mdformat.toml` (`wrap=keep`, `number=true`). A naive run once collapsed all YAML frontmatter into headings — never use a formatter without these plugins | [.mdformat.toml](../.mdformat.toml) |
+| 2026-07-02 | ADR-0002 | AI-facing docs are written in English | [ADR-0002](../docs/adr/0002-ai-facing-docs-in-english.md) |
+| 2026-07-02 | ADR-0001 | Record architecture decisions as ADRs | [ADR-0001](../docs/adr/0001-record-architecture-decisions.md) |
+| 2026-07-02 | LOG-0006 | `guard-bash.sh` must work when `jq` is absent (the `\|\| cat` fallback greps raw hook JSON); GR-010/011 patterns therefore treat `"` as a token terminator. Do not "simplify" that away. Verified by a matrix test on both paths | — |
+| 2026-07-02 | LOG-0005 | AI PR review runs via `ai-review.yml`, disabled by default (repo var `ENABLE_AI_REVIEW`); supplements, never replaces, human review | — |
+| 2026-07-02 | LOG-0004 | Template updates distribute via actions-template-sync PRs; downstream-customized files protected by `.templatesyncignore` | — |
+| 2026-07-02 | LOG-0003 | GitHub governance (branch protection etc.) bootstrapped by `scripts/setup-github.sh` (gh CLI, idempotent) instead of a Probot app — no extra runtime dependency | — |
+| 2026-07-02 | LOG-0002 | Canonical make targets are a binding contract (check-only lint, no `%:` catch-all, GR-031-guarded destructive targets); stack examples live in `profiles/` | [profiles/README.md](../profiles/README.md) |
+| 2026-07-02 | LOG-0001 | Skills are vendor-neutral files in `.skills/`, routed via CLAUDE.md table instead of duplicated `.claude/skills/` wrappers | — |

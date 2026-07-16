@@ -1,0 +1,41 @@
+name: Feature request
+description: New functionality. Acceptance criteria here become the agent's Definition of Done (feature.skill.md).
+labels: ["type:feature", "status:needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / user need
+      description: Who needs what, and why now. State the problem, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Verifiable checklist — each item must be objectively testable. Agents implement exactly this, no more (COD-051).
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Out of scope
+      description: Explicit non-goals, to prevent scope creep.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution (optional)
+      description: A sketch if you have one. Affected modules if known. Architectural implications trigger GR-022 (ADR).
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "high"
+        - "normal"
+        - "low"
+    validations:
+      required: true

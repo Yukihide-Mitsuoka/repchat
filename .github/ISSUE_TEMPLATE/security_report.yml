@@ -1,0 +1,32 @@
+name: Security hardening task (non-sensitive only)
+description: "ONLY for public-safe security work: enabling scans, hardening configs, policy updates. Actual vulnerabilities → private reporting (SECURITY.md)!"
+labels: ["type:security", "status:needs-triage"]
+body:
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Confidentiality check
+      options:
+        - label: "I confirm this issue contains NO exploitable vulnerability details, no secrets, and no PII. (Exploitable findings go to Security → Advisories → Report a vulnerability.)"
+          required: true
+  - type: textarea
+    id: task
+    attributes:
+      label: Hardening task
+      description: What should be strengthened (e.g. enable scanner X, tighten permission Y, add rule Z).
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale / reference
+      description: Standard, benchmark, or rule ID motivating this (e.g. OWASP ASVS x.y, SEC-021).
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How we verify the posture improved (scan result, config state, test).
+    validations:
+      required: true

@@ -1,0 +1,54 @@
+# IaC misconfiguration scan (Terraform / Kubernetes / CloudFormation / Helm) — SEC-021.
+name: IaC Scan
+
+on:
+  pull_request:
+    paths:
+      - "**/*.tf"
+      - "**/*.tfvars"
+      - "infra/**"
+      - "k8s/**"
+      - "helm/**"
+      - ".github/workflows/iac.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**/*.tf"
+      - "infra/**"
+      - "k8s/**"
+      - "helm/**"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect IaC
+        id: detect
+        # The workflow can be triggered by editing this file itself; only scan when real
+        # IaC exists, so template repos without any stay green (and trivy config doesn't
+        # scan unrelated files like the workflows themselves).
+        run: |
+          if [ -n "$(find . \( -name '*.tf' -o -name '*.tfvars' \) -not -path './.git/*' -print -quit)" ] \
+             || [ -d infra ] || [ -d k8s ] || [ -d helm ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No IaC files found — skipping IaC scan."
+          fi
+      - name: Trivy config scan
+        if: steps.detect.outputs.found == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          severity: MEDIUM,HIGH,CRITICAL
+          exit-code: "1"
+      - name: Checkov (second opinion — defense in depth)
+        if: steps.detect.outputs.found == 'true'
+        uses: bridgecrewio/checkov-action@v12.1347.0
+        with:
+          soft_fail: false
+          quiet: true

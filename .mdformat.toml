@@ -1,0 +1,12 @@
+# mdformat configuration (Documentation as Code — keeps Markdown consistent without
+# breaking the metadata this foundation relies on). Read automatically by mdformat from
+# the repo root. Requires plugins mdformat-frontmatter and mdformat-gfm — installed via
+# the pre-commit hook's additional_dependencies (.pre-commit-config.yaml).
+#
+# Why these settings exist: a frontmatter-unaware run once turned every file's
+# `---`-delimited YAML frontmatter into a mangled heading and renumbered ordered lists
+# to all `1.`. These options + the frontmatter plugin prevent that recurring.
+
+wrap = "keep"        # never reflow prose — preserve the hand-wrapped ~100-col line breaks
+number = true        # ordered lists keep consecutive 1. 2. 3. numbering (not all "1.")
+end_of_line = "lf"   # match .gitattributes (LF enforced repo-wide)

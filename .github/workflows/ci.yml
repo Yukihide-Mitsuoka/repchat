@@ -1,0 +1,91 @@
+# CI — Layer 3 (authoritative) quality gate. Calls only canonical `make` targets
+# (CLAUDE.md §11) so this file never changes when the stack changes.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # TEMPLATE: add your runtime setup action here (setup-node / setup-python / setup-go)
+      - run: make setup
+      - run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make setup
+      - run: make coverage
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make setup
+      - run: make build
+
+  doctor:
+    # Foundation self-check: metadata invariants (YAML frontmatter intact, no collapsed
+    # frontmatter) + guard-hook block/allow tests. Catches the doc/rule regressions that
+    # the no-op template Makefile can't. Dependency-free (pure bash).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make doctor
+
+  link-check:
+    # Broken relative links in docs are a real defect (docs are the product here).
+    # Offline mode: verify local file links resolve; external URLs are not fetched.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check links (offline)
+        uses: lycheeverse/lychee-action@v2.8.0
+        with:
+          args: "--offline --no-progress ."
+          fail: true
+
+  pr-quality:
+    # PR hygiene: Conventional Commit title (WF-030) + size guard (GR-020)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Validate PR title (Conventional Commits)
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: PR size guard (GR-020)
+        env:
+          ADDITIONS: ${{ github.event.pull_request.additions }}
+          DELETIONS: ${{ github.event.pull_request.deletions }}
+          FILES: ${{ github.event.pull_request.changed_files }}
+        run: |
+          TOTAL=$((ADDITIONS + DELETIONS))
+          echo "Changed lines: $TOTAL, files: $FILES"
+          if [ "$TOTAL" -gt 800 ] || [ "$FILES" -gt 20 ]; then
+            echo "::error::PR exceeds hard size limit (GR-020). Split it (soft limit 400 lines/10 files, hard 800/20)."
+            exit 1
+          elif [ "$TOTAL" -gt 400 ] || [ "$FILES" -gt 10 ]; then
+            echo "::warning::PR exceeds the GR-020 soft limit — must be justified in the description (mechanical change?)."
+          fi

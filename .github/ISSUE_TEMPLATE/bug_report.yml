@@ -1,0 +1,56 @@
+name: Bug report
+description: Incorrect behavior. Structured so an AI agent can act on it directly (bugfix.skill.md).
+labels: ["type:bug", "status:needs-triage"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen, stated as a verifiable fact.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happens instead. Paste exact error messages/output verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Numbered, minimal, deterministic. An agent must be able to reproduce from these steps alone — this becomes the regression test.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v1.4.2 or commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, runtime version, relevant configuration (no secrets — GR-001).
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "critical — data loss / outage / security"
+        - "high — core flow broken, no workaround"
+        - "normal — broken with workaround"
+        - "low — cosmetic"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, first-bad-version, suspected cause.

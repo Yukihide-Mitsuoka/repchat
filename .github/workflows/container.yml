@@ -1,0 +1,50 @@
+# Container image scan (REL-020). Runs only when a Dockerfile exists.
+name: Container Scan
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "**/Dockerfile"
+      - ".github/workflows/container.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "**/Dockerfile"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Dockerfile
+        id: detect
+        # The workflow can be triggered by editing this file itself; only actually
+        # build/scan when a Dockerfile exists, so template repos without one stay green.
+        run: |
+          if [ -n "$(find . -name Dockerfile -not -path './.git/*' -print -quit)" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No Dockerfile found — skipping container scan."
+          fi
+      - name: Build image
+        if: steps.detect.outputs.found == 'true'
+        run: docker build -t local/scan-target:${{ github.sha }} .
+      - name: Trivy image scan
+        if: steps.detect.outputs.found == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: local/scan-target:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Dockerfile best practices (hadolint)
+        if: steps.detect.outputs.found == 'true'
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile

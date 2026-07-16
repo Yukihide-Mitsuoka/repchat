@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "managed_by": "ai-dev-foundation",
+  "minimums": {
+    "pull_request_required": {"value": true, "rule_refs": ["GR-010"]},
+    "status_checks_required": {"value": true, "rule_refs": ["GR-012"]},
+    "force_pushes_allowed": {"value": false, "rule_refs": ["GR-011"]},
+    "admin_bypass_allowed": {"value": false, "rule_refs": ["GR-010", "GR-012"]},
+    "squash_merge_only": {"value": true, "rule_refs": ["WF-030"]},
+    "secret_scanning_enabled": {"value": true, "rule_refs": ["SEC-002"]},
+    "push_protection_enabled": {"value": true, "rule_refs": ["SEC-002"]},
+    "vulnerability_alerts_enabled": {"value": true, "rule_refs": ["SEC-003"]},
+    "private_vulnerability_reporting_enabled": {"value": true, "rule_refs": ["SEC-003"]}
+  },
+  "defaults": {
+    "target_branch": "main",
+    "enforcement_backend": "ruleset",
+    "required_approvals": 0,
+    "require_last_push_approval": false,
+    "required_checks": [
+      "lint",
+      "test",
+      "build",
+      "doctor",
+      "link-check",
+      "pr-quality",
+      "secret-scan",
+      "dependency-scan",
+      "license-check"
+    ],
+    "dependency_update_provider": "renovate",
+    "delete_branch_on_merge": true,
+    "discussions_enabled": false,
+    "squash_merge_commit_title": "PR_TITLE",
+    "squash_merge_commit_message": "PR_BODY"
+  }
+}

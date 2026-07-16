@@ -1,0 +1,46 @@
+# Layer 2 of defense in depth (Layer 1: .claude/ hooks, Layer 3: GitHub Actions).
+# Applies to every committer — human or AI, any vendor. Install: `pre-commit install
+# --hook-type pre-commit --hook-type pre-push` (part of `make setup`).
+# Bypassing with --no-verify violates GR-012.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: no-commit-to-branch          # GR-010, local enforcement
+        args: ["--branch", "main", "--branch", "master"]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks                     # GR-001..003 / SEC-002
+
+  - repo: https://github.com/hukkin/mdformat
+    rev: 1.0.0                           # pinned; Renovate/`pre-commit autoupdate` bumps it
+    hooks:
+      - id: mdformat                     # config: .mdformat.toml (frontmatter + numbered lists preserved)
+        additional_dependencies:
+          - mdformat-frontmatter         # keep YAML frontmatter (--- ... ---) intact
+          - mdformat-gfm                 # GFM tables, task lists, autolinks (repo is table-heavy)
+
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint (make lint)          # COD-001
+        entry: make lint
+        language: system
+        pass_filenames: false
+      - id: unit-tests
+        name: unit tests (make test-unit)  # GR-021 / TST-030
+        entry: make test-unit
+        language: system
+        pass_filenames: false
+        stages: [pre-push]              # fast suite on push; full suite runs in CI

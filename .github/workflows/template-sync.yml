@@ -1,0 +1,35 @@
+# Distributes foundation updates to repos created from this template: opens a PR in the
+# downstream repo whenever the template changes (files listed in .templatesyncignore are
+# never touched).
+#
+# OPT-IN and safe by default: the job only runs when the repository variable
+# TEMPLATE_SYNC_ENABLED is set to "true". So the template repo itself and any unmodified
+# downstream repo never run it (no spurious weekly failures). To enable sync in a
+# downstream repo: set variable TEMPLATE_SYNC_ENABLED=true AND replace {{ORG}} below.
+name: Template Sync
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # weekly, Monday 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: vars.TEMPLATE_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: AndreasAugustin/actions-template-sync@v2
+        with:
+          # TEMPLATE: replace {{ORG}} with the org/user that owns the template repo.
+          source_repo_path: "{{ORG}}/ai-dev-foundation"
+          upstream_branch: main
+          pr_title: "build: sync with ai-dev-foundation template"
+          pr_labels: "type:ci,type:dependencies"
+          pr_commit_msg: "build: sync with ai-dev-foundation template"

@@ -1,0 +1,34 @@
+# Dependabot VERSION updates — INTENTIONALLY INERT by default.
+#
+# Renovate (renovate.json) is the primary update automation and already covers every
+# ecosystem plus GitHub Actions digest pinning (helpers:pinGitHubActionDigests). Running
+# Dependabot version updates at the same time produces duplicate, conflicting weekly PRs,
+# so all update blocks below are commented out.
+#
+# Dependabot SECURITY updates/alerts do NOT need this file — they are a repository
+# setting enabled by scripts/setup-github.sh (vulnerability-alerts + automated-security-fixes).
+#
+# If you prefer Dependabot OVER Renovate: delete renovate.json, then uncomment the
+# ecosystem block(s) below. GitHub may show a "no update configuration" notice while every
+# block is commented; that is expected for this inert-by-default template file.
+
+version: 2
+updates: []
+  # - package-ecosystem: "github-actions"   # only if NOT using Renovate
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   labels: ["type:dependencies", "type:ci"]
+  #   commit-message:
+  #     prefix: "build"
+  #
+  # - package-ecosystem: "npm"          # or pip / gomod / cargo / maven / bundler
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
+  #   labels: ["type:dependencies"]
+  #   commit-message:
+  #     prefix: "build"
+  #   groups:
+  #     non-major:
+  #       update-types: ["minor", "patch"]

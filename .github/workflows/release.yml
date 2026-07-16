@@ -1,0 +1,67 @@
+# Release automation (REL-001/010/020): release-please derives SemVer + changelog from
+# Conventional Commits; on tag, gates run and SBOM is attached to the GitHub Release.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          # TEMPLATE: set release-type (node, python, go, rust, simple, ...)
+          release-type: simple
+
+  release-gates:
+    # REL-020 — runs only when a release was actually cut
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # attach assets to the release
+      id-token: write      # SLSA provenance signing
+      attestations: write  # SLSA provenance storage
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - run: make setup
+      - name: Full test suite (gate)
+        run: make test
+      - name: Vulnerability gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Generate SBOM (SPDX + CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: true
+          upload-release-assets: true
+      - name: Build release artifact
+        run: make build
+      - name: Attest build provenance (SLSA — SEC-031)
+        if: hashFiles('dist/**') != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/**"
+      # TEMPLATE: add artifact publishing (registry push, package publish) here;
+      # for container images, prefer cosign keyless signing — see docs/deployment/.

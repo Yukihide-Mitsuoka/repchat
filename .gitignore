@@ -1,0 +1,36 @@
+# Secrets — never commit (GR-001); document variables in .env.example instead
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Build & dependency artifacts
+dist/
+build/
+out/
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+target/
+vendor/
+
+# Test & coverage output
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+junit.xml
+
+# IDE / OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local agent state (project-shared settings ARE committed: .claude/settings.json)
+.claude/settings.local.json

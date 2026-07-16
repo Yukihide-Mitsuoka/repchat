@@ -1,0 +1,43 @@
+# AI review on every PR — runs the same checklist agents use for self-review.
+# SAFE DEFAULT: disabled until you set repository variable ENABLE_AI_REVIEW=true and
+# secret ANTHROPIC_API_KEY. This is a *supplement* to human review, not a replacement
+# (CONTRIBUTING.md: AI-generated changes still require human review before merge).
+name: AI Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: vars.ENABLE_AI_REVIEW == 'true' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # TEMPLATE: verify inputs against the installed version of the action —
+      # https://github.com/anthropics/claude-code-action
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are reviewing pull request #${{ github.event.pull_request.number }} in this repository.
+            Follow .skills/review.skill.md exactly, using the checklist in
+            .ai/review-checklist.md and the guardrails in .ai/guardrails.md.
+            Post your findings as a single PR review comment: severity-ranked
+            (Blocker > Major > Minor), each finding citing file:line + rule ID +
+            concrete fix, skipped viewpoints named, explicit verdict at the end.
+            Do not push commits; do not approve/merge — comment only.
+          claude_args: "--max-turns 40"

@@ -1,0 +1,15 @@
+# Files the template-sync workflow must NEVER overwrite in downstream repos —
+# everything a project customizes. Rules/workflows/skills DO sync (that's the point).
+src/**
+tests/**
+docs/**
+profiles/**
+CLAUDE.md
+README.md
+Makefile
+.env.example
+.ai/mission.md
+.ai/decision-log.md
+.github/CODEOWNERS
+.github/governance/repository.json
+.templatesyncignore
