@@ -82,6 +82,13 @@ would need to build.
 
 ## Reproduce
 
+`app/package-lock.json` and `app/.npmrc` are gitignored (not `.npmignore`d —
+just not tracked in this repo) to keep the PR under GR-020's hard size gate;
+`package-lock.json` alone was 17,662 of ~18,300 changed lines. `npm install`
+regenerates it locally; exact dependency versions aren't load-bearing for a
+one-off exploratory spike whose findings (README + committed evidence) don't
+depend on them.
+
 ```sh
 cd app && npm install && npm run sources && npm run build   # builds ./build
 cd ..

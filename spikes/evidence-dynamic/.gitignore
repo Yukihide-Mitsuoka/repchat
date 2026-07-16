@@ -11,3 +11,5 @@ gate_a.pid
 gate_b.pid
 data/tenant_a/**/*.parquet
 data/tenant_b/**/*.parquet
+app/package-lock.json
+app/.npmrc

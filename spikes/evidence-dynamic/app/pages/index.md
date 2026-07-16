@@ -46,7 +46,7 @@ title: Welcome to Evidence
 />
 
 ## What's Next?
-- [Connect your data sources](settings)
+- Connect your data sources (in-app Settings page — this link is only live under `evidence dev`, not in a static export)
 - Edit/add markdown files in the `pages` folder
 - Deploy your project with [Evidence Cloud](https://evidence.dev/cloud)
 
