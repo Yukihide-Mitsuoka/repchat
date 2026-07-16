@@ -19,6 +19,8 @@ in `.ai/`; decisions in `docs/adr/`. Writing rules: `.ai/documentation.md`.
 | [runbook/](runbook/) | Step-by-step incident/ops procedures | 3am emergency |
 | [troubleshooting/](troubleshooting/) | Known failure modes → diagnosis → fix | "it's broken, what now?" |
 | [templates/](templates/) | Reusable document templates (requirements, ...) | start a standard document |
+| [requirements.md](requirements.md) | Whole-project requirements (draft — pre-formal, from early product discovery) | understand what's being built and why |
+| [discovery-log.md](discovery-log.md) | Product-discovery session narrative, decisions, and open questions behind requirements.md and ADR-0005 | catch up on context, find unresolved questions |
 | [roadmap.md](roadmap.md) | Direction and planned milestones | prioritize work |
 | [glossary.md](glossary.md) | Ubiquitous language dictionary | name things correctly |
 | [usage.md](usage.md) | Using the template on a new machine/account; new-project setup (日本語: [usage.ja.md](usage.ja.md)) | onboard a new environment |
