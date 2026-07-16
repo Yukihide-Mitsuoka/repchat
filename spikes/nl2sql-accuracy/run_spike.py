@@ -1,11 +1,13 @@
 """NL→SQL accuracy spike runner.
 
-Two modes:
-  python3 run_spike.py                      # API mode: calls Claude, measures accuracy + tokens + cost
-  python3 run_spike.py --answers FILE.json  # offline mode: evaluates pre-generated answers (pilot)
+Modes:
+  python3 run_spike.py --project PID            # Gemini via Vertex (default provider), ADC auth
+  python3 run_spike.py --project PID --provider anthropic  # Opus 4.8 fallback via Vertex
+  python3 run_spike.py --answers FILE.json      # offline: evaluate pre-generated answers (pilot)
 
-API mode requires `pip install anthropic` and ANTHROPIC_API_KEY (or an
-`ant auth login` profile). Model defaults to claude-opus-4-8; override with --model.
+Provider policy (per product decision 2026-07-16): default to the cheap
+Gemini Flash model; only fall back to Opus 4.8 when accuracy cannot be
+recovered by prompt/request changes. Auth is GCP ADC for both.
 
 Safety: generated SQL is executed against a read-only SQLite connection and
 must be a single SELECT/WITH statement containing the tenant filter.
@@ -27,12 +29,18 @@ import seed
 HERE = Path(__file__).parent
 TENANT = "t_alpha"
 
-# USD per 1M tokens (input, output) — from platform.claude.com pricing, 2026-07.
+# USD per 1M tokens (input, output).
+# Claude: platform.claude.com pricing, 2026-07.
+# Gemini: rough public Flash-tier estimate — MARKED ESTIMATE, confirm on GCP billing.
 PRICING = {
     "claude-opus-4-8": (5.00, 25.00),
     "claude-sonnet-5": (3.00, 15.00),
     "claude-haiku-4-5": (1.00, 5.00),
+    "gemini-3.5-flash": (0.30, 2.50),   # ESTIMATE — verify
+    "gemini-2.5-flash": (0.30, 2.50),   # ESTIMATE — verify
+    "gemini-flash-latest": (0.30, 2.50),  # ESTIMATE — verify
 }
+PRICE_ESTIMATE = {"gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"}
 USD_JPY = 155.0  # rough conversion for the report; update as needed
 
 PROMPT_RULES = f"""あなたはBIシステムのSQL生成アシスタントです。ユーザーの質問をSQLite用のSQLに変換します。
@@ -117,10 +125,52 @@ def compare(kind: str, got_rows, want):
     raise ValueError(kind)
 
 
-def generate_via_api(question: str, model: str):
-    import anthropic
+DEFAULT_MODEL = {"gemini": "gemini-3.5-flash", "anthropic": "claude-opus-4-8"}
 
-    client = anthropic.Anthropic()
+_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": ["sql", "clarify", "refuse"]},
+        "sql": {"type": "string"},
+        "question": {"type": "string"},
+        "reason": {"type": "string"},
+    },
+    "required": ["action"],
+}
+
+
+def make_client(args):
+    """Return a (provider, client) pair. Both authenticate via GCP ADC on Vertex."""
+    if args.provider == "gemini":
+        from google import genai
+        return "gemini", genai.Client(vertexai=True, project=args.project,
+                                      location=args.region)
+    from anthropic import AnthropicVertex
+    return "anthropic", AnthropicVertex(project_id=args.project, region=args.region)
+
+
+def _generate_gemini(client, question: str, model: str):
+    from google.genai import types
+    resp = client.models.generate_content(
+        model=model,
+        contents=question,
+        config=types.GenerateContentConfig(
+            system_instruction=PROMPT_RULES,
+            response_mime_type="application/json",
+            response_schema={**_JSON_SCHEMA, "propertyOrdering": ["action", "sql", "question", "reason"]},
+            temperature=0,
+        ),
+    )
+    um = resp.usage_metadata
+    return json.loads(resp.text), {
+        "input_tokens": um.prompt_token_count or 0,
+        "output_tokens": um.candidates_token_count or 0,
+        "cache_read": getattr(um, "cached_content_token_count", 0) or 0,
+        "cache_write": 0,
+    }
+
+
+def _generate_anthropic(client, question: str, model: str):
     resp = client.messages.create(
         model=model,
         max_tokens=2048,
@@ -128,26 +178,21 @@ def generate_via_api(question: str, model: str):
         system=[{"type": "text", "text": PROMPT_RULES,
                  "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": question}],
-        output_config={"format": {"type": "json_schema", "schema": {
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["sql", "clarify", "refuse"]},
-                "sql": {"type": "string"},
-                "question": {"type": "string"},
-                "reason": {"type": "string"},
-            },
-            "required": ["action"],
-            "additionalProperties": False,
-        }}},
+        output_config={"format": {"type": "json_schema",
+                                  "schema": {**_JSON_SCHEMA, "additionalProperties": False}}},
     )
     text = next(b.text for b in resp.content if b.type == "text")
-    usage = resp.usage
+    u = resp.usage
     return json.loads(text), {
-        "input_tokens": usage.input_tokens,
-        "output_tokens": usage.output_tokens,
-        "cache_read": usage.cache_read_input_tokens,
-        "cache_write": usage.cache_creation_input_tokens,
+        "input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
+        "cache_read": u.cache_read_input_tokens, "cache_write": u.cache_creation_input_tokens,
     }
+
+
+def generate_via_api(provider, client, question: str, model: str):
+    if provider == "gemini":
+        return _generate_gemini(client, question, model)
+    return _generate_anthropic(client, question, model)
 
 
 def cost_jpy(model: str, u: dict) -> float:
@@ -160,12 +205,18 @@ def cost_jpy(model: str, u: dict) -> float:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--answers", help="offline: JSON file {qid: answer_obj}")
-    ap.add_argument("--model", default="claude-opus-4-8")
+    ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini",
+                    help="gemini (default, cheap) | anthropic (Opus 4.8 fallback)")
+    ap.add_argument("--model", help="override model id (default per provider)")
+    ap.add_argument("--project", help="GCP project_id (required for API modes)")
+    ap.add_argument("--region", default="global", help="Vertex region (default: global)")
     args = ap.parse_args()
+    model = args.model or DEFAULT_MODEL[args.provider]
 
     db = build_db()
     spec = json.loads((HERE / "questions.json").read_text())
     offline = json.loads(Path(args.answers).read_text()) if args.answers else None
+    provider, client = (None, None) if offline is not None else make_client(args)
 
     results, total_cost = [], 0.0
     for q in spec["questions"]:
@@ -176,11 +227,11 @@ def main():
                 continue
         else:
             try:
-                ans, usage = generate_via_api(q["text"], args.model)
+                ans, usage = generate_via_api(provider, client, q["text"], model)
             except Exception as e:  # record and continue
                 results.append((q, "ERROR", f"api error: {e}", None))
                 continue
-            total_cost += cost_jpy(args.model, usage)
+            total_cost += cost_jpy(model, usage)
 
         action = ans.get("action")
         if q["expect"] in ("clarify", "refuse"):
@@ -205,7 +256,7 @@ def main():
     n = len([r for r in results if r[1] != "SKIP"])
     passed = len([r for r in results if r[1] == "PASS"])
     stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    mode = "offline/pilot" if offline is not None else f"api ({args.model})"
+    mode = "offline/pilot" if offline is not None else f"{provider} ({model})"
     lines = [f"# NL→SQL spike run — {stamp} — mode: {mode}", "",
              f"**{passed}/{n} PASS**", "",
              "| Q | category | verdict | detail |", "|---|---|---|---|"]
@@ -213,8 +264,11 @@ def main():
         d = detail.replace("|", "\\|")[:160]
         lines.append(f"| {q['id']} | {q['category']} | {verdict} | {d} |")
     if offline is None:
-        lines += ["", f"**Total measured cost: ~¥{total_cost:.2f}** "
-                      f"(@{USD_JPY} JPY/USD, incl. cache accounting)"]
+        est = " — ⚠️ Gemini price is an ESTIMATE, confirm on GCP billing" \
+            if model in PRICE_ESTIMATE else ""
+        per_q = total_cost / n if n else 0
+        lines += ["", f"**Total measured cost: ~¥{total_cost:.4f}** "
+                      f"(~¥{per_q:.4f}/question @{USD_JPY} JPY/USD){est}"]
     report = "\n".join(lines) + "\n"
     out = HERE / "results" / f"run-{datetime.datetime.now():%Y%m%d-%H%M%S}.md"
     out.parent.mkdir(exist_ok=True)
