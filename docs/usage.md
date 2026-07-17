@@ -115,8 +115,9 @@ Open the repo with Claude Code (reads `CLAUDE.md` automatically) or tell any oth
 to read `AGENTS.md`. Assign it an issue and go.
 
 The template ships a worked example module (`src/modules/catalog/` + `tests/modules/catalog/`)
-— imitate its shape (COD-050) or delete both when you start real code. Run `make doctor`
-anytime to self-check the template (frontmatter integrity + guard-hook tests).
+— imitate its shape (COD-050) or delete both when you start real code. (In this repo both
+were deleted at instantiation — #13; the reference lives in the upstream template.) Run
+`make doctor` anytime to self-check the template (frontmatter integrity + guard-hook tests).
 
 ---
 

@@ -23,13 +23,13 @@ Dependency direction: `interface → application → domain` and
 `infrastructure → application → domain`. Never sideways into another module's
 internals — cross-module calls use the target's MODULE.md public API or events.
 
-## Worked example: `modules/catalog/`
+## Worked example — removed
 
-[`modules/catalog/`](modules/catalog/MODULE.md) is a small reference module (Python)
-demonstrating the four layers, DDD value objects/aggregates, ports + adapters, and the
-testing conventions. **Imitate its shape** (COD-050); it is not wired into the no-op
-template Makefile. Delete it and `tests/modules/catalog/` when starting a real project.
-Run its tests with the python-uv profile, or ad hoc: `PYTHONPATH=. pytest tests/modules/catalog`.
+The template's reference module (`modules/catalog/` + `tests/modules/catalog/`) was
+deleted when this repo finished instantiation (#13), per the template's own guidance.
+For a shape to imitate (COD-050), see the example in the
+[ai-dev-foundation template](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation).
+Real ChatChart modules will follow the ARC-001 layout above.
 
 ## MODULE.md template
 
