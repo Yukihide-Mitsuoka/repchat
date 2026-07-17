@@ -213,7 +213,8 @@ updated: 2026-07-07
 - **利用目的**：モジュールの公開API・所有データ・不変条件・依存を1ページで宣言（ARC-003）。
 - **利用シーン**：そのモジュールを変更する前に必ず読む。契約が変わったら同PRで更新。
 - **利用しないシーン**：他モジュールの内部実装を知りたい時（内部は非公開。公開APIのみ参照）。
-- **利用例**：[src/modules/catalog/MODULE.md](../src/modules/catalog/MODULE.md)（同梱の例）で、公開API `AddProduct.handle` と不変条件4点を把握してから改修。
+- **利用例**：テンプレート同梱の例モジュール（`src/modules/catalog/`）は本リポジトリでは削除済み（#13）。
+  手本が必要な場合は [ai-dev-foundation テンプレート](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)側の同モジュールを参照。
 
 ### [src/README.md](../src/README.md) / [tests/README.md](../tests/README.md)（配置規約）
 
@@ -305,7 +306,7 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 | 人間向け | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/usage.md`, `docs/usage.ja.md` | 人間向け。特に `README.md` はAIを「CLAUDE.mdへ」と誘導する側。AI向けセキュリティは `.ai/security.md`（§3収録）が担う |
 | 記述的ドキュメント | `docs/{architecture,domain,api,deployment,operations,runbook,troubleshooting}/README.md`, `docs/README.md` | 権威レベル5の**記述（informative）**。規範ではなく雛形。ただし各READMEの「更新トリガー」は DOC-030 経由でAIを間接的に案内する |
 | ドキュメント雛形 | `docs/templates/` | 記入用テンプレート（例：`requirements.md`）。指示文ではなく、`requirements` スキルが埋める対象。書式規約は DOC-002（§3収録）が担う |
-| 例コード | `src/modules/catalog/**/*.py`, `tests/**/*.py` | "指示"ではなく"手本（imitateする参照, COD-050）"。契約は代表として `MODULE.md` を §7 に収録 |
+| 例コード | （本リポジトリでは削除済み — #13） | テンプレート同梱の手本 `src/modules/catalog/` は実プロジェクト開始に伴い削除。手本（COD-050）は ai-dev-foundation テンプレート側を参照 |
 
 **線引きの原則**：規範（normative, 従うべき）は収録、記述（descriptive, 参考情報）と純粋な実行/設定は除外。
 記述的docsやツールも間接的にAIの行動に影響しますが、"指示の発生源"は `.ai/`・`.skills/`・契約ファイルに集約されています。
