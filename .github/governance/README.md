@@ -97,7 +97,8 @@ to read-only `plan`; normal execution requires the repository twice in the form
 `OWNER/REPOSITORY --confirm-repo OWNER/REPOSITORY` before delegating to `apply`. It makes
 no direct `gh` call, owns no fixed settings, and preserves the reconciler exit code.
 The former no-argument apply and inline onboarding reminders are intentionally removed;
-callers must migrate to the explicit target form and use `docs/usage.md` for onboarding.
+callers must migrate to the explicit target form and use the
+[foundation usage guide](../../docs/foundation/guides/usage.md) for onboarding.
 
 ## Apply action planning boundary
 
