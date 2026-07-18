@@ -21,6 +21,19 @@ test('foundation ADRs are not duplicated in the project ADR namespace', async ()
   }
 });
 
+test('foundation guides are not duplicated at project-owned paths', async () => {
+  const legacyCopies = [
+    'docs/README.md',
+    'docs/usage.md',
+    'docs/usage.ja.md',
+    'docs/ai-instruction-files.ja.md',
+  ];
+
+  for (const path of legacyCopies) {
+    await assert.rejects(stat(`${repositoryRoot}/${path}`), { code: 'ENOENT' });
+  }
+});
+
 test('project governance references use the foundation ADR namespace', async () => {
   const decisionLog = await readFile(`${repositoryRoot}/.ai/decision-log.md`, 'utf8');
   const architectureSkill = await readFile(
