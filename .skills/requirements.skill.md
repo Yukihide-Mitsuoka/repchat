@@ -2,7 +2,7 @@
 name: requirements
 description: Produce a requirements definition document — purpose-driven, zero-based, objective, complete
 triggers: [requirements definition, 要件定義, spec a feature, write requirements, scope a project, interrogate the plan, grill me]
-reads: [.ai/mission.md, .ai/documentation.md, docs/templates/requirements.md]
+reads: [.ai/mission.md, .ai/documentation.md, docs/foundation/templates/requirements.md]
 ---
 
 # Skill: Requirements Definition
@@ -17,7 +17,7 @@ that design and acceptance testing proceed without re-asking.
   or ambiguous enough that two reasonable implementations would diverge, drive it out by
   interrogation (Process step 2) — do not fill the gap with an assumption (CLAUDE.md §13).
 - The success definition: how the requester will judge the result as met.
-- The template: [docs/templates/requirements.md](../docs/templates/requirements.md) —
+- The template: [docs/foundation/templates/requirements.md](../docs/foundation/templates/requirements.md) —
   structure and required sections.
 - Scope boundaries: [.ai/mission.md](../.ai/mission.md). Read other existing docs and code
   only in Process step 4, not before.
@@ -47,6 +47,9 @@ that design and acceptance testing proceed without re-asking.
    a MoSCoW priority with a one-line basis per requirement.
 7. **Fill the template top to bottom.** Define terms, assumptions, and constraints once in
    their sections; reference them by name afterward (DOC-002). Do not restate a definition.
+   After template instantiation, write the completed project document in Japanese and
+   translate the template headings and table labels. Use another language only when the
+   repository owner or an external contract explicitly requires it (ADR-0005).
 8. **Complete the non-functional set** against the ISO/IEC 25010 characteristics that
    apply, and give each NFR a measurement method — a target with no way to verify it is
    not a requirement.
@@ -78,6 +81,8 @@ that design and acceptance testing proceed without re-asking.
 ## Outputs
 - A completed document from the template at `docs/requirements.md` (whole project) or
   `docs/requirements/<initiative>.md` (one initiative).
+- In an instantiated repository, the completed project document is written in Japanese,
+  including headings and table labels, unless an explicit language exception applies.
 - Every FR/NFR carries a unique ID, a priority, and a traced purpose.
 - Open questions listed separately; any §13 escalations raised.
 

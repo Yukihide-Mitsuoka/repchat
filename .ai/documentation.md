@@ -21,14 +21,17 @@ and **optimized for AI readers** — explicit, structured, unambiguous.
 - Every doc starts with YAML frontmatter (`id`, `title`, plus `status`/`updated` where
   meaningful) and states its purpose in the first paragraph.
 - Concrete examples for every rule or API. Fake credentials only (GR-002).
-- English for all `.ai/` and `docs/` content (ADR-0002); user-facing docs may add
-  localized versions as siblings (`README.ja.md`).
+- Foundation-owned instructions and documentation remain English. After template
+  instantiation, AI agents MUST write new project-specific documents under `docs/` in
+  Japanese unless the repository owner or an external contract explicitly requires
+  another language. Do not create a translated sibling solely to duplicate the same
+  facts (ADR-0005).
 - Files use kebab-case names; headings form a strict hierarchy (one `#`, then `##`...).
 
 ## DOC-002: Objective, structured prose
 
 Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
-`docs/templates/requirements.md` build on this rule.
+`docs/foundation/templates/requirements.md` build on this rule.
 
 - **Objective basis.** State each claim with its basis — a measurement, a cited source, a
   standard, or explicit reasoning. Separate established fact, inference, and open
@@ -53,6 +56,8 @@ Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
 | `.ai/` | rules for agents | yes (authority table) |
 | `CLAUDE.md`, `AGENTS.md` | agent entry points | yes |
 | `docs/adr/` | decisions with context | yes (accepted ADRs) |
+| `docs/foundation/` | synchronized foundation-owned guidance and document templates | descriptive |
+| `docs/requirements.md`, `docs/requirements/` | whole-project and initiative requirements | contract |
 | `docs/architecture/` | diagrams, flows, C4 | descriptive |
 | `docs/domain/` | domain model, ubiquitous language | descriptive |
 | `docs/api/` | API contracts (OpenAPI etc.) | contract |
@@ -66,6 +71,7 @@ When a PR contains a change of type X, it MUST update the docs listed:
 
 | Change | Must update |
 |--------|-------------|
+| New/changed project or initiative requirements | `docs/requirements.md` or `docs/requirements/<initiative>.md` |
 | New/changed public API | `docs/api/`, MODULE.md, README if user-facing |
 | New module / boundary change | `docs/architecture/`, MODULE.md, ADR |
 | New env var / config | `.env.example`, `docs/deployment/` |
