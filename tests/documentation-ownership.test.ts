@@ -18,6 +18,15 @@ test('foundation docs are not duplicated in the project namespace', async () => 
     '../usage.md',
     '../usage.ja.md',
     '../ai-instruction-files.ja.md',
+    '../api/README.md',
+    '../architecture/README.md',
+    '../deployment/README.md',
+    '../domain/README.md',
+    '../operations/README.md',
+    '../runbook/README.md',
+    '../troubleshooting/README.md',
+    '../troubleshooting/github-governance.md',
+    '../troubleshooting/template-inheritance.md',
   ];
 
   for (const name of legacyCopies) {
