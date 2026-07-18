@@ -7,13 +7,17 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 
 const projectAdr = (name: string): string => `${repositoryRoot}/docs/adr/${name}`;
 
-test('foundation ADRs are not duplicated in the project ADR namespace', async () => {
+test('foundation docs are not duplicated in the project namespace', async () => {
   const legacyCopies = [
     '0000-template.md',
     '0001-record-architecture-decisions.md',
     '0002-ai-facing-docs-in-english.md',
     '0003-reconcile-github-governance-from-inherited-policy.md',
     '0004-harden-multi-level-template-inheritance.md',
+    '../README.md',
+    '../usage.md',
+    '../usage.ja.md',
+    '../ai-instruction-files.ja.md',
   ];
 
   for (const name of legacyCopies) {
