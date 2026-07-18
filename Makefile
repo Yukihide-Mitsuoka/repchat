@@ -66,4 +66,5 @@ clean: ## Remove build artifacts
 
 doctor: ## Self-check the template: metadata invariants + guard-hook tests (foundation-level, stack-independent)
 	@bash scripts/template-check.sh
+	@bash tests/template-sync-boundary.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
