@@ -21,14 +21,17 @@ and **optimized for AI readers** — explicit, structured, unambiguous.
 - Every doc starts with YAML frontmatter (`id`, `title`, plus `status`/`updated` where
   meaningful) and states its purpose in the first paragraph.
 - Concrete examples for every rule or API. Fake credentials only (GR-002).
-- English for all `.ai/` and `docs/` content (ADR-0002); user-facing docs may add
-  localized versions as siblings (`README.ja.md`).
+- Foundation-owned instructions and documentation remain English. After template
+  instantiation, AI agents MUST write new project-specific documents under `docs/` in
+  Japanese unless the repository owner or an external contract explicitly requires
+  another language. Do not create a translated sibling solely to duplicate the same
+  facts (ADR-0005).
 - Files use kebab-case names; headings form a strict hierarchy (one `#`, then `##`...).
 
 ## DOC-002: Objective, structured prose
 
 Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
-`docs/templates/requirements.md` build on this rule.
+`docs/foundation/templates/requirements.md` build on this rule.
 
 - **Objective basis.** State each claim with its basis — a measurement, a cited source, a
   standard, or explicit reasoning. Separate established fact, inference, and open
@@ -52,7 +55,12 @@ Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
 |----------|---------|-----------|
 | `.ai/` | rules for agents | yes (authority table) |
 | `CLAUDE.md`, `AGENTS.md` | agent entry points | yes |
-| `docs/adr/` | decisions with context | yes (accepted ADRs) |
+| `docs/foundation/adr/` | synchronized foundation decisions with context | yes (accepted ADRs) |
+| `docs/foundation/` | other synchronized foundation-owned guidance and document templates | descriptive |
+| `docs/adr/` | repository-specific decisions with context | yes (accepted ADRs) |
+| `docs/requirements.md`, `docs/requirements/` | whole-project and initiative requirements | contract |
+| `docs/glossary.md` | project-specific ubiquitous language | descriptive |
+| `docs/roadmap.md` | project direction and sequencing | descriptive |
 | `docs/architecture/` | diagrams, flows, C4 | descriptive |
 | `docs/domain/` | domain model, ubiquitous language | descriptive |
 | `docs/api/` | API contracts (OpenAPI etc.) | contract |
@@ -60,18 +68,26 @@ Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
 | `src/modules/*/MODULE.md` | module contracts | yes |
 | `README.md` | project front door | descriptive |
 
+The structure and update triggers for project-owned `docs/` paths are defined once in
+[`docs/foundation/guides/`](../docs/foundation/guides/). A project-owned documentation
+directory MUST NOT contain a foundation-owned placeholder README. A repository MAY add
+a local README only when it describes actual project content and is maintained by that
+repository.
+
 ## DOC-030: Doc-update matrix (binding — GR-024)
 
 When a PR contains a change of type X, it MUST update the docs listed:
 
 | Change | Must update |
 |--------|-------------|
+| New/changed project or initiative requirements | `docs/requirements.md` or `docs/requirements/<initiative>.md` |
 | New/changed public API | `docs/api/`, MODULE.md, README if user-facing |
 | New module / boundary change | `docs/architecture/`, MODULE.md, ADR |
 | New env var / config | `.env.example`, `docs/deployment/` |
 | New dependency | PR justification (GR-023); `docs/architecture/` if structural |
 | Behavior change visible to users | README, CHANGELOG (via commit type) |
 | New error state / failure mode | `docs/troubleshooting/`, `docs/runbook/` if ops action needed |
+| New or changed reusable foundation term | `docs/foundation/glossary.md` |
 | New domain term | `docs/glossary.md` |
 | Decision that constrains the future | ADR + `.ai/decision-log.md` |
 | Change to how AI should behave | `.ai/*` (via reviewed PR) |
@@ -81,4 +97,6 @@ When a PR contains a change of type X, it MUST update the docs listed:
 - If you read a doc that contradicts the code: the code is usually truth for *behavior*,
   the doc for *intent*. Investigate, fix the wrong one in the current PR, note it.
 - Docs describing removed features are deleted, not marked "deprecated" forever.
-- Each `docs/**/README.md` lists its own update triggers; obey them.
+- Use the matching `docs/foundation/guides/` entry for directory structure and update
+  triggers. If a repository adds a project-owned README, obey its additional local
+  triggers as well.

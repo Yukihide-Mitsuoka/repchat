@@ -1,6 +1,7 @@
 ---
 id: github-governance-troubleshooting
 title: GitHub Governance Troubleshooting
+updated: 2026-07-18
 ---
 
 # GitHub Governance Troubleshooting

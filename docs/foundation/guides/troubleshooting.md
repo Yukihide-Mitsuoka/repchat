@@ -5,14 +5,16 @@ title: Troubleshooting Guide
 
 # Troubleshooting
 
-Known failure modes: symptom → diagnosis → fix. Unlike runbooks (operational
+Defines how an instantiated repository records known project failure modes under
+`docs/troubleshooting/`: symptom → diagnosis → fix. Unlike runbooks (operational
 emergencies), this covers development-time and user-reported problems.
 
 **Update triggers (DOC-030):** every bug fix with a user-visible symptom
 (bugfix.skill.md step 7), every support question answered twice, every setup pitfall
 discovered.
 
-## Entry format (append to `known-issues.md`, or one file per area when it grows)
+## Entry format (append to `docs/troubleshooting/known-issues.md`, or use one project
+file per area when it grows)
 
 ```markdown
 ## <Exact symptom — the error message or observable behavior, verbatim>
@@ -26,7 +28,7 @@ discovered.
 **Refs:** #<issue>, <ADR/rule ID if relevant>
 ```
 
-## Rules
+## Checklist
 
 - Headings are the **verbatim error message** where one exists — that's what agents and
   humans search for.

@@ -1,7 +1,7 @@
 ---
 id: ai-instruction-files-ja
 title: AI指示ファイル・ガイド（日本語）
-updated: 2026-07-07
+updated: 2026-07-18
 ---
 
 # AIへ指示を出すファイル群ガイド（日本語）
@@ -29,7 +29,7 @@ updated: 2026-07-07
 │ feature / bugfix / refactor / ... 各タスクの実行手順      │
 └───────────────────────────────────────────────────────┘
 
-  補助: .claude/（Claude固有の自動強制）, docs/adr/（意思決定）,
+  補助: .claude/（Claude固有の自動強制）, docs/foundation/adr/（基盤の意思決定）,
         MODULE.md（モジュール契約）, Issue/PRテンプレート（AIへの構造化入力）,
         ~/.claude・~/projects/CLAUDE.md（全リポ共通のグローバル指示）
 ```
@@ -41,17 +41,17 @@ updated: 2026-07-07
 
 | カテゴリ | ファイル | 一言 |
 |----------|----------|------|
-| 入口 | [CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md) | 最初に読む運用マニュアル |
-| ルール索引 | [.ai/README.md](../.ai/README.md) | 優先順位・タスク別ルーティング表 |
-| ルール本体 | [.ai/](../.ai/) の各 `*.md` | 分野別の正準ルール（ID付き） |
-| 手順書 | [.skills/](../.skills/) の各 `*.skill.md` | タスク別の実行プレイブック |
-| 自動強制 | [.claude/](../.claude/) | Claude Code のフック（即時ブロック/整形）・権限制御・ネイティブSkill |
-| 意思決定 | [docs/adr/](adr/) | 「なぜこう作ったか」の不変記録 |
-| 用語 | [docs/glossary.md](glossary.md) | AIが使うべき統一用語 |
-| ソース構造 | [src/README.md](../src/README.md), [tests/README.md](../tests/README.md) | コード配置規約・MODULE.md雛形 |
-| 方向性 | [docs/roadmap.md](roadmap.md) | 何を作る/作らないかの指針 |
-| 契約 | `src/modules/*/MODULE.md`, [profiles/README.md](../profiles/README.md) | モジュール/makeターゲットの契約 |
-| 構造化入力 | [.github/](../.github/) の Issue/PR テンプレート | AIへの指示を型化 |
+| 入口 | [CLAUDE.md](../../../CLAUDE.md), [AGENTS.md](../../../AGENTS.md) | 最初に読む運用マニュアル |
+| ルール索引 | [.ai/README.md](../../../.ai/README.md) | 優先順位・タスク別ルーティング表 |
+| ルール本体 | [.ai/](../../../.ai/) の各 `*.md` | 分野別の正準ルール（ID付き） |
+| 手順書 | [.skills/](../../../.skills/) の各 `*.skill.md` | タスク別の実行プレイブック |
+| 自動強制 | [.claude/](../../../.claude/) | Claude Code のフック（即時ブロック/整形）・権限制御・ネイティブSkill |
+| 意思決定 | [docs/foundation/adr/](../adr/)、`docs/adr/` | 基盤と利用先の「なぜ」を所有者別に記録 |
+| 用語 | [docs/foundation/glossary.md](../glossary.md)、`docs/glossary.md` | 基盤と利用先プロジェクトの統一用語 |
+| ソース構造 | [src/README.md](../../../src/README.md), [tests/README.md](../../../tests/README.md) | コード配置規約・MODULE.md雛形 |
+| 方向性 | `docs/roadmap.md` | 利用先で何を作る/作らないかの指針 |
+| 契約 | `src/modules/*/MODULE.md`, [profiles/README.md](../../../profiles/README.md) | モジュール/makeターゲットの契約 |
+| 構造化入力 | [.github/](../../../.github/) の Issue/PR テンプレート | AIへの指示を型化 |
 | グローバル | `~/.claude/CLAUDE.md`, `~/projects/CLAUDE.md` | 全リポ共通の好み（リポ外・Claude固有） |
 
 ---
@@ -90,17 +90,17 @@ updated: 2026-07-07
 
 | ファイル | 利用目的（何を規定） | 利用シーン | 利用しないシーン | 利用例 |
 |----------|----------------------|------------|------------------|--------|
-| [guardrails.md](../.ai/guardrails.md) | 絶対禁止（GR）。指示でも覆せない | 全タスクの前提。破壊的操作の前 | 「推奨」レベルの判断（それは各ルール） | `curl\|sh` を実行しようとして GR-032 でブロック |
-| [security.md](../.ai/security.md) | セキュリティ運用（SEC） | 認証/入力/秘密情報/依存を扱う時、レビュー、リリース | UIの見た目調整など非セキュリティ作業 | 新エンドポイント追加時に SEC-020（既定deny）を適用 |
-| [architecture.md](../.ai/architecture.md) | 構造・層・依存方向（ARC） | 新機能、リファクタ、モジュール変更 | ドキュメントのみの修正 | domain から DB ドライバを import しようとして ARC-002 で回避 |
-| [coding-rules.md](../.ai/coding-rules.md) | 命名・エラー処理・依存方針（COD） | コードを書く/直す全般 | 設計そのものの是非（architecture へ） | 3回目の重複で初めて抽象化（COD-020） |
-| [testing.md](../.ai/testing.md) | テスト戦略・カバレッジ（TST） | テスト作成、バグ修正、リファクタ | 純粋なドキュメント変更 | バグ修正で「まず落ちる回帰テスト」を書く（TST-002） |
-| [workflow.md](../.ai/workflow.md) | タスクの進め方・コミット規約（WF） | ほぼ全タスク（intake→PR） | 単発の質問応答 | ブランチ名 `fix/207-null-avatar`、Conventional Commits（WF-020） |
-| [release.md](../.ai/release.md) | バージョニング・リリース手順（REL） | リリース準備 | 通常の機能開発中 | `feat` コミットから MINOR を自動導出（REL-001） |
-| [documentation.md](../.ai/documentation.md) | ドキュメント規約・更新マトリクス（DOC） | ドキュメント作成、機能変更に伴う更新 | コード内部だけの微修正 | API変更時に doc-update matrix で `docs/api/` 更新を判定（DOC-030） |
-| [review-checklist.md](../.ai/review-checklist.md) | 10観点のレビュー基準（REV） | PRレビュー、PR前のセルフレビュー | 実装中の細かい判断 | セルフレビューで REV-SEC を走査し秘密混入を確認 |
-| [mission.md](../.ai/mission.md) | プロジェクトの目的・成功基準 | 方向性の妥当性判断、オンボーディング | 日々の実装詳細 | 提案が mission の成功基準に沿うか照合 |
-| [decision-log.md](../.ai/decision-log.md) | 意思決定の追記索引（LOG/ADR） | 設計変更前に「既に決まってないか」確認、変更後に追記 | 通常の実装 | LOG-0006「jq無しでもガードが動く」を読み、正規表現を安易に簡素化しない |
+| [guardrails.md](../../../.ai/guardrails.md) | 絶対禁止（GR）。指示でも覆せない | 全タスクの前提。破壊的操作の前 | 「推奨」レベルの判断（それは各ルール） | `curl\|sh` を実行しようとして GR-032 でブロック |
+| [security.md](../../../.ai/security.md) | セキュリティ運用（SEC） | 認証/入力/秘密情報/依存を扱う時、レビュー、リリース | UIの見た目調整など非セキュリティ作業 | 新エンドポイント追加時に SEC-020（既定deny）を適用 |
+| [architecture.md](../../../.ai/architecture.md) | 構造・層・依存方向（ARC） | 新機能、リファクタ、モジュール変更 | ドキュメントのみの修正 | domain から DB ドライバを import しようとして ARC-002 で回避 |
+| [coding-rules.md](../../../.ai/coding-rules.md) | 命名・エラー処理・依存方針（COD） | コードを書く/直す全般 | 設計そのものの是非（architecture へ） | 3回目の重複で初めて抽象化（COD-020） |
+| [testing.md](../../../.ai/testing.md) | テスト戦略・カバレッジ（TST） | テスト作成、バグ修正、リファクタ | 純粋なドキュメント変更 | バグ修正で「まず落ちる回帰テスト」を書く（TST-002） |
+| [workflow.md](../../../.ai/workflow.md) | タスクの進め方・コミット規約（WF） | ほぼ全タスク（intake→PR） | 単発の質問応答 | ブランチ名 `fix/207-null-avatar`、Conventional Commits（WF-020） |
+| [release.md](../../../.ai/release.md) | バージョニング・リリース手順（REL） | リリース準備 | 通常の機能開発中 | `feat` コミットから MINOR を自動導出（REL-001） |
+| [documentation.md](../../../.ai/documentation.md) | ドキュメント規約・更新マトリクス（DOC） | ドキュメント作成、機能変更に伴う更新 | コード内部だけの微修正 | API変更時に doc-update matrix で `docs/api/` 更新を判定（DOC-030） |
+| [review-checklist.md](../../../.ai/review-checklist.md) | 10観点のレビュー基準（REV） | PRレビュー、PR前のセルフレビュー | 実装中の細かい判断 | セルフレビューで REV-SEC を走査し秘密混入を確認 |
+| [mission.md](../../../.ai/mission.md) | プロジェクトの目的・成功基準 | 方向性の妥当性判断、オンボーディング | 日々の実装詳細 | 提案が mission の成功基準に沿うか照合 |
+| [decision-log.md](../../../.ai/decision-log.md) | 意思決定の追記索引（LOG/ADR） | 設計変更前に「既に決まってないか」確認、変更後に追記 | 通常の実装 | LOG-0006「jq無しでもガードが動く」を読み、正規表現を安易に簡素化しない |
 
 ---
 
@@ -109,7 +109,7 @@ updated: 2026-07-07
 各スキルは「目的 / 入力 / 手順 / 判断基準 / 出力 / チェックリスト」を持つ自己完結の手順書。
 ルーティング表（`.ai/README.md`）で**タスクに一致した時だけ**読み込みます。
 
-### [.skills/README.md](../.skills/README.md)
+### [.skills/README.md](../../../.skills/README.md)
 
 - **利用目的**：スキルの形式契約と一覧。Claude Code ネイティブ Skill 化の方法も記載。
 - **利用シーン**：新しいスキルを追加/編集するとき、どのスキルがあるか俯瞰したいとき。
@@ -120,16 +120,16 @@ updated: 2026-07-07
 
 | スキル | 利用目的 | 利用しないシーン | 利用例 |
 |--------|----------|------------------|--------|
-| [requirements](../.skills/requirements.skill.md) | 何を作るかを要件定義（目的優先・ゼロベース・対話で決定を詰める） | 実装作業そのもの（featureへ） | 目的を1文で固定→決定を1つずつ推奨案付きで詰める→FR/NFR採番→テンプレ記入 |
-| [feature](../.skills/feature.skill.md) | 新機能を端から端まで実装 | 既存バグの修正（bugfixへ） | issue の受入基準を Definition of Done として実装 |
-| [bugfix](../.skills/bugfix.skill.md) | 欠陥を根本原因から修正 | 新機能追加、純粋な整形 | 再現→落ちる回帰テスト→原因修正→周辺捜索 |
-| [refactor](../.skills/refactor.skill.md) | 振る舞いを変えず構造改善 | 挙動を変える変更（featureへ） | 特性テストで固定→機械的に段階リネーム/抽出 |
-| [architecture](../.skills/architecture.skill.md) | 構造/境界/技術の変更（ADR必須） | 局所的なコード修正 | 2〜4案（何もしない含む）比較→ADR→人間承認→段階移行 |
-| [test](../.skills/test.skill.md) | テストの追加/改善/flaky修復 | 実装そのもの | 振る舞い列挙→境界マトリクス（空/1/多/最大/異常） |
-| [security](../.skills/security.skill.md) | 脆弱性対応・堅牢化・監査 | 通常の機能実装 | スキャナ指摘の分類→信頼境界で修正→性質をテスト化 |
-| [documentation](../.skills/documentation.skill.md) | ドキュメント作成/保守 | コードのみの変更 | doc-update matrix の義務を満たし、リンク/コマンドを実検証 |
-| [review](../.skills/review.skill.md) | PRレビュー/セルフレビュー | 実装作業そのもの | 10観点を走査し Blocker>Major>Minor で file:line+ID+修正案 |
-| [release](../.skills/release.skill.md) | リリース準備（人間が承認） | 日常開発 | REL-020 ゲート検証→リスク要約→**マージは人間** |
+| [requirements](../../../.skills/requirements.skill.md) | 何を作るかを要件定義（目的優先・ゼロベース・対話で決定を詰める） | 実装作業そのもの（featureへ） | 目的を1文で固定→決定を1つずつ推奨案付きで詰める→FR/NFR採番→テンプレ記入 |
+| [feature](../../../.skills/feature.skill.md) | 新機能を端から端まで実装 | 既存バグの修正（bugfixへ） | issue の受入基準を Definition of Done として実装 |
+| [bugfix](../../../.skills/bugfix.skill.md) | 欠陥を根本原因から修正 | 新機能追加、純粋な整形 | 再現→落ちる回帰テスト→原因修正→周辺捜索 |
+| [refactor](../../../.skills/refactor.skill.md) | 振る舞いを変えず構造改善 | 挙動を変える変更（featureへ） | 特性テストで固定→機械的に段階リネーム/抽出 |
+| [architecture](../../../.skills/architecture.skill.md) | 構造/境界/技術の変更（ADR必須） | 局所的なコード修正 | 2〜4案（何もしない含む）比較→ADR→人間承認→段階移行 |
+| [test](../../../.skills/test.skill.md) | テストの追加/改善/flaky修復 | 実装そのもの | 振る舞い列挙→境界マトリクス（空/1/多/最大/異常） |
+| [security](../../../.skills/security.skill.md) | 脆弱性対応・堅牢化・監査 | 通常の機能実装 | スキャナ指摘の分類→信頼境界で修正→性質をテスト化 |
+| [documentation](../../../.skills/documentation.skill.md) | ドキュメント作成/保守 | コードのみの変更 | doc-update matrix の義務を満たし、リンク/コマンドを実検証 |
+| [review](../../../.skills/review.skill.md) | PRレビュー/セルフレビュー | 実装作業そのもの | 10観点を走査し Blocker>Major>Minor で file:line+ID+修正案 |
+| [release](../../../.skills/release.skill.md) | リリース準備（人間が承認） | 日常開発 | REL-020 ゲート検証→リスク要約→**マージは人間** |
 
 - **スキル全体を使わないシーン**：会話的な単発質問、些末な機械的編集（スキルを読むまでもない場合）。
 
@@ -139,42 +139,42 @@ updated: 2026-07-07
 
 「コンテキストとしての指示」ではなく、**実際にコマンドを止める/実行する**強制層です（Claude Code のみ）。
 
-### [.claude/settings.json](../.claude/settings.json)
+### [.claude/settings.json](../../../.claude/settings.json)
 
 - **利用目的**：フックの登録（PreToolUse ガード／PostToolUse 整形）と権限制御。`permissions.deny` で `.env` 等の読取拒否、`permissions.allow` で**非変更の読取専用コマンド**（`make doctor/lint/test`・読取系 git など）を事前許可し確認プロンプトを削減。`deny` が `allow` に優先。
 - **利用シーン**：Claude Code セッション中、常時自動適用（あなたが意識する必要はない）。
 - **利用しないシーン**：他エージェント（読まれない）。挙動を変えたい時は編集するが、`.local.json` は個人用。
 - **利用例**：ファイル編集後に自動で `make format`/`make lint` が走り、失敗はエージェントへフィードバックされる。`make test` は事前許可済みなので確認なしで実行、`make format`（変更を伴う）は引き続き確認される。
 
-### [.claude/skills/](../.claude/skills/)（ネイティブ Skill ラッパー）
+### [.claude/skills/](../../../.claude/skills/)（ネイティブ Skill ラッパー）
 
 - **利用目的**：`.skills/*.skill.md` を Claude Code のネイティブ Skill として公開し、`/requirements` のように直接呼び出せるようにする薄いラッパー（`<name>/SKILL.md`）。中身は frontmatter ＋「`.skills/<name>.skill.md` を読んで従え」の1行のみで、手順の本体は `.skills/` が唯一の正。
 - **利用シーン**：Claude Code でスキルをコマンド的に起動したいとき。
 - **利用しないシーン**：他エージェント（ラッパーを無視し、ルーティング表経由で `.skills/` を直接読む）。ラッパーに手順を複製すること（正の二重化になる）。
 - **利用例**：`/requirements` で要件定義スキルを起動 → 実体の `.skills/requirements.skill.md` の手順が実行される。新スキル追加時は同PRで対応するラッパーも追加する。
 
-### [.claude/hooks/guard-bash.sh](../.claude/hooks/guard-bash.sh)
+### [.claude/hooks/guard-bash.sh](../../../.claude/hooks/guard-bash.sh)
 
 - **利用目的**：ガードレール違反の Bash コマンドを実行前にブロック（GR-010/011/012/031/032）。
 - **利用シーン**：Claude Code が Bash を実行する度、自動で通過チェック。
 - **利用しないシーン**：手動で回避してはいけない（GR-012）。他エージェントでは AGENTS.md の等価手段（実行前に自己チェック）。
 - **利用例**：`git push origin main` → exit 2 でブロックし「PRを作れ」と提示。`rm -rf /etc` もブロック。
 
-### [.claude/hooks/post-edit-quality.sh](../.claude/hooks/post-edit-quality.sh)
+### [.claude/hooks/post-edit-quality.sh](../../../.claude/hooks/post-edit-quality.sh)
 
 - **利用目的**：Edit/Write の後に対象ファイルを自動 format + lint（COD-001）。
 - **利用シーン**：コード編集の直後に自動。
 - **利用しないシーン**：Markdown 等の非コード（スキップされる）。テンプレート状態では Makefile が no-op のため実質何もしない。
 - **利用例**：`.py` を編集 → 自動整形、lint 失敗ならエージェントへ「先に直せ」と返る。
 
-### [.claude/hooks/tests/guard-bash.test.sh](../.claude/hooks/tests/guard-bash.test.sh)
+### [.claude/hooks/tests/guard-bash.test.sh](../../../.claude/hooks/tests/guard-bash.test.sh)
 
 - **利用目的**：ガードの block/allow マトリクス全ケースを固定する回帰テスト（`make doctor` と CI が実行）。
 - **利用シーン**：ガードの正規表現を変更した時、CI/doctor で自動検証。
 - **利用しないシーン**：通常の開発中に手動で気にする必要はない。
 - **利用例**：ガードを直したら `bash .claude/hooks/tests/guard-bash.test.sh` で全件パスを確認。
 
-### [.claude/agents/code-reviewer.md](../.claude/agents/code-reviewer.md)（レビュー特化サブエージェント）
+### [.claude/agents/code-reviewer.md](../../../.claude/agents/code-reviewer.md)（レビュー特化サブエージェント）
 
 - **利用目的**：現在の差分を10観点チェックリストでレビューする読み取り専用サブエージェント。WF-090 のセルフレビューを操作可能にする。観点・手順の本体は `.ai/review-checklist.md` と `.skills/review.skill.md` が正典で、定義は薄い参照のみ。
 - **利用シーン**：PR作成前のセルフレビュー、または差分レビューを依頼するとき。
@@ -183,25 +183,25 @@ updated: 2026-07-07
 
 ---
 
-## 6. 意思決定・用語・方向性（docs/）
+## 6. 意思決定・用語・方向性（利用先の docs/）
 
-### [docs/adr/](adr/)（ADR：Architecture Decision Records）
+### [docs/foundation/adr/](../adr/) と `docs/adr/`（ADR）
 
-- **利用目的**：長期的影響のある決定を不変記録。受理された ADR は規範（GR-022）。
-- **利用シーン**：構造/境界/技術の変更前に「既に決まってないか」確認し、新決定は ADR を起票。
+- **利用目的**：基盤の受理済み決定は `docs/foundation/adr/`、利用先固有の決定は `docs/adr/` に不変記録する（GR-022）。
+- **利用シーン**：構造/境界/技術の変更前に両方を確認し、利用先の新決定は `docs/adr/` に起票。
 - **利用しないシーン**：局所的な実装判断（それは decision-log の1行や why コメントで足りる）。
-- **利用例**：[0002](adr/0002-ai-facing-docs-in-english.md)「AI向け文書は英語」を読み、なぜ英語かを理解。新規は [0000-template.md](adr/0000-template.md) を複製。
+- **利用例**：[0002](../adr/0002-ai-facing-docs-in-english.md)を読み基盤の言語方針を理解。利用先の新規ADRは [ADRテンプレート](../templates/adr.md) を `docs/adr/` へ複製。
 
-### [docs/glossary.md](glossary.md)（統一用語）
+### [docs/foundation/glossary.md](../glossary.md) と `docs/glossary.md`（統一用語）
 
-- **利用目的**：ユビキタス言語。コード識別子・ドキュメント・会話で同じ語を同じ意味で使う（COD-002）。
-- **利用シーン**：新しい概念に名前を付ける前に確認し、新語は同PRで追記。
+- **利用目的**：基盤の再利用語と、利用先プロジェクト固有のユビキタス言語を所有者別に定義する（COD-002）。
+- **利用シーン**：新しい概念に名前を付ける前に両方を確認し、プロジェクト固有語は `docs/glossary.md` に同PRで追記。
 - **利用しないシーン**：一般的な技術用語（ここは「このプロジェクト固有の語」）。
 - **利用例**：「Contract change」と「breaking change」の違いを glossary で確認して用語を統一。
 
-### [docs/roadmap.md](roadmap.md)（方向性）
+### `docs/roadmap.md`（利用先の方向性）
 
-- **利用目的**：プロジェクトの進む方向とマイルストーン。AIが「その変更が方向性に沿うか」を判断する材料。
+- **利用目的**：利用先プロジェクトの進む方向とマイルストーン。新規作成時は [roadmapテンプレート](../templates/roadmap.md) を使う。
 - **利用シーン**：機能提案の妥当性判断、優先順位の把握。「Now / Next / Later / 対象外」を確認。
 - **利用しないシーン**：日々の作業キュー（それは GitHub の issue/milestone）。"Later" 項目の先回り実装（COD-051 で禁止）。
 - **利用例**：提案が roadmap の「対象外」に該当すると分かり、着手せず理由を添えて差し戻す。
@@ -213,17 +213,17 @@ updated: 2026-07-07
 - **利用目的**：モジュールの公開API・所有データ・不変条件・依存を1ページで宣言（ARC-003）。
 - **利用シーン**：そのモジュールを変更する前に必ず読む。契約が変わったら同PRで更新。
 - **利用しないシーン**：他モジュールの内部実装を知りたい時（内部は非公開。公開APIのみ参照）。
-- **利用例**：テンプレート同梱の例モジュール（`src/modules/catalog/`）は本リポジトリでは削除済み（#13）。
-  手本が必要な場合は [ai-dev-foundation テンプレート](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)側の同モジュールを参照。
+- **利用例**：`src/modules/catalog/MODULE.md` が存在するリポジトリでは、公開API
+  `AddProduct.handle` と不変条件を把握してから改修。
 
-### [src/README.md](../src/README.md) / [tests/README.md](../tests/README.md)（配置規約）
+### [src/README.md](../../../src/README.md) / [tests/README.md](../../../tests/README.md)（配置規約）
 
 - **利用目的**：ソース/テストの配置規約と `MODULE.md` の雛形を示す構造ガイダンス（ARC-001）。
 - **利用シーン**：新モジュール作成、ファイルの置き場所を決めるとき、`MODULE.md` を新規作成するとき。
 - **利用しないシーン**：既存モジュール内の局所修正で構造が変わらないとき。
 - **利用例**：新機能の置き場所をレイアウト図で確認し、`tests/` が `src/` を鏡写しにする規約（TST-001）に従う。
 
-### [profiles/README.md](../profiles/README.md)（正準ターゲット契約）
+### [profiles/README.md](../../../profiles/README.md)（正準ターゲット契約）
 
 - **利用目的**：`make` 正準ターゲット（setup/format/lint/test/…/doctor）の**拘束力ある意味論**を定義。CLAUDE.md §11 が参照。
 - **利用シーン**：`make` ターゲットの挙動を確認するとき、スタック別プロファイル（Makefile）を追加/編集するとき。
@@ -236,14 +236,14 @@ updated: 2026-07-07
 
 AIへ「指示を出す」ための入力を型化するファイル群。人間が埋めた内容がAIの作業指示になります。
 
-### Issue テンプレート（[.github/ISSUE_TEMPLATE/](../.github/ISSUE_TEMPLATE/)）
+### Issue テンプレート（[.github/ISSUE_TEMPLATE/](../../../.github/ISSUE_TEMPLATE/)）
 
 - **利用目的**：バグ/機能/セキュリティ課題を、AIがそのまま着手できる形（受入基準・再現手順）で受け取る。
 - **利用シーン**：新しい作業を起票するとき。`feature_request` の受入基準 = AIの Definition of Done。
 - **利用しないシーン**：脆弱性の詳細（公開Issue禁止 → 非公開のセキュリティ報告へ）。
 - **利用例**：`bug_report.yml` の再現手順がそのまま回帰テストの素になる。
 
-### [PULL_REQUEST_TEMPLATE.md](../.github/PULL_REQUEST_TEMPLATE.md)
+### [PULL_REQUEST_TEMPLATE.md](../../../.github/PULL_REQUEST_TEMPLATE.md)
 
 - **利用目的**：PRに必要な情報（変更分類・テスト・依存の正当化・AI開示・セルフレビュー）を型化。
 - **利用シーン**：AIがPRを作成するとき、全セクションを埋める。
@@ -289,7 +289,7 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 ---
 
 関連：新環境セットアップ手順は [usage.ja.md](usage.ja.md)、`.ai/` の索引は
-[.ai/README.md](../.ai/README.md)、決定の経緯は [docs/adr/](adr/) を参照。
+[.ai/README.md](../../../.ai/README.md)、基盤の決定の経緯は [docs/foundation/adr/](../adr/) を参照。
 
 ---
 
@@ -303,10 +303,10 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 | ツール/自動化 | `Makefile`, `profiles/*/Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `scripts/*.sh`, `renovate.json`, `.github/dependabot.yml` | 実行インターフェースや強制機構であって挙動の"指示文"ではない（正準ターゲットの契約 = profiles/README.md は §7 に収録） |
 | 設定 | `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`, `.mdformat.toml`, `.templatesyncignore`, `LICENSE` | 環境・整形・法務の設定 |
 | ガバナンス metadata | `.github/CODEOWNERS`, `labels.yml`, `discussion-categories.md` | レビュー経路・ラベル・カテゴリ定義。AIは使うが指示ではない |
-| 人間向け | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/usage.md`, `docs/usage.ja.md` | 人間向け。特に `README.md` はAIを「CLAUDE.mdへ」と誘導する側。AI向けセキュリティは `.ai/security.md`（§3収録）が担う |
-| 記述的ドキュメント | `docs/{architecture,domain,api,deployment,operations,runbook,troubleshooting}/README.md`, `docs/README.md` | 権威レベル5の**記述（informative）**。規範ではなく雛形。ただし各READMEの「更新トリガー」は DOC-030 経由でAIを間接的に案内する |
-| ドキュメント雛形 | `docs/templates/` | 記入用テンプレート（例：`requirements.md`）。指示文ではなく、`requirements` スキルが埋める対象。書式規約は DOC-002（§3収録）が担う |
-| 例コード | （本リポジトリでは削除済み — #13） | テンプレート同梱の手本 `src/modules/catalog/` は実プロジェクト開始に伴い削除。手本（COD-050）は ai-dev-foundation テンプレート側を参照 |
+| 人間向け | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/foundation/guides/usage.md`, `usage.ja.md` | 人間向け。特に `README.md` はAIを「CLAUDE.mdへ」と誘導する側。AI向けセキュリティは `.ai/security.md`（§3収録）が担う |
+| 記述的ドキュメント | `docs/foundation/guides/*.md` | 権威レベル5の**記述（informative）**。利用先所有の`docs/**`を占有せず、各配置先の目的・構造・更新トリガーを案内する |
+| ドキュメント雛形 | `docs/foundation/templates/` | 基盤所有の記入用テンプレート（例：`requirements.md`）。指示文ではなく、`requirements` スキルが利用先の `docs/` へ展開する対象。書式規約は DOC-002（§3収録）が担う |
+| 例コード | `src/modules/catalog/**/*.py`, `tests/**/*.py` | "指示"ではなく"手本（imitateする参照, COD-050）"。契約は代表として `MODULE.md` を §7 に収録 |
 
 **線引きの原則**：規範（normative, 従うべき）は収録、記述（descriptive, 参考情報）と純粋な実行/設定は除外。
 記述的docsやツールも間接的にAIの行動に影響しますが、"指示の発生源"は `.ai/`・`.skills/`・契約ファイルに集約されています。

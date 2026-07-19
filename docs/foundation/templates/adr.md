@@ -1,11 +1,27 @@
-# ADR-NNNN: <decision as a short imperative statement>
+---
+id: adr-{{NNNN}}
+title: ADR-{{NNNN}} — {{DECISION_TITLE}}
+status: proposed
+updated: {{YYYY-MM-DD}}
+---
+
+<!--
+  FOUNDATION TEMPLATE. In ai-dev-foundation, copy to
+  docs/foundation/adr/NNNN-kebab-case-title.md. After template instantiation, copy to
+  docs/adr/NNNN-kebab-case-title.md. Replace every placeholder and delete this guidance
+  comment. Write project-specific ADR content in Japanese unless the repository owner or
+  an external contract explicitly requires another language. Keep this template in
+  English (ADR-0005).
+-->
+
+# ADR-{{NNNN}}: {{decision as a short imperative statement}}
 
 | Field | Value |
 |-------|-------|
 | Status | proposed |
-| Date | YYYY-MM-DD |
-| Deciders | <humans who approve> |
-| Author | <human or AI agent name> |
+| Date | {{YYYY-MM-DD}} |
+| Deciders | {{humans who approve}} |
+| Author | {{human or AI agent name}} |
 | Supersedes / Superseded by | — |
 
 ## Context
@@ -22,7 +38,7 @@
 
 ### Option 1: Do nothing
 
-### Option 2: <name>
+### Option 2: {{name}}
 
 ## Decision
 

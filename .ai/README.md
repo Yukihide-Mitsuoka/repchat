@@ -54,7 +54,7 @@ Read only what the task requires. Do not load all files for every task.
 | New feature | workflow.md, architecture.md, coding-rules.md, testing.md | `.skills/feature.skill.md` |
 | Bug fix | workflow.md, testing.md | `.skills/bugfix.skill.md` |
 | Refactoring | architecture.md, coding-rules.md, testing.md | `.skills/refactor.skill.md` |
-| Architecture change | architecture.md, decision-log.md, `docs/adr/` | `.skills/architecture.skill.md` |
+| Architecture change | architecture.md, decision-log.md, `docs/foundation/adr/`, `docs/adr/` when present | `.skills/architecture.skill.md` |
 | Security work | security.md, guardrails.md | `.skills/security.skill.md` |
 | Writing tests | testing.md | `.skills/test.skill.md` |
 | Documentation | documentation.md | `.skills/documentation.skill.md` |

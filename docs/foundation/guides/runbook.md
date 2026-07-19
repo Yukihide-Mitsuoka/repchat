@@ -5,14 +5,14 @@ title: Runbooks
 
 # Runbooks
 
-Step-by-step procedures executable under stress — by a human at 3am or by an AI agent
-with operational access. Written so that **no judgment calls are needed**: every step
-has an expected result and a "if not, then" branch.
+Defines the step-by-step procedures an instantiated repository stores under
+`docs/runbook/`. They must be executable under stress by a human or an AI agent with
+operational access, with an expected result and an "if not, then" branch for every step.
 
 **Update triggers (DOC-030):** new alert (every alert links here), new failure mode
 discovered in an incident, changed deploy/rollback procedure, risky release (REL-040).
 
-## Entry format (`<slug>.md`)
+## Entry format (`docs/runbook/<slug>.md`)
 
 ```markdown
 ---
@@ -41,11 +41,11 @@ last-verified: YYYY-MM-DD
 <who/what, with contact/channel, when steps are exhausted>
 ```
 
-## Rules
+## Checklist
 
 - Exact commands, no placeholders that require guessing; parameterize with env vars.
-- Steps marked destructive require explicit human approval before an agent runs them
-  (GR-031).
+- Mark destructive steps and link
+  [GR-031](../../../.ai/guardrails.md) so an agent requests explicit human approval.
 - Each runbook is re-verified after any related procedure change; stale runbooks are
   worse than none — `last-verified` is mandatory.
 

@@ -19,10 +19,10 @@
 .github/governance/repository.json
 .github/inheritance/lock.json
 .github/inheritance/manifest.json
-.github/workflows/ci.yml
-.github/workflows/iac.yml
-.github/workflows/security.yml
-.github/workflows/template-sync.yml
+# The default GITHUB_TOKEN cannot push workflow-file changes. Keep executable workflows
+# target-owned and port parent changes through reviewed PRs without a privileged PAT
+# (ADR-0007).
+.github/workflows/**
 .gitignore
 .skills/architecture.skill.md
 .skills/bugfix.skill.md
@@ -38,6 +38,8 @@ CLAUDE.md
 Makefile
 README.md
 docs/**
+:!docs/foundation/
+:!docs/foundation/**
 profiles/**
 spikes/**
 src/**

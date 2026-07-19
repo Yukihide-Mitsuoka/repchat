@@ -5,7 +5,8 @@ title: Template Inheritance Contract
 
 # Template Inheritance Contract
 
-This directory defines the child-owned, direct-parent contract from [ADR-0004](../../docs/adr/0004-harden-multi-level-template-inheritance.md).
+This directory defines the child-owned, direct-parent contract from
+[ADR-0004](../../docs/foundation/adr/0004-harden-multi-level-template-inheritance.md).
 Validation and local history planning are read-only; materialization remains a follow-up.
 
 ## Schema version 1
@@ -66,4 +67,4 @@ commit immediately after it. The report classifies that commit's paths:
 
 Exit `0` prints the deterministic plan, including candidate and branch-head commits.
 Exit `2` reports invalid metadata, parent identity/history, Git state, or child path.
-See [template inheritance troubleshooting](../../docs/troubleshooting/template-inheritance.md).
+See [template inheritance troubleshooting](../../docs/foundation/troubleshooting/template-inheritance.md).

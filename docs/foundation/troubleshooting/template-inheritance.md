@@ -1,6 +1,7 @@
 ---
 id: template-inheritance-troubleshooting
 title: Template Inheritance Troubleshooting
+updated: 2026-07-18
 ---
 
 # Template Inheritance Troubleshooting

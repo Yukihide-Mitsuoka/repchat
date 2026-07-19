@@ -67,7 +67,7 @@ Copy the closest reference implementation to the repo root and wire it to your s
 ```bash
 cp profiles/python-uv/Makefile ./Makefile      # or typescript-node / terraform-gcp
 ```
-See [profiles/README.md](../profiles/README.md) for the canonical target contract.
+See [profiles/README.md](../../../profiles/README.md) for the canonical target contract.
 
 ### 5. Inspect GitHub governance
 
@@ -92,7 +92,7 @@ is not observed on the target branch head and ignores unrelated observed checks.
 returns 0 after a completed comparison; `audit` returns 1 for drift or permission-limited
 unknown state. Both return 2 for policy, input, or GitHub read failures.
 
-See [GitHub governance troubleshooting](troubleshooting/github-governance.md) for an
+See [GitHub governance troubleshooting](../troubleshooting/github-governance.md) for an
 `audit` exit 1 diagnosis.
 
 Review `plan` before `apply`. Only `apply` changes settings; it requires local repository
@@ -115,9 +115,8 @@ Open the repo with Claude Code (reads `CLAUDE.md` automatically) or tell any oth
 to read `AGENTS.md`. Assign it an issue and go.
 
 The template ships a worked example module (`src/modules/catalog/` + `tests/modules/catalog/`)
-— imitate its shape (COD-050) or delete both when you start real code. (In this repo both
-were deleted at instantiation — #13; the reference lives in the upstream template.) Run
-`make doctor` anytime to self-check the template (frontmatter integrity + guard-hook tests).
+— imitate its shape (COD-050) or delete both when you start real code. Run `make doctor`
+anytime to self-check the template (frontmatter integrity + guard-hook tests).
 
 ---
 
@@ -169,7 +168,7 @@ Set `required_approvals` in `.github/governance/repository.json` to match the re
 Requiring one approval on a repo with no second reviewer prevents self-merge. Choose one:
 
 - **Recommended (keeps the guardrail):** add a second collaborator/reviewer, or enable
-  the AI reviewer ([ai-review.yml](../.github/workflows/ai-review.yml)) — note an AI
+  the AI reviewer ([ai-review.yml](../../../.github/workflows/ai-review.yml)) — note an AI
   review comment does not count as a GitHub *approval*, so for true self-merge you still
   need option below.
 - **Solo pragmatic:** set `"required_approvals": 0` in repository policy.
