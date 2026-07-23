@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.3.2...v1.4.0) (2026-07-23)
+
+
+### Features
+
+* **control-plane:** Postgres adapters for the gate and executor ports ([#85](https://github.com/Yukihide-Mitsuoka/repchat/issues/85)) ([681b331](https://github.com/Yukihide-Mitsuoka/repchat/commit/681b331c1ea01570496de634b55f7868943bd824))
+
 ## [1.3.2](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.3.1...v1.3.2) (2026-07-23)
 
 
