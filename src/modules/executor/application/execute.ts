@@ -48,15 +48,23 @@ export class ExecuteQuery {
     params: Readonly<Record<string, ParamValue>>,
     scope: DataScope,
   ): Promise<ExecuteResult> {
-    const dataset = await this.#d.bindings.resolve(tenantId);
-    if (dataset === null) return { ok: false, status: 404, reason: 'unknown-tenant' };
+    const resolved = await this.#d.bindings.resolve(tenantId);
+    if (resolved === null) return { ok: false, status: 404, reason: 'unknown-tenant' };
     // Defence in depth: a resolver bug that returns another tenant's dataset
     // would silently redirect the query, so refuse the mismatch outright.
-    if (dataset.tenantId !== tenantId)
+    if (resolved.tenantId !== tenantId)
       return { ok: false, status: 500, reason: 'binding-tenant-mismatch' };
 
     const policy = await this.#d.bindings.policyFor(tenantId);
-    const binding: TenantBinding = { ...dataset, scope };
+    // Only the ① dataset and ② scope reach the binder — never the connection
+    // identity, which the binder has no use for. Build the binding explicitly
+    // rather than spreading `resolved`, so projectId/credentialRef cannot leak
+    // into the SQL-rewriting path.
+    const binding: TenantBinding = {
+      tenantId: resolved.tenantId,
+      dataset: resolved.dataset,
+      scope,
+    };
     const bound = bindQuery(sql, binding, policy);
     if (!bound.ok) {
       await this.#audit(tenantId, 'query.refused', {
@@ -66,7 +74,12 @@ export class ExecuteQuery {
       return { ok: false, status: 400, reason: bound.code };
     }
 
-    const result = await this.#d.runner.run(bound.sql, params);
+    // The query runs AS the tenant's own principal (D1): if the bound SQL still
+    // named another tenant's data, this credential could not reach it.
+    const result = await this.#d.runner.run(bound.sql, params, {
+      projectId: resolved.projectId,
+      credentialRef: resolved.credentialRef,
+    });
     if (!result.ok) {
       await this.#audit(tenantId, 'query.failed', { reason: result.reason });
       return { ok: false, status: 500, reason: 'execution-failed' };

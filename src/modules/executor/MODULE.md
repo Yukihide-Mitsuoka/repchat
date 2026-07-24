@@ -71,6 +71,14 @@ reads the tenant's analytics dataset.
     cannot disagree.
 11. Query parameters are passed to the runner as parameters, never interpolated into the
     SQL text.
+12. The query runs as the tenant's own connection principal (ADR-0010 D1): the
+    `QueryIdentity` (`projectId` + `credentialRef`) is resolved server-side from `tenantId`
+    in `TenantDataset` and never accepted from the caller, exactly like the dataset. Both
+    identity fields are required — an omission is a compile error, not a silent fall-back
+    to a shared credential. A `credentialRef` the `AdcTokenProvider` cannot serve is
+    refused rather than run under the runtime's own identity. (The impersonating provider
+    and the live source-side backstop proof land in the follow-up PR; this PR is the seam,
+    behavior-preserving with `credentialRef: null`.)
 12. An audit-sink failure never fails an otherwise successful query, and never masks a
     refusal.
 13. The BigQuery runner never returns a partial answer as if it were complete: an

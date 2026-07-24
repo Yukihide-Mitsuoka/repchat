@@ -18,7 +18,18 @@ export class AdcTokenProvider implements AccessTokenProvider {
     this.#auth = new GoogleAuth({ scopes: [...scopes] });
   }
 
-  async getToken(): Promise<string> {
+  /**
+   * Returns the runtime's own ADC token. `credentialRef` is ignored: this
+   * provider does not impersonate — it is the dev/fallback identity. Per-tenant
+   * impersonation (D1) is a separate adapter (ImpersonatingTokenProvider), so a
+   * non-null ref reaching here means the wiring forgot to select it. Refuse,
+   * rather than silently serving every tenant under one identity.
+   */
+  async getToken(credentialRef: string | null): Promise<string> {
+    if (credentialRef !== null)
+      throw new Error(
+        `AdcTokenProvider cannot impersonate ${credentialRef}; wire the impersonating provider`,
+      );
     const client = await this.#auth.getClient();
     const { token } = await client.getAccessToken();
     if (!token) throw new Error('no access token returned by ADC');

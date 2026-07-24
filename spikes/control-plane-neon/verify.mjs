@@ -27,9 +27,11 @@ if (!databaseUrl || !appPassword) {
 const owner = postgres(databaseUrl.replace('-pooler.', '.'), { max: 1, onnotice: () => {} });
 const db = new ControlPlaneDb({ databaseUrl, appPassword });
 const reader = new PgControlPlaneReader(db);
-const binding = new PgBindingResolver(db, {
-  tables: [{ name: 'orders', scopeColumn: 'store_id' }],
-});
+const binding = new PgBindingResolver(
+  db,
+  { tables: [{ name: 'orders', scopeColumn: 'store_id' }] },
+  'kotonoha-bi-dev',
+);
 const audit = new PgAuditSink(db);
 
 const A = '11111111-1111-1111-1111-111111111111';
