@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.4.0...v1.5.0) (2026-07-24)
+
+
+### Features
+
+* **executor:** verify the row scope binds at every use, and refuse an undeclared policy ([#89](https://github.com/Yukihide-Mitsuoka/repchat/issues/89)) ([91345d6](https://github.com/Yukihide-Mitsuoka/repchat/commit/91345d6625fa2b6abbb576b301c8e7fd7aea8204))
+
 ## [1.4.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.3.2...v1.4.0) (2026-07-23)
 
 
