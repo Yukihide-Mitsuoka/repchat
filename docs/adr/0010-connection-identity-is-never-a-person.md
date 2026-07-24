@@ -2,17 +2,18 @@
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-07-24 |
 | Deciders | repository owner |
 | Author | Claude (AI agent) |
 | Supersedes / Superseded by | ADR-0005 §9.2 を一般化する（置換ではない） |
 
 <!--
-  Note (repo governance): ADR-0002 requires English for docs/adr content. Following the
-  LOG-0020 pattern (owner-approved exception for ADR-0005 / ADR-0006 / discovery-log):
-  kept in Japanese while the deciding audience is the Japanese-speaking owner; translate
-  before this moves past "proposed".
+  Note (repo governance): ADR-0002 requires English for docs/adr content. Kept in
+  Japanese under the LOG-0020 owner-approved exception (as ADR-0005 / ADR-0006 /
+  discovery-log, and as accepted-while-Japanese ADR-0009), because the deciding audience
+  is the Japanese-speaking owner. Translate when this ADR gains a formal
+  AI-agent-facing consumer beyond the owner.
 -->
 
 ## Context（強制する問題）
