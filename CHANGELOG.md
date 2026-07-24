@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.5.0...v1.6.0) (2026-07-24)
+
+
+### Features
+
+* **executor:** impersonating token provider + live D1 backstop proof (ADR-0010 D1, PR-2) ([#95](https://github.com/Yukihide-Mitsuoka/repchat/issues/95)) ([cdbca02](https://github.com/Yukihide-Mitsuoka/repchat/commit/cdbca02221bbd7e0b0a4074e141bde865e4b16b6))
+* **executor:** thread a per-tenant connection identity to the runner (ADR-0010 D1, seam) ([#93](https://github.com/Yukihide-Mitsuoka/repchat/issues/93)) ([88ee98e](https://github.com/Yukihide-Mitsuoka/repchat/commit/88ee98efea17c2986d8036cefac66f8eb2f00c5c))
+
 ## [1.5.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.4.0...v1.5.0) (2026-07-24)
 
 
