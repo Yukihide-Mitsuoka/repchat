@@ -26,7 +26,7 @@ ADR-0005は「常時稼働の薄いエッジ認可ゲート」（JWT検証・ctx
 - **必要機能**: WebCrypto（ES256検証）／TTL付きKV（②結果・③認可・デニーリスト）／①シェルの長期immutableキャッシュ（CDN）。
 - **整合性**: デニーリスト伝播は ③TTL=60s と同等以内なら設計上許容（epoch照合が控えにある。ADR-0005 §3③）。
 - **運用**: 開発者1名。ローカル開発・CIテストが素直にできること。
-- **地理**: 利用者は日本想定。バックエンド（MCP=Cloud Run、BigQuery、Vertex）はGCP `kotonoha-bi-dev`（asia-northeast1想定）。
+- **地理**: 利用者は日本想定。バックエンド（MCP=Cloud Run、BigQuery、Vertex）はGCPプロジェクト（asia-northeast1想定）。
 
 ## Options considered
 

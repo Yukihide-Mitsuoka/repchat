@@ -6,7 +6,7 @@ import { BigQueryRunner } from '../../src/modules/executor/infrastructure/bigque
 import { AdcTokenProvider } from '../../src/modules/executor/infrastructure/google-auth.ts';
 
 const POLICY = { tables: [{ name: 'orders', scopeColumn: 'store_id' }] };
-const runner = new BigQueryRunner({ projectId: 'kotonoha-bi-dev', tokens: new AdcTokenProvider() });
+const runner = new BigQueryRunner({ projectId: process.env.GOOGLE_CLOUD_PROJECT, tokens: new AdcTokenProvider() });
 const audit = new MemoryAuditSink();
 const exec = new ExecuteQuery({
   bindings: new MemoryBindingResolver({

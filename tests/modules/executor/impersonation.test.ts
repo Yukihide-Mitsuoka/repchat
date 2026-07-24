@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { ImpersonatingTokenProvider } from '../../../src/modules/executor/infrastructure/impersonation.ts';
 import type { FetchLike } from '../../../src/modules/executor/infrastructure/bigquery.ts';
 
-const SA = 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com';
+const SA = 't-alpha-reader@example-project.iam.gserviceaccount.com';
 
 interface Captured {
   url: string;

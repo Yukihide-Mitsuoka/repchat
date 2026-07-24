@@ -21,14 +21,14 @@ const POLICY: QueryPolicy = {
 const ALPHA: TenantDataset = {
   tenantId: 't_alpha',
   dataset: 't_alpha',
-  projectId: 'kotonoha-bi-dev',
-  credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+  projectId: 'example-project',
+  credentialRef: 't-alpha-reader@example-project.iam.gserviceaccount.com',
 };
 const BRAVO: TenantDataset = {
   tenantId: 't_bravo',
   dataset: 't_bravo',
-  projectId: 'kotonoha-bi-dev',
-  credentialRef: 't-bravo-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+  projectId: 'example-project',
+  credentialRef: 't-bravo-reader@example-project.iam.gserviceaccount.com',
 };
 const ALL: DataScope = { kind: 'all' };
 const S9: DataScope = { kind: 'stores', storeIds: ['s9'] };
@@ -72,12 +72,12 @@ test('each query runs as its own tenant principal (ADR-0010 D1)', async () => {
   // — not a shared credential. This is the seam the source-side backstop hangs
   // on: bravo's query can only ever run under bravo's principal.
   assert.deepEqual(runner.calls[0]?.identity, {
-    projectId: 'kotonoha-bi-dev',
-    credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+    projectId: 'example-project',
+    credentialRef: 't-alpha-reader@example-project.iam.gserviceaccount.com',
   });
   assert.deepEqual(runner.calls[1]?.identity, {
-    projectId: 'kotonoha-bi-dev',
-    credentialRef: 't-bravo-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+    projectId: 'example-project',
+    credentialRef: 't-bravo-reader@example-project.iam.gserviceaccount.com',
   });
 });
 

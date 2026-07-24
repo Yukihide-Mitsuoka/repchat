@@ -20,8 +20,9 @@ tenant SA.
 
 - Datasets `t_alpha` and `t_bravo` exist with an `orders` table (from the `executor-bigquery`
   spike, LOG-0033).
-- `gcloud` authenticated as a user with admin on `kotonoha-bi-dev`, and ADC set
+- `gcloud` authenticated as a user with admin on your GCP project, and ADC set
   (`gcloud auth application-default login`).
+- `GOOGLE_CLOUD_PROJECT` exported to your project id (the verifier reads it).
 
 ## Owner steps (gcloud)
 
@@ -29,7 +30,7 @@ Run these once. They create one read-only SA per tenant, scope each to **its own
 only**, and let your identity impersonate them. Copy-paste as a block:
 
 ```bash
-PROJECT=kotonoha-bi-dev
+PROJECT="${GOOGLE_CLOUD_PROJECT:?export GOOGLE_CLOUD_PROJECT to your GCP project id}"
 RUNTIME="user:$(gcloud config get-value account 2>/dev/null)"   # who may impersonate
 
 for T in alpha bravo; do
@@ -77,7 +78,7 @@ shows why the connection principal must be impersonated, not ambient).
 ## Teardown (optional)
 
 ```bash
-PROJECT=kotonoha-bi-dev
+PROJECT="${GOOGLE_CLOUD_PROJECT:?export GOOGLE_CLOUD_PROJECT to your GCP project id}"
 for T in alpha bravo; do
   gcloud iam service-accounts delete "t-${T}-reader@${PROJECT}.iam.gserviceaccount.com" \
     --project="$PROJECT" --quiet

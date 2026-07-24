@@ -46,7 +46,7 @@ const executor = new ExecutorQueryAdapter({
       { t_demo: { tenantId: 't_demo', dataset: 't_alpha' } }, // demo tenant reads the t_alpha fixture
       { tables: [{ name: 'orders', scopeColumn: 'store_id' }] },
     ),
-    runner: new BigQueryRunner({ projectId: 'kotonoha-bi-dev', tokens: new AdcTokenProvider() }),
+    runner: new BigQueryRunner({ projectId: process.env.GOOGLE_CLOUD_PROJECT, tokens: new AdcTokenProvider() }),
     audit,
   }),
   catalog: {

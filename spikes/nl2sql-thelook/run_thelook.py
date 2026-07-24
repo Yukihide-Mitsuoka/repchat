@@ -10,7 +10,7 @@ hand-written gold SQL and the model SQL both execute in the same session and
 their result sets are compared. (No cross-day caching.)
 
 Usage:
-  ../nl2sql-accuracy/.venv/bin/python run_thelook.py --project kotonoha-bi-dev
+  ../nl2sql-accuracy/.venv/bin/python run_thelook.py --project "$GOOGLE_CLOUD_PROJECT"
   # options: --model (default gemini-3.5-flash), --provider anthropic (Opus fallback)
 
 Guards: SELECT-only, thelook-only table references, maximum_bytes_billed cap.

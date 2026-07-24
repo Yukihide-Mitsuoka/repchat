@@ -7,7 +7,7 @@ own data. Issue: #55.
 
 ## Setup (one-time, owner-approved 2026-07-20)
 
-`setup.mjs` created two datasets in `kotonoha-bi-dev` with KB-scale seed rows (free tier):
+`setup.mjs` created two datasets in the project (`GOOGLE_CLOUD_PROJECT`) with KB-scale seed rows (free tier):
 
 - `t_alpha.orders` — 5 rows across stores s1/s2 (total 157,900)
 - `t_bravo.orders` — 3 rows in store s9 (total 39,500)
@@ -44,7 +44,7 @@ mechanism for the analytics side, verified end to end.
 ## Authentication — this spike vs. production (open design question)
 
 This spike authenticates with **ADC as the developer's own account**, querying datasets
-*we host* in `kotonoha-bi-dev`. That is fine for the "RepChat hosts the analytics data"
+*we host* in our own GCP project. That is fine for the "RepChat hosts the analytics data"
 model, but it does **not** answer how to query a **customer's own** BigQuery/warehouse,
 where ADC-as-us has no access. That provenance choice is ADR-0005 §10-7, still open, and
 the auth mechanism follows from it:
@@ -64,6 +64,6 @@ supporting both) waits on a design partner's actual data shape — the same gate
 
 ## Not committed
 
-`t_alpha` / `t_bravo` live only in `kotonoha-bi-dev` for this measurement; `setup.mjs` is
+`t_alpha` / `t_bravo` live only in our GCP project for this measurement; `setup.mjs` is
 idempotent (`CREATE OR REPLACE`) if they need rebuilding. These are throwaway fixtures,
 not production schema.

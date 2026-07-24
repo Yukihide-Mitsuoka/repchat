@@ -30,7 +30,7 @@ const reader = new PgControlPlaneReader(db);
 const binding = new PgBindingResolver(
   db,
   { tables: [{ name: 'orders', scopeColumn: 'store_id' }] },
-  'kotonoha-bi-dev',
+  'example-project',
 );
 const audit = new PgAuditSink(db);
 
