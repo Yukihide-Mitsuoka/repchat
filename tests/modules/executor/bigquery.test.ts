@@ -43,11 +43,14 @@ const tokens = {
 };
 const runner = (fetchImpl: FetchLike, maxRows?: number) =>
   new BigQueryRunner({
-    projectId: 'kotonoha-bi-dev',
     tokens,
     fetchImpl,
     ...(maxRows !== undefined && { maxRows }),
   });
+
+// The connection identity now arrives per call (ADR-0010 D1), not at
+// construction. This one stands in for "the tenant's resolved principal".
+const IDENTITY = { projectId: 'kotonoha-bi-dev', credentialRef: null } as const;
 
 const OK_RESPONSE = {
   jobComplete: true,
@@ -62,7 +65,7 @@ const OK_RESPONSE = {
 
 test('decodes rows into typed objects using the schema', async () => {
   const { fetchImpl } = fakeFetch(OK_RESPONSE);
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.ok(r.ok);
   assert.deepEqual(r.rows, [
     { category: 'A', total: 40000 },
@@ -73,7 +76,7 @@ test('decodes rows into typed objects using the schema', async () => {
 test('values are sent as named parameters, never interpolated into the SQL', async () => {
   const { fetchImpl, captured } = fakeFetch(OK_RESPONSE);
   const sql = 'SELECT category FROM t_alpha.orders WHERE created_at >= @since AND n > @n';
-  await runner(fetchImpl).run(sql, { since: '2026-01-01', n: 5 });
+  await runner(fetchImpl).run(sql, { since: '2026-01-01', n: 5 }, IDENTITY);
   const body = captured[0]?.body ?? {};
   assert.equal(body['query'], sql); // SQL passed through untouched
   assert.equal(body['parameterMode'], 'NAMED');
@@ -86,7 +89,7 @@ test('values are sent as named parameters, never interpolated into the SQL', asy
 
 test('parameter types are inferred per value', async () => {
   const { fetchImpl, captured } = fakeFetch(OK_RESPONSE);
-  await runner(fetchImpl).run('SELECT 1', { s: 'x', i: 7, f: 1.5, b: true });
+  await runner(fetchImpl).run('SELECT 1', { s: 'x', i: 7, f: 1.5, b: true }, IDENTITY);
   const types = (
     captured[0]?.body['queryParameters'] as { name: string; parameterType: { type: string } }[]
   ).map((p) => [p.name, p.parameterType.type]);
@@ -100,9 +103,38 @@ test('parameter types are inferred per value', async () => {
 
 test('the access token is sent as a bearer credential', async () => {
   const { fetchImpl, captured } = fakeFetch(OK_RESPONSE);
-  await runner(fetchImpl).run('SELECT 1', {});
+  await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(captured[0]?.headers['authorization'], 'Bearer test-token');
   assert.match(captured[0]?.url ?? '', /projects\/kotonoha-bi-dev\/queries$/);
+});
+
+test('the query bills to the identity project, resolved per call (D1)', async () => {
+  const { fetchImpl, captured } = fakeFetch(OK_RESPONSE);
+  const r = runner(fetchImpl);
+  await r.run('SELECT 1', {}, { projectId: 'customer-owned-proj', credentialRef: null });
+  await r.run('SELECT 1', {}, { projectId: 'another-proj', credentialRef: null });
+  assert.match(captured[0]?.url ?? '', /projects\/customer-owned-proj\/queries$/);
+  assert.match(captured[1]?.url ?? '', /projects\/another-proj\/queries$/);
+});
+
+test('the credentialRef is handed to the token provider (impersonation seam)', async () => {
+  const seen: (string | null)[] = [];
+  const capturingTokens = {
+    async getToken(ref: string | null) {
+      seen.push(ref);
+      return 'test-token';
+    },
+  };
+  const { fetchImpl } = fakeFetch(OK_RESPONSE);
+  await new BigQueryRunner({ tokens: capturingTokens, fetchImpl }).run(
+    'SELECT 1',
+    {},
+    {
+      projectId: 'kotonoha-bi-dev',
+      credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+    },
+  );
+  assert.deepEqual(seen, ['t-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com']);
 });
 
 test('an integer too large for a JS number is kept as a string', async () => {
@@ -111,7 +143,7 @@ test('an integer too large for a JS number is kept as a string', async () => {
     schema: { fields: [{ name: 'big', type: 'INT64' }] },
     rows: [{ f: [{ v: '9007199254740993' }] }],
   });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.ok(r.ok);
   assert.deepEqual(r.rows, [{ big: '9007199254740993' }]); // not silently rounded
 });
@@ -127,7 +159,7 @@ test('booleans and nulls decode correctly', async () => {
     },
     rows: [{ f: [{ v: 'true' }, { v: null }] }, { f: [{ v: 'false' }, {}] }],
   });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.ok(r.ok);
   assert.deepEqual(r.rows, [
     { flag: true, missing: null },
@@ -137,7 +169,7 @@ test('booleans and nulls decode correctly', async () => {
 
 test('an empty result set is success with no rows', async () => {
   const { fetchImpl } = fakeFetch({ jobComplete: true, schema: { fields: [] } });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.ok(r.ok);
   assert.deepEqual(r.rows, []);
 });
@@ -146,14 +178,14 @@ test('an empty result set is success with no rows', async () => {
 
 test('an incomplete job is an error, not a partial result', async () => {
   const { fetchImpl } = fakeFetch({ jobComplete: false, rows: [{ f: [{ v: 'A' }] }] });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /did not complete/);
 });
 
 test('a paged result is an error rather than a silent truncation', async () => {
   const { fetchImpl } = fakeFetch({ ...OK_RESPONSE, pageToken: 'more' });
-  const r = await runner(fetchImpl, 2).run('SELECT 1', {});
+  const r = await runner(fetchImpl, 2).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /exceeds maxRows \(2\)/);
 });
@@ -163,7 +195,7 @@ test('an HTTP error surfaces the API message', async () => {
     { error: { message: 'Access Denied: Table t_bravo.orders' } },
     { ok: false, status: 403 },
   );
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /Access Denied/);
 });
@@ -173,14 +205,14 @@ test('a job-level error is reported even on HTTP 200', async () => {
     jobComplete: true,
     errors: [{ message: 'Syntax error at [1:1]' }],
   });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /Syntax error/);
 });
 
 test('an unparsable body is an error, not a crash', async () => {
   const { fetchImpl } = fakeFetch(null, { raw: '<html>gateway timeout</html>', status: 504 });
-  const r = await runner(fetchImpl).run('SELECT 1', {});
+  const r = await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /unparsable response/);
 });
@@ -189,7 +221,7 @@ test('a transport failure is an error, not a throw', async () => {
   const boom: FetchLike = async () => {
     throw new Error('ECONNRESET');
   };
-  const r = await runner(boom).run('SELECT 1', {});
+  const r = await runner(boom).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /request failed: ECONNRESET/);
 });
@@ -197,14 +229,13 @@ test('a transport failure is an error, not a throw', async () => {
 test('missing credentials are an error, not a throw', async () => {
   const { fetchImpl } = fakeFetch(OK_RESPONSE);
   const r = await new BigQueryRunner({
-    projectId: 'p',
     tokens: {
       async getToken() {
         throw new Error('reauth required');
       },
     },
     fetchImpl,
-  }).run('SELECT 1', {});
+  }).run('SELECT 1', {}, IDENTITY);
   assert.equal(r.ok, false);
   assert.match(r.ok === false ? r.reason : '', /credentials unavailable: reauth required/);
 });

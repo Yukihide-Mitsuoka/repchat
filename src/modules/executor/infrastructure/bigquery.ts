@@ -8,10 +8,15 @@
 //
 // Values are ALWAYS sent as named query parameters. Interpolating them into the
 // SQL text would undo the AST binding the domain layer just applied.
-import type { ParamValue, QueryRunner } from '../application/ports.ts';
+import type { ParamValue, QueryIdentity, QueryRunner } from '../application/ports.ts';
 
 export interface AccessTokenProvider {
-  getToken(): Promise<string>;
+  /**
+   * A bearer token for the given per-tenant identity (ADR-0010 D1). `null`
+   * asks for the provider's own identity (dev/fallback). An impersonating
+   * provider mints a short-lived token for the named service account.
+   */
+  getToken(credentialRef: string | null): Promise<string>;
 }
 
 /** The slice of fetch this adapter uses — injectable so tests need no network. */
@@ -25,7 +30,6 @@ export type FetchLike = (
 }>;
 
 export interface BigQueryRunnerOptions {
-  readonly projectId: string;
   readonly tokens: AccessTokenProvider;
   readonly fetchImpl?: FetchLike;
   /** Rows beyond this are a hard error, never a silent truncation. */
@@ -110,6 +114,7 @@ export class BigQueryRunner implements QueryRunner {
   async run(
     sql: string,
     params: Readonly<Record<string, ParamValue>>,
+    identity: QueryIdentity,
   ): Promise<{ ok: true; rows: readonly unknown[] } | { ok: false; reason: string }> {
     const body = {
       query: sql,
@@ -123,7 +128,7 @@ export class BigQueryRunner implements QueryRunner {
 
     let token: string;
     try {
-      token = await this.#o.tokens.getToken();
+      token = await this.#o.tokens.getToken(identity.credentialRef);
     } catch (e) {
       return { ok: false, reason: `credentials unavailable: ${message(e)}` };
     }
@@ -134,7 +139,7 @@ export class BigQueryRunner implements QueryRunner {
     try {
       const res = await this.#fetch(
         `https://bigquery.googleapis.com/bigquery/v2/projects/${encodeURIComponent(
-          this.#o.projectId,
+          identity.projectId,
         )}/queries`,
         {
           method: 'POST',

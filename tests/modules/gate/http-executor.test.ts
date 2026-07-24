@@ -133,8 +133,8 @@ test('round trip: the client against the real handler enforces the tenant bounda
     execute: new ExecuteQuery({
       bindings: new MemoryBindingResolver(
         {
-          t_alpha: { tenantId: 't_alpha', dataset: 't_alpha' },
-          t_bravo: { tenantId: 't_bravo', dataset: 't_bravo' },
+          t_alpha: { tenantId: 't_alpha', dataset: 't_alpha', projectId: 'p', credentialRef: null },
+          t_bravo: { tenantId: 't_bravo', dataset: 't_bravo', projectId: 'p', credentialRef: null },
         },
         { tables: [{ name: 'orders', scopeColumn: 'store_id' }] },
       ),

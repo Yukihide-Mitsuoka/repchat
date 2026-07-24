@@ -71,20 +71,35 @@ export class PgControlPlaneReader implements ControlPlaneReader {
  * (QueryPolicy) is injected: Phase 1 has one datasource shape, so storing it
  * per-tenant would be speculative (COD-051) — it becomes a table when a second
  * shape appears.
+ *
+ * `hostProjectId` is injected for the same reason: hosted Phase 1 runs every
+ * tenant in one project (kotonoha-bi-dev), so a per-tenant project column would
+ * be speculative today. It becomes a datasources column alongside the per-tenant
+ * `credentialRef` when D1 impersonation lands (that PR reads connection_ref;
+ * until then credentialRef is null = the runtime's own identity, ADR-0010 D1).
  */
 export class PgBindingResolver implements BindingResolver, QueryCatalog {
   readonly #db: ControlPlaneDb;
   readonly #policy: QueryPolicy;
-  constructor(db: ControlPlaneDb, policy: QueryPolicy) {
+  readonly #hostProjectId: string;
+  constructor(db: ControlPlaneDb, policy: QueryPolicy, hostProjectId: string) {
     this.#db = db;
     this.#policy = policy;
+    this.#hostProjectId = hostProjectId;
   }
 
   async resolve(tenantId: TenantId): Promise<TenantDataset | null> {
     return this.#db.withTenant(tenantId, async (tx) => {
       const rows = await tx<{ dataset: string }[]>`
         select dataset from datasources where status = 'active' order by created_at limit 1`;
-      return rows[0] ? { tenantId, dataset: rows[0].dataset } : null;
+      return rows[0]
+        ? {
+            tenantId,
+            dataset: rows[0].dataset,
+            projectId: this.#hostProjectId,
+            credentialRef: null,
+          }
+        : null;
     });
   }
 

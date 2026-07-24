@@ -18,7 +18,7 @@ executor does) — it answers reads and writes the audit log.
 |-------------|-------|-------------|
 | `ControlPlaneDb` | infrastructure | Connects as `app_runtime`; `withTenant(id, fn)` runs `fn` in a tx with `app.tenant_id` set so RLS applies |
 | `PgControlPlaneReader` | infrastructure | Implements the gate's `ControlPlaneReader` (epoch, user+grants, report/data versions) |
-| `PgBindingResolver` | infrastructure | Implements the executor's `BindingResolver` + `QueryCatalog` (dataset, table policy, queryId→SQL) |
+| `PgBindingResolver` | infrastructure | Implements the executor's `BindingResolver` + `QueryCatalog` (dataset, table policy, queryId→SQL). Constructed with the injected `hostProjectId`; returns the D1 `QueryIdentity` fields (`projectId`, `credentialRef: null` until impersonation lands) |
 | `PgAuditSink` | infrastructure | Writes `audit_logs`; satisfies the gate's and executor's `AuditSink` shape |
 
 ## Owned data
@@ -45,9 +45,10 @@ permissions.
 Node-only: the porsager `postgres` driver uses TCP sockets, so these adapters run in a
 Node composition root (local dev, and a Node-hosted gate/executor). The **Workers** gate
 reaches the control plane over a transport instead — a follow-up that mirrors the
-executor's HTTP transport (#65). The table allowlist (`QueryPolicy`) is injected for
-Phase 1's single datasource shape; it becomes per-tenant data when a second shape appears
-(COD-051).
+executor's HTTP transport (#65). The table allowlist (`QueryPolicy`) and the
+`hostProjectId` are injected for Phase 1's single datasource shape; both become per-tenant
+data (a table column, and the per-tenant `credentialRef` for D1 impersonation) when a
+second shape appears (COD-051).
 
 ## Dependencies
 

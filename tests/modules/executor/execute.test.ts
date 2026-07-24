@@ -18,8 +18,18 @@ const POLICY: QueryPolicy = {
     { name: 'categories', scopeColumn: null },
   ],
 };
-const ALPHA: TenantDataset = { tenantId: 't_alpha', dataset: 't_alpha' };
-const BRAVO: TenantDataset = { tenantId: 't_bravo', dataset: 't_bravo' };
+const ALPHA: TenantDataset = {
+  tenantId: 't_alpha',
+  dataset: 't_alpha',
+  projectId: 'kotonoha-bi-dev',
+  credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+};
+const BRAVO: TenantDataset = {
+  tenantId: 't_bravo',
+  dataset: 't_bravo',
+  projectId: 'kotonoha-bi-dev',
+  credentialRef: 't-bravo-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+};
 const ALL: DataScope = { kind: 'all' };
 const S9: DataScope = { kind: 'stores', storeIds: ['s9'] };
 
@@ -52,6 +62,23 @@ test('the same query run by two tenants hits two different datasets', async () =
   assert.match(b ?? '', /t_bravo\.orders/);
   assert.doesNotMatch(b ?? '', /t_alpha/);
   assert.match(b ?? '', /store_id IN \('s9'\)/); // bravo's row scope came along
+});
+
+test('each query runs as its own tenant principal (ADR-0010 D1)', async () => {
+  const { exec, runner } = harness();
+  await exec.execute('t_alpha', 'SELECT category FROM orders', {}, ALL);
+  await exec.execute('t_bravo', 'SELECT category FROM orders', {}, ALL);
+  // The identity reaching the runner is the tenant's own, resolved server-side
+  // — not a shared credential. This is the seam the source-side backstop hangs
+  // on: bravo's query can only ever run under bravo's principal.
+  assert.deepEqual(runner.calls[0]?.identity, {
+    projectId: 'kotonoha-bi-dev',
+    credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+  });
+  assert.deepEqual(runner.calls[1]?.identity, {
+    projectId: 'kotonoha-bi-dev',
+    credentialRef: 't-bravo-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+  });
 });
 
 test('a refused query never reaches the runner and is audited', async () => {

@@ -6,6 +6,7 @@ import type {
   AuditSink,
   BindingResolver,
   ParamValue,
+  QueryIdentity,
   QueryRunner,
   TenantDataset,
 } from '../application/ports.ts';
@@ -33,7 +34,8 @@ export class MemoryBindingResolver implements BindingResolver {
  * asserting *what* reached the warehouse — the point of the boundary work.
  */
 export class RecordingQueryRunner implements QueryRunner {
-  readonly calls: { sql: string; params: Record<string, ParamValue> }[] = [];
+  readonly calls: { sql: string; params: Record<string, ParamValue>; identity: QueryIdentity }[] =
+    [];
   #next: { ok: true; rows: readonly unknown[] } | { ok: false; reason: string } = {
     ok: true,
     rows: [],
@@ -46,8 +48,10 @@ export class RecordingQueryRunner implements QueryRunner {
     this.#next = { ok: false, reason };
   }
 
-  async run(sql: string, params: Readonly<Record<string, ParamValue>>) {
-    this.calls.push({ sql, params: { ...params } });
+  async run(sql: string, params: Readonly<Record<string, ParamValue>>, identity: QueryIdentity) {
+    // Record the identity too: a test's real assertion is often "the query ran
+    // as the tenant's own principal" (D1), not just "with the right SQL".
+    this.calls.push({ sql, params: { ...params }, identity });
     return this.#next;
   }
 

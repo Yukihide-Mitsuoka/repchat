@@ -29,8 +29,8 @@ function harness(cat: QueryCatalog = catalog) {
     execute: new ExecuteQuery({
       bindings: new MemoryBindingResolver(
         {
-          t_alpha: { tenantId: 't_alpha', dataset: 't_alpha' },
-          t_bravo: { tenantId: 't_bravo', dataset: 't_bravo' },
+          t_alpha: { tenantId: 't_alpha', dataset: 't_alpha', projectId: 'p', credentialRef: null },
+          t_bravo: { tenantId: 't_bravo', dataset: 't_bravo', projectId: 'p', credentialRef: null },
         },
         POLICY,
       ),
