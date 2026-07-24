@@ -73,7 +73,7 @@ export class PgControlPlaneReader implements ControlPlaneReader {
  * shape appears.
  *
  * `hostProjectId` is injected for the same reason: hosted Phase 1 runs every
- * tenant in one project (kotonoha-bi-dev), so a per-tenant project column would
+ * tenant in one project, so a per-tenant project column would
  * be speculative today. It becomes a datasources column alongside the per-tenant
  * `credentialRef` when D1 impersonation lands (that PR reads connection_ref;
  * until then credentialRef is null = the runtime's own identity, ADR-0010 D1).

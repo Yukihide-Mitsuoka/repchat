@@ -50,7 +50,7 @@ const runner = (fetchImpl: FetchLike, maxRows?: number) =>
 
 // The connection identity now arrives per call (ADR-0010 D1), not at
 // construction. This one stands in for "the tenant's resolved principal".
-const IDENTITY = { projectId: 'kotonoha-bi-dev', credentialRef: null } as const;
+const IDENTITY = { projectId: 'example-project', credentialRef: null } as const;
 
 const OK_RESPONSE = {
   jobComplete: true,
@@ -105,7 +105,7 @@ test('the access token is sent as a bearer credential', async () => {
   const { fetchImpl, captured } = fakeFetch(OK_RESPONSE);
   await runner(fetchImpl).run('SELECT 1', {}, IDENTITY);
   assert.equal(captured[0]?.headers['authorization'], 'Bearer test-token');
-  assert.match(captured[0]?.url ?? '', /projects\/kotonoha-bi-dev\/queries$/);
+  assert.match(captured[0]?.url ?? '', /projects\/example-project\/queries$/);
 });
 
 test('the query bills to the identity project, resolved per call (D1)', async () => {
@@ -130,11 +130,11 @@ test('the credentialRef is handed to the token provider (impersonation seam)', a
     'SELECT 1',
     {},
     {
-      projectId: 'kotonoha-bi-dev',
-      credentialRef: 't-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com',
+      projectId: 'example-project',
+      credentialRef: 't-alpha-reader@example-project.iam.gserviceaccount.com',
     },
   );
-  assert.deepEqual(seen, ['t-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com']);
+  assert.deepEqual(seen, ['t-alpha-reader@example-project.iam.gserviceaccount.com']);
 });
 
 test('an integer too large for a JS number is kept as a string', async () => {

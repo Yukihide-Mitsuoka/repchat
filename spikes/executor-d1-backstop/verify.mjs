@@ -16,7 +16,8 @@ import { BigQueryRunner } from '../../src/modules/executor/infrastructure/bigque
 import { AdcTokenProvider } from '../../src/modules/executor/infrastructure/google-auth.ts';
 import { ImpersonatingTokenProvider } from '../../src/modules/executor/infrastructure/impersonation.ts';
 
-const PROJECT = 'kotonoha-bi-dev';
+const PROJECT = process.env.GOOGLE_CLOUD_PROJECT;
+if (!PROJECT) throw new Error('set GOOGLE_CLOUD_PROJECT to your GCP project id');
 const ALPHA_SA = `t-alpha-reader@${PROJECT}.iam.gserviceaccount.com`;
 const BRAVO_SA = `t-bravo-reader@${PROJECT}.iam.gserviceaccount.com`;
 

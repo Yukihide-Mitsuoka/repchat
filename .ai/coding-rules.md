@@ -41,7 +41,7 @@ identifiers — database roles/schemas/tables, dataset/bucket prefixes, package 
 module names, env var names, API paths, config keys, or code symbols. Use neutral,
 role-describing names instead (e.g. `app_runtime`, `t_<tenant_slug>`). Rationale: the
 name is expected to change; renaming prose is one grep-replace, renaming identifiers is
-a migration (LOG-0030). The GCP project id `kotonoha-bi-dev` predates the name, is
+a migration (LOG-0030). The GCP project id predates the name, is
 name-independent, and stays unchanged. The repo slug is the one deliberate exception:
 the owner renames it alongside the product (chat-chart → repchat, LOG-0038) because
 GitHub's redirects make that rename cheap — an escape hatch code identifiers don't have.

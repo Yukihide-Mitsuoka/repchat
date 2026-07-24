@@ -12,7 +12,7 @@ test('refuses a per-tenant credentialRef instead of silently using its own ident
   // would erase the D1 backstop, so it must fail closed (ADR-0010 D1/D6).
   const provider = new AdcTokenProvider();
   await assert.rejects(
-    () => provider.getToken('t-alpha-reader@kotonoha-bi-dev.iam.gserviceaccount.com'),
+    () => provider.getToken('t-alpha-reader@example-project.iam.gserviceaccount.com'),
     /cannot impersonate/,
   );
 });

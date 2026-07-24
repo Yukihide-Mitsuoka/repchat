@@ -1,9 +1,9 @@
 // One-time setup (owner-approved 2026-07-20): per-tenant datasets in
-// kotonoha-bi-dev with tiny seed rows (KB-scale, free tier).
+// the GOOGLE_CLOUD_PROJECT project with tiny seed rows (KB-scale, free tier).
 import { BigQueryRunner } from '../../src/modules/executor/infrastructure/bigquery.ts';
 import { AdcTokenProvider } from '../../src/modules/executor/infrastructure/google-auth.ts';
 
-const runner = new BigQueryRunner({ projectId: 'kotonoha-bi-dev', tokens: new AdcTokenProvider() });
+const runner = new BigQueryRunner({ projectId: process.env.GOOGLE_CLOUD_PROJECT, tokens: new AdcTokenProvider() });
 const steps = [
   'CREATE SCHEMA IF NOT EXISTS t_alpha',
   'CREATE SCHEMA IF NOT EXISTS t_bravo',
