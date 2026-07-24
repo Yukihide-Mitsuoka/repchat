@@ -81,8 +81,8 @@ updated: 2026-07-20
 | 項目 | 状態 | 何が要るか |
 |---|---|---|
 | **コントロールプレーン**（tenants/users/roles/reports の実装） | スキーマ・RLS・アダプタは実Neonで実証済み（LOG-0039）。`worker.ts` にインメモリのSEAMが残る | SEAMの結線と、Workers対応のトランスポート（porsagerドライバはNode専用。#65と同型） |
-| **テナント別の接続資格情報**（ADR-0010 D1） | **決定済み・未実装**。`AdcTokenProvider` は単一のADC IDを使う | `TenantBinding` に projectId と `datasources.connection_ref` を接続する |
-| **②行スコープの構造検証**（ADR-0010 / LOG-0040・0041） | **未実装**。ASTバインディングが唯一の制御で、`scopeColumn` の書き忘れは静かに全行を返す | 書き換え後の再パース検証（①側 `verifyAllQualified` の対称形）。**採用決定済み**、実装のみ |
+| **テナント別の接続資格情報**（ADR-0010 D1） | **機構は実装済み・実行時はまだ無効**。シーム（PR #93、LOG-0044）と `ImpersonatingTokenProvider`（本PR、IAM短命トークン・鍵不保存）が入り、ライブ・バックストップ検証スパイクも用意済み。ただし `PgBindingResolver` は今も `credentialRef: null` を返すため、実行時にはまだ自分のADC IDで動く | (1) オーナーが gcloud 手順（`spikes/executor-d1-backstop/README.md`）でテナント別SAを作成→ライブ検証、(2) 次PRで `datasources` に project_id 列と `connection_ref` 読み出しを結線 |
+| **②行スコープの構造検証**（ADR-0010 / LOG-0040・0041） | **実装済み**（PR #89、LOG-0042）。`scopeColumn` を必須化し、書き換え後の再パースで行スコープ対象表が主体のフィルタ内にあることを検証（`assertRowScopeBound`） | — |
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定 |
 | **NL→SQLの製品組込み** | スパイクのみ（精度は実証済み） | executorへの接続、レポート編集フロー |
