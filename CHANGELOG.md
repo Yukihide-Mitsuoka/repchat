@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.7.0...v1.8.0) (2026-07-25)
+
+
+### Features
+
+* **main:** Node composition roots for the control-plane and executor services ([#101](https://github.com/Yukihide-Mitsuoka/repchat/issues/101)) ([536a66f](https://github.com/Yukihide-Mitsuoka/repchat/commit/536a66f4caf3b5268dec45409e3774f31cf155c6))
+
 ## [1.7.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.6.0...v1.7.0) (2026-07-25)
 
 
