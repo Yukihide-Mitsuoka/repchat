@@ -121,4 +121,5 @@ ADR-0005 §10の残り2件は、**実顧客のデータ形態が分からない�
 | なぜそう決めたのか | [.ai/decision-log.md](../.ai/decision-log.md)（新しい順） |
 | 検討の経緯・スパイク結果 | [discovery-log.md](discovery-log.md) |
 | 次に何をやるか | [roadmap.md](roadmap.md) |
+| どうデプロイするか | [deploy.md](deploy.md) |
 | 実験の再現手順 | `spikes/*/README.md` |
