@@ -27,7 +27,14 @@ export function serve(
       const addr = server.address();
       resolve({
         port: typeof addr === 'object' && addr !== null ? addr.port : port,
-        close: () => new Promise<void>((res) => server.close(() => res())),
+        close: () =>
+          new Promise<void>((res) => {
+            server.close(() => res());
+            // close() alone waits for idle keep-alive sockets to time out, which
+            // a client's connection pool holds open — enough to hang shutdown
+            // (and a CI test run) indefinitely. Drop them so close() completes.
+            server.closeAllConnections();
+          }),
       });
     });
   });

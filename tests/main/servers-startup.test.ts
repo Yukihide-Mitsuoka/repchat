@@ -11,7 +11,7 @@ const mainPath = (name: string): string =>
   fileURLToPath(new URL(`../../src/main/${name}`, import.meta.url));
 
 /** Run a server main with NO required env; capture exit code and stderr. */
-function runWithoutEnv(name: string): Promise<{ code: number | null; stderr: string }> {
+function runWithoutEnv(name: string): Promise<{ code: number | 'timeout' | null; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [mainPath(name)], {
       // Only PATH — every required variable is absent, so startup must refuse.
@@ -22,7 +22,16 @@ function runWithoutEnv(name: string): Promise<{ code: number | null; stderr: str
     child.stderr.on('data', (d: Buffer) => {
       stderr += d.toString();
     });
-    child.on('close', (code) => resolve({ code, stderr }));
+    // A misconfigured start MUST exit fast. If it somehow does not, kill it and
+    // report — a spawn test that can hang would freeze the whole CI run.
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      resolve({ code: 'timeout', stderr });
+    }, 15_000);
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ code, stderr });
+    });
   });
 }
 
