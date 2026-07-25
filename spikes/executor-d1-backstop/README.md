@@ -22,7 +22,12 @@ tenant SA.
   spike, LOG-0033).
 - `gcloud` authenticated as a user with admin on your GCP project, and ADC set
   (`gcloud auth application-default login`).
-- `GOOGLE_CLOUD_PROJECT` exported to your project id (the verifier reads it).
+- `GOOGLE_CLOUD_PROJECT` exported to your project id (the verifier reads it), and:
+  ```bash
+  # Impersonation calls generateAccessToken; without these it fails with HTTP 403 (LOG-0052).
+  gcloud services enable iamcredentials.googleapis.com --project="$GOOGLE_CLOUD_PROJECT"
+  gcloud auth application-default set-quota-project "$GOOGLE_CLOUD_PROJECT"
+  ```
 
 ## Owner steps (gcloud)
 
@@ -41,12 +46,15 @@ for T in alpha bravo; do
     --project="$PROJECT" \
     --display-name="RepChat tenant t_${T} read-only"
 
-  # 2. Grant it dataViewer on ITS OWN dataset ONLY (dataset-level, never project-level).
-  #    This single scoping is the whole backstop — do not widen it.
-  bq add-iam-policy-binding \
-    --member="serviceAccount:${SA}" \
-    --role="roles/bigquery.dataViewer" \
-    "${PROJECT}:t_${T}"
+  # 2. Grant it READ on ITS OWN dataset ONLY, via the dataset's native ACL.
+  #    This single scoping is the whole backstop — do not widen it, and never
+  #    grant dataViewer at project level. We use the dataset access list rather
+  #    than `bq add-iam-policy-binding` because the latter needs project
+  #    allowlisting and fails with "This feature requires allowlisting" (LOG-0052).
+  bq show --format=prettyjson "${PROJECT}:t_${T}" > "/tmp/ds_${T}.json"
+  jq --arg sa "$SA" '.access += [{"role":"READER","userByEmail":$sa}]' \
+    "/tmp/ds_${T}.json" > "/tmp/ds_${T}_upd.json"
+  bq update --source "/tmp/ds_${T}_upd.json" "${PROJECT}:t_${T}"
 
   # 3. Let it CREATE query jobs (billing/execution). jobUser grants no data access by itself.
   gcloud projects add-iam-policy-binding "$PROJECT" \
@@ -54,7 +62,8 @@ for T in alpha bravo; do
     --role="roles/bigquery.jobUser" \
     --condition=None
 
-  # 4. Let YOUR identity impersonate this SA (mint tokens as it).
+  # 4. Let YOUR identity impersonate this SA (mint tokens as it). In a real
+  #    deploy this binding goes to the executor service's runtime SA instead.
   gcloud iam service-accounts add-iam-policy-binding "$SA" \
     --project="$PROJECT" \
     --member="$RUNTIME" \
