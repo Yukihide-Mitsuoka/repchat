@@ -241,7 +241,8 @@ erDiagram
     uuid id PK
     uuid tenant_id FK
     text type "Phase1はbigqueryのみ"
-    text connection_ref "Secret Manager参照(GR-001)"
+    text project_id "D1実行プロジェクト"
+    text connection_ref "D1 credentialRef=なりすましSAメール/NULL可(非機密)"
     bigint data_version "②失効トークン"
     text status
   }
@@ -269,7 +270,7 @@ erDiagram
 2. **複合FK `(tenant_id, xxx_id)`** で「別テナントのロールを別テナントのユーザーに付ける」類の不整合をDB層で構造的に排除する。
 3. `permissions` はシステム定義のグローバルカタログ（テナント非所有・RLS対象外・アプリからは読み取り専用）。**カスタムロール**は `roles`（テナント所有）＋ `role_permissions` の組み合わせで表現する（原則E②）。書き味重視ならここをJSONB化してもよい（ADR §9.1）。
 4. 認可コンテキストの導出: `ctx(user) = roles(user_roles) → permissions(role_permissions) ∪ allowed_reports(role_reports) ∪ scope_hash(normalize(∪ data_scope))`。この結果を③キャッシュに置く。SoR（本DB）と配信層（③）を混同しない。
-5. 秘密情報は置かない: `vendor_keys` は公開鍵のみ、`datasources.connection_ref` はSecret Manager参照のみ（GR-001）。
+5. 秘密情報は置かない: `vendor_keys` は公開鍵のみ、`datasources.connection_ref` はなりすまし対象のSAメール（非機密の識別子）で、資格情報そのものは保持しない（D1はインパーソネーションで短命トークンを都度発行＝鍵不保存、GR-001）。
 6. **製品名を識別子に入れない**（COD-005・LOG-0030）: DBロール・データセット接頭辞・環境変数名などはすべて中立な名前（`app_runtime`, `t_<tenant_slug>` 等）。製品名はMarkdown散文とUI表示にのみ現れる＝改名はgrep置換1回で済む。
 
 ### 3.2 スキーマ定義（DDLドラフト）
@@ -386,7 +387,8 @@ create table datasources (
   id             uuid primary key default gen_random_uuid(),
   tenant_id      uuid not null references tenants(id),
   type           text not null check (type in ('bigquery')),  -- Phase 1
-  connection_ref text not null,       -- Secret Manager参照。資格情報は置かない
+  project_id     text not null,       -- D1 QueryIdentity.projectId（実行プロジェクト）
+  connection_ref text,                -- D1 credentialRef＝なりすましSAメール（非機密）。NULL=実行時自身のID
   data_version   bigint not null default 0,  -- ②結果失効トークン（ADR §5）
   status         text not null default 'active',
   created_at     timestamptz not null default now()

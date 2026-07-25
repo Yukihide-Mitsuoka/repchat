@@ -27,11 +27,9 @@ if (!databaseUrl || !appPassword) {
 const owner = postgres(databaseUrl.replace('-pooler.', '.'), { max: 1, onnotice: () => {} });
 const db = new ControlPlaneDb({ databaseUrl, appPassword });
 const reader = new PgControlPlaneReader(db);
-const binding = new PgBindingResolver(
-  db,
-  { tables: [{ name: 'orders', scopeColumn: 'store_id' }] },
-  'example-project',
-);
+const binding = new PgBindingResolver(db, {
+  tables: [{ name: 'orders', scopeColumn: 'store_id' }],
+});
 const audit = new PgAuditSink(db);
 
 const A = '11111111-1111-1111-1111-111111111111';
@@ -71,7 +69,8 @@ async function seed() {
       await owner`insert into reports (tenant_id, slug, title, definition_ref, report_version) values (${id}, 'r_sales', 'Sales', 'ref', 4) returning id`;
     await owner`insert into role_reports (tenant_id, role_id, report_id) values (${id}, ${r.id}, ${rep.id})`;
     await owner`insert into report_queries (tenant_id, report_id, query_id, sql_text) values (${id}, ${rep.id}, 'q_sales', 'SELECT category FROM orders')`;
-    await owner`insert into datasources (tenant_id, type, dataset, connection_ref, data_version) values (${id}, 'bigquery', ${name}, 'sm://ref', 7)`;
+    await owner`insert into datasources (tenant_id, type, dataset, project_id, connection_ref, data_version)
+      values (${id}, 'bigquery', ${name}, 'example-project', ${`t-${name}-reader@example-project.iam.gserviceaccount.com`}, 7)`;
   }
 }
 
@@ -91,6 +90,11 @@ async function main() {
 
   const ds = await binding.resolve(A);
   check('BindingResolver returns the tenant dataset', ds?.dataset === 'alpha' && ds?.tenantId === A);
+  check(
+    'BindingResolver returns the D1 identity from the datasource row',
+    ds?.projectId === 'example-project' &&
+      ds?.credentialRef === 't-alpha-reader@example-project.iam.gserviceaccount.com',
+  );
   check('QueryCatalog resolves queryId to SQL', (await binding.sqlFor(A, 'q_sales')) === 'SELECT category FROM orders');
 
   // The load-bearing one: tenant A's reader can never see tenant B, even though

@@ -66,38 +66,39 @@ export class PgControlPlaneReader implements ControlPlaneReader {
 }
 
 /**
- * Executor's BindingResolver + QueryCatalog over Postgres. The ① dataset comes
- * from the tenant's datasource row (never the caller). The table allowlist
- * (QueryPolicy) is injected: Phase 1 has one datasource shape, so storing it
- * per-tenant would be speculative (COD-051) — it becomes a table when a second
- * shape appears.
+ * Executor's BindingResolver + QueryCatalog over Postgres. The whole
+ * QueryIdentity — dataset, project, and the per-tenant credential to run AS —
+ * comes from the tenant's datasource row (原則E: never from the caller). The
+ * table allowlist (QueryPolicy) is still injected: Phase 1 has one datasource
+ * shape, so storing it per-tenant would be speculative (COD-051) — it becomes a
+ * table when a second shape appears.
  *
- * `hostProjectId` is injected for the same reason: hosted Phase 1 runs every
- * tenant in one project, so a per-tenant project column would
- * be speculative today. It becomes a datasources column alongside the per-tenant
- * `credentialRef` when D1 impersonation lands (that PR reads connection_ref;
- * until then credentialRef is null = the runtime's own identity, ADR-0010 D1).
+ * `connection_ref` is the D1 `credentialRef` (ADR-0010 D1): under impersonation
+ * it is the service-account email to run AS, and NULL means the runtime's own
+ * identity (the dev/hosted fallback). It is passed through untouched — the
+ * impersonating token provider is what validates and acts on it.
  */
 export class PgBindingResolver implements BindingResolver, QueryCatalog {
   readonly #db: ControlPlaneDb;
   readonly #policy: QueryPolicy;
-  readonly #hostProjectId: string;
-  constructor(db: ControlPlaneDb, policy: QueryPolicy, hostProjectId: string) {
+  constructor(db: ControlPlaneDb, policy: QueryPolicy) {
     this.#db = db;
     this.#policy = policy;
-    this.#hostProjectId = hostProjectId;
   }
 
   async resolve(tenantId: TenantId): Promise<TenantDataset | null> {
     return this.#db.withTenant(tenantId, async (tx) => {
-      const rows = await tx<{ dataset: string }[]>`
-        select dataset from datasources where status = 'active' order by created_at limit 1`;
-      return rows[0]
+      const rows = await tx<
+        { dataset: string; project_id: string; connection_ref: string | null }[]
+      >`select dataset, project_id, connection_ref
+          from datasources where status = 'active' order by created_at limit 1`;
+      const row = rows[0];
+      return row
         ? {
             tenantId,
-            dataset: rows[0].dataset,
-            projectId: this.#hostProjectId,
-            credentialRef: null,
+            dataset: row.dataset,
+            projectId: row.project_id,
+            credentialRef: row.connection_ref,
           }
         : null;
     });
