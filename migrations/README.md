@@ -36,6 +36,7 @@ through transaction pooling is unreliable) and never prints credentials or the
 | `001_control_plane_schema.sql` | tables (§3.2) with composite `(tenant_id, id)` FKs |
 | `002_rls_and_app_role.sql` | uniform `enable`+`force` RLS + `USING`/`WITH CHECK`, the `app_runtime` role and its least-privilege grants |
 | `003_seed_permission_catalog.sql` | the fixed permission vocabulary (原則E②) |
+| `004_datasource_d1_identity.sql` | D1 connection identity on `datasources`: adds `project_id` (NOT NULL), makes `connection_ref` nullable and re-documents it as the impersonation SA email (NULL = own identity) |
 
 RLS mechanics are proven on stock Postgres 16 (`spikes/rls-isolation`, LOG-0032);
 Neon runs stock Postgres, so behavior is identical. The `src/modules/control-plane`
