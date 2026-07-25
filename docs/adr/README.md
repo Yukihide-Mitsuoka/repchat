@@ -32,5 +32,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0009](0009-adopt-portable-saas-design-constraints.md) | Next.js SaaS基盤から移植可能な設計制約だけを採用する | accepted | 2026-07-22 |
 | [0010](0010-connection-identity-is-never-a-person.md) | 接続主体は決して人間にしない — 多接続SaaSのアクセス制御モデル | accepted | 2026-07-24 |
 | [0011](0011-datasource-scope-and-tiers.md) | 接続データソースを階層化し、2つ目はアーキテクチャ検証で選ぶ | accepted | 2026-07-24 |
+| [0012](0012-terraform-cloud-run-deployment.md) | NodeサービスをTerraform＋Cloud Runで一括デプロイし、秘密はstateに入れない | proposed | 2026-07-25 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
