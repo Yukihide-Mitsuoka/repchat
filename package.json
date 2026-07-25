@@ -11,7 +11,9 @@
     "dev": "echo 'nothing runnable yet \u2014 the gate Workers adapter PR adds a dev server' && exit 1",
     "migrate": "node migrations/run.mjs",
     "migrate:status": "node migrations/run.mjs --status",
-    "migrate:verify": "node migrations/verify.mjs"
+    "migrate:verify": "node migrations/verify.mjs",
+    "serve:control-plane": "node src/main/control-plane-server.ts",
+    "serve:executor": "node src/main/executor-server.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
