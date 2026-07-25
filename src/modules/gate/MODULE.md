@@ -21,7 +21,7 @@ write side), query execution (MCP gateway), or report authoring.
 | `ports.ts` interfaces | application | What adapters must implement (verifier, control-plane reader, KV stores, executor, hasher, audit, clock) |
 | `HttpControlPlane` | infrastructure | Satisfies `ControlPlaneReader` + `AuditSink` over HTTP to the control-plane service — the Workers topology, since `PgControlPlaneReader` is Node-only. Reads throw on an unreachable service (→ handler 500); `record` swallows (audit is best-effort) |
 | `HttpQueryExecutor` | infrastructure | Satisfies `QueryExecutor` over HTTP to the executor service (#65) |
-| `worker.ts` default export | interface | Cloudflare Workers `fetch` entry (ADR-0006); routes `GET /r/{report}` (①) and `GET /r/{report}/data/{query}` (②), maps denials to generic client messages, and any adapter throw to a generic 500 |
+| `worker.ts` default export | interface | Cloudflare Workers `fetch` entry (ADR-0006); routes `GET /r/{report}` (①) and `GET /r/{report}/data/{query}` (②), maps denials to generic client messages, and any adapter throw to a generic 500. Selects the HTTP control plane + executor when their `*_URL`/`*_TOKEN` are set, else in-memory fixtures; `buildGate` overrides let a Node root inject in-process adapters |
 
 ## Events
 
