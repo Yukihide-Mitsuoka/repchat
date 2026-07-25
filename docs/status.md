@@ -80,8 +80,8 @@ updated: 2026-07-20
 
 | 項目 | 状態 | 何が要るか |
 |---|---|---|
-| **コントロールプレーン**（tenants/users/roles/reports の実装） | **コード経路は全結線済み・デプロイ待ち**。スキーマ・RLS・アダプタは実Neonで実証済み（LOG-0039）。Workers対応トランスポート（PR #99、`HttpControlPlane`＋`createControlPlaneHandler`）が入り、`worker.ts` は `CONTROL_PLANE_URL`/`TOKEN` があればHTTP経由、無ければインメモリfixtureに自動フォールバック（本PR、LOG-0049） | コントロールプレーン・サービス（`createControlPlaneHandler`＋Pgアダプタ）のNodeホスティング＝デプロイ |
-| **テナント別の接続資格情報**（ADR-0010 D1） | **コード経路は全結線済み・デプロイ待ち**。シーム（PR #93）＋`ImpersonatingTokenProvider`（PR #95、IAM短命トークン・鍵不保存）＋コントロールプレーンが `datasources.project_id`／`connection_ref` から D1 identity を返す（本PR、migration 004）。あとは (a) 実行executorサービスが `ImpersonatingTokenProvider` を挿す（＝デプロイ時の合成）、(b) オーナーが gcloud 手順でテナント別SAを作成し `connection_ref` に実SAメールを投入 | 実executorサービスの合成ルート（未デプロイ）＋ライブ・バックストップ検証（`spikes/executor-d1-backstop/README.md`） |
+| **コントロールプレーン**（tenants/users/roles/reports の実装） | **コード完成・デプロイのみ**。スキーマ・RLS・アダプタは実Neonで実証済み（LOG-0039）、Workers対応トランスポート＋`worker.ts`結線済み（PR #99/#100）、**Node合成ルート `src/main/control-plane-server.ts` も実装済み**（本PR、LOG-0050） | サービスのデプロイ（Cloud Run等）＋env設定 |
+| **テナント別の接続資格情報**（ADR-0010 D1） | **コード完成・デプロイのみ**。シーム＋`ImpersonatingTokenProvider`＋control-planeがD1 identityを返す（PR #93/#95/#97）に加え、**executor合成ルート `src/main/executor-server.ts` が `ImpersonatingTokenProvider` を実結線**（本PR） | サービスのデプロイ＋オーナーのSA作成・`connection_ref`投入＋ライブ検証（`spikes/executor-d1-backstop/README.md`） |
 | **②行スコープの構造検証**（ADR-0010 / LOG-0040・0041） | **実装済み**（PR #89、LOG-0042）。`scopeColumn` を必須化し、書き換え後の再パースで行スコープ対象表が主体のフィルタ内にあることを検証（`assertRowScopeBound`） | — |
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定 |
