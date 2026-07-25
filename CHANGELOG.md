@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.6.0...v1.7.0) (2026-07-25)
+
+
+### Features
+
+* **control-plane:** wire the D1 connection identity from the datasource row (ADR-0010 D1, PR-3) ([#97](https://github.com/Yukihide-Mitsuoka/repchat/issues/97)) ([2fa7542](https://github.com/Yukihide-Mitsuoka/repchat/commit/2fa7542e6fb83cc10b9c8f5b55916d49462b7f8a))
+* **gate:** wire the control-plane SEAM in worker.ts (PR-B) ([#100](https://github.com/Yukihide-Mitsuoka/repchat/issues/100)) ([add46c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/add46c88d0581667c5d8f09632c1a90181c8d879))
+* **gate:** Workers-compatible control-plane transport (mirrors [#65](https://github.com/Yukihide-Mitsuoka/repchat/issues/65)) ([#99](https://github.com/Yukihide-Mitsuoka/repchat/issues/99)) ([01a563f](https://github.com/Yukihide-Mitsuoka/repchat/commit/01a563f9303d3e318c47860875c66600b2b5f483))
+
 ## [1.6.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.5.0...v1.6.0) (2026-07-24)
 
 
