@@ -42,3 +42,10 @@ VENDOR_KEYS = "{}"
 # deploy is obvious rather than silently serving fixture data.
 #   npx wrangler secret put EXECUTOR_TOKEN
 # EXECUTOR_URL = "https://executor.example.internal"
+
+# Control-plane service (原則D). Same pattern: both set → the gate reads authz
+# over HTTP; unset → the in-memory fixture. The token is a secret (never here).
+#   npx wrangler secret put CONTROL_PLANE_TOKEN
+# CONTROL_PLANE_URL = "https://control-plane.example.internal"
+
+# Full deployment runbook (topology, per-service config, order): docs/deploy.md
