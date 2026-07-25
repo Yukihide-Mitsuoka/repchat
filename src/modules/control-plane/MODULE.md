@@ -20,6 +20,7 @@ executor does) — it answers reads and writes the audit log.
 | `PgControlPlaneReader` | infrastructure | Implements the gate's `ControlPlaneReader` (epoch, user+grants, report/data versions) |
 | `PgBindingResolver` | infrastructure | Implements the executor's `BindingResolver` + `QueryCatalog` (dataset, table policy, queryId→SQL). Returns the full D1 `QueryIdentity` — `projectId` and `credentialRef` — read from the `datasources` row (`connection_ref`; NULL = the runtime's own identity). The table policy stays injected (COD-051) |
 | `PgAuditSink` | infrastructure | Writes `audit_logs`; satisfies the gate's and executor's `AuditSink` shape |
+| `createControlPlaneHandler` | interface | `POST /v1/control` — fronts the reader + audit sink for the Workers gate, which cannot use the Node-only Postgres adapters. Authenticates the calling gate with a shared secret (constant-time) before answering. Mirrors the executor's `/v1/query` (#65) |
 
 ## Owned data
 

@@ -4,6 +4,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHandler } from '../../../src/modules/gate/interface/handler.ts';
 import { makeHarness } from './helpers.ts';
+import type { ControlPlaneReader } from '../../../src/modules/gate/application/ports.ts';
+
+/** A control plane that is reachable but failing on every read. */
+const throwingReader: ControlPlaneReader = {
+  async getTenantEpoch() {
+    throw new Error('control plane down');
+  },
+  async getUser() {
+    throw new Error('control plane down');
+  },
+  async getReportVersion() {
+    throw new Error('control plane down');
+  },
+  async getDataVersion() {
+    throw new Error('control plane down');
+  },
+};
 
 async function harnessHandler() {
   const h = await makeHarness();
@@ -53,6 +70,15 @@ test('forbidden report → 403 generic; the audit-side reason is not exposed', a
   const res = await handler(get('/r/r_secret', await mint('alice')));
   assert.equal(res.status, 403);
   assert.deepEqual(await res.json(), { error: 'forbidden' });
+});
+
+test('a failing control plane fails closed: generic 500, no leak, no hang', async () => {
+  // mint still uses the seeded fixture, so the token verifies; the gate's reader
+  // throws, so authentication hits the failure after a valid signature.
+  const { gate, mint } = await makeHarness({ controlPlaneReader: throwingReader });
+  const res = await createHandler(gate)(get('/r/r_sales', await mint('alice')));
+  assert.equal(res.status, 500);
+  assert.deepEqual(await res.json(), { error: 'internal error' });
 });
 
 test('unknown paths and non-GET methods → 404', async () => {

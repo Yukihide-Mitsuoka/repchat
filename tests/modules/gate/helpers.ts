@@ -14,7 +14,7 @@ import {
   WebCryptoHasher,
   type PublicJwk,
 } from '../../../src/modules/gate/infrastructure/webcrypto.ts';
-import type { Clock } from '../../../src/modules/gate/application/ports.ts';
+import type { Clock, ControlPlaneReader } from '../../../src/modules/gate/application/ports.ts';
 
 const bytesToB64url = (bytes: Uint8Array): string =>
   btoa(String.fromCharCode(...bytes))
@@ -104,9 +104,13 @@ export const analyticsFixture = {
   ],
 };
 
-export async function makeHarness(overrides: { authzTtlMs?: number } = {}) {
+export async function makeHarness(
+  overrides: { authzTtlMs?: number; controlPlaneReader?: ControlPlaneReader } = {},
+) {
   const clock = new TestClock();
   const vendor = await makeVendor();
+  // `controlPlane` always backs mint (it reads the fixture users/tenants); the
+  // gate can be given a different reader to simulate a failing control plane.
   const controlPlane = seedControlPlane();
   const executor = new MemoryExecutor(analyticsFixture);
   const audit = new MemoryAuditSink();
@@ -116,7 +120,7 @@ export async function makeHarness(overrides: { authzTtlMs?: number } = {}) {
   const shellCache = new MemoryKv<string>(clock);
   const gate = new GateService({
     verifier: new Es256TokenVerifier(new Map([[vendor.kid, vendor.publicJwk]]), 'gate'),
-    controlPlane,
+    controlPlane: overrides.controlPlaneReader ?? controlPlane,
     authzCache,
     resultCache,
     denylist,

@@ -37,38 +37,49 @@ function queryParams(search: URLSearchParams): Record<string, string> {
  */
 export function createHandler(gate: GateService): (req: Request) => Promise<Response> {
   return async (req) => {
-    const url = new URL(req.url);
-    const [root, reportId, sub, queryId] = url.pathname.split('/').filter(Boolean);
-
-    if (req.method === 'GET' && root === 'health' && reportId === undefined) {
-      return new Response('ok', { status: 200 });
+    // Fail closed: any adapter throw (e.g. the control plane is unreachable)
+    // becomes a generic 500, never a leaked stack trace and never a hang. A
+    // down dependency is an operator fault, distinct from an authz denial.
+    try {
+      return await route(gate, req);
+    } catch {
+      return errorResponse(500);
     }
-    if (req.method !== 'GET' || root !== 'r' || reportId === undefined) {
-      return errorResponse(404);
-    }
-
-    const token = extractToken(req);
-    if (token === null) return errorResponse(401);
-
-    if (sub === undefined) {
-      const res = await gate.requestShell(token, reportId);
-      if (!res.ok) return errorResponse(res.status);
-      return new Response(res.html, {
-        status: 200,
-        headers: { 'content-type': 'text/html; charset=utf-8' },
-      });
-    }
-
-    if (sub === 'data' && queryId !== undefined) {
-      const res = await gate.requestData(token, {
-        reportId,
-        queryId,
-        params: queryParams(url.searchParams),
-      });
-      if (!res.ok) return errorResponse(res.status);
-      return Response.json({ cached: res.cached, rows: res.rows }, { status: 200 });
-    }
-
-    return errorResponse(404);
   };
+}
+
+async function route(gate: GateService, req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const [root, reportId, sub, queryId] = url.pathname.split('/').filter(Boolean);
+
+  if (req.method === 'GET' && root === 'health' && reportId === undefined) {
+    return new Response('ok', { status: 200 });
+  }
+  if (req.method !== 'GET' || root !== 'r' || reportId === undefined) {
+    return errorResponse(404);
+  }
+
+  const token = extractToken(req);
+  if (token === null) return errorResponse(401);
+
+  if (sub === undefined) {
+    const res = await gate.requestShell(token, reportId);
+    if (!res.ok) return errorResponse(res.status);
+    return new Response(res.html, {
+      status: 200,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
+  }
+
+  if (sub === 'data' && queryId !== undefined) {
+    const res = await gate.requestData(token, {
+      reportId,
+      queryId,
+      params: queryParams(url.searchParams),
+    });
+    if (!res.ok) return errorResponse(res.status);
+    return Response.json({ cached: res.cached, rows: res.rows }, { status: 200 });
+  }
+
+  return errorResponse(404);
 }
