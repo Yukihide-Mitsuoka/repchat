@@ -2,13 +2,19 @@
 // edge adapters (Workers KV + WebCrypto) to the runtime-agnostic GateService,
 // then delegates routing to createHandler.
 //
-// SEAM: the control-plane reader and query executor are the *only* in-memory
-// stand-ins here — their real adapters are separate future modules (Postgres
-// control plane per 原則D; MCP gateway executor). A tiny fixture is seeded so
-// `wrangler dev` serves real end-to-end responses today; replacing these two
-// constructions with the Postgres/MCP adapters is the entire remaining wiring.
+// The two production SEAMs — control plane and executor — are reached over HTTP
+// (their real adapters use Node-only drivers the Workers runtime cannot load).
+// Each falls back to an in-memory stand-in only when its service is not
+// configured, so `wrangler dev` serves real end-to-end responses today and a
+// misconfigured deploy is obvious rather than silently serving fixture data.
 import { GateService } from '../application/gate-service.ts';
-import type { AuthzEntry, QueryExecutor, ResultPayload } from '../application/ports.ts';
+import type {
+  AuditSink,
+  AuthzEntry,
+  ControlPlaneReader,
+  QueryExecutor,
+  ResultPayload,
+} from '../application/ports.ts';
 import { MemoryControlPlane, MemoryExecutor } from '../infrastructure/memory.ts';
 import {
   Es256TokenVerifier,
@@ -18,6 +24,7 @@ import {
 } from '../infrastructure/webcrypto.ts';
 import { WorkersKvStore, type WorkersKvBinding } from '../infrastructure/workers-kv.ts';
 import { HttpQueryExecutor } from '../infrastructure/http-executor.ts';
+import { HttpControlPlane } from '../infrastructure/http-control-plane.ts';
 import { createHandler } from './handler.ts';
 
 export interface GateEnv {
@@ -33,9 +40,14 @@ export interface GateEnv {
   readonly EXECUTOR_URL?: string;
   /** Shared secret proving this gate to the executor service. Never logged. */
   readonly EXECUTOR_TOKEN?: string;
+  /** Control-plane service base URL. Absent → the in-memory fixture is used. */
+  readonly CONTROL_PLANE_URL?: string;
+  /** Shared secret proving this gate to the control-plane service. Never logged. */
+  readonly CONTROL_PLANE_TOKEN?: string;
 }
 
-// SEAM (control plane = Postgres): a one-tenant fixture for local `wrangler dev`.
+// Fallback (control plane = Postgres): a one-tenant fixture for local
+// `wrangler dev`, used only when the control-plane service is not configured.
 function bootstrapControlPlane(): MemoryControlPlane {
   return new MemoryControlPlane({
     tenants: { t_demo: { authEpoch: 0 } },
@@ -60,19 +72,42 @@ function bootstrapExecutor(): MemoryExecutor {
   });
 }
 
-function noopAudit() {
+function noopAudit(): AuditSink {
   return {
     async record(): Promise<void> {
-      // SEAM: audit sink → Postgres audit_logs. No-op until the control-plane
-      // module lands; deliberately never throws so a request is not failed by
-      // an audit write.
+      // Fallback audit sink, used with the in-memory control plane. Deliberately
+      // never throws, so a request is not failed by an audit write — the same
+      // contract HttpControlPlane.record keeps when the real sink is wired.
     },
   };
 }
 
-/** Optional overrides for composition roots that supply real adapters. */
+/**
+ * Production topology (原則D): the Worker reaches the control plane over HTTP,
+ * because PgControlPlaneReader uses a Node-only driver. One HttpControlPlane
+ * instance serves both the read side and the audit sink. Falls back to the
+ * in-memory fixture + no-op audit only when the service is not configured.
+ */
+function controlPlaneFor(env: GateEnv): { controlPlane: ControlPlaneReader; audit: AuditSink } {
+  if (env.CONTROL_PLANE_URL === undefined || env.CONTROL_PLANE_TOKEN === undefined) {
+    return { controlPlane: bootstrapControlPlane(), audit: noopAudit() };
+  }
+  const http = new HttpControlPlane({
+    baseUrl: env.CONTROL_PLANE_URL,
+    serviceToken: env.CONTROL_PLANE_TOKEN,
+  });
+  return { controlPlane: http, audit: http };
+}
+
+/**
+ * Optional overrides for composition roots that supply real adapters directly —
+ * e.g. a Node host that injects the in-process Postgres/executor adapters
+ * instead of going over HTTP. An override wins over the env-based selection.
+ */
 export interface GateOverrides {
   readonly executor?: QueryExecutor;
+  readonly controlPlane?: ControlPlaneReader;
+  readonly audit?: AuditSink;
 }
 
 /**
@@ -96,16 +131,17 @@ export function buildGate(env: GateEnv, overrides: GateOverrides = {}): GateServ
   const vendorKeys = new Map<string, PublicJwk>(
     Object.entries(JSON.parse(env.VENDOR_KEYS) as Record<string, PublicJwk>),
   );
+  const cp = controlPlaneFor(env);
   return new GateService({
     verifier: new Es256TokenVerifier(vendorKeys, env.GATE_AUDIENCE),
-    controlPlane: bootstrapControlPlane(),
+    controlPlane: overrides.controlPlane ?? cp.controlPlane,
     authzCache: new WorkersKvStore<AuthzEntry>(env.AUTHZ_KV),
     resultCache: new WorkersKvStore<ResultPayload>(env.RESULT_KV),
     denylist: new WorkersKvStore<true>(env.DENYLIST_KV),
     shellCache: new WorkersKvStore<string>(env.SHELL_KV),
     executor: overrides.executor ?? executorFor(env),
     hasher: new WebCryptoHasher(),
-    audit: noopAudit(),
+    audit: overrides.audit ?? cp.audit,
     clock,
   });
 }
