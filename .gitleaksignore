@@ -1,0 +1,15 @@
+# Adjudicated gitleaks findings. One fingerprint per line — each entry
+# suppresses exactly one rule at one commit:file:line and can hide nothing else.
+#
+# Add an entry ONLY after verifying the finding is false, and only alongside a
+# fix that removes the shape which triggered it. Never suppress a rule wholesale
+# and never disable the scan (GR-012, GR-040).
+
+# hashicorp-tf-password matched `secret_app_password = "APP_RUNTIME_PASSWORD"`.
+# The value is a Secret Manager entry NAME, not a credential: secret values are
+# seeded by infra/scripts/bootstrap.sh and never enter Terraform state
+# (ADR-0012 T3). The rule is right to distrust `password = "<literal>"` in a .tf
+# file, so the local was renamed to secret_app_runtime_login in a later commit —
+# the current tree no longer contains this shape. This entry only covers the
+# historical commit, which gitleaks still scans as part of the PR range.
+38cc5ed1527036d184cc928ae6fcf7122a0a4c7d:infra/terraform/services.tf:hashicorp-tf-password:10
