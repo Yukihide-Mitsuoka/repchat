@@ -30,6 +30,13 @@ COPY src ./src
 # to the container user too.
 USER node
 
+# Both services expose GET /health. Probed with node itself rather than curl or
+# wget: adding either would put back attack surface we just removed with npm.
+# Cloud Run ignores this and uses the probes declared on the service instead
+# (see infra/terraform/services.tf) — this covers plain `docker run`.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||8788)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
 # Cloud Run injects PORT; env.ts reads it and falls back per service.
 # Overridden per service in Terraform — this default is only for a bare
 # `docker run` and points at the control plane.

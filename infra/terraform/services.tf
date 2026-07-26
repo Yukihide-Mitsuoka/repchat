@@ -80,6 +80,22 @@ resource "google_cloud_run_v2_service" "control_plane" {
       image   = var.image
       command = ["node", "src/main/control-plane-server.ts"]
 
+      # What actually runs in production — Cloud Run ignores the image's
+      # HEALTHCHECK. Startup gates traffic until /health answers; liveness
+      # restarts an instance that stops answering.
+      startup_probe {
+        http_get { path = "/health" }
+        timeout_seconds   = 3
+        period_seconds    = 5
+        failure_threshold = 5
+      }
+      liveness_probe {
+        http_get { path = "/health" }
+        timeout_seconds   = 3
+        period_seconds    = 30
+        failure_threshold = 3
+      }
+
       dynamic "env" {
         for_each = toset(local.control_plane_secrets)
         content {
@@ -111,6 +127,19 @@ resource "google_cloud_run_v2_service" "executor" {
     containers {
       image   = var.image
       command = ["node", "src/main/executor-server.ts"]
+
+      startup_probe {
+        http_get { path = "/health" }
+        timeout_seconds   = 3
+        period_seconds    = 5
+        failure_threshold = 5
+      }
+      liveness_probe {
+        http_get { path = "/health" }
+        timeout_seconds   = 3
+        period_seconds    = 30
+        failure_threshold = 3
+      }
 
       env {
         name  = "QUERY_POLICY"
