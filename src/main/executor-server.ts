@@ -64,7 +64,19 @@ async function main(): Promise<void> {
   });
   const bindings = new PgBindingResolver(db, policyFromEnv());
   const runner = new BigQueryRunner({
-    tokens: new ImpersonatingTokenProvider({ source: new AdcTokenProvider() }),
+    // The SOURCE identity needs cloud-platform, not bigquery: its only job is
+    // to call IAM Credentials generateAccessToken, and on Cloud Run the
+    // metadata server issues a token limited to exactly the scopes asked for.
+    // A bigquery-scoped source token is refused by IAM with 403 however
+    // correct the tokenCreator grant is (LOG-0059). The token this mints for
+    // the tenant is still bigquery-only — ImpersonatingTokenProvider sets that
+    // in the request body, so the impersonated principal gains nothing wider.
+    //
+    // Local ADC is a user credential carrying cloud-platform already, which is
+    // why LOG-0052's backstop passed on a laptop and failed once deployed.
+    tokens: new ImpersonatingTokenProvider({
+      source: new AdcTokenProvider(['https://www.googleapis.com/auth/cloud-platform']),
+    }),
   });
   const execute = new ExecuteQuery({ bindings, runner, audit: new PgAuditSink(db) });
   const handler = createExecutorHandler({
