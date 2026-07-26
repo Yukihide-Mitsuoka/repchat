@@ -8,13 +8,14 @@ locals {
   # Secret Manager entry NAMES, seeded by infra/scripts/bootstrap.sh. These are
   # identifiers, never values — the values exist only in Secret Manager (T3).
   #
-  # Deliberately none of these locals is called *_password: `password = "..."`
-  # in a .tf file is what a Terraform-committed credential looks like, and the
-  # secret scanner is right to flag that shape. Do not "tidy" this back.
-  secret_database_url      = "DATABASE_URL"
-  secret_app_runtime_login = "APP_RUNTIME_PASSWORD"
-  secret_cp_token          = "CONTROL_PLANE_TOKEN"
-  secret_ex_token          = "EXECUTOR_TOKEN"
+  # Each service reads an env var of the SAME name as its secret, so one list
+  # drives both the IAM grant and the container env. Keeping them as list
+  # elements rather than `name = "VALUE"` assignments also matters: a
+  # `<identifier> = "<uppercase literal>"` line in a .tf file is exactly what a
+  # committed credential looks like, and secret scanners rightly flag it. Do not
+  # "tidy" these back into individual locals.
+  control_plane_secrets = ["DATABASE_URL", "APP_RUNTIME_PASSWORD", "CONTROL_PLANE_TOKEN"]
+  executor_secrets      = ["DATABASE_URL", "APP_RUNTIME_PASSWORD", "EXECUTOR_TOKEN"]
 }
 
 # --- runtime identities ------------------------------------------------------
@@ -37,7 +38,7 @@ resource "google_service_account" "executor" {
 # --- secret access (least privilege) ----------------------------------------
 
 resource "google_secret_manager_secret_iam_member" "control_plane_db" {
-  for_each  = toset([local.secret_database_url, local.secret_app_runtime_login, local.secret_cp_token])
+  for_each  = toset(local.control_plane_secrets)
   project   = var.project_id
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
@@ -45,7 +46,7 @@ resource "google_secret_manager_secret_iam_member" "control_plane_db" {
 }
 
 resource "google_secret_manager_secret_iam_member" "executor_db" {
-  for_each  = toset([local.secret_database_url, local.secret_app_runtime_login, local.secret_ex_token])
+  for_each  = toset(local.executor_secrets)
   project   = var.project_id
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
@@ -80,13 +81,9 @@ resource "google_cloud_run_v2_service" "control_plane" {
       command = ["node", "src/main/control-plane-server.ts"]
 
       dynamic "env" {
-        for_each = {
-          DATABASE_URL         = local.secret_database_url
-          APP_RUNTIME_PASSWORD = local.secret_app_runtime_login
-          CONTROL_PLANE_TOKEN  = local.secret_cp_token
-        }
+        for_each = toset(local.control_plane_secrets)
         content {
-          name = env.key
+          name = env.value
           value_source {
             secret_key_ref {
               secret  = env.value
@@ -121,13 +118,9 @@ resource "google_cloud_run_v2_service" "executor" {
       }
 
       dynamic "env" {
-        for_each = {
-          DATABASE_URL         = local.secret_database_url
-          APP_RUNTIME_PASSWORD = local.secret_app_runtime_login
-          EXECUTOR_TOKEN       = local.secret_ex_token
-        }
+        for_each = toset(local.executor_secrets)
         content {
-          name = env.key
+          name = env.value
           value_source {
             secret_key_ref {
               secret  = env.value
