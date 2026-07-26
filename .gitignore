@@ -5,6 +5,9 @@
 *.pem
 *.key
 secrets/
+# Signing key minted by the live-e2e spike. Public half goes in VENDOR_KEYS;
+# this is the private half and stays local.
+spikes/live-e2e/.vendor-key.json
 
 # Terraform local state & plugins — state lives in GCS (ADR-0012 T6), but a
 # stray local run must never commit state: it can contain resource metadata.
