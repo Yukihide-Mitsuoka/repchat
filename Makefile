@@ -6,7 +6,8 @@
 # Tests run .ts directly via Node >=24 type stripping (tsconfig erasableSyntaxOnly).
 
 .PHONY: setup format lint test test-unit test-integration coverage build run \
-        security-scan sbom clean help doctor
+        security-scan sbom clean help doctor \
+        deploy destroy infra-plan
 
 FILE ?=
 
@@ -68,3 +69,16 @@ doctor: ## Self-check the template: metadata invariants + guard-hook tests (foun
 	@bash scripts/template-check.sh
 	@bash tests/template-sync-boundary.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
+
+# --- deployment (project-specific; ADR-0012) ---------------------------------
+# Needs GOOGLE_CLOUD_PROJECT plus gcloud and terraform. Docker is NOT required:
+# images are built by Cloud Build.
+
+infra-plan: ## Show what deploy would change in GCP — read-only, creates nothing
+	@bash infra/scripts/plan.sh
+
+deploy: ## Provision GCP infra and deploy both Cloud Run services (agents: get a human go-ahead first)
+	@bash infra/scripts/deploy.sh
+
+destroy: ## DANGEROUS (GR-031): destroy ALL Terraform-managed GCP resources. Requires ALLOW_DESTROY=yes and human approval. Also PURGE_BOOTSTRAP=yes to remove secrets/registry/state
+	@bash infra/scripts/destroy.sh

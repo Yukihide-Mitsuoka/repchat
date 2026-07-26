@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# One-command deploy (ADR-0012). Order matters:
+#   bootstrap (APIs, registry, state bucket, secrets)
+#     -> build+push the image (Cloud Build, so no local Docker)
+#     -> terraform apply (service accounts, IAM, both Cloud Run services, tenants)
+#
+# The image must exist before apply, because the services reference it by tag.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TF_DIR="${REPO_ROOT}/infra/terraform"
+
+PROJECT="${GOOGLE_CLOUD_PROJECT:-}"
+REGION="${REGION:-asia-southeast1}"
+REPOSITORY="${REPOSITORY:-repchat}"
+STATE_BUCKET="${STATE_BUCKET:-${PROJECT}-tfstate}"
+
+if [[ -z "$PROJECT" ]]; then
+  echo "GOOGLE_CLOUD_PROJECT is not set" >&2
+  exit 2
+fi
+command -v gcloud >/dev/null 2>&1 || { echo "gcloud is required but not installed" >&2; exit 2; }
+command -v terraform >/dev/null 2>&1 || { echo "terraform is required but not installed" >&2; exit 2; }
+
+bash "${REPO_ROOT}/infra/scripts/bootstrap.sh"
+
+# Tag by commit so a running revision can be traced back to source.
+TAG="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo manual)"
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPOSITORY}/app:${TAG}"
+
+echo "==> building ${IMAGE} (Cloud Build)"
+gcloud builds submit "$REPO_ROOT" --tag="$IMAGE" --project="$PROJECT"
+
+echo "==> terraform init"
+terraform -chdir="$TF_DIR" init -upgrade -reconfigure \
+  -backend-config="bucket=${STATE_BUCKET}" \
+  -backend-config="prefix=repchat"
+
+echo "==> terraform apply"
+terraform -chdir="$TF_DIR" apply -auto-approve \
+  -var="project_id=${PROJECT}" \
+  -var="region=${REGION}" \
+  -var="image=${IMAGE}"
+
+terraform -chdir="$TF_DIR" output
