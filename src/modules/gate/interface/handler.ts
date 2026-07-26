@@ -42,7 +42,13 @@ export function createHandler(gate: GateService): (req: Request) => Promise<Resp
     // down dependency is an operator fault, distinct from an authz denial.
     try {
       return await route(gate, req);
-    } catch {
+    } catch (e) {
+      // The CLIENT still learns nothing (errorResponse is generic), but the
+      // operator must: a swallowed cause turns any adapter fault into an
+      // untraceable 500 (COD-011). Safe to log because the adapters throw
+      // deliberately opaque tags — 'control-plane-unreachable',
+      // 'control-plane-error-401' — that carry no secret and no hostname.
+      console.error('gate: request failed:', e instanceof Error ? e.message : 'error');
       return errorResponse(500);
     }
   };
