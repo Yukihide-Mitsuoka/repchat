@@ -6,6 +6,15 @@
 *.key
 secrets/
 
+# Terraform local state & plugins — state lives in GCS (ADR-0012 T6), but a
+# stray local run must never commit state: it can contain resource metadata.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
 # Build & dependency artifacts
 dist/
 build/
