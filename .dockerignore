@@ -1,0 +1,17 @@
+# Keep the build context small and free of anything secret (GR-001).
+.git
+.github
+node_modules
+coverage
+dist
+docs
+spikes
+tests
+infra
+profiles
+.claude
+.devcontainer
+.env
+.env.*
+!.env.example
+*.md

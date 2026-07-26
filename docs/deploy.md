@@ -85,32 +85,85 @@ flowchart LR
 
 各サービスは `GET /health` → `ok` を返す（ロードバランサ/Cloud Run のヘルスチェック用）。
 
-## 3. デプロイ手順（順序が重要）
+## 3. デプロイ手順
 
-1. **Neon をプロビジョン**し、オーナーの接続文字列を得る（→ `DATABASE_URL`）。
-2. **共有秘密を生成**（各サービスごとに別々に）:
+GCP側は **1コマンド**です（ADR-0012）。必要なのは `gcloud` と `terraform` のみで、
+**ローカルにDockerは不要**（イメージはCloud Buildが作ります）。
+
+### 3.1 一度だけの準備
+
+1. **Neon をプロビジョン**し接続文字列を得る（→ `DATABASE_URL`）。
+2. **共有秘密を生成**して `.env`（gitignore済み）に置く:
    ```bash
    openssl rand -base64 32   # CONTROL_PLANE_TOKEN 用
    openssl rand -base64 32   # EXECUTOR_TOKEN 用
    openssl rand -base64 24   # APP_RUNTIME_PASSWORD 用（[A-Za-z0-9_-] のみ）
    ```
-3. **マイグレーション適用**（`app_runtime` の LOGIN 有効化も含む）:
+3. **マイグレーション適用**（`app_runtime` の LOGIN 有効化を含む）:
    ```bash
-   npm run migrate         # DATABASE_URL と APP_RUNTIME_PASSWORD を環境に置いて実行
-   npm run migrate:verify
+   npm run migrate && npm run migrate:verify
    ```
-4. **control-plane service をデプロイ**（例: Cloud Run）。上表の変数をシークレットとして設定。
-5. **executor service をデプロイ**。`QUERY_POLICY` を実テーブルに合わせて設定し、
-   実行 SA に BigQuery アクセスを付与（D1: `spikes/executor-d1-backstop/README.md` の手順で
-   テナント別SA作成＋`connection_ref` 投入）。
-6. **gate をデプロイ**（Cloudflare）:
-   ```bash
-   npx wrangler kv namespace create RESULT_KV     # AUTHZ_KV / DENYLIST_KV / SHELL_KV も
-   npx wrangler secret put CONTROL_PLANE_TOKEN     # EXECUTOR_TOKEN も
-   npx wrangler deploy
-   ```
-   `CONTROL_PLANE_URL` / `EXECUTOR_URL` を手順4/5のサービスURLに設定。
-7. **スモーク**: 各サービスの `GET /health`、続いて gate 経由で1レポートを取得し越境ゼロを確認。
+   > これは `make deploy` に**含めません**。インフラ構築とデータDDLは失敗ドメインが違い、
+   > 片方の失敗でもう片方の状態が読めなくなるためです（ADR-0012 T1）。
+
+### 3.2 GCPへデプロイ（1コマンド）
+
+```bash
+export GOOGLE_CLOUD_PROJECT=<プロジェクトID>
+make deploy
+```
+
+これが順に実行します: **API有効化 → Artifact Registry → Terraform stateバケット →
+シークレット投入（`.env` から Secret Manager へ。値はログに出ません）→ Cloud Build →
+`terraform apply`**（実行SA×2・最小権限のIAM・Cloud Run×2・テナントSA3点セット）。
+
+完了後、`terraform output` が gate に設定するURLを表示します。
+
+**変更の事前確認**（何も作りません）:
+```bash
+make infra-plan
+```
+
+### 3.3 gate をデプロイ（Cloudflare）
+
+```bash
+npx wrangler kv namespace create RESULT_KV     # AUTHZ_KV / DENYLIST_KV / SHELL_KV も
+npx wrangler secret put CONTROL_PLANE_TOKEN    # EXECUTOR_TOKEN も
+npx wrangler deploy
+```
+`CONTROL_PLANE_URL` / `EXECUTOR_URL` に 3.2 の出力値を設定します。
+
+### 3.4 スモーク
+
+各サービスの `GET /health` → `ok`、続いて gate 経由で1レポート取得し越境ゼロを確認。
+
+## 3.5 環境を消す（1コマンド）
+
+```bash
+make destroy ALLOW_DESTROY=yes
+```
+
+`ALLOW_DESTROY=yes` は **GR-031 の明示的オプトイン**で、対話実行時はプロジェクトIDの
+再入力も求めます（誤爆防止）。既定では **stateバケット・シークレット・レジストリは残します**
+（stateは破棄処理自身が読むため）。それらも消すなら:
+
+```bash
+make destroy ALLOW_DESTROY=yes PURGE_BOOTSTRAP=yes
+```
+
+## 3.6 テナントを追加する
+
+`infra/terraform/variables.tf` の `tenants` に足して `make deploy` するだけで、
+**SA・自分のデータセットのみのREADER・executorのなりすまし許可**が揃います:
+
+```hcl
+tenants = [{ slug = "acme", dataset = "t_acme" }]
+```
+
+出力の `tenant_service_accounts` に出たSAメールを `datasources.connection_ref` に入れます。
+
+> LOG-0052 の検体（`t-alpha-reader` / `t-bravo-reader`）は**意図的に載せていません** —
+> 合成テストデータに紐づく検体を本番stateに入れないためです。本番テナントは新規SAになります。
 
 ## 4. ローカル開発
 
@@ -127,11 +180,26 @@ npx wrangler dev              # gate。CONTROL_PLANE_URL=http://localhost:8788 �
 
 ## 5. シークレット運用（GR-001）
 
-- **保管**: `wrangler secret put`（gate）、Secret Manager → Cloud Run `--set-secrets`（Nodeサービス）。
+- **保管**: `wrangler secret put`（gate）、Secret Manager（Nodeサービス）。後者は `make deploy` が
+  `.env` から自動投入し、Cloud Run へは**シークレット参照として**注入される（平文の環境変数にしない）。
+- **Terraform state に秘密は入らない**（ADR-0012 T3）。stateに載るのはシークレットの**名前**だけで、
+  値は bootstrap が gcloud 経由で直接 Secret Manager に入れる。
 - **ローテーション**: 共有秘密は gate と対応サービスで**同時に**更新する（不一致は 401→gateで500に写像）。
+  Nodeサービス側は `.env` を更新して `make deploy ROTATE_SECRETS=yes`（既定では既存の値を上書きしない）。
 - **`connection_ref` は非機密**（なりすまし対象のSAメール）。資格情報そのものは保存しない（D1はIAMの
   短命トークンを都度発行＝鍵不保存）。
 - **`vendor_keys` は公開鍵のみ**。
+
+## 6. デプロイ後に測ること
+
+リージョンと構成は**推定で決めた**ので、実測で確かめる（違えば張り替える）。
+
+| 測る項目 | なぜ | 想定と違ったら |
+|---|---|---|
+| gate→control-plane の往復（p50/p95） | `#authenticate` は③認可キャッシュを引く**前に** `getTenantEpoch` と `getUser` を呼ぶので、**毎リクエスト**Neonに届く。ここがp95を支配する見込み | リージョン変数を張り替える（Cloud Runはステートレスなので `terraform apply` のみ） |
+| **`getTenantEpoch` + `getUser` の統合効果**（COD-051で保留中） | 現在は**HTTP2回・トランザクション2つ**。1オペに束ねればHTTP1回・tx1つになり、リージョン選択の重要度自体が下がる。**ボトルネックだと実測できてから**着手する | ゲートのポート変更になるので、効果が確認できたら別PR |
+| コールドスタート頻度と体感 | `min_instances` の既定は 0（無トラフィック時の課金ゼロ優先） | p95 < 1.5s を約束する段階で 1 に上げる |
+| ②結果キャッシュのヒット率 | スパイクでは99.89%。実データで崩れるとBigQuery往復が表に出る | キャッシュキー粒度（ADR-0005 §4）を見直す |
 
 ## 参照
 
