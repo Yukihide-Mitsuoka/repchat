@@ -52,7 +52,10 @@ export class ImpersonatingTokenProvider implements AccessTokenProvider {
 
   constructor(o: ImpersonatingTokenProviderOptions) {
     this.#source = o.source;
-    this.#fetch = o.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+    // Bound for the same reason as the gate's HTTP adapters (LOG-0059). Node
+    // tolerates a detached fetch, so this is not a live defect here — it keeps
+    // the pattern uniform so the Workers-fatal version cannot reappear.
+    this.#fetch = o.fetchImpl ?? (globalThis.fetch.bind(globalThis) as unknown as FetchLike);
     this.#scopes = o.scopes ?? [BIGQUERY_SCOPE];
     this.#lifetime = o.lifetimeSeconds ?? 300;
   }

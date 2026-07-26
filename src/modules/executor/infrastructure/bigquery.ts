@@ -107,7 +107,8 @@ export class BigQueryRunner implements QueryRunner {
 
   constructor(options: BigQueryRunnerOptions) {
     this.#o = options;
-    this.#fetch = options.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+    // Bound — see impersonation.ts and LOG-0059.
+    this.#fetch = options.fetchImpl ?? (globalThis.fetch.bind(globalThis) as unknown as FetchLike);
     this.#maxRows = options.maxRows ?? 10_000;
   }
 
