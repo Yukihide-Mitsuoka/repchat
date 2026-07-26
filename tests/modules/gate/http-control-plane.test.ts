@@ -157,3 +157,27 @@ test('the service authenticates in constant time and rejects an unknown op', asy
   assert.equal((await post({ op: 'nope', tenantId: 't_alpha' })).status, 400);
   assert.equal((await post({ op: 'tenantEpoch' })).status, 400); // missing tenantId
 });
+
+// Regression (LOG-0059): the default fetch must be bound to globalThis. Stored
+// detached and invoked as `this.#fetch(...)`, its receiver becomes the adapter,
+// which the Workers runtime rejects with "Illegal invocation" — so every call
+// failed before a request left the isolate and surfaced as an opaque gate 500.
+// Every other test here injects fetchImpl, which is exactly why the default
+// went unexercised.
+test('the default fetch is invoked with globalThis as its receiver', async () => {
+  const original = globalThis.fetch;
+  const receivers: unknown[] = [];
+  globalThis.fetch = function (this: unknown) {
+    receivers.push(this);
+    return Promise.resolve(new Response(JSON.stringify({ epoch: 3 }), { status: 200 }));
+  } as typeof globalThis.fetch;
+  try {
+    // No fetchImpl: exercises the production default.
+    const client = new HttpControlPlane({ baseUrl: 'https://cp.internal', serviceToken: TOKEN });
+    assert.equal(await client.getTenantEpoch('t_alpha'), 3);
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal(receivers.length, 1);
+  assert.equal(receivers[0], globalThis, 'fetch was called with the wrong receiver');
+});

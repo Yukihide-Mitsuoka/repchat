@@ -37,7 +37,7 @@ GATE_AUDIENCE = "gate"
 # public keys. Public keys are not secrets (GR-001), but set it per environment:
 #   npx wrangler secret put VENDOR_KEYS   # or a [vars] entry for local dev
 # In production this is sourced from the control-plane `vendor_keys` table.
-VENDOR_KEYS = "{}"
+VENDOR_KEYS = '{"e2e-vendor":{"key_ops":["verify"],"ext":true,"kty":"EC","x":"XL7aOOt5LHoOyrTBa9H5Xi8EYCIruc6wJL_Zr_0urIU","y":"7STHhFEn7ENDKgHymiat7HjkdpXJ_DUaX-kN4oW8iE0","crv":"P-256"}}'
 
 # Executor service (ADR-0005 §7). Both the URL and the token must be set before
 # the gate calls the service; with either missing it falls back to the in-memory

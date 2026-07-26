@@ -28,7 +28,9 @@ export class HttpQueryExecutor implements QueryExecutor {
 
   constructor(options: HttpQueryExecutorOptions) {
     this.#o = options;
-    this.#fetch = options.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+    // Bound to globalThis — see HttpControlPlane for why an unbound fetch fails
+    // on Workers with "Illegal invocation" (LOG-0059).
+    this.#fetch = options.fetchImpl ?? (globalThis.fetch.bind(globalThis) as unknown as FetchLike);
   }
 
   async execute(

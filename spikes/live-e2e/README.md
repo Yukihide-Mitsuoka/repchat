@@ -62,8 +62,15 @@ done
 (`{"tables":[]}` refuses everything, LOG-0039), so allow the fixture table:
 
 ```bash
-make deploy QUERY_POLICY='{"tables":[{"name":"orders","scopeColumn":"store_id"}]}'
+TF_VAR_query_policy='{"tables":[{"name":"orders","scopeColumn":"store_id"}]}' make deploy
 ```
+
+It must be `TF_VAR_`-prefixed and in the environment: `deploy.sh` passes only
+`project_id`, `region`, `image` and `allow_public_invoke` as explicit `-var`s,
+and Terraform reads the rest from `TF_VAR_*`. Note it is **not sticky** — a
+later `make deploy` without it reverts the allowlist to the fail-closed
+default, which is the safe direction to drift (ADR-0010 D6) but will make
+assertions 8–10 start failing.
 
 ## Run
 
