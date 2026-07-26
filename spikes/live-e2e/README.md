@@ -25,14 +25,16 @@ network boundaries, real RLS, and real IAM.
 | 5 | wrong `aud` refused | audience binding |
 | 6 | expired token refused | `exp` enforcement |
 | 7 | unknown tenant refused | the principal must exist in the control plane |
-| 8 | alpha gets query results | ② path: executor → BigQuery via D1 impersonation |
-| 9 | second request is a cache hit | ② result cache |
+| 8 | alpha gets query results **and `cached` is false** | ② path: executor → BigQuery via D1 impersonation |
+| 9 | second request is a cache hit | ② result cache — a real miss→hit transition |
 | 10 | **bravo never receives alpha rows** | no cross-tenant leak on the live wire |
 
 ## Prerequisites
 
 - GCP and Cloudflare deployed (`make deploy`, `npx wrangler deploy`).
-- `.env` holds `DATABASE_URL`; `GOOGLE_CLOUD_PROJECT` is exported.
+- `.env` holds `DATABASE_URL` — needed by **both** scripts now, because
+  `verify.mjs` cools the ② cache before it runs (see Notes); `GOOGLE_CLOUD_PROJECT`
+  is exported.
 - The LOG-0052 fixtures exist: datasets `t_alpha` / `t_bravo` with an `orders`
   table, and service accounts `t-alpha-reader` / `t-bravo-reader`.
 
@@ -109,3 +111,12 @@ handles those.
 - Assertion 10 is the one that matters most. Same URL, same query id, different
   tenant token — if the caches or the boundary were wrong anywhere along the
   chain, this is where it would show.
+- **`verify.mjs` bumps `data_version` for the two demo tenants before it starts**,
+  so every run reaches BigQuery instead of Cloudflare KV. It needs `DATABASE_URL`
+  for that and refuses to run without it. The reason is LOG-0060: KV outlives
+  `make destroy`, so a rebuilt-from-scratch environment answered assertion 8
+  from a cache that was minutes old and the ② path was never touched. A green
+  run that proves nothing is worse than no run.
+- This is deliberately *not* wired into `make deploy`. `data_version` means "this
+  tenant's data changed"; bumping it per release would invalidate every tenant's
+  result cache on every deploy — wrong semantics, and a real cost in production.
