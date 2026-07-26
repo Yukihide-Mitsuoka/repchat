@@ -1,0 +1,20 @@
+# What `gcloud builds submit` uploads. Mirrors .dockerignore — most importantly
+# it keeps .env and .git out of the build context (GR-001).
+#
+# `gcloud` would otherwise default to honouring .gitignore, which does NOT
+# exclude everything we want kept out of an upload.
+.git
+.github
+node_modules
+coverage
+dist
+docs
+spikes
+tests
+infra
+profiles
+.claude
+.devcontainer
+.env
+.env.*
+!.env.example
