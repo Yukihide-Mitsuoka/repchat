@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.8.0...v1.9.0) (2026-07-26)
+
+
+### Features
+
+* **build:** container image for the two Node services (ADR-0012 T2) ([#108](https://github.com/Yukihide-Mitsuoka/repchat/issues/108)) ([abff444](https://github.com/Yukihide-Mitsuoka/repchat/commit/abff44413de40514b59df124f3c47f30c8e01293))
+* **infra:** Terraform + make targets for one-command deploy and destroy (ADR-0012) ([#109](https://github.com/Yukihide-Mitsuoka/repchat/issues/109)) ([31731eb](https://github.com/Yukihide-Mitsuoka/repchat/commit/31731ebb221f0e7cecea366e353a35a5c1e613df))
+
 ## [1.8.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.7.0...v1.8.0) (2026-07-25)
 
 
