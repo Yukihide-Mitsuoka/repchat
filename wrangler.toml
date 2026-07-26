@@ -12,22 +12,24 @@ compatibility_flags = ["nodejs_compat"]
 #   npx wrangler kv namespace create DENYLIST_KV
 #   npx wrangler kv namespace create SHELL_KV
 # then paste each returned id below. `wrangler dev` uses a local simulator, so
-# the placeholder ids are fine for local runs; real ids are needed to deploy.
+# these ids matter only for a real deploy. They are resource identifiers, not
+# credentials — useless without account access — so they are committed to keep
+# the deploy reproducible.
 [[kv_namespaces]]
 binding = "RESULT_KV"
-id = "REPLACE_WITH_RESULT_KV_ID"
+id = "59266686d253457ab2aa604316ca7888"
 
 [[kv_namespaces]]
 binding = "AUTHZ_KV"
-id = "REPLACE_WITH_AUTHZ_KV_ID"
+id = "b2ef04fb974f47348eb13e8d268c7539"
 
 [[kv_namespaces]]
 binding = "DENYLIST_KV"
-id = "REPLACE_WITH_DENYLIST_KV_ID"
+id = "2acb5350f06a4ead9c98a58b55e6709c"
 
 [[kv_namespaces]]
 binding = "SHELL_KV"
-id = "REPLACE_WITH_SHELL_KV_ID"
+id = "ea8a682864b14bc494ee80e73faf1a3c"
 
 [vars]
 GATE_AUDIENCE = "gate"
@@ -37,15 +39,18 @@ GATE_AUDIENCE = "gate"
 # In production this is sourced from the control-plane `vendor_keys` table.
 VENDOR_KEYS = "{}"
 
-# Executor service (ADR-0005 §7). When both are set the gate calls the service
-# over HTTP; unset, it falls back to the in-memory stand-in so a misconfigured
-# deploy is obvious rather than silently serving fixture data.
+# Executor service (ADR-0005 §7). Both the URL and the token must be set before
+# the gate calls the service; with either missing it falls back to the in-memory
+# stand-in, so a half-configured deploy is obvious rather than silently serving
+# fixture data. The URL is not a secret; the token is, and is set out of band:
 #   npx wrangler secret put EXECUTOR_TOKEN
-# EXECUTOR_URL = "https://executor.example.internal"
+EXECUTOR_URL = "https://executor-wupdxoey3q-as.a.run.app"
 
-# Control-plane service (原則D). Same pattern: both set → the gate reads authz
-# over HTTP; unset → the in-memory fixture. The token is a secret (never here).
+# Control-plane service (原則D). Same pattern.
 #   npx wrangler secret put CONTROL_PLANE_TOKEN
-# CONTROL_PLANE_URL = "https://control-plane.example.internal"
+CONTROL_PLANE_URL = "https://control-plane-wupdxoey3q-as.a.run.app"
+
+# One environment for now, so these live in [vars]. A second environment would
+# move them under [env.<name>.vars] rather than being edited in place.
 
 # Full deployment runbook (topology, per-service config, order): docs/deploy.md
