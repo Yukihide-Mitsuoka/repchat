@@ -11,6 +11,7 @@ PROJECT="${GOOGLE_CLOUD_PROJECT:-}"
 REGION="${REGION:-asia-southeast1}"
 REPOSITORY="${REPOSITORY:-repchat}"
 STATE_BUCKET="${STATE_BUCKET:-${PROJECT}-tfstate}"
+ALLOW_PUBLIC_INVOKE="${ALLOW_PUBLIC_INVOKE:-true}"
 
 if [[ -z "$PROJECT" ]]; then
   echo "GOOGLE_CLOUD_PROJECT is not set" >&2
@@ -37,4 +38,5 @@ terraform -chdir="$TF_DIR" init -upgrade -reconfigure \
 terraform -chdir="$TF_DIR" plan \
   -var="project_id=${PROJECT}" \
   -var="region=${REGION}" \
-  -var="image=${IMAGE}"
+  -var="image=${IMAGE}" \
+  -var="allow_public_invoke=${ALLOW_PUBLIC_INVOKE}"

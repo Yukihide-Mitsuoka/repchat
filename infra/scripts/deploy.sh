@@ -14,6 +14,8 @@ PROJECT="${GOOGLE_CLOUD_PROJECT:-}"
 REGION="${REGION:-asia-southeast1}"
 REPOSITORY="${REPOSITORY:-repchat}"
 STATE_BUCKET="${STATE_BUCKET:-${PROJECT}-tfstate}"
+# false when the org forbids allUsers (docs/deploy.md §3.4.2).
+ALLOW_PUBLIC_INVOKE="${ALLOW_PUBLIC_INVOKE:-true}"
 
 if [[ -z "$PROJECT" ]]; then
   echo "GOOGLE_CLOUD_PROJECT is not set" >&2
@@ -52,6 +54,7 @@ echo "==> terraform apply"
 terraform -chdir="$TF_DIR" apply -auto-approve \
   -var="project_id=${PROJECT}" \
   -var="region=${REGION}" \
-  -var="image=${IMAGE}"
+  -var="image=${IMAGE}" \
+  -var="allow_public_invoke=${ALLOW_PUBLIC_INVOKE}"
 
 terraform -chdir="$TF_DIR" output
