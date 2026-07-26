@@ -111,4 +111,22 @@ if [[ "$missing" -ne 0 ]]; then
   exit 2
 fi
 
+# --- 5. Cloud Build's service account ---------------------------------------
+# Cloud Build runs as the Compute Engine default service account. Newer projects
+# no longer grant that account Editor automatically — correctly, since a blanket
+# Editor on a default identity is exactly the kind of standing privilege we
+# avoid — so it starts with NO permissions and cannot even read the source
+# tarball it was just handed (observed on the first real deploy, LOG-0055).
+#
+# roles/cloudbuild.builds.builder is the purpose-built grant: read the source,
+# write build logs, push the image. Assembling the individual permissions by
+# hand risks missing one and re-learning this the slow way.
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+BUILD_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+echo "==> Cloud Build service account: granting builds.builder to ${BUILD_SA}"
+gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:${BUILD_SA}" \
+  --role="roles/cloudbuild.builds.builder" \
+  --condition=None >/dev/null
+
 echo "==> bootstrap complete"
