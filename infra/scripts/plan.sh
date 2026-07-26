@@ -18,6 +18,15 @@ if [[ -z "$PROJECT" ]]; then
 fi
 command -v terraform >/dev/null 2>&1 || { echo "terraform is required but not installed" >&2; exit 2; }
 
+# Terraform uses Application Default Credentials, which expire separately from
+# the gcloud CLI session (LOG-0056).
+if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+  echo "Application Default Credentials are missing or expired. Refresh them:" >&2
+  echo "  gcloud auth application-default login" >&2
+  echo "  gcloud auth application-default set-quota-project ${PROJECT}" >&2
+  exit 2
+fi
+
 TAG="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo manual)"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPOSITORY}/app:${TAG}"
 

@@ -143,6 +143,7 @@ npx wrangler deploy
 |---|---|---|
 | `gcloud builds submit` が `PERMISSION_DENIED` | Cloud Build API を有効化した直後で権限が伝播していない。他のAPIは通るのにビルドだけ落ちるのが目印 | **そのまま `make deploy` を再実行**（冪等なので作成済みはskip） |
 | `could not resolve source ... storage.objects.get denied` | Cloud Build が使う Compute Engine デフォルトSAが**権限ゼロ**（新しいプロジェクトではEditorの自動付与が廃止された） | bootstrapが `roles/cloudbuild.builds.builder` を付与するので、`make deploy` を再実行 |
+| `terraform init` が `invalid_rapt` / `invalid_grant` | **Terraform は gcloud CLI ではなく ADC で認証する**。両者は別々に期限切れするため、gcloudが通っていてもADCだけ失効しうる（Workspaceの再認証ポリシー下で起きやすい） | `gcloud auth application-default login` → `gcloud auth application-default set-quota-project <プロジェクトID>`。※`make deploy` は開始1秒でこれを検知して止まります |
 
 ## 3.5 環境を消す（1コマンド）
 

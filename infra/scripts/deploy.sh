@@ -22,6 +22,18 @@ fi
 command -v gcloud >/dev/null 2>&1 || { echo "gcloud is required but not installed" >&2; exit 2; }
 command -v terraform >/dev/null 2>&1 || { echo "terraform is required but not installed" >&2; exit 2; }
 
+# Terraform authenticates with Application Default Credentials, NOT the gcloud
+# CLI session. The two expire independently, so a perfectly working gcloud can
+# sit next to stale ADC — and under a Workspace reauth policy that surfaces as
+# an opaque `invalid_rapt` from the state backend, minutes in, after the image
+# has already built and pushed (LOG-0056). Check it in the first second instead.
+if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+  echo "Application Default Credentials are missing or expired. Refresh them:" >&2
+  echo "  gcloud auth application-default login" >&2
+  echo "  gcloud auth application-default set-quota-project ${PROJECT}" >&2
+  exit 2
+fi
+
 bash "${REPO_ROOT}/infra/scripts/bootstrap.sh"
 
 # Tag by commit so a running revision can be traced back to source.
