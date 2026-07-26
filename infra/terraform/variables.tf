@@ -31,6 +31,23 @@ variable "min_instances" {
   default     = 0
 }
 
+variable "allow_public_invoke" {
+  description = <<-EOT
+    Grant roles/run.invoker to allUsers, i.e. make the services reachable at the
+    network layer and let the shared-secret check in the handler authenticate
+    the caller (ADR-0012 T4).
+
+    Set false when the organization enforces domain-restricted sharing
+    (constraints/iam.allowedPolicyMemberDomains), which forbids allUsers and
+    makes T4 impossible to apply — see docs/deploy.md §3.4.2. That completes the
+    apply, but the gate cannot then reach the services: a Cloudflare Worker has
+    no keyless way to present GCP IAM credentials (LOG-0053). It is a state for
+    finishing the deploy and testing the rest, not a production configuration.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "query_policy" {
   description = <<-EOT
     Executor table allowlist, as JSON. The service fails closed when this is

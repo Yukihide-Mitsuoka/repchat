@@ -67,6 +67,10 @@ resource "google_cloud_run_v2_service" "control_plane" {
   name     = "control-plane"
   location = var.region
   project  = var.project_id
+  # ADR-0012's whole point is that the environment can be torn down in one
+  # command; the provider defaults this to true, which would make `make destroy`
+  # fail on the very resources that cost money (LOG-0057).
+  deletion_protection = false
   # Public at the network layer, authenticated by the shared secret in the
   # handler (ADR-0012 T4). The caller is a Cloudflare Worker, which has no
   # keyless way to present GCP IAM credentials.
@@ -115,10 +119,11 @@ resource "google_cloud_run_v2_service" "control_plane" {
 }
 
 resource "google_cloud_run_v2_service" "executor" {
-  name     = "executor"
-  location = var.region
-  project  = var.project_id
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  name                = "executor"
+  location            = var.region
+  project             = var.project_id
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
 
   template {
     service_account = google_service_account.executor.email
@@ -170,6 +175,7 @@ resource "google_cloud_run_v2_service" "executor" {
 # the tenant boundary is resolved server-side regardless of the caller.
 
 resource "google_cloud_run_v2_service_iam_member" "control_plane_public" {
+  count    = var.allow_public_invoke ? 1 : 0
   name     = google_cloud_run_v2_service.control_plane.name
   location = var.region
   project  = var.project_id
@@ -178,6 +184,7 @@ resource "google_cloud_run_v2_service_iam_member" "control_plane_public" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "executor_public" {
+  count    = var.allow_public_invoke ? 1 : 0
   name     = google_cloud_run_v2_service.executor.name
   location = var.region
   project  = var.project_id

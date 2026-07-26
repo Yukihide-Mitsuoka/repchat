@@ -137,12 +137,36 @@ npx wrangler deploy
 
 各サービスの `GET /health` → `ok`、続いて gate 経由で1レポート取得し越境ゼロを確認。
 
-### 3.4.1 初回に踏みやすい2点（LOG-0055、実測）
+### 3.4.1 初回に踏みやすい落とし穴（すべて実測、LOG-0055/0056/0057）
 
 | 症状 | 原因 | 対処 |
 |---|---|---|
 | `gcloud builds submit` が `PERMISSION_DENIED` | Cloud Build API を有効化した直後で権限が伝播していない。他のAPIは通るのにビルドだけ落ちるのが目印 | **そのまま `make deploy` を再実行**（冪等なので作成済みはskip） |
 | `could not resolve source ... storage.objects.get denied` | Cloud Build が使う Compute Engine デフォルトSAが**権限ゼロ**（新しいプロジェクトではEditorの自動付与が廃止された） | bootstrapが `roles/cloudbuild.builds.builder` を付与するので、`make deploy` を再実行 |
+| `terraform init` が `invalid_rapt` / `invalid_grant` | **Terraform は gcloud CLI ではなく ADC で認証する**。両者は別々に期限切れするため、gcloudが通っていてもADCだけ失効しうる（Workspaceの再認証ポリシー下で起きやすい） | `gcloud auth application-default login` → `gcloud auth application-default set-quota-project <プロジェクトID>`。※`make deploy` は開始1秒でこれを検知して止まります |
+| `Error 400: One or more users named in the policy do not belong to a permitted customer` | 組織ポリシー **`constraints/iam.allowedPolicyMemberDomains`（ドメイン制限共有）** が `allUsers` を禁止している。**ADR-0012 T4 の公開Cloud Runがその組織では成立しない** | 下記 §3.4.2 を参照。判断が要るので自動では回避しません |
+
+### 3.4.2 組織がドメイン制限共有を強制している場合（LOG-0057）
+
+Cloud Run の「未認証の呼び出しを許可」は IAM 上 `allUsers` として実装されるため、この組織ポリシー下では
+**設定できません**。`allow_public_invoke` 変数で切り替えられます。
+
+```bash
+make deploy ALLOW_PUBLIC_INVOKE=false   # invokerバインディングを作らずapplyを完了させる
+```
+
+ただし **`false` にするとゲートからサービスへ到達できません**（Workersは鍵無しでGCPのIAM認証を提示
+できない＝LOG-0053）。つまりこれは「applyを完了させて残りを検証する」ための状態であって、
+本番構成ではありません。選択肢は3つで、**いずれもセキュリティ判断**です:
+
+| 選択肢 | 内容 | 代償 |
+|---|---|---|
+| **A. プロジェクトをポリシー除外** | ADR-0012 T4 を設計どおり実行できる | **組織全体の統制を1プロジェクト分ゆるめる**。組織管理者の判断が要る |
+| **B. WIF（自前OIDC発行者）** | Cloud Run をIAM認証必須のまま使える＝組織ポリシーと整合 | 実装量が大きく、Workerに署名鍵を持つ（LOG-0053の分析どおり秘密の数は減らない） |
+| **C. Cloudflare Tunnel等で前段を作る** | ingressを内部限定にできる | 常時稼働コンポーネントとコストと秘密が増える |
+
+**この組織ポリシーは、LOG-0053 で「WIFの唯一の利点」と評価した“ネットワーク層での拒否”を、組織が
+既に要求しているということでもある** — B の相対評価は当時より上がっている。
 
 ## 3.5 環境を消す（1コマンド）
 
