@@ -74,8 +74,28 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 # Reads one value from .env without printing it.
+#
+# Normalized the way every other consumer of .env reads it — `set -a; . .env`,
+# and the Node spikes' own parser. Without this, a quoted or CRLF-terminated
+# line seeds the secret WITH the quotes, and the value the service then expects
+# matches nothing anyone would paste: the shell strips the quotes, so the
+# operator's copy and the deployed copy disagree while looking identical.
 value_of() {
-  grep -E "^${1}=" "$ENV_FILE" | head -n1 | cut -d= -f2-
+  local raw
+  # `|| true`: a key absent from .env is reported by the caller as MISSING, and
+  # must not abort the run via `set -e` before that message is printed.
+  raw="$(grep -E "^${1}=" "$ENV_FILE" | head -n1 | cut -d= -f2- || true)"
+  raw="${raw%$'\r'}"                       # CRLF-edited .env
+  case "$raw" in
+    \"*\") raw="${raw#\"}"; raw="${raw%\"}" ;;
+    \'*\') raw="${raw#\'}"; raw="${raw%\'}" ;;
+  esac
+  printf '%s' "$raw"
+}
+
+# sha256 of stdin, hex only. Portable across macOS (shasum) and Linux.
+digest() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1
 }
 
 seed_secret() {
@@ -91,7 +111,23 @@ seed_secret() {
         --data-file=- --project="$PROJECT" >/dev/null
       echo "    ${key}: new version added (rotated)"
     else
-      echo "    ${key}: exists (set ROTATE_SECRETS=yes to add a new version)"
+      # Report DRIFT rather than a bare "exists". Skipping silently when .env
+      # has moved on leaves the deployed service authenticating against a value
+      # nobody holds any more, and the resulting 401 surfaces far away as an
+      # opaque 500 at the gate (COD-011: no silent failures). Compared by
+      # digest, so neither value is ever printed.
+      local deployed_hash local_hash
+      # `|| true`: no read access to the version is not a reason to fail the
+      # deploy — it only means we cannot compare, so we say nothing about drift.
+      deployed_hash="$(gcloud secrets versions access latest --secret="$key" \
+        --project="$PROJECT" 2>/dev/null | digest || true)"
+      local_hash="$(printf '%s' "$value" | digest)"
+      if [[ -n "$deployed_hash" && "$deployed_hash" != "$local_hash" ]]; then
+        echo "    ${key}: DRIFT — deployed value differs from .env; set ROTATE_SECRETS=yes" >&2
+        drifted=1
+      else
+        echo "    ${key}: exists (matches .env)"
+      fi
     fi
   else
     gcloud secrets create "$key" --replication-policy=automatic --project="$PROJECT" >/dev/null
@@ -103,11 +139,16 @@ seed_secret() {
 
 echo "==> secrets (values never printed)"
 missing=0
+drifted=0
 for key in DATABASE_URL APP_RUNTIME_PASSWORD CONTROL_PLANE_TOKEN EXECUTOR_TOKEN; do
   seed_secret "$key" || missing=1
 done
 if [[ "$missing" -ne 0 ]]; then
   echo "one or more required secrets are missing from .env — see docs/deploy.md" >&2
+  exit 2
+fi
+if [[ "$drifted" -ne 0 ]]; then
+  echo "deployed secret(s) differ from .env — re-run with ROTATE_SECRETS=yes" >&2
   exit 2
 fi
 

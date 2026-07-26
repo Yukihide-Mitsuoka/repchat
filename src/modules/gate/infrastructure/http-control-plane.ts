@@ -64,7 +64,12 @@ export class HttpControlPlane implements ControlPlaneReader, AuditSink {
 
   constructor(options: HttpControlPlaneOptions) {
     this.#o = options;
-    this.#fetch = options.fetchImpl ?? (globalThis.fetch as unknown as FetchLike);
+    // Bound to globalThis on purpose. Stored detached and then called as
+    // `this.#fetch(...)`, the receiver would be this adapter, and the Workers
+    // runtime rejects that with "Illegal invocation" — every call fails before
+    // a request leaves the isolate, and #call's catch reports it as an
+    // unreachable control plane (LOG-0059).
+    this.#fetch = options.fetchImpl ?? (globalThis.fetch.bind(globalThis) as unknown as FetchLike);
   }
 
   /** One authenticated POST. Throws on transport failure or any non-200. */
