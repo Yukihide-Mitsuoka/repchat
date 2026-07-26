@@ -9,6 +9,9 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import postgres from 'postgres';
+// Importing setup.mjs also loads .env into process.env (it does that at module
+// scope; it does NOT seed — that is gated on being the entry point).
 import { ALPHA, BRAVO, KID, SUBJECT } from './setup.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -17,6 +20,45 @@ if (!GATE) {
   console.error('GATE_URL is not set, e.g. https://gate.<subdomain>.workers.dev');
   process.exit(2);
 }
+
+// The ② result cache lives in Cloudflare KV, which outlives anything done to
+// GCP — a `make destroy` + `make deploy` leaves it fully warm. A warm cache
+// makes assertion 8 pass while the executor and BigQuery are never touched,
+// which is exactly how a broken ② path can look identical to a healthy one
+// (LOG-0060). So start every run from a cold cache, using the same lever
+// production uses: the result-cache key is a function of data_version.
+//
+// Deliberately NOT done in `make deploy`: data_version means "this tenant's
+// data changed". Bumping it on deploy would invalidate every tenant's cache on
+// every release — wrong semantics and a real cost.
+async function coolTheResultCache() {
+  const databaseUrl = process.env['DATABASE_URL'];
+  if (!databaseUrl) {
+    // Fail rather than run warm: a green run that proved nothing is worse than
+    // no run at all.
+    console.error('DATABASE_URL is not set (put it in .env) — cannot guarantee a cold ② cache');
+    process.exit(2);
+  }
+  const sql = postgres(databaseUrl.replace('-pooler.', '.'), { max: 1, onnotice: () => {} });
+  try {
+    const rows = await sql`
+      update datasources d set data_version = d.data_version + 1
+      from tenants t
+      where t.id = d.tenant_id and t.id in (${ALPHA}, ${BRAVO})
+      returning t.name as tenant, d.data_version`;
+    if (rows.length !== 2) {
+      console.error(`expected 2 demo datasources, found ${rows.length} — run setup.mjs first`);
+      process.exit(2);
+    }
+    console.log(
+      `cold ② cache: ${rows.map((r) => `${r.tenant}@v${r.data_version}`).join(', ')}\n`,
+    );
+  } finally {
+    await sql.end();
+  }
+}
+
+await coolTheResultCache();
 
 const { privateJwk } = JSON.parse(readFileSync(join(HERE, '.vendor-key.json'), 'utf8'));
 const signingKey = await crypto.subtle.importKey(
@@ -98,33 +140,48 @@ check('an expired token is refused', expired.status === 401, `[${expired.status}
 const ghost = await get('/r/r_e2e', await mint('00000000-0000-4000-8000-0000000000ff'));
 check('an unknown tenant is refused', ghost.status === 401, `[${ghost.status}]`);
 
+/** `cached` as the gate reported it, or null when the body is not what we expect. */
+const cachedFlag = (res) => {
+  try {
+    const v = JSON.parse(res.body).cached;
+    return typeof v === 'boolean' ? v : null;
+  } catch {
+    return null;
+  }
+};
+
 // --- ② data: adds the executor and BigQuery to the path.
+//
+// `cached === false` is load-bearing, not cosmetic. Without it this assertion
+// passes on a KV hit, claiming a path it never touched (LOG-0060).
 const data = await get('/r/r_e2e/data/q_e2e', alphaToken);
-const dataOk = data.status === 200;
-check('alpha gets query results (② path: executor -> BigQuery)', dataOk,
+const dataOk = data.status === 200 && cachedFlag(data) === false;
+check('alpha gets query results (② path really reaches executor -> BigQuery)', dataOk,
   `[${data.status}] ${data.body.slice(0, 120)}`);
 
 if (dataOk) {
   const second = await get('/r/r_e2e/data/q_e2e', alphaToken);
-  const cached = (() => {
-    try {
-      return JSON.parse(second.body).cached === true;
-    } catch {
-      return false;
-    }
-  })();
-  check('the second identical request is a ② cache hit', cached, `[${second.status}]`);
+  // Now meaningful: the request above is known to have been a miss, so this
+  // pins the miss→hit transition rather than two hits in a row.
+  check('the second identical request is a ② cache hit', cachedFlag(second) === true,
+    `[${second.status}]`);
 
   // The load-bearing one: same URL, same query, different tenant token.
   const bravoData = await get('/r/r_e2e/data/q_e2e', bravoToken);
   const differs = bravoData.status !== 200 || bravoData.body !== data.body;
   check('bravo never receives alpha rows (no cross-tenant leak)', differs,
     `[${bravoData.status}] ${bravoData.body.slice(0, 80)}`);
-} else {
+} else if (data.status !== 200) {
   console.log('\n  ② skipped its follow-ups: the data path did not return 200.');
   console.log('  Usual causes — QUERY_POLICY is still {"tables":[]} (fail-closed by design),');
   console.log('  or executor-run lacks tokenCreator on the tenant service accounts.');
+  console.log('  The exact reason is in the audit log: select action, detail from audit_logs');
+  console.log('  where action like \'query.%\' order by created_at desc.');
   console.log('  See spikes/live-e2e/README.md.');
+} else {
+  console.log('\n  ② returned 200 but from CACHE, so it proved nothing about the live path.');
+  console.log('  data_version was bumped at start-up, so a hit here means the gate is not');
+  console.log('  seeing the new value — check the control plane, not the executor.');
 }
 
 console.log(`\nresult: ${pass} passed, ${fail} failed`);

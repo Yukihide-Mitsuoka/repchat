@@ -88,7 +88,7 @@ updated: 2026-07-20
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定 |
 | **NL→SQLの製品組込み** | スパイクのみ（精度は実証済み） | executorへの接続、レポート編集フロー |
 | **Evidenceの本番統合** | スパイクのみ | シェル生成パイプライン、テナント別データ供給 |
-| **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make deploy` / `make destroy` の一発化も実証済み | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
+| **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
 | **デプロイ（Cloudflare側）** | **完了・ライブ稼働中**（LOG-0059）。KV4本・両URL・共有シークレットを設定し `gate.aeworks.workers.dev` で稼働。**Workers → Cloud Run → Neon → BigQuery を実HTTP・実JWTで貫通するライブE2Eが10/10**（越境ゼロを含む） | — |
 | **顧客向け要素** | 未着手 | オンボーディング手順、セキュリティ説明資料、撤退時データ削除 |
 | **デザインパートナー** | **未着手・最重要** | 人間側の営業活動 |
