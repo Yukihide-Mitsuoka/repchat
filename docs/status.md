@@ -46,6 +46,7 @@ updated: 2026-07-20
 | RLSが最後の砦になる | 実Postgres 16 | **7/7**。WHERE句を書き忘れても越境しない（LOG-0032） |
 | テナント越境は構造的に不可能 | 実BigQuery | **7/7**。同一SQLで各テナントが自分のデータのみ（LOG-0033） |
 | 縦串が実データで通る | JWT→認可→境界注入→BigQuery→KV | **8/8**（LOG-0035） |
+| 縦串が**デプロイ済み構成**で通る | 実HTTP・実JWT（Workers→Cloud Run→Neon→BigQuery、スタブ無し） | **10/10**。越境ゼロを含む。ここで初めて出た3欠陥はいずれもローカルでは原理的に検出不能だった（LOG-0059） |
 
 ### 2.3 多層防御（ADR-0005 原則C）の到達状況
 
@@ -81,14 +82,14 @@ updated: 2026-07-20
 | 項目 | 状態 | 何が要るか |
 |---|---|---|
 | **コントロールプレーン**（tenants/users/roles/reports の実装） | **コード完成・デプロイのみ**。スキーマ・RLS・アダプタは実Neonで実証済み（LOG-0039）、Workers対応トランスポート＋`worker.ts`結線済み（PR #99/#100）、**Node合成ルート `src/main/control-plane-server.ts` も実装済み**（本PR、LOG-0050） | サービスのデプロイ（Cloud Run等）＋env設定 |
-| **テナント別の接続資格情報**（ADR-0010 D1） | **コード完成＋ライブ検証済み・デプロイのみ**。シーム＋`ImpersonatingTokenProvider`＋control-planeがD1 identityを返す（PR #93/#95/#97）、executor合成ルートで実結線（PR #101）、**バックストップを実BigQueryで実証（5/5、LOG-0052）** | サービスのデプロイ＋`connection_ref`に実SAメール投入（SAは作成済み） |
+| **テナント別の接続資格情報**（ADR-0010 D1） | **デプロイ済み・本番構成で実証**。シーム＋`ImpersonatingTokenProvider`＋control-planeがD1 identityを返す（PR #93/#95/#97）、executor合成ルートで実結線（PR #101）、バックストップを実BigQueryで実証（5/5、LOG-0052）、**デプロイ済み構成で各テナントが自分のSAとしてクエリしていることをBigQueryジョブ履歴で確認（LOG-0059）** | — |
 | **②行スコープの構造検証**（ADR-0010 / LOG-0040・0041） | **実装済み**（PR #89、LOG-0042）。`scopeColumn` を必須化し、書き換え後の再パースで行スコープ対象表が主体のフィルタ内にあることを検証（`assertRowScopeBound`） | — |
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定 |
 | **NL→SQLの製品組込み** | スパイクのみ（精度は実証済み） | executorへの接続、レポート編集フロー |
 | **Evidenceの本番統合** | スパイクのみ | シェル生成パイプライン、テナント別データ供給 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make deploy` / `make destroy` の一発化も実証済み | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
-| **デプロイ（Cloudflare側）** | 未実施 | KV名前空間作成、`CONTROL_PLANE_URL`/`EXECUTOR_URL` と共有シークレット設定、`wrangler deploy` |
+| **デプロイ（Cloudflare側）** | **完了・ライブ稼働中**（LOG-0059）。KV4本・両URL・共有シークレットを設定し `gate.aeworks.workers.dev` で稼働。**Workers → Cloud Run → Neon → BigQuery を実HTTP・実JWTで貫通するライブE2Eが10/10**（越境ゼロを含む） | — |
 | **顧客向け要素** | 未着手 | オンボーディング手順、セキュリティ説明資料、撤退時データ削除 |
 | **デザインパートナー** | **未着手・最重要** | 人間側の営業活動 |
 
