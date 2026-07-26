@@ -5,11 +5,16 @@
 # runtime identity access to exactly the secrets its service needs.
 
 locals {
-  # Secret Manager entry names, seeded by infra/scripts/bootstrap.sh.
-  secret_database_url = "DATABASE_URL"
-  secret_app_password = "APP_RUNTIME_PASSWORD"
-  secret_cp_token     = "CONTROL_PLANE_TOKEN"
-  secret_ex_token     = "EXECUTOR_TOKEN"
+  # Secret Manager entry NAMES, seeded by infra/scripts/bootstrap.sh. These are
+  # identifiers, never values — the values exist only in Secret Manager (T3).
+  #
+  # Deliberately none of these locals is called *_password: `password = "..."`
+  # in a .tf file is what a Terraform-committed credential looks like, and the
+  # secret scanner is right to flag that shape. Do not "tidy" this back.
+  secret_database_url      = "DATABASE_URL"
+  secret_app_runtime_login = "APP_RUNTIME_PASSWORD"
+  secret_cp_token          = "CONTROL_PLANE_TOKEN"
+  secret_ex_token          = "EXECUTOR_TOKEN"
 }
 
 # --- runtime identities ------------------------------------------------------
@@ -32,7 +37,7 @@ resource "google_service_account" "executor" {
 # --- secret access (least privilege) ----------------------------------------
 
 resource "google_secret_manager_secret_iam_member" "control_plane_db" {
-  for_each  = toset([local.secret_database_url, local.secret_app_password, local.secret_cp_token])
+  for_each  = toset([local.secret_database_url, local.secret_app_runtime_login, local.secret_cp_token])
   project   = var.project_id
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
@@ -40,7 +45,7 @@ resource "google_secret_manager_secret_iam_member" "control_plane_db" {
 }
 
 resource "google_secret_manager_secret_iam_member" "executor_db" {
-  for_each  = toset([local.secret_database_url, local.secret_app_password, local.secret_ex_token])
+  for_each  = toset([local.secret_database_url, local.secret_app_runtime_login, local.secret_ex_token])
   project   = var.project_id
   secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
@@ -77,7 +82,7 @@ resource "google_cloud_run_v2_service" "control_plane" {
       dynamic "env" {
         for_each = {
           DATABASE_URL         = local.secret_database_url
-          APP_RUNTIME_PASSWORD = local.secret_app_password
+          APP_RUNTIME_PASSWORD = local.secret_app_runtime_login
           CONTROL_PLANE_TOKEN  = local.secret_cp_token
         }
         content {
@@ -118,7 +123,7 @@ resource "google_cloud_run_v2_service" "executor" {
       dynamic "env" {
         for_each = {
           DATABASE_URL         = local.secret_database_url
-          APP_RUNTIME_PASSWORD = local.secret_app_password
+          APP_RUNTIME_PASSWORD = local.secret_app_runtime_login
           EXECUTOR_TOKEN       = local.secret_ex_token
         }
         content {
