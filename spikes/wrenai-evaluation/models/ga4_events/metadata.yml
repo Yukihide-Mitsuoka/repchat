@@ -1,0 +1,63 @@
+# GA4 の日次シャードを一枚のモデルとして見せる。生エクスポートの
+# ネストを、レポートで使う語に翻訳するのがこの層の仕事。
+name: ga4_events
+ref_sql: |
+  SELECT
+    event_date,
+    event_name,
+    user_pseudo_id,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id')        AS ga_session_id,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number')    AS ga_session_number,
+    (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location')     AS page_location,
+    (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec') AS engagement_time_msec,
+    device.category      AS device_category,
+    traffic_source.medium AS medium,
+    ecommerce.transaction_id   AS transaction_id,
+    ecommerce.purchase_revenue AS purchase_revenue
+  FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+  WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'
+columns:
+  - name: event_date
+    type: VARCHAR
+    is_calculated: false
+    properties: { description: "'YYYYMMDD' 形式の文字列。DATE型ではない" }
+  - name: event_name
+    type: VARCHAR
+    is_calculated: false
+    properties: { description: "page_view / session_start / purchase / add_to_cart / view_item など" }
+  - name: user_pseudo_id
+    type: VARCHAR
+    is_calculated: false
+    properties: { description: "ブラウザ単位の識別子。ユーザー数はこれを数える" }
+  - name: ga_session_id
+    type: BIGINT
+    is_calculated: false
+    properties: { description: "user_pseudo_id と組でセッションを一意にする" }
+  - name: ga_session_number
+    type: BIGINT
+    is_calculated: false
+    properties: { description: "1 なら新規訪問。first_visit イベントでは判定しない" }
+  - name: page_location
+    type: VARCHAR
+    is_calculated: false
+  - name: engagement_time_msec
+    type: BIGINT
+    is_calculated: false
+    properties: { description: "ミリ秒。複数イベントに分散するので合算が要る" }
+  - name: device_category
+    type: VARCHAR
+    is_calculated: false
+  - name: medium
+    type: VARCHAR
+    is_calculated: false
+    properties: { description: "流入チャネル" }
+  - name: transaction_id
+    type: VARCHAR
+    is_calculated: false
+    properties: { description: "購入件数は行数ではなくこの異なり数で数える" }
+  - name: purchase_revenue
+    type: DOUBLE
+    is_calculated: false
+    properties: { description: "purchase イベント行にのみ入る" }
+cached: false
+properties: {}
