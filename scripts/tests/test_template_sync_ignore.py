@@ -36,6 +36,17 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
         self.assertIn("Unable to expand the Template Sync source commit", workflow)
         self.assertIn("gh pr edit", workflow)
 
+    def test_sync_pr_body_stays_inside_the_run_block(self):
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+
+        self.assertNotIn("\nBefore merge:\n", workflow)
+        self.assertIn("\n          Before merge:\n", workflow)
+        self.assertIn(
+            "\n          - Update .github/inheritance/lock.json only after the complete "
+            "parent delta is accepted.",
+            workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,7 @@
 #      (`---` ... `---`) — the metadata the routing/authority system depends on.
 #   2. No file carries the "collapsed frontmatter" signature a non-frontmatter-aware
 #      formatter produces (guards against the LOG-0007 regression recurring).
-#   3. GitHub governance inheritance rejects invalid or weakening policy.
+#   3. Foundation regression tests, including governance and document-language policy.
 #   4. Child repositories with a manifest satisfy the local inheritance and legacy
 #      Template Sync protection contract.
 #   5. Foundation-owned project-documentation guides do not occupy project-owned paths.
@@ -38,8 +38,8 @@ if grep -rlnE '^## (id|name): .+ (title|description): ' .ai .skills docs CLAUDE.
   err "^ file(s) above contain collapsed YAML frontmatter — run mdformat with mdformat-frontmatter (see LOG-0007)"
 fi
 
-# 3. Foundation-level governance policy contract tests (ADR-0003).
-python3 -m unittest discover -s scripts/tests -p 'test_*.py' || err "GitHub governance policy tests failed"
+# 3. Foundation-level regression tests (ADR-0003 and ADR-0008).
+python3 -m unittest discover -s scripts/tests -p 'test_*.py' || err "Foundation regression tests failed"
 python3 scripts/github_governance.py validate --root . >/dev/null || err "GitHub governance policy is invalid"
 
 # 4. ADR-0007: validate the actual child contract, not only unit-test fixtures. The
@@ -114,6 +114,7 @@ for path in \
   docs/foundation/adr/0005-separate-foundation-and-project-document-languages.md \
   docs/foundation/adr/0006-reserve-a-foundation-documentation-namespace.md \
   docs/foundation/adr/0007-constrain-transitional-template-sync.md \
+  docs/foundation/adr/0008-enforce-english-foundation-docs-with-named-exceptions.md \
   docs/foundation/troubleshooting/README.md \
   docs/foundation/troubleshooting/github-governance.md \
   docs/foundation/troubleshooting/template-inheritance.md \

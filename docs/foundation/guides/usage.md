@@ -6,7 +6,7 @@ updated: 2026-07-16
 
 # Usage
 
-> 日本語版: [usage.ja.md](usage.ja.md)（人間向けセットアップ手順書）
+> Japanese human-facing version: [usage.ja.md](usage.ja.md) (ADR-0008 exception).
 
 This guide covers using the foundation from a different machine or a different GitHub
 account. **First decide which of two scenarios you are in — the steps differ.**

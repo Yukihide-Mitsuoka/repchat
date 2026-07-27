@@ -1,117 +1,49 @@
 # Changelog
 
-## [1.9.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.9.0...v1.9.1) (2026-07-27)
+## 1.0.0 (2026-07-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **requirements:** downstream references to `docs/requirements/README.md` or `docs/templates/` must use the new `docs/foundation/` paths. Existing downstream repositories must append the documented `.templatesyncignore` exception once before running Template Sync.
+* **governance:** `scripts/setup-github.sh` requires an explicit repository target; apply also requires the same value after `--confirm-repo`.
+
+### Features
+
+* **catalog:** add worked example module (Clean Architecture + DDD) ([#3](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/3)) ([ae20e80](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/ae20e80459075fa0dbe6ccd461663f27f2d4bc79))
+* **claude:** add read-only code-reviewer subagent ([#12](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/12)) ([d5236aa](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/d5236aaaacfc7d210616263da5215510f5a88df3))
+* **governance:** add deterministic state comparison ([#23](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/23)) ([2be91ac](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/2be91acb0c51ba77c7140e3167282e4b4eb2bf4a))
+* **governance:** add inherited policy validation ([#21](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/21)) ([8035bbb](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/8035bbbf28c2ea1f84e7e5bfe90fb858c5370daf))
+* **governance:** add read-only GitHub discovery ([#22](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/22)) ([dd04113](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/dd04113cc244e4714156e8c95658eb7204d610e8))
+* **governance:** add template profile chain ([#37](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/37)) ([9ab0600](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/9ab06004ed129d0d27e4a1876aa03b04d067cc71))
+* **governance:** add verified apply execution boundary ([#27](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/27)) ([67d1596](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/67d159630daa70d71c5ebb01b4200a394e4b11c4))
+* **governance:** adopt solo-friendly defaults ([#34](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/34)) ([5632f8d](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/5632f8d81e3c6e2697d129e38c4113cdbd94874c))
+* **governance:** enforce vulnerability intake controls ([#29](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/29)) ([d4c284c](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/d4c284c263b7a5b27034288b46558850c79913ae))
+* **governance:** expose confirmed apply command ([#28](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/28)) ([70ea07a](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/70ea07add78ea3a80e75d790cb08e6dd43977111))
+* **governance:** expose plan and audit commands ([#24](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/24)) ([86b3f4b](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/86b3f4bb0ef55fe658f1294de38bca85118d7b6c))
+* **governance:** migrate setup to policy wrapper ([#31](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/31)) ([91276b9](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/91276b970805c550ee3d3fc929f0f0980af15681))
+* **governance:** model repository collaboration settings ([#30](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/30)) ([cce70e4](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/cce70e4d4f8ad7695dbbc70e2f162200d83bc2e0))
+* **governance:** plan deterministic apply actions ([#25](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/25)) ([9411ad6](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/9411ad67e2e5254c18cc1480da2db64d812c9ab0))
+* **governance:** preserve stricter ruleset constraints ([#26](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/26)) ([64f6fc8](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/64f6fc82de3f7269a96ac534dde8c7ef9093b124))
+* **inheritance:** plan next parent commit ([#36](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/36)) ([1e99d39](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/1e99d395ff949a40d45d888f59a6da41fc86e502)), closes [#32](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/32)
+* **inheritance:** validate child-owned contract ([#35](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/35)) ([4035dbd](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/4035dbd0e3e7cca1300f1c2f8e49967e60940022))
+* **skills:** interrogation phase in requirements + native skill wrappers ([#9](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/9)) ([d4df453](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/d4df4534107070f98dd581d4063ceeff60df9802))
 
 
 ### Bug Fixes
 
-* **executor:** give the impersonation source cloud-platform scope ([#119](https://github.com/Yukihide-Mitsuoka/repchat/issues/119)) ([d041c1c](https://github.com/Yukihide-Mitsuoka/repchat/commit/d041c1cbef2b4a330ee318b45a38ee68e007b787))
-* **gate:** log the cause when a request fails closed ([#118](https://github.com/Yukihide-Mitsuoka/repchat/issues/118)) ([6cc35bf](https://github.com/Yukihide-Mitsuoka/repchat/commit/6cc35bfebfd8cb187da1b9affd1c1179fd29eb96))
-* **infra:** fail fast when Application Default Credentials are stale ([#113](https://github.com/Yukihide-Mitsuoka/repchat/issues/113)) ([db45a32](https://github.com/Yukihide-Mitsuoka/repchat/commit/db45a3225a8b56c2b5371d59d0041e7a80c0971f))
-* **infra:** grant Cloud Build's service account the role it needs ([#111](https://github.com/Yukihide-Mitsuoka/repchat/issues/111)) ([685a3a7](https://github.com/Yukihide-Mitsuoka/repchat/commit/685a3a7c9fa0a03c39141aa020f346aaeb2b0c88))
-* **spike:** make the live-e2e harness start from a cold result cache ([#121](https://github.com/Yukihide-Mitsuoka/repchat/issues/121)) ([74753e0](https://github.com/Yukihide-Mitsuoka/repchat/commit/74753e0e0185776da910124683ebb2a5c9127ad9))
-* **spike:** valid uuids and no seeding on import in the live-e2e harness ([#117](https://github.com/Yukihide-Mitsuoka/repchat/issues/117)) ([7284d5e](https://github.com/Yukihide-Mitsuoka/repchat/commit/7284d5e92b25d85a6670849fbaba59f40f09bf50))
-
-## [1.9.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.8.0...v1.9.0) (2026-07-26)
-
-
-### Features
-
-* **build:** container image for the two Node services (ADR-0012 T2) ([#108](https://github.com/Yukihide-Mitsuoka/repchat/issues/108)) ([abff444](https://github.com/Yukihide-Mitsuoka/repchat/commit/abff44413de40514b59df124f3c47f30c8e01293))
-* **infra:** Terraform + make targets for one-command deploy and destroy (ADR-0012) ([#109](https://github.com/Yukihide-Mitsuoka/repchat/issues/109)) ([31731eb](https://github.com/Yukihide-Mitsuoka/repchat/commit/31731ebb221f0e7cecea366e353a35a5c1e613df))
-
-## [1.8.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.7.0...v1.8.0) (2026-07-25)
+* **docs:** make foundation checks portable ([#52](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/52)) ([a177d1f](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/a177d1f694d6e754588c0753fb6ddf188753a8ea)), closes [#51](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/51)
+* **governance:** recognize ruleset-only protection ([#57](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/57)) ([01eb97c](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/01eb97c6a7fd8106bada2be835803b49f56dce10))
+* **hooks:** exempt explicit floating-tag moves from GR-011 force-push block ([#16](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/16)) ([7012f04](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/7012f04f57aa62ae678e28aceffbf19b3bd63848))
+* **profiles:** restore terraform-gcp clean/doctor targets ([#5](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/5)) ([4af937c](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/4af937c84e1f17996207eca3bc16ba4d19cf8b43))
+* resolve audit findings in guardrails, Makefiles, and CI config ([53d7910](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/53d7910dc4f696a76c45256e41d1c98d91bec7bc))
+* **security:** configure CodeQL language matrix ([#64](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/64)) ([0c6d140](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/0c6d140a5247d4a8cfc348da4a56074291346ead))
+* **sync:** enforce reviewed parent propagation ([#54](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/54)) ([ebd069d](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/ebd069de322ae6dd36d72ffd561fda249363dfd2))
+* **sync:** keep PR body inside workflow script ([#62](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/62)) ([937baa4](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/937baa4e04d0bbe451c8bf04f5619db8bd3f5db0))
+* **sync:** validate child contract in doctor ([#55](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/55)) ([86eb924](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/86eb9243a5ea1d1696588bceb1573afdfe182ce9))
+* **template-sync:** use pathspec docs exclusions ([#50](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/50)) ([d9419c8](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/d9419c87133eb8d97d930aea98889224c2253a68))
 
 
-### Features
+### Documentation
 
-* **main:** Node composition roots for the control-plane and executor services ([#101](https://github.com/Yukihide-Mitsuoka/repchat/issues/101)) ([536a66f](https://github.com/Yukihide-Mitsuoka/repchat/commit/536a66f4caf3b5268dec45409e3774f31cf155c6))
-
-## [1.7.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.6.0...v1.7.0) (2026-07-25)
-
-
-### Features
-
-* **control-plane:** wire the D1 connection identity from the datasource row (ADR-0010 D1, PR-3) ([#97](https://github.com/Yukihide-Mitsuoka/repchat/issues/97)) ([2fa7542](https://github.com/Yukihide-Mitsuoka/repchat/commit/2fa7542e6fb83cc10b9c8f5b55916d49462b7f8a))
-* **gate:** wire the control-plane SEAM in worker.ts (PR-B) ([#100](https://github.com/Yukihide-Mitsuoka/repchat/issues/100)) ([add46c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/add46c88d0581667c5d8f09632c1a90181c8d879))
-* **gate:** Workers-compatible control-plane transport (mirrors [#65](https://github.com/Yukihide-Mitsuoka/repchat/issues/65)) ([#99](https://github.com/Yukihide-Mitsuoka/repchat/issues/99)) ([01a563f](https://github.com/Yukihide-Mitsuoka/repchat/commit/01a563f9303d3e318c47860875c66600b2b5f483))
-
-## [1.6.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.5.0...v1.6.0) (2026-07-24)
-
-
-### Features
-
-* **executor:** impersonating token provider + live D1 backstop proof (ADR-0010 D1, PR-2) ([#95](https://github.com/Yukihide-Mitsuoka/repchat/issues/95)) ([cdbca02](https://github.com/Yukihide-Mitsuoka/repchat/commit/cdbca02221bbd7e0b0a4074e141bde865e4b16b6))
-* **executor:** thread a per-tenant connection identity to the runner (ADR-0010 D1, seam) ([#93](https://github.com/Yukihide-Mitsuoka/repchat/issues/93)) ([88ee98e](https://github.com/Yukihide-Mitsuoka/repchat/commit/88ee98efea17c2986d8036cefac66f8eb2f00c5c))
-
-## [1.5.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.4.0...v1.5.0) (2026-07-24)
-
-
-### Features
-
-* **executor:** verify the row scope binds at every use, and refuse an undeclared policy ([#89](https://github.com/Yukihide-Mitsuoka/repchat/issues/89)) ([91345d6](https://github.com/Yukihide-Mitsuoka/repchat/commit/91345d6625fa2b6abbb576b301c8e7fd7aea8204))
-
-## [1.4.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.3.2...v1.4.0) (2026-07-23)
-
-
-### Features
-
-* **control-plane:** Postgres adapters for the gate and executor ports ([#85](https://github.com/Yukihide-Mitsuoka/repchat/issues/85)) ([681b331](https://github.com/Yukihide-Mitsuoka/repchat/commit/681b331c1ea01570496de634b55f7868943bd824))
-
-## [1.3.2](https://github.com/Yukihide-Mitsuoka/chat-chart/compare/v1.3.1...v1.3.2) (2026-07-23)
-
-
-### Bug Fixes
-
-* **security:** configure CodeQL language matrix ([#78](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/78)) ([caf389c](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/caf389cc1cb06a4d41bc84579a22ca6e69ec2227))
-* **sync:** keep PR body inside workflow script ([#76](https://github.com/Yukihide-Mitsuoka/chat-chart/issues/76)) ([20aa8c0](https://github.com/Yukihide-Mitsuoka/chat-chart/commit/20aa8c02bbb1644d8d088545926f7cf63de1fbc1))
-
-## [1.3.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.3.0...v1.3.1) (2026-07-22)
-
-
-### Bug Fixes
-
-* **governance:** adopt ruleset-only discovery ([#71](https://github.com/Yukihide-Mitsuoka/repchat/issues/71)) ([48d147a](https://github.com/Yukihide-Mitsuoka/repchat/commit/48d147a81d8210cf025e896c8787c3f5603195a9))
-* **sync:** adopt safe parent propagation ([#69](https://github.com/Yukihide-Mitsuoka/repchat/issues/69)) ([697bd66](https://github.com/Yukihide-Mitsuoka/repchat/commit/697bd662c21964488fc99f0f39e50586d1701a89))
-
-## [1.3.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.2.0...v1.3.0) (2026-07-20)
-
-
-### Features
-
-* **executor:** HTTP transport between gate and executor ([#65](https://github.com/Yukihide-Mitsuoka/repchat/issues/65)) ([#66](https://github.com/Yukihide-Mitsuoka/repchat/issues/66)) ([3a145b0](https://github.com/Yukihide-Mitsuoka/repchat/commit/3a145b049349123983dc36453582fe3a461e1e41))
-* **gate:** wire the executor SEAM to the real executor ([#55](https://github.com/Yukihide-Mitsuoka/repchat/issues/55) A-3) ([#63](https://github.com/Yukihide-Mitsuoka/repchat/issues/63)) ([55bbda4](https://github.com/Yukihide-Mitsuoka/repchat/commit/55bbda4f3f76fac1e7171a4a135e634285196959))
-
-## [1.2.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.1.0...v1.2.0) (2026-07-20)
-
-
-### Features
-
-* **executor:** BigQuery query runner over the REST jobs.query endpoint ([#59](https://github.com/Yukihide-Mitsuoka/repchat/issues/59)) ([01f50b5](https://github.com/Yukihide-Mitsuoka/repchat/commit/01f50b564ee36ed868ecb89f5e0426fabaf66cbc)), closes [#55](https://github.com/Yukihide-Mitsuoka/repchat/issues/55)
-
-## [1.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.0.0...v1.1.0) (2026-07-19)
-
-
-### Features
-
-* **executor:** AST-level tenant-boundary binding for SQL queries ([#56](https://github.com/Yukihide-Mitsuoka/repchat/issues/56)) ([6ad2547](https://github.com/Yukihide-Mitsuoka/repchat/commit/6ad25471525af449083948bd627fee66026ae554)), closes [#55](https://github.com/Yukihide-Mitsuoka/repchat/issues/55)
-* **executor:** execute use case with binding resolution and audit ([#58](https://github.com/Yukihide-Mitsuoka/repchat/issues/58)) ([a0435b7](https://github.com/Yukihide-Mitsuoka/repchat/commit/a0435b78433c11812fad3b40573a0e4d52ef4a2f)), closes [#55](https://github.com/Yukihide-Mitsuoka/repchat/issues/55)
-
-## 1.0.0 (2026-07-19)
-
-
-### Features
-
-* **gate:** Cloudflare Workers interface — KV adapter, fetch handler, entry ([01848c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/01848c800a9103cad9cbc997045cd01bc7b6409c))
-* **gate:** Cloudflare Workers interface — KV adapter, fetch handler, entry ([8a2daf5](https://github.com/Yukihide-Mitsuoka/repchat/commit/8a2daf5acdb07b2c74f0ddbd331fdff7f16218d3)), closes [#23](https://github.com/Yukihide-Mitsuoka/repchat/issues/23)
-* **gate:** in-memory + WebCrypto adapters and the ported acceptance suite ([39af2f6](https://github.com/Yukihide-Mitsuoka/repchat/commit/39af2f6969bc64eab6eed42abdc810025eeca5cc))
-* **gate:** in-memory + WebCrypto adapters and the ported acceptance suite ([04a0550](https://github.com/Yukihide-Mitsuoka/repchat/commit/04a05500e70a63bee798fbcebbc891faf8ea8029)), closes [#23](https://github.com/Yukihide-Mitsuoka/repchat/issues/23)
-* **gate:** runtime-agnostic gate core — domain + application layers ([28669c6](https://github.com/Yukihide-Mitsuoka/repchat/commit/28669c65cbbaa4416827c351277bbf579ba32bcc))
-* **gate:** runtime-agnostic gate core — domain + application layers ([e6b34cd](https://github.com/Yukihide-Mitsuoka/repchat/commit/e6b34cdc74382339c5776693c75f9f8e4dfc834a)), closes [#23](https://github.com/Yukihide-Mitsuoka/repchat/issues/23)
-
-
-### Bug Fixes
-
-* satisfy CI — untrack package-lock.json, fix broken settings link ([70675fd](https://github.com/Yukihide-Mitsuoka/repchat/commit/70675fd5a42799d9505b2c03d9d428703548ceb8))
-* **sync:** authenticate foundation documentation propagation ([#38](https://github.com/Yukihide-Mitsuoka/repchat/issues/38)) ([3eba6c7](https://github.com/Yukihide-Mitsuoka/repchat/commit/3eba6c70d59857ece4d79d5a5c493aab7e335140))
-* **template-sync:** protect downstream workflow ownership ([#31](https://github.com/Yukihide-Mitsuoka/repchat/issues/31)) ([f14e1ab](https://github.com/Yukihide-Mitsuoka/repchat/commit/f14e1aba739cb9660ec5bbd364d8611884f1d29a))
+* **requirements:** separate foundation-owned artifacts ([#40](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/40)) ([2c80552](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/2c8055200e39d8eb3c77ee12261700b67ba546f1))

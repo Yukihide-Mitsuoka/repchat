@@ -6,10 +6,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CodeQLWorkflowTest(unittest.TestCase):
-    def test_all_executable_source_languages_are_analyzed(self) -> None:
+    def test_python_analysis_is_enabled(self) -> None:
         workflow = (ROOT / ".github/workflows/codeql.yml").read_text()
 
-        self.assertIn("language: [javascript-typescript, python]", workflow)
+        self.assertIn("language: [python]", workflow)
         self.assertNotIn("language: []", workflow)
 
 

@@ -17,6 +17,13 @@ requirements documents. Follow the binding requirements procedure in
 | Whole project | `docs/requirements.md` | `docs/requirements.md` |
 | One initiative, feature, or major change | `docs/requirements/<initiative>.md` | `docs/requirements/account-recovery.md` |
 
+This is the singleton-and-collection rule defined by DOC-011 and
+[ADR-0009](adr/0009-place-project-document-singletons-and-collections.md), not duplicate
+placement. The whole-project singleton owns the project purpose, overall scope,
+cross-initiative constraints, and project-wide success criteria. Initiative documents
+own their independently reviewable requirements and acceptance criteria. Link between
+the two scopes instead of repeating facts.
+
 Use one initiative document when its scope, decisions, and acceptance criteria can be
 reviewed independently. Keep cross-initiative requirements in the whole-project document
 and link to them instead of copying them.
