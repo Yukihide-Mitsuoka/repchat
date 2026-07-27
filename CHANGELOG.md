@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.9.0...v1.9.1) (2026-07-27)
+
+
+### Bug Fixes
+
+* **executor:** give the impersonation source cloud-platform scope ([#119](https://github.com/Yukihide-Mitsuoka/repchat/issues/119)) ([d041c1c](https://github.com/Yukihide-Mitsuoka/repchat/commit/d041c1cbef2b4a330ee318b45a38ee68e007b787))
+* **gate:** log the cause when a request fails closed ([#118](https://github.com/Yukihide-Mitsuoka/repchat/issues/118)) ([6cc35bf](https://github.com/Yukihide-Mitsuoka/repchat/commit/6cc35bfebfd8cb187da1b9affd1c1179fd29eb96))
+* **infra:** fail fast when Application Default Credentials are stale ([#113](https://github.com/Yukihide-Mitsuoka/repchat/issues/113)) ([db45a32](https://github.com/Yukihide-Mitsuoka/repchat/commit/db45a3225a8b56c2b5371d59d0041e7a80c0971f))
+* **infra:** grant Cloud Build's service account the role it needs ([#111](https://github.com/Yukihide-Mitsuoka/repchat/issues/111)) ([685a3a7](https://github.com/Yukihide-Mitsuoka/repchat/commit/685a3a7c9fa0a03c39141aa020f346aaeb2b0c88))
+* **spike:** make the live-e2e harness start from a cold result cache ([#121](https://github.com/Yukihide-Mitsuoka/repchat/issues/121)) ([74753e0](https://github.com/Yukihide-Mitsuoka/repchat/commit/74753e0e0185776da910124683ebb2a5c9127ad9))
+* **spike:** valid uuids and no seeding on import in the live-e2e harness ([#117](https://github.com/Yukihide-Mitsuoka/repchat/issues/117)) ([7284d5e](https://github.com/Yukihide-Mitsuoka/repchat/commit/7284d5e92b25d85a6670849fbaba59f40f09bf50))
+
 ## [1.9.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.8.0...v1.9.0) (2026-07-26)
 
 
