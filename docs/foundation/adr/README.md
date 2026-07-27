@@ -30,5 +30,7 @@ process in `.skills/architecture.skill.md`.
 | [0005](0005-separate-foundation-and-project-document-languages.md) | Separate foundation and project document languages | accepted | 2026-07-18 |
 | [0006](0006-reserve-a-foundation-documentation-namespace.md) | Reserve a foundation documentation namespace | accepted | 2026-07-18 |
 | [0007](0007-constrain-transitional-template-sync.md) | Constrain transitional Template Sync | accepted | 2026-07-22 |
+| [0008](0008-enforce-english-foundation-docs-with-named-exceptions.md) | Enforce English foundation docs with two named Japanese exceptions | accepted | 2026-07-22 |
+| [0009](0009-place-project-document-singletons-and-collections.md) | Place project document singletons and collections by scope | accepted | 2026-07-26 |
 
 <!-- Append new ADRs to this table (newest last). -->

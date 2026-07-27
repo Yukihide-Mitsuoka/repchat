@@ -21,11 +21,15 @@ and **optimized for AI readers** — explicit, structured, unambiguous.
 - Every doc starts with YAML frontmatter (`id`, `title`, plus `status`/`updated` where
   meaningful) and states its purpose in the first paragraph.
 - Concrete examples for every rule or API. Fake credentials only (GR-002).
-- Foundation-owned instructions and documentation remain English. After template
-  instantiation, AI agents MUST write new project-specific documents under `docs/` in
-  Japanese unless the repository owner or an external contract explicitly requires
-  another language. Do not create a translated sibling solely to duplicate the same
-  facts (ADR-0005).
+- Foundation-owned instructions and documentation remain English. The only Japanese
+  foundation-document exceptions are the descriptive, human-facing
+  `docs/foundation/guides/usage.ja.md` and
+  `docs/foundation/guides/ai-instruction-files.ja.md`; they never override their English
+  authorities, and another exception requires a superseding ADR (ADR-0008). After
+  template instantiation, AI agents MUST write new project-specific documents under
+  `docs/` in Japanese unless the repository owner or an external contract explicitly
+  requires another language. Do not create another translated sibling solely to
+  duplicate the same facts (ADR-0005).
 - Files use kebab-case names; headings form a strict hierarchy (one `#`, then `##`...).
 
 ## DOC-002: Objective, structured prose
@@ -73,6 +77,23 @@ The structure and update triggers for project-owned `docs/` paths are defined on
 directory MUST NOT contain a foundation-owned placeholder README. A repository MAY add
 a local README only when it describes actual project content and is maintained by that
 repository.
+
+## DOC-011: Project document singleton and collection placement
+
+Choose a project-owned path by document scope
+([ADR-0009](../docs/foundation/adr/0009-place-project-document-singletons-and-collections.md)):
+
+| Scope | Required path | Example |
+|-------|---------------|---------|
+| One authoritative project-wide document | `docs/<category>.md` | `docs/requirements.md` |
+| Independently maintained documents that repeat by subject | `docs/<category>/<subject>.md` | `docs/requirements/account-recovery.md` |
+| Both project-wide and subject scopes | Use both paths, with distinct ownership | `docs/requirements.md` and `docs/requirements/account-recovery.md` |
+
+The project-wide singleton MUST own cross-subject facts and link to narrower documents.
+A subject document MUST own only its narrower facts. Authors MUST NOT repeat the same
+fact between the singleton and collection (DOC-001). Create a project-owned directory or
+local index only when it contains actual maintained project content; do not create empty
+scaffolding or a foundation-owned placeholder in a project namespace.
 
 ## DOC-030: Doc-update matrix (binding — GR-024)
 

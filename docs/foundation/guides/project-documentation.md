@@ -28,6 +28,39 @@ Binding rules live in [`.ai/`](../../../.ai/); inherited decisions live in the
 
 Contribution guide: [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
+## Choose a project-owned path by scope
+
+Use the singleton-and-collection rule from DOC-011 and
+[ADR-0009](../adr/0009-place-project-document-singletons-and-collections.md):
+
+| Question | Placement |
+|----------|-----------|
+| Is this the one authoritative document for the whole project? | `docs/<category>.md` |
+| Can independently maintained documents repeat by initiative, component, audience, or operational subject? | `docs/<category>/<subject>.md` |
+| Are both scopes needed? | Keep both; the singleton links to the subject documents without copying their facts |
+
+For requirements, the resulting structure is:
+
+```text
+docs/
+├── requirements.md
+└── requirements/
+    ├── account-recovery.md
+    └── subscription-billing.md
+```
+
+`docs/requirements.md` owns the project purpose, overall scope, cross-initiative
+constraints, and project-wide success criteria. Each file below `docs/requirements/`
+owns requirements and acceptance criteria that can be reviewed independently for its
+named initiative. The whole-project document links to those files and does not restate
+their details.
+
+This pairing is not required for every category. Keep unique cross-project documents
+such as `docs/roadmap.md` and `docs/glossary.md` at the top level. Use categorized paths
+such as `docs/architecture/data-flow.md` and `docs/runbook/credential-rotation.md` for
+repeatable or task-specific documents. Do not add an empty directory or local index in
+anticipation of future content.
+
 The guides in this directory define structure and **update triggers** without placing
 foundation-owned README files in project-owned paths. The doc-update matrix (DOC-030)
 tells you which project directory a given change must touch.

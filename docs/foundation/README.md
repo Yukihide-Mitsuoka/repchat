@@ -13,6 +13,19 @@ Binding AI rules remain in [`.ai/`](../../.ai/), and task procedures remain in
 [`.skills/`](../../.skills/). Files here link to those sources instead of duplicating
 their rules.
 
+## Language boundary
+
+Foundation documents in this namespace are English. ADR-0008 preserves exactly two
+descriptive, human-facing Japanese exceptions:
+
+- [guides/usage.ja.md](guides/usage.ja.md)
+- [guides/ai-instruction-files.ja.md](guides/ai-instruction-files.ja.md)
+
+They do not define normative behavior and never override the English rules or sources
+they describe. Adding another localized foundation document requires a superseding ADR.
+Project-owned documents remain directly under `docs/` and follow the Japanese authoring
+rule in ADR-0005.
+
 ## Inventory
 
 | Path | Purpose |
