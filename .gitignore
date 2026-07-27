@@ -48,3 +48,5 @@ Thumbs.db
 .claude/settings.local.json
 # generated artifacts
 spikes/nl2sql-accuracy/spike.db
+# Run output: regenerated on every run, and the numbers belong in the LOG entry.
+spikes/report-generation/out/
