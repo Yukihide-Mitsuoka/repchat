@@ -1,0 +1,54 @@
+{
+  "note": "指標定義。LOG-0065 が示したのは『SQLは書けるが定義が揺れる』で、揺れたのは購入件数と新規判定だった。ここはその2つを含む最小の定義層で、これを渡すと安定するかを測るためのもの。本番では代理店が書き、顧客のGitに置かれる想定（docs/positioning.md §2.8）。",
+  "grain": {
+    "session": {
+      "description": "セッションの一意キー。GA4の生エクスポートにセッションの行は存在しないため、この式で代用する。",
+      "expr": "CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))"
+    },
+    "user": {
+      "description": "ユーザーの一意キー。user_id はほぼNULLなので使わない。",
+      "expr": "user_pseudo_id"
+    }
+  },
+  "metrics": {
+    "セッション数": {
+      "expr": "COUNT(DISTINCT {session})",
+      "note": "同一ユーザーの複数訪問は別セッションとして数える。"
+    },
+    "ユーザー数": { "expr": "COUNT(DISTINCT {user})" },
+    "ページビュー数": {
+      "expr": "COUNTIF(event_name = 'page_view')",
+      "note": "行数ではなくページ表示イベントの数。"
+    },
+    "購入件数": {
+      "expr": "COUNT(DISTINCT ecommerce.transaction_id)",
+      "note": "取引IDの異なり数。GA4は同一取引で purchase を重複発火することがあるため、行数では多く出る。LOG-0065 で揺れた指標。",
+      "filter": "event_name = 'purchase'"
+    },
+    "購入金額": {
+      "expr": "SUM(ecommerce.purchase_revenue)",
+      "note": "items を UNNEST すると二重計上になるので、purchase 行のまま合計する。",
+      "filter": "event_name = 'purchase'"
+    },
+    "新規セッション": {
+      "expr": "COUNT(DISTINCT IF(is_first_session, {session}, NULL))",
+      "note": "『新規』は ga_session_number = 1 と定義する。first_visit イベントの有無では判定しない（両者は一致しない。LOG-0065 で揺れた指標）。is_first_session は (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number') = 1 を意味する。"
+    },
+    "リピートセッション": {
+      "expr": "COUNT(DISTINCT IF(NOT is_first_session, {session}, NULL))",
+      "note": "新規セッションの補集合。"
+    },
+    "エンゲージメント時間": {
+      "expr": "SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec'))",
+      "note": "ミリ秒。秒で出す場合は 1000 で割る。複数イベントに分散して入るため合算が要る。"
+    }
+  },
+  "dimensions": {
+    "チャネル": { "expr": "traffic_source.medium" },
+    "デバイス": { "expr": "device.category" },
+    "ページ": {
+      "expr": "(SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location')"
+    },
+    "日付": { "expr": "PARSE_DATE('%Y%m%d', event_date)" }
+  }
+}
