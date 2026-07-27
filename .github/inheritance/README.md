@@ -69,6 +69,13 @@ manifest; the foundation root has no manifest and skips only this child-specific
 Apply each row in order. Do not prepare a grandchild from an unmerged intermediate
 template.
 
+The transitional workflow is scheduled for Monday at 07:00 UTC and may also be started
+with `workflow_dispatch`. A schedule shared by every repository does not collapse
+multiple inheritance hops: a grandchild run at the same time still sees the previously
+merged intermediate parent. After the intermediate template PR merges, either start its
+children manually or wait for their next weekly schedule. Every resulting PR remains a
+separate review and must not auto-merge.
+
 | Step | Required evidence |
 |------|-------------------|
 | 1. Update a direct child | Template Sync PR names the direct parent and the exact 40-character source commit |

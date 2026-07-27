@@ -26,8 +26,12 @@ They are descriptive mappings. Binding behavior remains in
 | Guide | Purpose |
 |-------|---------|
 | [usage.md](usage.md) | Create a project from the foundation or develop the foundation itself |
-| [usage.ja.md](usage.ja.md) | Japanese human-facing version of the usage guide |
-| [ai-instruction-files.ja.md](ai-instruction-files.ja.md) | Japanese guide to the reusable AI instruction system |
+| [usage.ja.md](usage.ja.md) | Repository-owner-approved Japanese human-facing version of the usage guide (ADR-0008 exception) |
+| [ai-instruction-files.ja.md](ai-instruction-files.ja.md) | Repository-owner-approved Japanese guide to the reusable AI instruction system (ADR-0008 exception) |
+
+All other foundation guides are English. The two Japanese guides are descriptive and
+defer to the English rules and sources they reference. Another localized foundation
+guide requires a superseding ADR-0008 decision.
 
 **Update trigger:** update the matching guide whenever the project documentation
 inventory, structure, or DOC-030 trigger changes.
