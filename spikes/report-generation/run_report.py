@@ -63,9 +63,35 @@ CREATE TABLE events_* (
 );
 """
 
-PROMPT_RULES = f"""あなたは BigQuery 標準SQLでレポート用のクエリを書く。
+def metrics_block(path: Path) -> str:
+    """Render the metric definitions for the prompt, or '' when running without.
+
+    LOG-0065 measured the model writing correct SQL but choosing a different
+    reading of 「購入件数」 between runs at temperature 0. This block is the
+    intervention being tested: does declaring the definition make the answer
+    reproducible? In production these definitions are written by the agency and
+    live in the customer's Git (docs/positioning.md §2.8).
+    """
+    if not path.exists():
+        return ""
+    m = json.loads(path.read_text(encoding="utf-8"))
+    lines = ["", "指標定義（この定義に従うこと。ここに定義がある語は、自分で解釈し直さない）:"]
+    for name, g in m["grain"].items():
+        lines.append(f"- 粒度 {{{name}}} = {g['expr']}")
+    for name, spec in m["metrics"].items():
+        extra = f"  ※{spec['note']}" if spec.get("note") else ""
+        flt = f"  [対象行: {spec['filter']}]" if spec.get("filter") else ""
+        lines.append(f"- 指標「{name}」 = {spec['expr']}{flt}{extra}")
+    for name, spec in m["dimensions"].items():
+        lines.append(f"- 軸「{name}」 = {spec['expr']}")
+    return "\n".join(lines)
+
+
+def prompt_rules(metrics: str) -> str:
+    return f"""あなたは BigQuery 標準SQLでレポート用のクエリを書く。
 
 {SCHEMA_DDL}
+{metrics}
 
 規則:
 - テーブル参照は必ず `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` と完全修飾する。
@@ -94,7 +120,7 @@ SHAPE_HINT = {
 }
 
 
-def generate(client, model: str, section: dict, period: dict):
+def generate(client, model: str, section: dict, period: dict, rules: str):
     from google.genai import types
 
     shape = SHAPE_HINT[section["compare"]]
@@ -109,7 +135,7 @@ def generate(client, model: str, section: dict, period: dict):
         model=model,
         contents=ask,
         config=types.GenerateContentConfig(
-            system_instruction=PROMPT_RULES,
+            system_instruction=rules,
             response_mime_type="application/json",
             response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason"]},
             temperature=0,
@@ -242,12 +268,17 @@ def main() -> int:
     # models are not published to the regional endpoints this project can see.
     ap.add_argument("--region", default="global", help="Vertex region")
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--no-metrics", action="store_true",
+                    help="指標定義を渡さずに走らせる（LOG-0065 と同じ条件）")
     args = ap.parse_args()
     if not args.project:
         print("--project or GOOGLE_CLOUD_PROJECT is required", file=sys.stderr)
         return 2
 
     spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
+    metrics = "" if args.no_metrics else metrics_block(HERE / "metrics.json")
+    rules = prompt_rules(metrics)
+    print(f"metrics definitions: {'off' if not metrics else 'on'}", flush=True)
     from google import genai
     from google.cloud import bigquery
 
@@ -256,7 +287,7 @@ def main() -> int:
 
     results, passed, tokens = [], 0, {"input_tokens": 0, "output_tokens": 0}
     for s in spec["sections"]:
-        ans, usage = generate(client, args.model, s, spec["period"])
+        ans, usage = generate(client, args.model, s, spec["period"], rules)
         for k in tokens:
             tokens[k] += usage[k]
         sql = ans.get("sql")
