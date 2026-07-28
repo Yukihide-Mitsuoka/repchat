@@ -263,6 +263,55 @@ ADR-0013 C4（**出力形状も宣言する**）を、セクションごとの `
 あわせて**ADCのプリフライト**を入れました。期限切れが12セクション目でスタックトレースとして現れ、
 **「何も出力されない」と誤読**していたためです（LOG-0056 で `deploy.sh` に入れたのと同じ考え方）。
 
+## Evidenceで描画する手順（再現）
+
+> **この節は引き継ぎのために書きました（2026-07-28）。** これまで Evidence アプリは
+> **セッションの作業ディレクトリに置いていて、リポジトリに入っていません**。
+> セッションが変わると消えるので、**手順を残しておかないと再現できません**。
+> **これを1コマンドにまとめるのが次の作業**（[status.md](../../docs/status.md) §0.1）。
+
+```bash
+gcloud auth application-default login
+```
+
+**1. レポートを生成する**（`out/sources/` と `out/pages/` が出来る）
+
+```bash
+GOOGLE_CLOUD_PROJECT=kotonoha-bi-dev spikes/nl2sql-accuracy/.venv/bin/python spikes/report-generation/run_report.py
+```
+
+**2. Evidence アプリを用意する**（リポジトリ外の作業ディレクトリで）
+
+```bash
+npx degit evidence-dev/template ev-app && cd ev-app && npm install
+```
+
+**BigQuery コネクタは公式テンプレートに最初から入っています**（`@evidence-dev/bigquery`、確認済み）。
+別途インストールする必要はありません。テンプレートの要求は Node 18以上で、
+実際に通したのは **Node 24.18 / npm 11.16** です。
+
+**3. 生成物を流し込む**（テンプレート既定の `needful_things` ソースは残しておいてよい）
+
+```bash
+cp -r <repo>/spikes/report-generation/out/sources/ga4 sources/ && cp <repo>/spikes/report-generation/out/pages/monthly_report.md pages/
+```
+
+生成器が出す `sources/ga4/connection.yaml` は `type: bigquery` ／
+`authenticator: gcloud-cli` ／ `project_id: kotonoha-bi-dev` で、**鍵ファイルを置く必要はありません**。
+`evidence.config.yaml` はテンプレート既定のままで動きます。
+
+**4. ビルドして見る**
+
+```bash
+npm run sources && npm run build && npm run dev
+```
+
+`npm run sources` で12本すべてが materialize すれば成功です（`r5 ✔ 6 rows` のように出る）。
+ページは `/monthly_report`。
+
+**5.（任意）2テナントに配ってみる** — `tenant_serve.py` に `ev-app/build` を渡します。
+詳しくは後述の「実際に2テナントへ配った」。
+
 ## Evidence で実際に描画した（2026-07-28）
 
 positioning §5 が「**次は設計ではなくデモ**」と書いていたのに、生成した markdown を
