@@ -37,6 +37,7 @@
 # Release Please output and target-specific SAST invariants belong to RepChat.
 CHANGELOG.md
 scripts/tests/test_codeql_workflow.py
+scripts/tests/test_template_sync_ignore.py
 CLAUDE.md
 Makefile
 README.md
