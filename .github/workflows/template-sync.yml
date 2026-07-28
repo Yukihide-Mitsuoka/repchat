@@ -4,14 +4,14 @@
 #
 # OPT-IN and safe by default: the job only runs when the repository variable
 # TEMPLATE_SYNC_ENABLED is set to "true". So the template repo itself and any unmodified
-# downstream repo never run it (no spurious weekly failures). To enable sync in a
+# downstream repo never run it (no spurious scheduled failures). To enable sync in a
 # downstream repo: set repo variable TEMPLATE_SYNC_ENABLED=true and verify its direct
 # parent below.
 name: Template Sync
 
 on:
   schedule:
-    - cron: "0 7 * * 1"   # weekly, Monday 07:00 UTC
+    - cron: "17 7 * * *"   # daily, 07:17 UTC
   workflow_dispatch:
 
 permissions:
