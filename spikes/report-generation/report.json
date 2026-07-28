@@ -5,7 +5,7 @@
     "to": "20210131",
     "label": "2021年1月"
   },
-  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した12セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。 R13-R15 は metrics.json に定義が無い指標で、ADR-0013 C5（未定義なら生成せず問い返す）の測定用。",
+  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した12セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。 R13-R15 は metrics.json に定義が無い指標で、ADR-0013 C5（未定義なら生成せず問い返す）の測定用。 shape は ADR-0013 C4（出力形状も宣言する）の測定用。R9 の縦持ち/横持ちが実行ごとに揺れていた（LOG-0071）。",
   "sections": [
     {
       "id": "R1",
@@ -14,7 +14,13 @@
       "trap": "GA4にセッションの行は存在しない。user_pseudo_id と event_params の ga_session_id の組を一意に数える必要がある",
       "compare": "scalar",
       "component": "big_value",
-      "gold_sql": "SELECT COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+      "gold_sql": "SELECT COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "セッション数"
+        ]
+      }
     },
     {
       "id": "R2",
@@ -23,7 +29,13 @@
       "trap": "user_id はほぼNULL。user_pseudo_id を数える",
       "compare": "scalar",
       "component": "big_value",
-      "gold_sql": "SELECT COUNT(DISTINCT user_pseudo_id) AS users FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+      "gold_sql": "SELECT COUNT(DISTINCT user_pseudo_id) AS users FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "ユーザー数"
+        ]
+      }
     },
     {
       "id": "R3",
@@ -32,7 +44,13 @@
       "trap": "行数ではなく event_name='page_view' の行数",
       "compare": "scalar",
       "component": "big_value",
-      "gold_sql": "SELECT COUNT(*) AS page_views FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'page_view'"
+      "gold_sql": "SELECT COUNT(*) AS page_views FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'page_view'",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "ページビュー数"
+        ]
+      }
     },
     {
       "id": "R4",
@@ -41,7 +59,14 @@
       "trap": "購入件数の定義。metrics.json が『取引IDの異なり数』と宣言しており、行数で数えると多く出る（LOG-0065 で揺れた指標）",
       "compare": "rows_ordered",
       "component": "table",
-      "gold_sql": "SELECT COUNT(DISTINCT ecommerce.transaction_id) AS purchases, ROUND(SUM(ecommerce.purchase_revenue), 2) AS revenue FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'purchase'"
+      "gold_sql": "SELECT COUNT(DISTINCT ecommerce.transaction_id) AS purchases, ROUND(SUM(ecommerce.purchase_revenue), 2) AS revenue FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'purchase'",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "購入件数",
+          "購入金額"
+        ]
+      }
     },
     {
       "id": "R5",
@@ -50,7 +75,14 @@
       "trap": "セッションの数え方（R1）と GROUP BY の組み合わせ",
       "compare": "rows_ordered",
       "component": "table",
-      "gold_sql": "SELECT traffic_source.medium AS medium, COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY sessions DESC, medium"
+      "gold_sql": "SELECT traffic_source.medium AS medium, COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY sessions DESC, medium",
+      "shape": {
+        "rows": "チャネルごとに1行、セッション数の多い順",
+        "columns": [
+          "チャネル",
+          "セッション数"
+        ]
+      }
     },
     {
       "id": "R6",
@@ -59,7 +91,14 @@
       "trap": "device は STRUCT。UNNEST は不要",
       "compare": "rows_unordered",
       "component": "table",
-      "gold_sql": "SELECT device.category AS device_category, COUNT(DISTINCT user_pseudo_id) AS users FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY device_category ORDER BY users DESC, device_category"
+      "gold_sql": "SELECT device.category AS device_category, COUNT(DISTINCT user_pseudo_id) AS users FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY device_category ORDER BY users DESC, device_category",
+      "shape": {
+        "rows": "デバイスごとに1行、ユーザー数の多い順",
+        "columns": [
+          "デバイス",
+          "ユーザー数"
+        ]
+      }
     },
     {
       "id": "R7",
@@ -68,7 +107,14 @@
       "trap": "page_location は event_params の中の string_value。UNNEST が必要",
       "compare": "rows_ordered",
       "component": "table",
-      "gold_sql": "SELECT (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location, COUNT(*) AS views FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'page_view' GROUP BY page_location ORDER BY views DESC, page_location LIMIT 10"
+      "gold_sql": "SELECT (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location') AS page_location, COUNT(*) AS views FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'page_view' GROUP BY page_location ORDER BY views DESC, page_location LIMIT 10",
+      "shape": {
+        "rows": "ページごとに1行、閲覧数の多い順に10行",
+        "columns": [
+          "ページ",
+          "ページビュー数"
+        ]
+      }
     },
     {
       "id": "R8",
@@ -77,7 +123,14 @@
       "trap": "event_date は 'YYYYMMDD' の STRING。日付型への変換が要る",
       "compare": "rows_ordered",
       "component": "line",
-      "gold_sql": "SELECT PARSE_DATE('%Y%m%d', event_date) AS day, COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY day ORDER BY day"
+      "gold_sql": "SELECT PARSE_DATE('%Y%m%d', event_date) AS day, COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY day ORDER BY day",
+      "shape": {
+        "rows": "日付ごとに1行、日付の昇順",
+        "columns": [
+          "日付",
+          "セッション数"
+        ]
+      }
     },
     {
       "id": "R9",
@@ -86,7 +139,15 @@
       "trap": "イベントをまたいでセッションを串刺しにする必要がある。単純な GROUP BY では出ない",
       "compare": "rows_ordered",
       "component": "table",
-      "gold_sql": "WITH s AS (SELECT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS sid, event_name FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131') SELECT COUNT(DISTINCT IF(event_name='view_item', sid, NULL)) AS view_item, COUNT(DISTINCT IF(event_name='add_to_cart', sid, NULL)) AS add_to_cart, COUNT(DISTINCT IF(event_name='purchase', sid, NULL)) AS purchase FROM s"
+      "gold_sql": "WITH s AS (SELECT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS sid, event_name FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131') SELECT COUNT(DISTINCT IF(event_name='view_item', sid, NULL)) AS view_item, COUNT(DISTINCT IF(event_name='add_to_cart', sid, NULL)) AS add_to_cart, COUNT(DISTINCT IF(event_name='purchase', sid, NULL)) AS purchase FROM s",
+      "shape": {
+        "rows": "**1行**（段階ごとに行を分けず、横に並べる）",
+        "columns": [
+          "商品を見たセッション数",
+          "カートに入れたセッション数",
+          "購入したセッション数"
+        ]
+      }
     },
     {
       "id": "R10",
@@ -95,7 +156,14 @@
       "trap": "ga_session_number が必要。session_start イベントだけ見ると取りこぼす",
       "compare": "rows_unordered",
       "component": "table",
-      "gold_sql": "SELECT CASE WHEN sn = 1 THEN '新規' ELSE 'リピート' END AS visit_type, COUNT(DISTINCT sid) AS sessions FROM (SELECT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS sid, MAX((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number')) AS sn FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY sid) GROUP BY visit_type ORDER BY visit_type"
+      "gold_sql": "SELECT CASE WHEN sn = 1 THEN '新規' ELSE 'リピート' END AS visit_type, COUNT(DISTINCT sid) AS sessions FROM (SELECT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS sid, MAX((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number')) AS sn FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY sid) GROUP BY visit_type ORDER BY visit_type",
+      "shape": {
+        "rows": "区分ごとに1行",
+        "columns": [
+          "区分",
+          "セッション数"
+        ]
+      }
     },
     {
       "id": "R11",
@@ -104,7 +172,13 @@
       "trap": "ユーザー単位に畳んでからの集計。セッション数を数える式をネストする必要がある",
       "compare": "scalar",
       "component": "big_value",
-      "gold_sql": "SELECT ROUND(COUNTIF(n >= 2) / COUNT(*) * 100, 2) AS repeat_user_pct FROM (SELECT user_pseudo_id, COUNT(DISTINCT (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id')) AS n FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY user_pseudo_id)"
+      "gold_sql": "SELECT ROUND(COUNTIF(n >= 2) / COUNT(*) * 100, 2) AS repeat_user_pct FROM (SELECT user_pseudo_id, COUNT(DISTINCT (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id')) AS n FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY user_pseudo_id)",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "リピートユーザー率（％）"
+        ]
+      }
     },
     {
       "id": "R12",
@@ -113,7 +187,13 @@
       "trap": "engagement_time_msec は複数イベントに分散して入る。合計してからセッション数で割り、ミリ秒を秒に直す",
       "compare": "scalar",
       "component": "big_value",
-      "gold_sql": "SELECT ROUND(SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec')) / COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) / 1000, 2) AS avg_engagement_sec FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+      "gold_sql": "SELECT ROUND(SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec')) / COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) / 1000, 2) AS avg_engagement_sec FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
+      "shape": {
+        "rows": "1行",
+        "columns": [
+          "セッションあたり平均エンゲージメント時間（秒）"
+        ]
+      }
     },
     {
       "id": "R13",

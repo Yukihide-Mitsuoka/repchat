@@ -103,7 +103,10 @@ def prompt_rules(metrics: str) -> str:
 - テーブル参照は必ず `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` と完全修飾する。
 - 期間の絞り込みは必ず `_TABLE_SUFFIX BETWEEN '<from>' AND '<to>'` で行う（スキャン量を抑えるため）。
 - GA4 の生エクスポートには「セッション」という行は存在しない。
-- 出力する列には、レポートにそのまま出せる分かりやすい別名を付ける。
+- **列の別名は ASCII の snake_case にする**（`sessions`, `repeat_user_pct` など）。
+  BigQuery のフィールド名には日本語や記号（全角括弧など）を使えない。
+- **指定された列名は「表示名」であって、SQLの識別子ではない。** 表示名はレポートを組み立てる
+  側が付けるので、SQLには**指定された順序**だけを守ればよい。
 - SELECT 文のみ。DDL/DML は書かない。
 - **指標定義に無い語を求められたら、推測でSQLを書かない。** `sql` を空文字にし、
   `undefined_terms` にその語を入れて返す（ADR-0013 C5）。**別の指標の式を流用して代用しない。**
@@ -144,9 +147,21 @@ SHAPE_HINT = {
 def generate(client, model: str, section: dict, period: dict, rules: str):
     from google.genai import types
 
-    shape = SHAPE_HINT[section["compare"]]
-    if section["component"] == "line":
-        shape = "1列目に日付、2列目に値の、2列で返すこと。"
+    # ADR-0013 C4. A declared shape beats a generic hint: LOG-0071 measured the
+    # funnel coming back long on one run and wide on the next, with identical
+    # numbers both times. Both are legitimate reports, so nothing decided it.
+    if section.get("shape"):
+        sp = section["shape"]
+        cols = "、".join(f"「{c}」" for c in sp["columns"])
+        shape = (
+            f"列は {cols} の順に、この数だけ返すこと。"
+            "これらは表示名なので、SQLの別名は ASCII の snake_case にする。"
+            f"行は {sp['rows']}。"
+        )
+    else:
+        shape = SHAPE_HINT[section["compare"]]
+        if section["component"] == "line":
+            shape = "1列目に日付、2列目に値の、2列で返すこと。"
     ask = (
         f"{section['text']}\n"
         f"（対象期間: _TABLE_SUFFIX は '{period['from']}' から '{period['to']}'）\n"
@@ -197,9 +212,17 @@ def exec_bq(bq, sql: str):
         # schema would triple the scan cost of every section.
         return ([tuple(r.values()) for r in it], [f.name for f in it.schema]), None
     except Exception as e:  # noqa: BLE001 — the message is the diagnostic
-        # The class name matters: a bare timeout stringifies to "", which made a
-        # transient failure indistinguishable from a wrong query on the first run.
-        return None, f"bq error: {type(e).__name__}: {str(e)[:200]}"
+        # Take the reason out of the exception rather than truncating its front:
+        # a BadRequest stringifies as a long API URL first, so a head-clipped
+        # message shows the endpoint and hides the syntax error. Fourth time this
+        # session that a discarded diagnostic cost a debugging round.
+        why = ""
+        errs = getattr(e, "errors", None)
+        if errs and isinstance(errs, list) and isinstance(errs[0], dict):
+            why = errs[0].get("message", "")
+        if not why:
+            why = getattr(e, "message", "") or str(e)
+        return None, f"bq error: {type(e).__name__}: {why[:220]}"
 
 
 def _norm(c):
