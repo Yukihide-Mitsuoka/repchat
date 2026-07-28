@@ -49,7 +49,7 @@ Read only what the task requires. Do not load all files for every task.
 
 | Task | Read (in order) | Skill |
 |------|-----------------|-------|
-| Any task (baseline) | `CLAUDE.md`, guardrails.md | — |
+| Any task (baseline) | `CLAUDE.md`, guardrails.md, `docs/development-handoff.md` when present | — |
 | Requirements definition | mission.md, documentation.md | `.skills/requirements.skill.md` |
 | New feature | workflow.md, architecture.md, coding-rules.md, testing.md | `.skills/feature.skill.md` |
 | Bug fix | workflow.md, testing.md | `.skills/bugfix.skill.md` |

@@ -32,5 +32,6 @@ process in `.skills/architecture.skill.md`.
 | [0007](0007-constrain-transitional-template-sync.md) | Constrain transitional Template Sync | accepted | 2026-07-22 |
 | [0008](0008-enforce-english-foundation-docs-with-named-exceptions.md) | Enforce English foundation docs with two named Japanese exceptions | accepted | 2026-07-22 |
 | [0009](0009-place-project-document-singletons-and-collections.md) | Place project document singletons and collections by scope | accepted | 2026-07-26 |
+| [0010](0010-separate-roadmap-work-tracking-and-handoff.md) | Separate roadmap, work tracking, and handoff | accepted | 2026-07-28 |
 
 <!-- Append new ADRs to this table (newest last). -->

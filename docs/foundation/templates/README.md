@@ -14,6 +14,7 @@ fill it, and delete the guidance comments. Each template names the skill that dr
 | [glossary.md](glossary.md) | `docs/glossary.md` with project-specific ubiquitous language | [.ai/coding-rules.md](../../../.ai/coding-rules.md) |
 | [requirements.md](requirements.md) | A requirements definition document | [.skills/requirements.skill.md](../../../.skills/requirements.skill.md) |
 | [roadmap.md](roadmap.md) | `docs/roadmap.md` with project direction and sequencing | [.ai/documentation.md](../../../.ai/documentation.md) |
+| [development-handoff.md](development-handoff.md) | `docs/development-handoff.md` with the resumable current snapshot | [.ai/documentation.md](../../../.ai/documentation.md) |
 
 Templates follow the documentation rules ([.ai/documentation.md](../../../.ai/documentation.md)),
 especially the writing style in DOC-002. After template instantiation, AI agents translate
