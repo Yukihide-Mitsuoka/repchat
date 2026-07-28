@@ -34,6 +34,9 @@
 .skills/security.skill.md
 .skills/test.skill.md
 .templatesyncignore
+# Release Please output and target-specific SAST invariants belong to RepChat.
+CHANGELOG.md
+scripts/tests/test_codeql_workflow.py
 CLAUDE.md
 Makefile
 README.md

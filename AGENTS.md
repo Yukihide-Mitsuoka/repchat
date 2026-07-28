@@ -21,9 +21,6 @@ Minimum protocol, in order:
 3. Use the task routing table in [.ai/README.md](.ai/README.md) to load only the rules
    and skill relevant to your current task.
 4. Use only the canonical `make` targets for build/test/lint (CLAUDE.md §11).
-5. Read [docs/status.md](docs/status.md) §0 — **where the work currently is**, and which
-   decision-log entries are worth reading to resume. Steps 1–4 give you the rules; without
-   this one you will re-derive months of settled context, or act on a stale premise.
 
 Conflict resolution: guardrails > security > CLAUDE.md/AGENTS.md > other `.ai/` > `docs/`.
 Never resolve a conflict silently — apply the higher rule and report it.

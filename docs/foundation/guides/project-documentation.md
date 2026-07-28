@@ -24,6 +24,7 @@ Binding rules live in [`.ai/`](../../../.ai/); inherited decisions live in the
 | `docs/runbook/` | Step-by-step incident/ops procedures | 3am emergency |
 | `docs/troubleshooting/` | Known failure modes → diagnosis → fix | "it's broken, what now?" |
 | `docs/roadmap.md` | Direction and planned milestones | prioritize work |
+| `docs/development-handoff.md` | Current resumable snapshot for active work spanning sessions or agents | resume work safely |
 | `docs/glossary.md` | Project ubiquitous language dictionary | name things correctly |
 
 Contribution guide: [CONTRIBUTING.md](../../../CONTRIBUTING.md).
@@ -60,6 +61,26 @@ such as `docs/roadmap.md` and `docs/glossary.md` at the top level. Use categoriz
 such as `docs/architecture/data-flow.md` and `docs/runbook/credential-rotation.md` for
 repeatable or task-specific documents. Do not add an empty directory or local index in
 anticipation of future content.
+
+## Keep direction, tasks, and handoff separate
+
+| Concern | Authoritative location | Content |
+|---------|------------------------|---------|
+| Project direction | `docs/roadmap.md` | `Now` / `Next` / `Later`, milestone outcomes, completion evidence |
+| Live task status and checklists | GitHub issues and milestones | owners, task-level progress, acceptance and completion checklists |
+| Resumable current snapshot | `docs/development-handoff.md` | active references, blockers, next actions, last verified baseline |
+| Durable decisions | `docs/adr/`, `.ai/decision-log.md` | decision, rationale, consequences |
+
+Create `docs/development-handoff.md` from the foundation template when active work will
+continue across sessions or agents. Read it at task intake and update it before transfer
+or when its active references, blockers, next actions, or verification status change.
+Keep it short and link to the authoritative sources above.
+
+Roadmaps are reviewed weekly while a project is active unless the repository declares a
+different cadence. Each current outcome links to a milestone or tracking issue that owns
+its completion checklist. A roadmap review checks completed outcomes, records an
+absolute completion date plus evidence link, re-sequences direction, and removes stale
+detail; it does not copy individual completed tasks from GitHub.
 
 The guides in this directory define structure and **update triggers** without placing
 foundation-owned README files in project-owned paths. The doc-update matrix (DOC-030)
