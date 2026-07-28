@@ -18,6 +18,20 @@ an ADR justifies it.
 | Deployment target | Cloudflare Workers for the edge gate (ADR-0006 — decided) + CDN for the shell; LLM via Vertex AI (Gemini 3.5 Flash default, Opus 4.8 fallback — LOG-0022) |
 | Architecture docs | `docs/architecture/` |
 
+## Project boundary: artifact publication (ADR-0015)
+
+- Customer Git is an ownership and build-time publication boundary. Request handlers MUST
+  NOT call a Git provider, clone a repository, install dependencies, or build Evidence.
+- One validated `ArtifactBundle` schema and one build/activation pipeline serve both the
+  customer-Git default and the managed fallback. Only the publisher adapter varies.
+- A revision becomes readable only after its pinned-renderer build succeeds. The control
+  plane then activates the immutable artifact revision and `report_version` together;
+  failures continue serving the last-known-good revision.
+- GitHub access uses a GitHub App installed on selected repositories. Persistent PATs,
+  customer-user tokens, and shared deploy keys are prohibited for this boundary.
+- Customer repository contents are untrusted build input. The builder reads only allowed
+  artifact paths and never executes repository-supplied code or package/workflow files.
+
 ## ARC-001: Canonical directory layout
 
 ```
