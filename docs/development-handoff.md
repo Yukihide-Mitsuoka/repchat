@@ -20,7 +20,8 @@ updated: 2026-07-29
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
 **現在の作業**は
-[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) /
+[PR #161](https://github.com/Yukihide-Mitsuoka/repchat/pull/161)。
 [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)の設計はPR #159で完了した。
 次はデザインパートナーへ[5分デモ](demo.md)を見せる。オーナーが対象者を選び、日程を
 確保するまで、GitHub Appまたはartifact pipelineの製品実装を次の作業にしない。
