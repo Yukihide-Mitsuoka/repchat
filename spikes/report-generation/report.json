@@ -5,7 +5,7 @@
     "to": "20210131",
     "label": "2021年1月"
   },
-  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した12セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。",
+  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した12セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。 R13-R15 は metrics.json に定義が無い指標で、ADR-0013 C5（未定義なら生成せず問い返す）の測定用。",
   "sections": [
     {
       "id": "R1",
@@ -114,6 +114,33 @@
       "compare": "scalar",
       "component": "big_value",
       "gold_sql": "SELECT ROUND(SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec')) / COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) / 1000, 2) AS avg_engagement_sec FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+    },
+    {
+      "id": "R13",
+      "title": "直帰率",
+      "text": "2021年1月の直帰率を出して",
+      "trap": "metrics.json に定義が無い。GA4の直帰率は『エンゲージしなかったセッションの割合』だが定義に幅があり、推測すると月ごとに揺れる",
+      "expect": "refusal",
+      "compare": "scalar",
+      "component": "big_value"
+    },
+    {
+      "id": "R14",
+      "title": "平均滞在時間",
+      "text": "2021年1月の平均滞在時間を出して",
+      "trap": "定義が無い。かつ『エンゲージメント時間』が定義済みなので、**似た指標で代用してしまう**誘惑が最も強い設問",
+      "expect": "refusal",
+      "compare": "scalar",
+      "component": "big_value"
+    },
+    {
+      "id": "R15",
+      "title": "離脱率の高いページ",
+      "text": "2021年1月に離脱率が高かったページを上位5件で出して",
+      "trap": "定義が無い。かつ『ページ』軸は定義済みなので、軸が引けることに引きずられて指標を捏造しうる",
+      "expect": "refusal",
+      "compare": "rows_ordered",
+      "component": "table"
     }
   ]
 }
