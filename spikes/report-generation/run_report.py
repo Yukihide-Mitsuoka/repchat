@@ -78,12 +78,18 @@ def metrics_block(path: Path) -> str:
     lines = ["", "指標定義（この定義に従うこと。ここに定義がある語は、自分で解釈し直さない）:"]
     for name, g in m["grain"].items():
         lines.append(f"- 粒度 {{{name}}} = {g['expr']}")
+    # LOG-0070: without aliases the model refused 「新規訪問」 because the
+    # definition is named 「新規セッション」 — it matched strings, not meaning.
+    def alias(spec):
+        a = spec.get("aliases")
+        return f"  [同義: {'、'.join(a)}]" if a else ""
+
     for name, spec in m["metrics"].items():
         extra = f"  ※{spec['note']}" if spec.get("note") else ""
         flt = f"  [対象行: {spec['filter']}]" if spec.get("filter") else ""
-        lines.append(f"- 指標「{name}」 = {spec['expr']}{flt}{extra}")
+        lines.append(f"- 指標「{name}」 = {spec['expr']}{flt}{alias(spec)}{extra}")
     for name, spec in m["dimensions"].items():
-        lines.append(f"- 軸「{name}」 = {spec['expr']}")
+        lines.append(f"- 軸「{name}」 = {spec['expr']}{alias(spec)}")
     return "\n".join(lines)
 
 
@@ -100,8 +106,12 @@ def prompt_rules(metrics: str) -> str:
 - 出力する列には、レポートにそのまま出せる分かりやすい別名を付ける。
 - SELECT 文のみ。DDL/DML は書かない。
 - **指標定義に無い語を求められたら、推測でSQLを書かない。** `sql` を空文字にし、
-  `undefined_terms` にその語を入れて返す（ADR-0013 C5）。似た定義済みの指標で代用しない。
+  `undefined_terms` にその語を入れて返す（ADR-0013 C5）。**別の指標の式を流用して代用しない。**
   読み手には、定義済みの数字と推測された数字の区別がつかないため。
+- ただし判定は**字面ではなく意味**で行う。**同義として挙げられた語は、その指標を指している。**
+- **定義済みの指標を、上のテーブルの列で絞り込む・分割するのは「代用」ではない**（例:
+  「商品を見たセッション数」は、セッション数を `event_name = 'view_item'` で絞ったもの）。
+  指標の定義式そのものを変えなければ、合成してよい。
 - 定義がある語だけで答えられる場合は `undefined_terms` を空配列にする。
 - 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...]}} の形で返す。
   reason は日本語1文。

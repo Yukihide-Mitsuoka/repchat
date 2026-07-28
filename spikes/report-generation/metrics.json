@@ -1,5 +1,5 @@
 {
-  "note": "指標定義。LOG-0065 が示したのは『SQLは書けるが定義が揺れる』で、揺れたのは購入件数と新規判定だった。ここはその2つを含む最小の定義層で、これを渡すと安定するかを測るためのもの。本番では代理店が書き、顧客のGitに置かれる想定（docs/positioning.md §2.8）。",
+  "note": "指標定義。LOG-0065 が示したのは『SQLは書けるが定義が揺れる』で、揺れたのは購入件数と新規判定だった。ここはその2つを含む最小の定義層で、これを渡すと安定するかを測るためのもの。本番では代理店が書き、顧客のGitに置かれる想定（docs/positioning.md §2.8）。 aliases は LOG-0070 の過剰拒否（『新規訪問』と『新規セッション』の字面差で拒否）への対応。",
   "grain": {
     "session": {
       "description": "セッションの一意キー。GA4の生エクスポートにセッションの行は存在しないため、この式で代用する。",
@@ -13,42 +13,119 @@
   "metrics": {
     "セッション数": {
       "expr": "COUNT(DISTINCT {session})",
-      "note": "同一ユーザーの複数訪問は別セッションとして数える。"
+      "note": "同一ユーザーの複数訪問は別セッションとして数える。",
+      "aliases": [
+        "訪問数",
+        "セッション",
+        "visits",
+        "sessions"
+      ]
     },
-    "ユーザー数": { "expr": "COUNT(DISTINCT {user})" },
+    "ユーザー数": {
+      "expr": "COUNT(DISTINCT {user})",
+      "aliases": [
+        "訪問者数",
+        "ユニークユーザー",
+        "UU",
+        "users"
+      ]
+    },
     "ページビュー数": {
       "expr": "COUNTIF(event_name = 'page_view')",
-      "note": "行数ではなくページ表示イベントの数。"
+      "note": "行数ではなくページ表示イベントの数。",
+      "aliases": [
+        "PV",
+        "PV数",
+        "閲覧数",
+        "ページ閲覧数",
+        "pageviews"
+      ]
     },
     "購入件数": {
       "expr": "COUNT(DISTINCT ecommerce.transaction_id)",
       "note": "取引IDの異なり数。GA4は同一取引で purchase を重複発火することがあるため、行数では多く出る。LOG-0065 で揺れた指標。",
-      "filter": "event_name = 'purchase'"
+      "filter": "event_name = 'purchase'",
+      "aliases": [
+        "注文件数",
+        "コンバージョン数",
+        "CV数",
+        "トランザクション数",
+        "purchases"
+      ]
     },
     "購入金額": {
       "expr": "SUM(ecommerce.purchase_revenue)",
       "note": "items を UNNEST すると二重計上になるので、purchase 行のまま合計する。",
-      "filter": "event_name = 'purchase'"
+      "filter": "event_name = 'purchase'",
+      "aliases": [
+        "売上",
+        "売上金額",
+        "収益",
+        "revenue"
+      ]
     },
     "新規セッション": {
       "expr": "COUNT(DISTINCT IF(is_first_session, {session}, NULL))",
-      "note": "『新規』は ga_session_number = 1 と定義する。first_visit イベントの有無では判定しない（両者は一致しない。LOG-0065 で揺れた指標）。is_first_session は (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number') = 1 を意味する。"
+      "note": "『新規』は ga_session_number = 1 と定義する。first_visit イベントの有無では判定しない（両者は一致しない。LOG-0065 で揺れた指標）。is_first_session は (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number') = 1 を意味する。",
+      "aliases": [
+        "新規訪問",
+        "初回訪問",
+        "新規",
+        "新規ユーザーの訪問"
+      ]
     },
     "リピートセッション": {
       "expr": "COUNT(DISTINCT IF(NOT is_first_session, {session}, NULL))",
-      "note": "新規セッションの補集合。"
+      "note": "新規セッションの補集合。",
+      "aliases": [
+        "リピート訪問",
+        "再訪問",
+        "リピート",
+        "既存ユーザーの訪問"
+      ]
     },
     "エンゲージメント時間": {
       "expr": "SUM((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'engagement_time_msec'))",
-      "note": "ミリ秒。秒で出す場合は 1000 で割る。複数イベントに分散して入るため合算が要る。"
+      "note": "ミリ秒。秒で出す場合は 1000 で割る。複数イベントに分散して入るため合算が要る。",
+      "aliases": [
+        "滞在時間",
+        "エンゲージメント",
+        "engagement time"
+      ]
     }
   },
   "dimensions": {
-    "チャネル": { "expr": "traffic_source.medium" },
-    "デバイス": { "expr": "device.category" },
-    "ページ": {
-      "expr": "(SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location')"
+    "チャネル": {
+      "expr": "traffic_source.medium",
+      "aliases": [
+        "流入元",
+        "メディア",
+        "medium"
+      ]
     },
-    "日付": { "expr": "PARSE_DATE('%Y%m%d', event_date)" }
+    "デバイス": {
+      "expr": "device.category",
+      "aliases": [
+        "端末",
+        "デバイスカテゴリ",
+        "device"
+      ]
+    },
+    "ページ": {
+      "expr": "(SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location')",
+      "aliases": [
+        "URL",
+        "ページURL",
+        "ページパス"
+      ]
+    },
+    "日付": {
+      "expr": "PARSE_DATE('%Y%m%d', event_date)",
+      "aliases": [
+        "日",
+        "日別",
+        "date"
+      ]
+    }
   }
 }
