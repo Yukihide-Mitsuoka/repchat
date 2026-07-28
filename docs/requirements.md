@@ -2,7 +2,7 @@
 id: requirements
 title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
-updated: 2026-07-28
+updated: 2026-07-29
 ---
 
 <!--
@@ -82,6 +82,7 @@ updated: 2026-07-28
 - 動的ダッシュボード配信＋キャッシュ（Evidenceをレンダリングコアに、認可ゲート経由で配信）
 - **シンプルな2〜3段ロール**（管理者／編集者／閲覧者）※Discord風のカスタムロールはPhase2へ延期
 - AIレポート生成（NL→SQL→検証→描画）＋対話型問い返し
+- 顧客所有Gitへの生成物publish（GitHub Appによる選択repository接続）。repositoryを持たない顧客はmanaged fallback
 - 使用量メータリング（内部計測。顧客向け課金表示はまだ出さない or 内包）
 - 監査ログ（誰が・いつ・どのデータに触れたか）※セキュリティ証明の土台
 
@@ -157,6 +158,17 @@ updated: 2026-07-28
 
 ### 4.5 ロール（Phase1は簡易版）
 - 管理者／編集者／閲覧者の3段。カスタムロールはPhase2。
+
+### 4.6 生成物の所有とGitHub接続
+
+- 顧客Gitには生成ページ、SQL、manifestだけを置き、固定rendererと組み合わせてbuildする
+- GitHubは生成・build経路だけで使い、閲覧リクエストから参照しない
+- GitHub Appを選択repositoryだけへinstallし、長期PATまたは共有deploy keyを使わない
+- 顧客Gitとmanaged fallbackは同じ生成・検証・build・有効化pipelineを使う
+- build成功後だけ新しいrevisionを有効化し、失敗時は直前の成功版を配信する
+- 初期3〜5社は管理者による手動オンボーディングでよく、一般閲覧者へGit操作を要求しない
+
+詳細は[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)。
 
 ---
 

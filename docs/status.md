@@ -8,7 +8,8 @@ updated: 2026-07-29
 
 **何が出来ていて、何が未着手か**を一枚で示します。優先順位は[ロードマップ](roadmap.md)、
 決定の経緯は[decision-log](../.ai/decision-log.md)と[discovery-log](discovery-log.md)、
-設計の中身は[ADR-0005](adr/0005-cache-and-authorization-architecture.md)と
+設計の中身は[ADR-0005](adr/0005-cache-and-authorization-architecture.md)、
+[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)と
 [system-design](system-design.md)が正本です。この文書はそれらへの索引を兼ねた現在地です。
 
 更新契機：モジュール完成、実環境検証の完了、フェーズ移行。
@@ -18,7 +19,7 @@ updated: 2026-07-29
 ## 0. 再開手順（新しいAIセッション向け）
 
 規約は [AGENTS.md](../AGENTS.md) → [CLAUDE.md](../CLAUDE.md) → [.ai/README.md](../.ai/README.md)
-の順。**この節は「規約」ではなく「今どこにいるか」**で、決定ログが89件あり全部読むのは非効率なため置く。
+の順。**この節は「規約」ではなく「今どこにいるか」**で、LOG番号が0082まであり全部読むのは非効率なため置く。
 
 **この順で読めば同期できる:**
 
@@ -29,6 +30,8 @@ updated: 2026-07-29
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
 **今の作業スレッド**: 「デモを見せられる形」は**完了**（LOG-0081）。
+顧客Gitへの配送方式は[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)として
+オーナー承認済み（LOG-0082）。GitHub Appとartifact pipelineの実装は未着手。
 [ADR-0013](adr/0013-metric-definitions-live-in-our-own-layer.md) はオーナー承認済みで、
 **日本語の記述 → SQL生成 → 検証 → Evidenceで実データ描画 → テナント別配信**まで実測済み。
 次は[5分説明](demo.md)をデザインパートナーへ実際に見せ、利用仮説を人間から測る。
@@ -37,16 +40,14 @@ updated: 2026-07-29
 
 | | 手 | 状態 |
 |---|---|---|
-| 1 | **C7 の決定**（定義と生成物の置き場所） | **完了**（LOG-0077）。[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) `accepted`。**ページとソース定義は顧客のリポジトリ／指標定義はこちら側**。顧客はGitを操作しない（LookML型） |
+| 1 | **C7 の決定**（定義と生成物の置き場所） | **完了**（LOG-0077/0082）。ページ・SQL・manifestは顧客Git、指標定義はこちら側。Gitはbuild時だけ使い、閲覧経路には入れない（ADR-0014/0015） |
 | 2 | **シェル/データ分離との結線** | **完了**（LOG-0076）。1度だけビルドしたシェルを2テナントに配り、**シェルHTMLは byte 同一・差し替えた2件だけが別の数値**を実測 |
 | 3 | **`src/` への移植** | **未着手**。生成もEvidence統合も、まだスパイクにしか無い |
 
-**依存関係の訂正**: 当初「C7 が2の形を決めるので先」と書いたが、**2 は C7 に依存しなかった**
-（どちらの案でもビルドするのはこちら側で、置き場所はビルドの**入力元**の話）。**3 も同様に依存しない。**
-ADR-0014 は未決のままでも 3 は進められる。
-
-**ADR-0014 が決まったことで、3 の中身が変わった。** 生成物の配置先は**顧客のリポジトリが既定**なので、
-移植には **Git provider 連携**（コミットAPI・webhook）と**こちらホストのフォールバックの2経路**が要る。
+**配置と閲覧は独立した境界。** 顧客Gitは所有・build入力であり、シェル/データ分離の閲覧経路には
+入らない。`src/`移植では、同じArtifactBundle・検証・build・有効化pipelineに
+GitHub publisherとmanaged publisherを接続する。build成功後だけcommit SHAと`report_version`を有効化し、
+失敗時は直前の成功版を配信する。詳細はADR-0015。
 
 ### 0.1 完了 — 「デモを見せられる形にする」（2026-07-29）
 
@@ -181,7 +182,7 @@ ADR-0014 は未決のままでも 3 は進められる。
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
-| **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) `accepted`、LOG-0077）。**ページとソース定義＝顧客のリポジトリ／指標定義＝こちら側**。顧客はGitを操作せず、こちらが書き込む | 実装は未着手。**Git provider 連携**＋**こちらホストのフォールバック**の2経路。コミット単位（直接／PR）は実装時に決める |
+| **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
 | **デプロイ（Cloudflare側）** | **完了・ライブ稼働中**（LOG-0059）。KV4本・両URL・共有シークレットを設定し `gate.aeworks.workers.dev` で稼働。**Workers → Cloud Run → Neon → BigQuery を実HTTP・実JWTで貫通するライブE2Eが10/10**（越境ゼロを含む） | — |
 | **顧客向け要素** | 未着手 | オンボーディング手順、セキュリティ説明資料、撤退時データ削除 |
