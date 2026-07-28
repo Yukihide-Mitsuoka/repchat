@@ -27,6 +27,13 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
     def test_legacy_sync_excludes_every_workflow(self):
         self.assertIn(".github/workflows/**", self.entries())
 
+    def test_project_release_history_and_codeql_invariant_are_target_owned(self):
+        entries = self.entries()
+
+        self.assertIn("CHANGELOG.md", entries)
+        self.assertIn("scripts/tests/test_codeql_workflow.py", entries)
+        self.assertIn("scripts/tests/test_template_sync_ignore.py", entries)
+
     def test_sync_pr_records_the_source_commit_used_by_the_action(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
 
