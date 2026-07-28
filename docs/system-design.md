@@ -1,14 +1,15 @@
 ---
 id: system-design
 title: RepChat System Design — Diagrams & Schema
-updated: 2026-07-22
+updated: 2026-07-29
 ---
 
 # RepChat システム設計図集（アーキテクチャ図・シーケンス図・DB設計）
 
-> **規範は [ADR-0005](adr/0005-cache-and-authorization-architecture.md) と
-> [ADR-0009](adr/0009-adopt-portable-saas-design-constraints.md)**。
-> 本書は両ADRと [requirements.md](requirements.md) を図とスキーマに展開した
+> **規範は [ADR-0005](adr/0005-cache-and-authorization-architecture.md)、
+> [ADR-0009](adr/0009-adopt-portable-saas-design-constraints.md)、
+> [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)**。
+> 本書は各ADRと [requirements.md](requirements.md) を図とスキーマに展開した
 > 派生ドキュメントであり、矛盾があればADRが勝つ。スキーマは実装前のドラフト
 > （実装時にmigrationとして確定する）。
 
@@ -34,7 +35,13 @@ flowchart LR
   subgraph Core["コア層（オンデマンド）"]
     MCP["MCPゲートウェイ<br/>ロール認可(原則E②)・AST注入・監査"]
     NL["NL→SQL<br/>Vertex AI Gemini 3.5 Flash<br/>（Opusは最後の手段）"]
+    PUB["Artifact pipeline<br/>検証・publish・成功版有効化"]
     BUILD["Evidenceビルド<br/>シェル生成（テナント非依存）"]
+  end
+
+  subgraph Ownership["生成物の所有先（build時のみ）"]
+    CGIT[("顧客GitHub<br/>既定・選択repository")]
+    MANAGED[("Managed storage<br/>明示的fallback")]
   end
 
   subgraph Data["データ層（原則D：2分割）"]
@@ -52,8 +59,13 @@ flowchart LR
   MCP -->|"SQL実行"| BQ
   MCP -->|"認可データ読込・監査ログ"| PG
   MCP -->|"レポート編集時"| NL
-  MCP -.->|"report_version bump"| BUILD
+  NL -->|"ArtifactBundle"| PUB
+  PUB -->|"GitHub publisher"| CGIT
+  PUB -->|"Managed publisher"| MANAGED
+  CGIT -->|"固定commit SHA"| BUILD
+  MANAGED -->|"固定revision"| BUILD
   BUILD -->|"新シェル配置"| C1
+  BUILD -->|"成功後だけrevision/version有効化"| PG
 ```
 
 読み方（ADR-0005との対応）:
@@ -61,6 +73,8 @@ flowchart LR
 - **シェルとデータの分離（原則A）**: ①はテナント非依存のシェルだけ。機密データは②に閉じ、越境の面は「データAPI」だけに封じ込める。
 - **2軸のアクセス制御（原則E）**: ①テナント分離＝MCPのAST注入＋データソース側の隔離（BQデータセット/PG RLS）。②ロール認可＝MCPのロジック＋Postgresのロール/権限テーブル。
 - **2ストア分割（原則D）**: ゲート/MCPが認可判定に読むのは**Postgres（管理データ）**、クエリが集計するのは**BigQuery（分析データ）**。
+- **生成と閲覧の分離（ADR-0015）**: GitHubはArtifactBundleの所有・build入力にだけ使う。閲覧時は
+  成功済みのimmutableシェルとquery catalogを読み、GitHub APIまたはcloneを呼ばない。
 
 ---
 
@@ -107,7 +121,7 @@ sequenceDiagram
   end
 ```
 
-### 2.2 AIレポート編集（NL→SQL → version bump）
+### 2.2 AIレポート編集（NL→SQL → 顧客Git → 成功版有効化）
 
 ```mermaid
 sequenceDiagram
@@ -116,6 +130,7 @@ sequenceDiagram
   participant M as MCPゲートウェイ
   participant PG as Postgres(管理)
   participant V as Vertex AI Gemini
+  participant G as 顧客GitHub
   participant B as Evidenceビルド
   participant C1 as ①シェルCDN
 
@@ -123,11 +138,15 @@ sequenceDiagram
   M->>PG: 対象datasourceのスキーマ・編集権限を読込
   M->>V: スキーマ + 質問 + ルール（余計なフィルタ禁止 等）
   V-->>M: SQL / レポート定義
-  M->>M: 検証（AST・tenant_id注入可能か・許可datasourceのみ参照か）
-  M->>PG: reports 更新 + report_version をインクリメント
-  M->>B: 該当レポートのシェル再ビルド
+  M->>M: ArtifactBundle検証（manifest・path・component・SQL AST）
+  M->>G: GitHub Appで1 commitとしてpublish
+  G-->>M: commit SHA
+  M->>B: 固定commit SHA + control plane接続設定
+  B->>B: 隔離環境・固定rendererでbuild
   B->>C1: 新キー report_id:new_version で配置
+  B->>PG: build成功後だけartifact_revision + report_versionを更新
   Note over C1: 旧シェル/旧結果はパージ不要。<br/>キーが変わる＝自動ミス（immutable key・ADR §5）
+  Note over G,C1: GitHub障害・build失敗時はversionを更新せず、<br/>閲覧は直前の成功版を継続
 ```
 
 ### 2.3 権限剥奪（epoch + デニーリストのハイブリッド）
@@ -166,6 +185,7 @@ erDiagram
   tenants ||--o{ users : ""
   tenants ||--o{ roles : ""
   tenants ||--o{ reports : ""
+  tenants ||--o| artifact_destinations : ""
   tenants ||--o{ datasources : ""
   tenants ||--o{ audit_logs : ""
   tenants ||--o{ revocation_events : ""
@@ -228,9 +248,21 @@ erDiagram
     uuid tenant_id FK
     text slug
     text title
-    text definition_ref "シェル定義の格納先パス"
+    text definition_ref "ArtifactBundle内のreport path"
+    text artifact_revision "最後にbuild成功したcommit SHA/revision"
     bigint report_version "①失効トークン"
     text status "draft|published|archived"
+  }
+  artifact_destinations {
+    uuid tenant_id PK, FK
+    text kind "github|managed"
+    bigint github_installation_id "tokenは保存しない"
+    bigint github_repository_id "選択repositoryの不変ID"
+    text repository_owner
+    text repository_name
+    text managed_branch "既定repchat-generated"
+    text last_successful_revision
+    text status
   }
   role_reports {
     uuid tenant_id FK
