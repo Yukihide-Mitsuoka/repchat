@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/compare/v1.0.0...v1.0.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **ci:** exclude lockfiles from PR size limits ([#75](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/75)) ([c1f5d79](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/c1f5d797a76779a76282e34ce2fe87c4d176cc90)), closes [#74](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/74)
+* **sync:** accept multi-language CodeQL matrices ([#73](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/73)) ([d9f1fe1](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/commit/d9f1fe1e34f53e868e48938ab314d7cf05b189f5))
+
 ## 1.0.0 (2026-07-26)
 
 
