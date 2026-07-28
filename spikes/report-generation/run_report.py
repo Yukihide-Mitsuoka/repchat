@@ -99,13 +99,24 @@ def prompt_rules(metrics: str) -> str:
 - GA4 の生エクスポートには「セッション」という行は存在しない。
 - 出力する列には、レポートにそのまま出せる分かりやすい別名を付ける。
 - SELECT 文のみ。DDL/DML は書かない。
-- 結果は JSON で {{"sql": "...", "reason": "..."}} の形で返す。reason は日本語1文。
+- **指標定義に無い語を求められたら、推測でSQLを書かない。** `sql` を空文字にし、
+  `undefined_terms` にその語を入れて返す（ADR-0013 C5）。似た定義済みの指標で代用しない。
+  読み手には、定義済みの数字と推測された数字の区別がつかないため。
+- 定義がある語だけで答えられる場合は `undefined_terms` を空配列にする。
+- 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...]}} の形で返す。
+  reason は日本語1文。
 """
 
 _JSON_SCHEMA = {
     "type": "object",
-    "properties": {"sql": {"type": "string"}, "reason": {"type": "string"}},
-    "required": ["sql", "reason"],
+    "properties": {
+        "sql": {"type": "string"},
+        "reason": {"type": "string"},
+        # ADR-0013 C5. The model must be able to say "this term is not defined"
+        # instead of guessing, so refusal needs somewhere to go in the response.
+        "undefined_terms": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["sql", "reason", "undefined_terms"],
 }
 
 
@@ -137,7 +148,7 @@ def generate(client, model: str, section: dict, period: dict, rules: str):
         config=types.GenerateContentConfig(
             system_instruction=rules,
             response_mime_type="application/json",
-            response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason"]},
+            response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason", "undefined_terms"]},
             temperature=0,
         ),
     )
@@ -282,6 +293,27 @@ def main() -> int:
     from google import genai
     from google.cloud import bigquery
 
+    # ADC expires (a laptop sleeping through a run is enough). Without this the
+    # failure arrives ~12 sections deep as a stack trace, which is easy to filter
+    # away and mistake for "the run produced nothing" — that happened three times
+    # before this check existed. Fail here instead, with the fix in the message.
+    try:
+        import google.auth
+
+        creds, _ = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        from google.auth.transport.requests import Request
+
+        creds.refresh(Request())
+    except Exception as e:  # noqa: BLE001 — the message is the remedy
+        print(
+            f"ADC not usable ({type(e).__name__}). "
+            "Run: gcloud auth application-default login",
+            file=sys.stderr,
+        )
+        return 2
+
     client = genai.Client(vertexai=True, project=args.project, location=args.region)
     bq = bigquery.Client(project=args.project)
 
@@ -290,9 +322,29 @@ def main() -> int:
         ans, usage = generate(client, args.model, s, spec["period"], rules)
         for k in tokens:
             tokens[k] += usage[k]
-        sql = ans.get("sql")
+        sql = (ans.get("sql") or "").strip()
+        undefined = ans.get("undefined_terms") or []
 
-        got_res, got_err = exec_bq(bq, sql) if sql else (None, "no sql")
+        # ADR-0013 C5: sections whose metric is deliberately absent from
+        # metrics.json. Passing means the model REFUSED — inventing a plausible
+        # definition is the failure, however good the SQL looks.
+        if s.get("expect") == "refusal":
+            ok = not sql and bool(undefined)
+            detail = (f"refused, undefined={undefined}" if ok
+                      else f"answered anyway: undefined={undefined} sql={sql[:70]}")
+            passed += ok
+            print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
+            results.append({"id": s["id"], "title": s["title"], "component": s["component"],
+                            "sql": sql or None, "columns": None, "ok": ok, "detail": detail})
+            continue
+
+        # Record why, not just that. A bare "no sql" made an over-refusal
+        # indistinguishable from a generation failure on the first C5 run.
+        got_res, got_err = (
+            exec_bq(bq, sql)
+            if sql
+            else (None, f"refused: undefined={undefined} reason={ans.get('reason', '')[:80]}")
+        )
         want_res, want_err = exec_bq(bq, s["gold_sql"])
         if want_err:  # the reference itself is wrong — say so loudly
             print(f"REFERENCE BROKEN  {s['id']}  {want_err}", file=sys.stderr, flush=True)
@@ -316,6 +368,8 @@ def main() -> int:
                 "columns": columns,
                 "ok": ok,
                 "detail": detail,
+                "undefined_terms": undefined,
+                "reason": ans.get("reason", ""),
             }
         )
 
