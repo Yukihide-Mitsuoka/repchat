@@ -263,8 +263,17 @@ EVIDENCE_COMPONENT = {
 }
 
 
+SOURCE = "ga4"  # Evidence source name; sources/<SOURCE>/<id>.sql holds warehouse SQL
+
+
 def evidence_page(spec: dict, results: list) -> str:
-    """Assemble one Evidence markdown page from the generated SQL."""
+    """Assemble one Evidence markdown page that reads the generated sources.
+
+    Evidence runs page SQL in its own DuckDB layer over materialised source
+    results — it does NOT send page SQL to the warehouse. So the BigQuery SQL
+    belongs in sources/<SOURCE>/<id>.sql and the page selects from
+    <SOURCE>.<id>. Emitting one page with warehouse SQL inline does not build.
+    """
     p = spec["period"]
     out = [
         "---",
@@ -284,11 +293,18 @@ def evidence_page(spec: dict, results: list) -> str:
             )
             out.append("")
         if r["sql"] is None:
-            out.append("> SQLを生成できませんでした。")
+            # ADR-0013 C5: the reader must learn a DEFINITION is missing, not
+            # that some machinery failed. "SQLを生成できませんでした" reads like a
+            # bug and invites a retry; naming the term says what to do.
+            terms = "・".join(r.get("undefined_terms") or []) or "不明"
+            out.append(
+                f"> **未定義の指標のため、この節は生成していません**（{terms}）。"
+                "推測した数値を載せないための挙動です。指標定義に追加してください。"
+            )
             out.append("")
             continue
         out.append(f"```sql {r['id'].lower()}")
-        out.append(r["sql"].strip())
+        out.append(f"select * from {SOURCE}.{r['id'].lower()}")
         out.append("```")
         out.append("")
         cols = r["columns"] or []
@@ -368,7 +384,8 @@ def main() -> int:
             passed += ok
             print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
             results.append({"id": s["id"], "title": s["title"], "component": s["component"],
-                            "sql": sql or None, "columns": None, "ok": ok, "detail": detail})
+                            "sql": sql or None, "columns": None, "ok": ok, "detail": detail,
+                            "undefined_terms": undefined, "reason": ans.get("reason", "")})
             continue
 
         # Record why, not just that. A bare "no sql" made an over-refusal
@@ -406,10 +423,22 @@ def main() -> int:
             }
         )
 
-    page = evidence_page(spec, results)
-    out_path = HERE / "out" / "monthly_report.md"
-    out_path.parent.mkdir(exist_ok=True)
-    out_path.write_text(page, encoding="utf-8")
+    out_dir = HERE / "out"
+    (out_dir / "pages").mkdir(parents=True, exist_ok=True)
+    src_dir = out_dir / "sources" / SOURCE
+    src_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "pages" / "monthly_report.md"
+    out_path.write_text(evidence_page(spec, results), encoding="utf-8")
+    # One .sql per answered section. Refused sections get no source file, so a
+    # missing definition cannot silently become an empty chart.
+    for r in results:
+        if r["sql"]:
+            (src_dir / f"{r['id'].lower()}.sql").write_text(r["sql"].strip() + "\n", encoding="utf-8")
+    (src_dir / "connection.yaml").write_text(
+        f"name: {SOURCE}\ntype: bigquery\noptions:\n"
+        f"  project_id: {args.project}\n  authenticator: gcloud-cli\n",
+        encoding="utf-8",
+    )
 
     cost = (
         tokens["input_tokens"] * PRICING[args.model][0]
