@@ -19,12 +19,12 @@ updated: 2026-07-29
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在のarchitecture follow-up**は
-[Issue #158](https://github.com/Yukihide-Mitsuoka/repchat/issues/158) /
-[PR #159](https://github.com/Yukihide-Mitsuoka/repchat/pull/159)。
-[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)で、顧客Gitをbuild時だけ使う
-GitHub App接続と共通artifact pipelineを確定した。実装より先に、次はデザインパートナーへ
-[5分デモ](demo.md)を見せる。
+**現在の作業**は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) /
+[PR #161](https://github.com/Yukihide-Mitsuoka/repchat/pull/161)。
+[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)の設計はPR #159で完了した。
+次はデザインパートナーへ[5分デモ](demo.md)を見せる。オーナーが対象者を選び、日程を
+確保するまで、GitHub Appまたはartifact pipelineの製品実装を次の作業にしない。
 
 進行中の作業、ブロッカー、次のアクション、検証済みの基準点が変わった場合は
 `docs/status.md`を更新します。この文書は正本の場所または再開順序が変わった場合だけ更新します。

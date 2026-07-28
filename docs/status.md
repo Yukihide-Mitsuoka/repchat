@@ -34,7 +34,8 @@ updated: 2026-07-29
 オーナー承認済み（LOG-0082）。GitHub Appとartifact pipelineの実装は未着手。
 [ADR-0013](adr/0013-metric-definitions-live-in-our-own-layer.md) はオーナー承認済みで、
 **日本語の記述 → SQL生成 → 検証 → Evidenceで実データ描画 → テナント別配信**まで実測済み。
-次は[5分説明](demo.md)をデザインパートナーへ実際に見せ、利用仮説を人間から測る。
+次は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)に従い、
+[5分説明](demo.md)をデザインパートナーへ実際に見せ、利用仮説を人間から測る。
 
 **前回立てた3手の現在地:**
 
