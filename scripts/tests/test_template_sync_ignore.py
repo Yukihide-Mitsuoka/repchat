@@ -32,6 +32,7 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
 
         self.assertIn("CHANGELOG.md", entries)
         self.assertIn("scripts/tests/test_codeql_workflow.py", entries)
+        self.assertIn("scripts/tests/test_template_sync_ignore.py", entries)
 
     def test_sync_pr_records_the_source_commit_used_by_the_action(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
