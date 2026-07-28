@@ -7,7 +7,7 @@
 
 .PHONY: setup format lint test test-unit test-integration coverage build run \
         security-scan sbom clean help doctor \
-        deploy destroy infra-plan
+        deploy destroy infra-plan demo
 
 FILE ?=
 
@@ -69,6 +69,13 @@ doctor: ## Self-check the template: metadata invariants + guard-hook tests (foun
 	@bash scripts/template-check.sh
 	@bash tests/template-sync-boundary.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
+
+demo: ## Generate, verify, build, and open the report demo (uses paid Vertex/BigQuery)
+	python3 spikes/report-generation/demo.py \
+		$(if $(PROJECT),--project "$(PROJECT)") \
+		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
+		$(if $(filter yes,$(BUILD_ONLY)),--build-only) \
+		$(if $(filter yes,$(DRY_RUN)),--dry-run)
 
 # --- deployment (project-specific; ADR-0012) ---------------------------------
 # Needs GOOGLE_CLOUD_PROJECT plus gcloud and terraform. Docker is NOT required:
