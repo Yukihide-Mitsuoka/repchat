@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.9.1...v1.10.0) (2026-07-28)
+
+
+### Features
+
+* make the report demo one-command ([#156](https://github.com/Yukihide-Mitsuoka/repchat/issues/156)) ([8cf926d](https://github.com/Yukihide-Mitsuoka/repchat/commit/8cf926d3a10e637b7995d55a96168a43f5a99c8a))
+
 ## [1.9.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.9.0...v1.9.1) (2026-07-27)
 
 
