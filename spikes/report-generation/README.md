@@ -265,52 +265,57 @@ ADR-0013 C4（**出力形状も宣言する**）を、セクションごとの `
 
 ## Evidenceで描画する手順（再現）
 
-> **この節は引き継ぎのために書きました（2026-07-28）。** これまで Evidence アプリは
-> **セッションの作業ディレクトリに置いていて、リポジトリに入っていません**。
-> セッションが変わると消えるので、**手順を残しておかないと再現できません**。
-> **これを1コマンドにまとめるのが次の作業**（[status.md](../../docs/status.md) §0.1）。
+前提は Python 3.13以上、Node 18以上、git、npm、gcloud、ネットワーク接続、
+BigQueryとVertex AIを使えるADCです。ADCが未設定なら、最初に一度だけ次を実行します。
 
 ```bash
 gcloud auth application-default login
 ```
 
-**1. レポートを生成する**（`out/sources/` と `out/pages/` が出来る）
+前提を満たした後は、リポジトリのルートで**この1コマンド**です。
 
 ```bash
-GOOGLE_CLOUD_PROJECT=kotonoha-bi-dev spikes/nl2sql-accuracy/.venv/bin/python spikes/report-generation/run_report.py
+make demo PROJECT=kotonoha-bi-dev
 ```
 
-**2. Evidence アプリを用意する**（リポジトリ外の作業ディレクトリで）
+実Vertex AI（約2円）とBigQuery（1か月、最大20GiB）を使うため、開始前に確認が出ます。
+非対話環境でビルドまで行う場合は明示的に費用を承認します。
 
 ```bash
-npx degit evidence-dev/template ev-app && cd ev-app && npm install
+make demo PROJECT=kotonoha-bi-dev ACCEPT_COST=yes BUILD_ONLY=yes
 ```
 
-**BigQuery コネクタは公式テンプレートに最初から入っています**（`@evidence-dev/bigquery`、確認済み）。
-別途インストールする必要はありません。テンプレートの要求は Node 18以上で、
-実際に通したのは **Node 24.18 / npm 11.16** です。
-
-**3. 生成物を流し込む**（テンプレート既定の `needful_things` ソースは残しておいてよい）
+費用もファイル変更も伴わず、実行予定だけを確かめるには次を使います。
 
 ```bash
-cp -r <repo>/spikes/report-generation/out/sources/ga4 sources/ && cp <repo>/spikes/report-generation/out/pages/monthly_report.md pages/
+make demo PROJECT=example-project DRY_RUN=yes
 ```
 
-生成器が出す `sources/ga4/connection.yaml` は `type: bigquery` ／
-`authenticator: gcloud-cli` ／ `project_id: kotonoha-bi-dev` で、**鍵ファイルを置く必要はありません**。
-`evidence.config.yaml` はテンプレート既定のままで動きます。
+コマンドは次を順に行います。
 
-**4. ビルドして見る**
+1. `out/.demo/venv` にpin済みPython依存をインストール
+2. pin済みcommitのEvidence公式テンプレートを`out/.demo/evidence-app`へ取得し、BigQueryに必要な最小lockfileどおり`npm ci`
+3. `npm audit --audit-level=critical`を実行し、critical advisoryがあれば停止
+4. 日本語のレポート定義からSQLを生成し、BigQueryの実行結果を既知値と照合
+5. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
+6. `http://localhost:3000/`でレポートを開く
 
-```bash
-npm run sources && npm run build && npm run dev
-```
+`out/.demo/`は使い捨てでgit管理外です。生成器が出す接続設定はADCを使うため、鍵ファイルは置きません。
+デモで話す内容と限界は[5分説明](../../docs/demo.md)にまとめています。
 
-`npm run sources` で12本すべてが materialize すれば成功です（`r5 ✔ 6 rows` のように出る）。
-ページは `/monthly_report`。
-
-**5.（任意）2テナントに配ってみる** — `tenant_serve.py` に `ev-app/build` を渡します。
+**任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
 詳しくは後述の「実際に2テナントへ配った」。
+
+### Evidence依存の既知リスク
+
+公式テンプレートの全コネクタをそのまま入れると、未使用のSnowflake・Databricks・SQLite等を含み
+critical 10件になったため採用していません。デモはEvidence 40.1.8・core-components 5.4.2・
+BigQuery 2.0.12だけのlockfileを持ち、Vitestのcritical advisoryをoverrideで解消しています。
+
+2026-07-29の監査は**critical 0 / high 16**です。残るhighはEvidenceが固定するSvelteKit/Svelteと
+build toolの依存です。緩和策は、(1) `localhost`だけで起動、(2) 入力はリポジトリ内の信頼済み定義と
+生成物だけ、(3) 本番配信・gate・認証には使わない、(4) 実行ごとにcritical監査、です。
+これは製品ランタイムの依存採用ではなく、デザインパートナーへ見せるローカルスパイクに限定します。
 
 ## Evidence で実際に描画した（2026-07-28）
 

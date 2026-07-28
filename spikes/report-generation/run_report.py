@@ -69,8 +69,9 @@ def metrics_block(path: Path) -> str:
     LOG-0065 measured the model writing correct SQL but choosing a different
     reading of 「購入件数」 between runs at temperature 0. This block is the
     intervention being tested: does declaring the definition make the answer
-    reproducible? In production these definitions are written by the agency and
-    live in the customer's Git (docs/positioning.md §2.8).
+    reproducible? In production the agency maintains these definitions in our
+    shared definition layer; generated pages and source definitions go to the
+    customer's Git (ADR-0014).
     """
     if not path.exists():
         return ""
