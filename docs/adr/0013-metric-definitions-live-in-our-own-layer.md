@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-07-28 |
 | Deciders | repository owner |
 | Author | Claude (AI agent) |
@@ -156,13 +156,14 @@ LOG-0066 の残った1件（ファネル）は、**数値が完全一致した�
 照合できないセクションは、**数値を出さずに未検証と表示する**。
 見た目が正しくて数字が違うレポートは、無いより悪い。
 
-### C7. 定義の置き場所（顧客のGitか、こちらか）は、このADRでは決めない
+### C7. 定義の置き場所はADR-0014で決定済み
 
-positioning §2.9 の論点。「資産が顧客に残る」という売り文句を本物にするが、
-**顧客側にリポジトリとPRを理解する人が要る**という前提が増え、「非エンジニアでも使える」と衝突する。
+本ADRの起草時には、positioning §2.9 の論点として独立したADRへ先送りした。
+[ADR-0014](0014-who-owns-the-generated-artifacts.md) がその論点を引き取り、accepted になった。
 
-C1〜C6 はこの決定に依存しない（定義層が**こちら側の1箇所**であることだけが要件で、
-その1箇所を誰が所有するかは別問題）。**独立したADRで扱う。**
+決定は、**ページとソース定義を顧客のリポジトリ、指標定義をこちら側**に置く3分割。
+顧客はGitを操作せず、こちらが書き込む。顧客固有の指標だけは例外として顧客側に置ける。
+C1〜C6 の内容はこの配置決定によって変わらない。
 
 ## Consequences
 
@@ -178,7 +179,7 @@ C1〜C6 はこの決定に依存しない（定義層が**こちら側の1箇所
 **倒れる方向（D6）。** 定義が古い・欠けていれば、C5により**生成されない**。C6により、
 照合できなければ**数値が出ない**。いずれも閉じる側。
 
-**残る宿題。** 定義の置き場所（C7）。定義層の実装（`QUERY_POLICY` の発展形）。
+**残る宿題。** 定義層の実装（`QUERY_POLICY` の発展形）。
 GA4以外のデータソースでは MDL の制約が当てはまらない可能性があり、**そのときは再評価**してよい
 （このADRはGA4での実測に基づく）。
 
@@ -201,5 +202,6 @@ GA4以外のデータソースでは MDL の制約が当てはまらない可能
 - LOG-0065（定義が揺れる実測）、LOG-0066（定義を固定すると数値が安定する追試）
 - LOG-0067 / LOG-0068（WrenAI実機評価と、その理由の訂正）
 - [ADR-0010](0010-connection-identity-is-never-a-person.md) D1 / D3 / D6 / D7
+- [ADR-0014](0014-who-owns-the-generated-artifacts.md)（C7の決定）
 - [positioning.md](../positioning.md) §2.7 / §2.8 / §2.9
 - [spikes/report-generation/](../../spikes/report-generation/README.md) / [spikes/wrenai-evaluation/](../../spikes/wrenai-evaluation/README.md)
