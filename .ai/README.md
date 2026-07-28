@@ -43,6 +43,14 @@ Every normative rule has a stable ID. Reference IDs in commits, PRs, and reviews
 Rule language follows RFC 2119: **MUST / MUST NOT** are binding, **SHOULD / SHOULD NOT**
 require justification to deviate, **MAY** is optional.
 
+## Universal AI prose rule
+
+All AI-authored explanatory prose MUST follow
+[DOC-002](documentation.md#doc-002-objective-structured-prose). This includes repository
+documents, code comments, commit and pull-request text, issue updates, reviews, and
+messages to users. In particular, agents must use literal wording by default and must not
+use metaphorical language that does not materially improve technical understanding.
+
 ## Reading protocol by task type
 
 Read only what the task requires. Do not load all files for every task.

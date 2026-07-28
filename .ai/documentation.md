@@ -34,14 +34,27 @@ and **optimized for AI readers** — explicit, structured, unambiguous.
 
 ## DOC-002: Objective, structured prose
 
-Governs all prose in `.ai/` and `docs/`. `.skills/requirements.skill.md` and
-`docs/foundation/templates/requirements.md` build on this rule.
+Governs all AI-authored explanatory prose, including `.ai/`, `docs/`, code comments,
+commit and pull-request text, issue updates, reviews, and messages to users. Quoted source
+text and established domain terms that must be reproduced accurately are outside this
+scope. `.skills/requirements.skill.md` and `docs/foundation/templates/requirements.md`
+build on this rule.
 
 - **Objective basis.** State each claim with its basis — a measurement, a cited source, a
   standard, or explicit reasoning. Separate established fact, inference, and open
   question; never present an impression as a conclusion.
-- **No metaphor or decoration.** Name the thing directly. No analogies, no filler
-  intensifiers ("powerful", "seamless"), no softening ("just", "simply", "a bit").
+- **Literal by default; prohibit non-instructive metaphor.** AI authors MUST NOT use
+  metaphor, analogy, imagery, personification, or other figurative language merely for
+  tone, emphasis, novelty, or decoration. A metaphor MAY be used only when a literal
+  explanation alone would be materially less clear and the comparison materially
+  improves technical understanding. When used, state the mapped technical elements, the
+  specific insight it adds, and where the comparison stops. If all three cannot be stated
+  concisely, replace the metaphor with a literal description.
+  - Prohibited: "The queue is a shock absorber that protects the system."
+  - Required: "The queue buffers temporary request bursts so workers can process requests
+    at bounded concurrency; it does not reduce total work and can fill to capacity."
+- **No decoration or softening.** Name the thing directly. No filler intensifiers
+  ("powerful", "seamless") and no softening ("just", "simply", "a bit").
 - **Conclusion first.** State the result, then its support. Remove roundabout lead-ins.
 - **Structure carries meaning.** Semantic hierarchy → heading depth and nested-list
   indentation (as code uses indentation). Structured data (comparisons, attribute sets,
