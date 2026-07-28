@@ -15,13 +15,13 @@ branches merged via PR.
 Every task follows these phases. Do not skip phases; do report which phase you are in.
 
 ```
-1. INTAKE     — restate the goal; read routing table (.ai/README.md); locate an issue
+1. INTAKE     — restate goal; read routing table and handoff if present; locate an issue
 2. CLARIFY    — list assumptions & open questions; escalate blockers (CLAUDE.md §13)
 3. DESIGN     — impact classification (ARC-020); ADR if architectural (GR-022)
 4. IMPLEMENT  — branch → code + tests together → docs in same PR (GR-024)
 5. SELF-REVIEW— run .ai/review-checklist.md against your own diff
 6. PR         — open PR per WF-030; respond to review findings
-7. CLOSE      — verify Definition of Done (WF-090); update decision-log if needed
+7. CLOSE      — verify DoD; update decision-log and maintained handoff when triggered
 ```
 
 ## WF-010: Branch naming
@@ -82,6 +82,7 @@ A task is done only when ALL hold:
 - [ ] Tests added/updated and `make test` green (TST rules)
 - [ ] `make lint` and `make format` clean
 - [ ] Docs updated per doc-update matrix (DOC-030)
+- [ ] Maintained `docs/development-handoff.md` updated when active state changed (DOC-012)
 - [ ] Self-review against `.ai/review-checklist.md` done
 - [ ] PR opened with template fully filled; CI green
 - [ ] No guardrail violated
