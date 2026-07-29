@@ -1,0 +1,423 @@
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+from unittest import mock
+
+from scripts import context_budget
+
+
+REPOSITORY_ROOT = Path(__file__).parents[2]
+
+
+class ContextBudgetTest(unittest.TestCase):
+    def test_current_routes_preserve_required_authorities(self):
+        errors, _, report = context_budget.audit(
+            REPOSITORY_ROOT,
+            enforce_budget=False,
+        )
+
+        self.assertEqual([], errors)
+        actual_skills = {
+            path.name.removesuffix(".skill.md")
+            for path in (REPOSITORY_ROOT / ".skills").glob("*.skill.md")
+        }
+        self.assertTrue(set(context_budget.REQUIRED_READS).issubset(actual_skills))
+        self.assertTrue(report["largest_route_name"])
+
+    def test_project_document_maintenance_stays_conditional(self):
+        target = ".ai/project-document-maintenance.md"
+        for skill_name in ("documentation", "requirements"):
+            reads = context_budget.parse_reads(
+                REPOSITORY_ROOT / f".skills/{skill_name}.skill.md"
+            )
+            self.assertNotIn(target, reads)
+
+        errors, _, report = context_budget.audit(
+            REPOSITORY_ROOT,
+            enforce_budget=False,
+        )
+
+        self.assertEqual([], errors)
+        self.assertEqual(
+            context_budget.count_file(REPOSITORY_ROOT / target),
+            report["conditional_routes"]["project-document-maintenance"],
+        )
+
+    def test_baseline_wording_is_enforced_only_in_strict_mode(self):
+        finding = "canonical baseline marker is missing"
+        with mock.patch.object(
+            context_budget,
+            "baseline_contract_errors",
+            return_value=[finding],
+        ) as contract_check:
+            non_strict_errors, _, _ = context_budget.audit(
+                REPOSITORY_ROOT,
+                enforce_budget=False,
+            )
+
+        contract_check.assert_not_called()
+        self.assertNotIn(finding, non_strict_errors)
+
+        with mock.patch.object(
+            context_budget,
+            "baseline_contract_errors",
+            return_value=[finding],
+        ) as contract_check:
+            strict_errors, _, _ = context_budget.audit(
+                REPOSITORY_ROOT,
+                enforce_budget=True,
+            )
+
+        contract_check.assert_called_once_with(REPOSITORY_ROOT)
+        self.assertIn(finding, strict_errors)
+
+    def test_baseline_contract_detector_preserves_safety_markers(self):
+        self.assertTrue(
+            {
+                "## 12. Claude Code integration",
+                ".claude/README.md",
+                "Claude Code MUST read",
+            }.issubset(context_budget.BASELINE_CONTRACT_MARKERS["CLAUDE.md"])
+        )
+        self.assertEqual(
+            (
+                "Hooks in `.claude/settings.json` enforce the command guard",
+                "Fix hook failures; never bypass them",
+                "`.skills/*.skill.md` is the vendor-neutral skill source",
+                "`.claude/skills/` contains only native wrappers",
+                "Store only durable, non-derivable, non-secret facts in runtime memory",
+                "Follow WF-040 for subagents and parallel work",
+                "one task, one branch, one agent",
+            ),
+            context_budget.BASELINE_CONTRACT_MARKERS[".claude/README.md"],
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            for value, markers in context_budget.BASELINE_CONTRACT_MARKERS.items():
+                path = root / value
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("\n".join(markers), encoding="utf-8")
+
+            clean_errors = context_budget.baseline_contract_errors(root)
+            agents = root / "AGENTS.md"
+            agents.write_text("different local entry wording", encoding="utf-8")
+            missing_errors = context_budget.baseline_contract_errors(root)
+            (root / ".claude/README.md").unlink()
+            missing_file_errors = context_budget.baseline_contract_errors(root)
+
+        self.assertEqual([], clean_errors)
+        self.assertTrue(
+            any("AGENTS.md: missing canonical baseline marker" in error
+                for error in missing_errors)
+        )
+        self.assertIn(
+            ".claude/README.md: canonical contract file is missing",
+            missing_file_errors,
+        )
+
+    def test_requirements_route_preserves_method_and_template_contract(self):
+        skill_path = REPOSITORY_ROOT / ".skills/requirements.skill.md"
+        skill = skill_path.read_text(encoding="utf-8")
+        normalized_skill = " ".join(skill.split()).lower()
+        for marker in (
+            "one fork at a time",
+            "recommended draft",
+            "zero-based",
+            "purpose or metric",
+            "existing assets, constraints, and platform limits",
+            "fr-00x/nfr-00x",
+            "moscow",
+            "what must hold and why",
+            "open questions",
+            "japanese",
+            "claude.md §13",
+        ):
+            self.assertIn(marker, normalized_skill)
+
+        template = (
+            REPOSITORY_ROOT / "docs/foundation/templates/requirements.md"
+        ).read_text(encoding="utf-8")
+        for heading in (
+            "## 1. Terms",
+            "## 2. Assumptions and constraints",
+            "## 3. Purpose and scope",
+            "## 4. Functional requirements",
+            "## 5. Non-functional requirements",
+            "## 6. Data requirements",
+            "## 7. External interfaces and dependencies",
+            "## 8. Infrastructure and cost estimate",
+            "## 9. Operational requirements",
+            "## 10. Acceptance criteria",
+            "## 11. Risks",
+            "## 12. Milestones",
+            "## 13. Open questions",
+        ):
+            self.assertIn(heading, template)
+        for field in (
+            "ISO/IEC 25010",
+            "Measurement method",
+            "Cost assumptions",
+            "unit prices as of",
+            "Fixed / month",
+            "Usage-based basis",
+            "Increment per",
+            "Verifies (req IDs)",
+            "Likelihood",
+            "Target date",
+            "Blocks (req IDs)",
+        ):
+            self.assertIn(field, template)
+
+    def test_directory_and_glob_routes_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "docs").mkdir()
+
+            directory_error = context_budget.route_path_error(root, "docs/")
+            glob_error = context_budget.route_path_error(root, "docs/**/*.md")
+
+            self.assertIn("directory", directory_error)
+            self.assertIn("glob", glob_error)
+
+    def test_missing_and_traversing_routes_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+
+            missing_error = context_budget.route_path_error(root, ".ai/missing.md")
+            traversal_error = context_budget.route_path_error(root, "../outside.md")
+
+            self.assertIn("does not exist", missing_error)
+            self.assertIn("traversal", traversal_error)
+
+    def test_route_symlink_cannot_escape_repository(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            parent = Path(temporary_directory)
+            root = parent / "repository"
+            root.mkdir()
+            outside = parent / "outside.md"
+            outside.write_text("outside", encoding="utf-8")
+            (root / "linked.md").symlink_to(outside)
+
+            error = context_budget.route_path_error(root, "linked.md")
+
+        self.assertIn("outside", error)
+
+    def test_conditional_authority_validates_target_references_and_size(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            target = root / ".ai/conditional.md"
+            reference = root / ".ai/router.md"
+            target.parent.mkdir()
+            target.write_text(
+                "# Conditional\n\n## RULE-001: First\n\n## RULE-002: Second\n",
+                encoding="utf-8",
+            )
+            reference.write_text(
+                "Read [the conditional authority](conditional.md) completely "
+                "when the trigger matches.\n",
+                encoding="utf-8",
+            )
+            contract = context_budget.ConditionalAuthority(
+                name="fixture",
+                target=".ai/conditional.md",
+                references=(
+                    (
+                        ".ai/router.md",
+                        ("conditional.md", "completely", "trigger matches"),
+                    ),
+                ),
+                target_markers=("## RULE-001:", "## RULE-002:"),
+            )
+
+            errors, measurements = (
+                context_budget.validate_conditional_authorities(
+                    root,
+                    (contract,),
+                )
+            )
+            expected = context_budget.count_file(target)
+
+        self.assertEqual([], errors)
+        self.assertEqual(expected, measurements["fixture"])
+
+    def test_conditional_authority_reports_missing_files_and_markers(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            target = root / ".ai/conditional.md"
+            target.parent.mkdir()
+            target.write_text("# Conditional\n", encoding="utf-8")
+            contract = context_budget.ConditionalAuthority(
+                name="fixture",
+                target=".ai/conditional.md",
+                references=((".ai/missing-router.md", ("conditional.md",)),),
+                target_markers=("## RULE-001:",),
+            )
+
+            errors, _ = context_budget.validate_conditional_authorities(
+                root,
+                (contract,),
+            )
+
+        self.assertTrue(any("missing target marker" in error for error in errors))
+        self.assertTrue(any("missing-router.md: does not exist" in error for error in errors))
+
+    def test_budget_overage_fails_only_when_enforced(self):
+        actual = context_budget.Counts(bytes=101, words=51)
+        limit = context_budget.Counts(bytes=100, words=50)
+
+        strict_errors, strict_warnings = context_budget.budget_findings(
+            "test",
+            actual,
+            limit,
+            enforce=True,
+        )
+        report_errors, report_warnings = context_budget.budget_findings(
+            "test",
+            actual,
+            limit,
+            enforce=False,
+        )
+
+        self.assertEqual(1, len(strict_errors))
+        self.assertEqual([], strict_warnings)
+        self.assertEqual([], report_errors)
+        self.assertEqual(1, len(report_warnings))
+
+    def test_budget_soft_limit_warns_without_failing(self):
+        actual = context_budget.Counts(bytes=90, words=89)
+        limit = context_budget.Counts(bytes=100, words=100)
+
+        errors, warnings = context_budget.budget_findings(
+            "test",
+            actual,
+            limit,
+            enforce=True,
+        )
+
+        self.assertEqual([], errors)
+        self.assertEqual(1, len(warnings))
+        self.assertIn("90%", warnings[0])
+        self.assertIn("90/100 bytes", warnings[0])
+
+    def test_adr_index_rejects_missing_duplicate_and_mismatched_entries(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            directory = root / "docs/foundation/adr"
+            directory.mkdir(parents=True)
+            (directory / "0001-first.md").write_text(
+                "---\nstatus: accepted\nupdated: 2026-07-01\n---\n",
+                encoding="utf-8",
+            )
+            (directory / "0002-second.md").write_text(
+                "---\nstatus: proposed\nupdated: 2026-07-02\n---\n",
+                encoding="utf-8",
+            )
+            (directory / "README.md").write_text(
+                "| # | Title | Scope | Status | Date |\n"
+                "|---|-------|-------|--------|------|\n"
+                "| [0001](0001-first.md) | First | context | rejected | 2026-07-01 |\n"
+                "| [0001](0001-first.md) | First | context | rejected | 2026-07-01 |\n"
+                "| [0003](0003-gone.md) | Gone | context | accepted | 2026-07-03 |\n",
+                encoding="utf-8",
+            )
+
+            errors = context_budget.validate_adr_index(root)
+
+            self.assertTrue(any("duplicate target: 0001-first.md" in error for error in errors))
+            self.assertTrue(any("duplicate number: 0001" in error for error in errors))
+            self.assertTrue(any("missing entry: 0002-second.md" in error for error in errors))
+            self.assertTrue(any("stale entry: 0003-gone.md" in error for error in errors))
+            self.assertTrue(any("status 'rejected'" in error for error in errors))
+
+    def test_adr_index_supports_legacy_table_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            directory = root / "docs/foundation/adr"
+            directory.mkdir(parents=True)
+            (directory / "0001-legacy.md").write_text(
+                "# ADR-0001: Legacy\n\n"
+                "| Field | Value |\n"
+                "|-------|-------|\n"
+                "| Status | accepted |\n"
+                "| Date | 2026-07-01 |\n",
+                encoding="utf-8",
+            )
+            (directory / "README.md").write_text(
+                "| # | Title | Scope | Status | Date |\n"
+                "|---|-------|-------|--------|------|\n"
+                "| [0001](0001-legacy.md) | Legacy | context | accepted | 2026-07-01 |\n",
+                encoding="utf-8",
+            )
+
+            errors = context_budget.validate_adr_index(root)
+
+            self.assertEqual([], errors)
+
+    def test_guide_index_rejects_missing_duplicate_and_stale_entries(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            directory = root / "docs/foundation/guides"
+            directory.mkdir(parents=True)
+            (directory / "current.md").write_text("# Current\n", encoding="utf-8")
+            (directory / "missing.md").write_text("# Missing\n", encoding="utf-8")
+            (directory / "README.md").write_text(
+                "| Guide | Purpose |\n"
+                "|-------|---------|\n"
+                "| [current.md](current.md) | Current |\n"
+                "| [current.md](current.md) | Current again |\n"
+                "| [gone.md](gone.md) | Gone |\n",
+                encoding="utf-8",
+            )
+
+            errors = context_budget.validate_guide_index(root)
+
+            self.assertTrue(any("duplicate target: current.md" in error for error in errors))
+            self.assertTrue(any("missing entry: missing.md" in error for error in errors))
+            self.assertTrue(any("stale entry: gone.md" in error for error in errors))
+
+    def test_handoff_warnings_cover_size_and_freshness_without_errors(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            handoff = root / "docs/development-handoff.md"
+            handoff.parent.mkdir()
+            handoff.write_text(
+                "---\nupdated: 2026-01-01\n---\n"
+                + "word " * (context_budget.HANDOFF_WORD_WARNING + 1),
+                encoding="utf-8",
+            )
+
+            warnings = context_budget.handoff_warnings(
+                root,
+                current_date=date(2026, 2, 15),
+            )
+
+            self.assertEqual(2, len(warnings))
+            self.assertTrue(any("unusually large" in warning for warning in warnings))
+            self.assertTrue(any("may be stale" in warning for warning in warnings))
+
+    def test_handoff_warning_rejects_invalid_or_future_updated_date(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            handoff = root / "docs/development-handoff.md"
+            handoff.parent.mkdir()
+            handoff.write_text("---\nupdated: unknown\n---\n", encoding="utf-8")
+
+            invalid_warnings = context_budget.handoff_warnings(
+                root,
+                current_date=date(2026, 2, 15),
+            )
+            handoff.write_text("---\nupdated: 2026-02-16\n---\n", encoding="utf-8")
+            future_warnings = context_budget.handoff_warnings(
+                root,
+                current_date=date(2026, 2, 15),
+            )
+
+            self.assertEqual(1, len(invalid_warnings))
+            self.assertIn("invalid ISO updated date", invalid_warnings[0])
+            self.assertEqual(1, len(future_warnings))
+            self.assertIn("future", future_warnings[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
