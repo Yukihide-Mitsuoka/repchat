@@ -29,7 +29,8 @@ updated: 2026-07-30
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190)。
+**現在の作業スレッド**: [Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
+[PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)。
 デモのSQL表示を構文階層ごとの0、4、8、12...スペースへ正規化する。完了後は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証へ戻る。
 

@@ -19,7 +19,8 @@ updated: 2026-07-30
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在の作業**は[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190)。
+**現在の作業**は[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
+[PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)。
 デモのSQL表示を構文階層ごとの0、4、8、12...スペースへ正規化する。完了後は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ
 [5分デモ](demo.md)を見せて価値仮説と価格感を検証する。
