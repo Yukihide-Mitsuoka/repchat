@@ -2,7 +2,7 @@
 name: architecture
 description: Design or change structure, boundaries, or technology — always through an ADR
 triggers: [new module, change boundaries, replace technology, redesign, public API shape, 設計変更, アーキテクチャ, ADR作成, モジュール追加]
-reads: [.ai/architecture.md, .ai/decision-log.md, docs/adr/]
+reads: [.ai/architecture.md, docs/foundation/adr/README.md]
 ---
 
 # Skill: Architecture Change
@@ -14,12 +14,18 @@ human, then implemented incrementally.
 ## Inputs
 - The forcing problem: what concrete pain or requirement makes the current structure
   insufficient? (No forcing problem → no architecture change; COD-051.)
-- Current state: read `.ai/architecture.md`, affected `MODULE.md` files, prior ADRs in
-  `docs/adr/` (someone may have decided this before — superseding requires saying so).
+- Current state: read `.ai/architecture.md`, affected `MODULE.md` files, and the
+  foundation ADR index. Inspect `docs/adr/README.md` when present; otherwise list project
+  ADR filenames and headings. Search `.ai/decision-log.md` and both ADR collections by
+  affected path, symbol, module, domain term, and index scope. Read every match and
+  supersession chain completely. Apply the broader fallback in `.ai/README.md` whenever
+  relevance is uncertain (someone may have decided this before — superseding requires
+  saying so).
 
 ## Process
 1. Write the problem statement and constraints (performance, cost, team, compliance).
-2. Identify 2–4 realistic options **including "do nothing"**. Prototype only if a
+2. Confirm the bounded decision discovery above is complete, then identify 2–4 realistic
+   options **including "do nothing"**. Prototype only if a
    critical unknown blocks comparison (timebox it).
 3. Compare options against: simplicity, blast radius (ARC-020), reversibility,
    operational cost, security posture (GR-030), vendor lock-in.
