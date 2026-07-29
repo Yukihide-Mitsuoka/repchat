@@ -29,13 +29,13 @@ updated: 2026-07-29
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**今の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
-[PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。
+**直前の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
+[PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)（2026-07-29 merge済み）。
 既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
 手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
 実行・参照値照合の状態、描画結果を同じページへ出す変更を実装した。2026-07-29に実Vertex AI・
 BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidence materialize/build、
-ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功。merge後は
+ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功した。次は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ見せる。
 
 「デモを見せられる形」の基礎は**完了**（LOG-0081）。
@@ -74,7 +74,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: PR #175のmerge後、デザインパートナーへ5分デモを見せ、
+**次のボトルネック**: デザインパートナーへ5分デモを見せ、
 [demo.md](demo.md)末尾の5問を聞く。
 「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
 
