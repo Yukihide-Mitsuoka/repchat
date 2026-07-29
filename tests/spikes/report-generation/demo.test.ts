@@ -66,6 +66,27 @@ test('the Evidence package definition matches the minimal audited lockfile', () 
   assert.equal(packageDefinition.devDependencies.typescript, '5.4.2');
 });
 
+test('the Evidence plugin configuration matches the minimal installed packages', () => {
+  const configResult = spawnSync(
+    'python3',
+    ['-c', `import runpy; print(runpy.run_path(${JSON.stringify(DEMO)})["EVIDENCE_CONFIG"])`],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(configResult.status, 0, configResult.stderr);
+  assert.match(configResult.stdout, /@evidence-dev\/core-components/);
+  assert.match(configResult.stdout, /@evidence-dev\/bigquery/);
+  assert.doesNotMatch(configResult.stdout, /@evidence-dev\/csv/);
+
+  const source = readFileSync(DEMO, 'utf8');
+  assert.match(source, /"evidence\.config\.yaml"\)\.write_text\(EVIDENCE_CONFIG/);
+  const install = source.slice(
+    source.indexOf('def install_generated_report()'),
+    source.indexOf('def planned_steps('),
+  );
+  assert.match(install, /target_sources = EVIDENCE_DIR \/ "sources"/);
+  assert.doesNotMatch(install, /EVIDENCE_DIR \/ "sources" \/ "ga4"/);
+});
+
 test('a real demo fails when npm reports a critical Evidence advisory', () => {
   const source = readFileSync(DEMO, 'utf8');
   const main = source.slice(source.indexOf('def main()'));

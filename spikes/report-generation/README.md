@@ -294,7 +294,8 @@ make demo PROJECT=example-project DRY_RUN=yes
 コマンドは次を順に行います。
 
 1. `out/.demo/venv` にpin済みPython依存をインストール
-2. pin済みcommitのEvidence公式テンプレートを`out/.demo/evidence-app`へ取得し、BigQueryに必要な最小lockfileどおり`npm ci`
+2. pin済みcommitのEvidence公式テンプレートを`out/.demo/evidence-app`へ取得し、plugin設定と
+   sample sourceをBigQueryだけの最小構成へ置換してから、最小lockfileどおり`npm ci`
 3. `npm audit --audit-level=critical`を実行し、critical advisoryがあれば停止
 4. 日本語のレポート定義からSQLを生成し、BigQueryの実行結果を既知値と照合
 5. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
