@@ -79,6 +79,12 @@ test('the Evidence plugin configuration matches the minimal installed packages',
 
   const source = readFileSync(DEMO, 'utf8');
   assert.match(source, /"evidence\.config\.yaml"\)\.write_text\(EVIDENCE_CONFIG/);
+  const install = source.slice(
+    source.indexOf('def install_generated_report()'),
+    source.indexOf('def planned_steps('),
+  );
+  assert.match(install, /target_sources = EVIDENCE_DIR \/ "sources"/);
+  assert.doesNotMatch(install, /EVIDENCE_DIR \/ "sources" \/ "ga4"/);
 });
 
 test('a real demo fails when npm reports a critical Evidence advisory', () => {
