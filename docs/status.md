@@ -29,21 +29,20 @@ updated: 2026-07-30
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
-branch `feat/178-formatted-showcase`。初版の5問は実Vertex AI・BigQueryで5/5、Vertex AI推定¥0.723、
-Evidence materialize/buildまで成功した。その表示レビューを受け、現在はSQLをSELECT列・主要句単位で
-整形し、各分析内の結果／生成プロセス・SQLタブ、購入KPI、リピート率、平均エンゲージメント、
-購入ファネル、日次＋7日移動平均へ改修した。改修版は実Vertex AI・BigQueryで**5/5**、Vertex AI
-推定**¥0.877**、Evidence materialize/build、HTTP 200まで成功。開発サーバーが描画用ローカルSQLを
-露出することをブラウザで発見し、デモ起動をproduction previewへ変更した。さらに、入口から
+**現在の作業スレッド**: [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
+デザインパートナーへ5分デモを見せ、価値仮説と価格感を検証する。
+
+**直前の作業スレッド**: [Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
+[PR #182](https://github.com/Yukihide-Mitsuoka/repchat/pull/182)（2026-07-30 merge済み）。
+SQLをSELECT列・主要句単位で整形し、各分析内の結果／生成プロセス・SQLタブ、購入KPI、
+リピート率、平均エンゲージメント、購入ファネル、日次＋7日移動平均へ改修した。さらに、入口から
 3ページ目までの上位12回遊を段階付きで集計するR17とEvidence標準`SankeyDiagram`を追加した。
 R17を含む6問版は実Vertex AI・BigQueryで**6/6**、推定**¥1.285**、R17は12 edgeをmaterializeし、
 production build・ブラウザ描画・SQLの4スペースインデント／横スクロール・error/warning 0まで確認した。
-[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)の
-実測記録を土台にしたstacked branchである。製品UX、目的からKPI・複数グラフ・読順を設計する
-対話型ダッシュボードbuild、AI所見はIssue #179〜#181へ分離した。
+製品UX、目的からKPI・複数グラフ・読順を設計する対話型ダッシュボードbuild、AI所見は
+Issue #179〜#181へ分離した。
 
-**直前の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
+その前の[Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
 [PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)（2026-07-29 merge済み）。
 既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
 手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
@@ -88,8 +87,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: Issue #178をPRにしてCI確認後、デザインパートナーへ5分デモを見せ、
-[demo.md](demo.md)末尾の5問を聞く。
+**次のボトルネック**: デザインパートナーへ5分デモを見せ、
+[demo.md](demo.md)末尾の6問を聞く。
 「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
 
 ### 0.2 手を動かす前に知っておくこと
