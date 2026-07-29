@@ -22,6 +22,10 @@ updated: 2026-07-30
 **現在の作業**は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
 デザインパートナーへ[5分デモ](demo.md)を見せ、末尾の質問で価値仮説と価格感を検証する。
 
+デモ画面の情報配置は[Issue #184](https://github.com/Yukihide-Mitsuoka/repchat/issues/184) /
+[PR #185](https://github.com/Yukihide-Mitsuoka/repchat/pull/185)でレビュー中。6設問それぞれの
+実クエリ結果を、分析結果／生成プロセス・SQLと同じタブ群の3つ目「集計データ」へ配置する。
+
 **直前の作業**は[Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
 [PR #182](https://github.com/Yukihide-Mitsuoka/repchat/pull/182)で、2026-07-30にmerge済み。
 生成SQLの実行原文を変えずに表示だけを整形し、対面デモを
