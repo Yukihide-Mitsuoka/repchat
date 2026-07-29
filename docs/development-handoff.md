@@ -19,12 +19,13 @@ updated: 2026-07-29
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在の作業**は
-[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) /
-[PR #161](https://github.com/Yukihide-Mitsuoka/repchat/pull/161)。
-[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)の設計はPR #159で完了した。
-次はデザインパートナーへ[5分デモ](demo.md)を見せる。オーナーが対象者を選び、日程を
-確保するまで、GitHub Appまたはartifact pipelineの製品実装を次の作業にしない。
+**現在のblocking fix**は
+[Issue #164](https://github.com/Yukihide-Mitsuoka/repchat/issues/164) /
+[PR #166](https://github.com/Yukihide-Mitsuoka/repchat/pull/166)。
+最小Evidence依存とtemplate plugin設定の不整合を直し、2026-07-29にr1〜r12 materialize、
+HTTP 200、検証済み主要値、未定義3指標の拒否、browser error 0を再確認した。merge後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
+デザインパートナーへ[5分デモ](demo.md)を見せる。
 
 進行中の作業、ブロッカー、次のアクション、検証済みの基準点が変わった場合は
 `docs/status.md`を更新します。この文書は正本の場所または再開順序が変わった場合だけ更新します。
