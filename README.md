@@ -1,62 +1,58 @@
-# ai-dev-foundation
+# RepChat
 
-**AI-native development foundation** — a template repository for projects where AI
-agents (Claude Code, ChatGPT, Gemini, Codex, ...) are the primary developers and humans
-direct, decide, and review.
+<!-- repository-readme-owner: Yukihide-Mitsuoka/repchat -->
 
-> **AI agents:** stop reading this file. Your entry point is [CLAUDE.md](CLAUDE.md)
-> (Claude Code) or [AGENTS.md](AGENTS.md) (everyone else).
+RepChatは、日本の小規模な代理店・ソフトウェアベンダー向けのマルチテナント分析SaaSです。
+顧客ごとの分析データを分離し、自然言語によるレポート作成と継続配信を支援します。
 
-## What this template provides
+> **AI agents:** 作業前に [AGENTS.md](AGENTS.md) と [CLAUDE.md](CLAUDE.md) を読み、
+> 現在の作業は[開発引き継ぎ](docs/development-handoff.md)から確認してください。
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| Rules (single source of truth) | [`.ai/`](.ai/) | Guardrails, security, architecture, coding, testing, release, docs, review — every rule has a stable ID (GR-010, SEC-020, ...) |
-| Agent entry points | [`CLAUDE.md`](CLAUDE.md), [`AGENTS.md`](AGENTS.md) | Operating manual + task routing table |
-| Task playbooks | [`.skills/`](.skills/) | 10 vendor-neutral skills: requirements, feature, bugfix, refactor, architecture, test, security, documentation, review, release — also exposed as native Claude Code skills under `.claude/skills/` |
-| Enforcement L1 | [`.claude/`](.claude/) | Claude Code hooks (command guard + auto format/lint), a read-only command allow-list, native skill wrappers, and a read-only `code-reviewer` subagent |
-| Enforcement L2 | [`.pre-commit-config.yaml`](.pre-commit-config.yaml) | Any committer: secret scan, branch guard, lint, unit tests |
-| Enforcement L3 | [`.github/workflows/`](.github/workflows/) | CI, CodeQL, secrets/deps/license scan, container, IaC, DAST, Scorecard, release+SBOM |
-| Stable command interface | [`Makefile`](Makefile) | `make test` etc. — the only entry points automation uses |
-| Stack profiles | [`profiles/`](profiles/) | Reference Makefile implementations per stack + the canonical target contract |
-| Decisions | [`docs/adr/`](docs/adr/) | ADRs + decision log |
-| Knowledge | [`docs/`](docs/) | Architecture, domain, API, deployment, operations, runbook, troubleshooting, roadmap, glossary |
-| GitHub scaffolding | [`.github/`](.github/) | Issue forms, PR template, CODEOWNERS, labels-as-code, Dependabot; plus `renovate.json` |
-| GitHub governance | [`.github/governance/`](.github/governance/) + [`scripts/github_governance.py`](scripts/github_governance.py) | Layered policy with `plan`/`audit` and explicitly confirmed administrator `apply` |
-| Update distribution | [`template-sync.yml`](.github/workflows/template-sync.yml) + [`.templatesyncignore`](.templatesyncignore) | Foundation updates reach downstream repos as PRs |
+## 現在地
 
-## Using this template
+認可ゲート、SQLへのテナント境界注入、PostgreSQL RLS、BigQuery実行、
+テナント別キャッシュ、自然言語からのレポート生成は検証済みです。現在は
+[デザインパートナー検証](docs/status.md#0-再開手順新しいaiセッション向け)が次の作業で、
+GitHub Appとartifact pipelineの製品実装はその結果を待ちます。
 
-1. **Create the repo** from this template (GitHub → "Use this template").
-2. **Replace placeholders**: search for `{{` — mission, stack, CODEOWNERS teams, issue
-   config URLs.
-3. **Wire the Makefile**: copy the closest [`profiles/`](profiles/) Makefile to the
-   root (or implement `setup/format/lint/test/build` yourself) — everything else
-   (hooks, CI) starts working automatically.
-4. **Inspect GitHub governance**: run `python3 scripts/github_governance.py plan --root .
-   --repo OWNER/REPOSITORY` after `gh auth login`. It reports policy drift without
-   changing settings. Use `audit` for a CI-suitable nonzero drift result. After reviewing
-   the plan, run `apply` with an exact `--confirm-repo OWNER/REPOSITORY`. The existing
-   [`scripts/setup-github.sh`](scripts/setup-github.sh) is a compatibility wrapper for
-   the same policy-driven `plan` and explicitly confirmed `apply` paths.
-5. **Install local gates**: `make setup && pre-commit install --hook-type pre-commit
-   --hook-type pre-push`.
-6. **Point your agent at it**: open the repo with Claude Code (reads `CLAUDE.md`
-   automatically) or tell any other agent to read `AGENTS.md`. Assign it an issue.
-   Run the agent inside the [Dev Container](.devcontainer/README.md) so host credentials
-   stay out of its reach; customize `.devcontainer/devcontainer.json` for your stack.
+## ドキュメント
 
-Full walkthrough (new machine, different account, gotchas): [foundation usage guide](docs/foundation/guides/usage.md).
+| 目的 | 正本 |
+|---|---|
+| 開発を再開する | [開発引き継ぎ](docs/development-handoff.md) |
+| 現在の実装状況と検証結果を確認する | [実装状況サマリー](docs/status.md) |
+| 要件と事業モデルを確認する | [要件定義](docs/requirements.md) |
+| アーキテクチャとデータ境界を確認する | [システム設計](docs/system-design.md) |
+| 優先順位を確認する | [ロードマップ](docs/roadmap.md) |
+| 5分デモを実行・説明する | [デモ手順](docs/demo.md) |
+| 判断の根拠を確認する | [プロジェクトADR](docs/adr/)・[意思決定ログ](.ai/decision-log.md) |
 
-## Design principles
+## システム境界
 
-AI First · Secure by Default · Least Privilege · Defense in Depth · Everything as Code
-(docs, policy, infra) · Convention over Configuration · Clean Architecture · DDD ·
-SOLID · Twelve-Factor · GitHub Flow · Conventional Commits · SemVer.
+- Cloudflare WorkersのエッジゲートがJWTと認可コンテキストを検証します。
+- 実行エンジンがSQL ASTへ`tenant_id`境界を注入し、BigQueryで分析します。
+- PostgreSQL RLSが管理データのテナント境界を強制します。
+- Evidenceのシェルとテナント別データを分離し、同じシェルを複数顧客へ配信します。
+- 指標定義はRepChat、生成ページ・SQL・manifestは顧客Gitが所有します。
 
-Why it's built this way: [docs/adr/](docs/adr/). How agents behave here:
-[.ai/README.md](.ai/README.md).
+詳細と検証範囲は[実装状況サマリー](docs/status.md)を参照してください。
+
+## 開発
+
+ビルド、テスト、静的解析はリポジトリの正規インターフェースから実行します。
+
+```bash
+make setup
+make format
+make lint
+make test
+make doctor
+```
+
+基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
+からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、
+実験、要件、ADRは同期から保護されています。
 
 ## License
 
-<!-- TEMPLATE: choose a license and add LICENSE file. -->
+[LICENSE](LICENSE)を参照してください。

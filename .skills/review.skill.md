@@ -2,7 +2,7 @@
 name: review
 description: Review a PR (or self-review a diff) against the 10-viewpoint checklist
 triggers: [review PR, self-review, code review, レビュー, コードレビュー, PRレビュー, セルフレビュー]
-reads: [.ai/review-checklist.md, .ai/guardrails.md]
+reads: [.ai/review-checklist.md]
 ---
 
 # Skill: Code Review
@@ -16,6 +16,8 @@ immediately — while keeping review latency low.
   description or red CI is returned immediately without deep review.
 - The relevant rules: identify the change scope (ARC-020) and load the rule files the
   routing table maps to that scope.
+- The complete guardrails already loaded by the mandatory baseline; reuse them while
+  they remain available in the active context, and reread after compaction.
 
 ## Process
 1. Read issue + description first; form an expectation of what the diff should contain.

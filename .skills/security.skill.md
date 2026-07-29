@@ -2,7 +2,7 @@
 name: security
 description: Security hardening, vulnerability response, and security review of changes
 triggers: [vulnerability, CVE, security review, hardening, auth change, pentest finding, セキュリティ, 脆弱性, セキュリティレビュー]
-reads: [.ai/security.md, .ai/guardrails.md, SECURITY.md]
+reads: [.ai/security.md, SECURITY.md]
 ---
 
 # Skill: Security Work
@@ -15,6 +15,8 @@ and verify security properties of changes — without ever lowering the bar (GR-
 - The trigger: scanner finding (CodeQL/Trivy/gitleaks), advisory, review request, or
   hardening goal. For scanner findings: the exact rule ID and location.
 - Data classification of what's at stake (SEC-011).
+- The complete guardrails already loaded by the mandatory baseline; reuse them while
+  they remain available in the active context, and reread after compaction.
 - **Confidentiality check first**: if this is an exploitable vulnerability in shipped
   code, work privately (SEC-040) — no public issues/PRs describing the exploit.
 
