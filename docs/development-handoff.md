@@ -26,7 +26,8 @@ updated: 2026-07-30
 [PR #185](https://github.com/Yukihide-Mitsuoka/repchat/pull/185)で、2026-07-30にmerge済み。6設問それぞれの
 実クエリ結果を、分析結果／生成プロセス・SQLと同じタブ群の3つ目「集計データ」へ配置した。
 
-将来のSlack分析UIは[Issue #187](https://github.com/Yukihide-Mitsuoka/repchat/issues/187)と
+将来のSlack分析UIは[Issue #187](https://github.com/Yukihide-Mitsuoka/repchat/issues/187) /
+[PR #189](https://github.com/Yukihide-Mitsuoka/repchat/pull/189)と
 [ADR-0017](adr/0017-use-slack-as-an-authorized-analysis-interface.md)で設計中。Slackは既存pipelineへの
 認可付きadapterとし、Webを正本UIにする。公開GA4での成功は未知の独自nested schemaへの一般化を
 証明しないため、自由質問の実装前に[Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)を
