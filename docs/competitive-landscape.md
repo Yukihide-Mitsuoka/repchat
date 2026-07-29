@@ -1,7 +1,7 @@
 ---
 id: competitive-landscape
-title: 競合比較 — 構想と既存製品の重なり（2026-07-27 時点）
-updated: 2026-07-27
+title: 競合比較 — 構想と既存製品の重なり（2026-07-30 時点）
+updated: 2026-07-30
 ---
 
 # 競合比較
@@ -98,6 +98,25 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 
 「Evidenceを土台に、権限管理を足して売る」という形は、**提供元が同じことを安くやっている**
 という構図です。
+
+#### 2026-07-30追記：SlackをUIにしても単独では差別化にならない
+
+Evidenceの現行公開ページには、dashboard/data app、AI Chat、AI支援開発、RLS、page access、埋め込みが
+掲載されている。公開情報から、end userがSlackで自然言語質問を行う同等機能までは確認できなかったが、
+**未掲載であることは持続的な優位を意味しない**。Slack通知やbotは各社が追加できるinterfaceである。
+
+RepChatが検証すべき差は、Slackそのものではなく次の一連のworkflowである。
+
+- 日本語の会話から「何を分析するか」を分解し、複数KPIとdashboardへまとめる
+- 代理店workspace内の複数顧客をchannel単位で分離し、Webと同じ認可・監査を通す
+- 指標定義、生成SQL、検証結果、immutable revisionを一つの来歴として残す
+- Slackは要約・graph・linkの入口、Webはdashboard・SQL・定義の正本として役割分担する
+
+ただし、このworkflowもSQLが正しくなければ価値にならない。公開GA4 schemaでの成功は、未知の独自
+nested schemaへの一般化を証明しないため、Issue #188を自由質問機能の実装gateにする。
+
+参照: [Evidence](https://evidence.dev/)、[Evidence documentation](https://docs.evidence.dev/)、
+[Slack分析インターフェース要件](requirements/slack-analysis-interface.md)
 
 ### 3. 席数課金そのものへの逆風
 
