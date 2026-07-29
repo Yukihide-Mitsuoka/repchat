@@ -8,9 +8,11 @@
   "inherited_paths": [
     ".ai/README.md",
     ".ai/documentation.md",
+    ".ai/project-document-maintenance.md",
     ".ai/release.md",
     ".ai/security.md",
     ".ai/testing.md",
+    ".claude/README.md",
     ".claude/agents/",
     ".claude/hooks/post-edit-quality.sh",
     ".claude/skills/",
