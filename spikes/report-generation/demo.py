@@ -49,6 +49,13 @@ EVIDENCE_PACKAGE = {
         "vitest": "3.2.6",
     },
 }
+EVIDENCE_CONFIG = """\
+plugins:
+  components:
+    "@evidence-dev/core-components": {}
+  datasources:
+    "@evidence-dev/bigquery": {}
+"""
 
 
 class DemoError(RuntimeError):
@@ -143,6 +150,7 @@ def prepare_evidence() -> None:
     (EVIDENCE_DIR / "package.json").write_text(
         json.dumps(EVIDENCE_PACKAGE, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    (EVIDENCE_DIR / "evidence.config.yaml").write_text(EVIDENCE_CONFIG, encoding="utf-8")
     shutil.copy2(HERE / "evidence-package-lock.json", EVIDENCE_DIR / "package-lock.json")
     run(["npm", "ci", "--no-audit", "--no-fund"], cwd=EVIDENCE_DIR)
     # Fail a fresh demo if a newly disclosed critical advisory reaches the
@@ -157,12 +165,12 @@ def generate_report(python: Path, project: str) -> None:
 
 
 def install_generated_report() -> None:
-    generated_sources = HERE / "out" / "sources" / "ga4"
+    generated_sources = HERE / "out" / "sources"
     generated_page = HERE / "out" / "pages" / "monthly_report.md"
     if not generated_sources.is_dir() or not generated_page.is_file():
         raise DemoError("report output is incomplete; run_report.py did not finish")
 
-    target_sources = EVIDENCE_DIR / "sources" / "ga4"
+    target_sources = EVIDENCE_DIR / "sources"
     if target_sources.is_symlink():
         raise DemoError(f"refusing to replace symlink: {target_sources}")
     if target_sources.exists():
