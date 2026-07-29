@@ -50,6 +50,39 @@ test('dry-run carries one Japanese question into the generation plan', () => {
   assert.match(result.stdout, /one-question mode/);
 });
 
+test('dry-run exposes the advanced analysis showcase', () => {
+  const result = demo(['--project', 'example-project', '--showcase', '--dry-run']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /showcase mode: 6 Japanese questions/);
+  assert.match(result.stdout, /purchase KPIs/);
+  assert.match(result.stdout, /funnel/);
+  assert.match(result.stdout, /7-day trend/);
+  assert.match(result.stdout, /navigation Sankey/);
+});
+
+test('one-question and showcase modes are mutually exclusive', () => {
+  const result = demo([
+    '--project',
+    'example-project',
+    '--question',
+    '2021年1月のセッション数を出して',
+    '--showcase',
+    '--dry-run',
+  ]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /not allowed with argument/);
+});
+
+test('SHOWCASE and QUESTION environment variables are mutually exclusive', () => {
+  const result = demo(['--project', 'example-project', '--dry-run'], {
+    ...process.env,
+    SHOWCASE: 'yes',
+    QUESTION: '2021年1月のセッション数を出して',
+  });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /not allowed with QUESTION/);
+});
+
 test('the Make target passes QUESTION without evaluating shell syntax', () => {
   const marker = path.join(os.tmpdir(), `repchat-question-${process.pid}`);
   fs.rmSync(marker, { force: true });
@@ -86,6 +119,7 @@ test('the Evidence package definition matches the minimal audited lockfile', () 
   const lockedRoot = lock.packages[''];
   assert.deepEqual(packageDefinition.dependencies, lockedRoot.dependencies);
   assert.deepEqual(packageDefinition.devDependencies, lockedRoot.devDependencies);
+  assert.equal(packageDefinition.scripts.preview, 'evidence preview');
   assert.deepEqual(Object.keys(lockedRoot.dependencies).sort(), [
     '@evidence-dev/bigquery',
     '@evidence-dev/core-components',
@@ -93,6 +127,12 @@ test('the Evidence package definition matches the minimal audited lockfile', () 
   ]);
   assert.equal(lock.packages['node_modules/vitest'].version, '3.2.6');
   assert.equal(packageDefinition.devDependencies.typescript, '5.4.2');
+});
+
+test('the presentation server uses production preview instead of query-revealing dev mode', () => {
+  const source = readFileSync(DEMO, 'utf8');
+  assert.match(source, /run\(\["npm", "run", "preview"\]/);
+  assert.doesNotMatch(source, /run\(\["npm", "run", "dev"\]/);
 });
 
 test('the Evidence plugin configuration matches the minimal installed packages', () => {

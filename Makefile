@@ -76,6 +76,7 @@ demo: ## Generate, verify, build, and open the report demo (uses paid Vertex/Big
 		$(if $(PROJECT),--project "$(PROJECT)") \
 		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
 		$(if $(filter yes,$(BUILD_ONLY)),--build-only) \
+		$(if $(filter yes,$(SHOWCASE)),--showcase) \
 		$(if $(filter yes,$(DRY_RUN)),--dry-run)
 
 # --- deployment (project-specific; ADR-0012) ---------------------------------

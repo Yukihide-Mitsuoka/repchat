@@ -272,23 +272,22 @@ BigQueryとVertex AIを使えるADCです。ADCが未設定なら、最初に一
 gcloud auth application-default login
 ```
 
-前提を満たした後は、リポジトリのルートで**この1コマンド**です。
+前提を満たした後は、リポジトリのルートで実行します。用途ごとのコマンドは次の3つです。
 
-```bash
-make demo PROJECT=kotonoha-bi-dev
-```
-
-上のコマンドは参照値を持つ15問の回帰測定です。対面デモでは1問に絞り、日本語問い合わせ、
-Vertex AIが生成したBigQuery SQL、生成理由、実行・参照値照合の状態、Evidence描画結果を
-同じページに表示します。
-
-```bash
-make demo PROJECT=kotonoha-bi-dev QUESTION='2021年1月のセッション数を出して'
-```
+| 用途 | コマンド |
+|---|---|
+| 対面デモ（購入KPI＋ファネル＋移動平均＋回遊Sankey） | `make demo PROJECT=kotonoha-bi-dev SHOWCASE=yes` |
+| 1問の経路確認 | `make demo PROJECT=kotonoha-bi-dev QUESTION='2021年1月のセッション数を出して'` |
+| 17問の回帰測定 | `make demo PROJECT=kotonoha-bi-dev` |
 
 `report.json`にある設問と完全一致する場合は登録済みの参照SQLとも値を照合します。それ以外の
 日本語問い合わせは生成SQLをBigQueryで実行して描画しますが、既知値とは照合せず、ページに
 「実行済み・参照値未照合」と明記します。未定義指標を拒否した場合はSQLソースを生成しません。
+ショーケースはR4/R11/R12/R9/R16/R17を使い、全6問をVertex AIで生成・BigQueryで実行・参照値照合してから
+購入KPI、リピート率、平均エンゲージメント、`FunnelChart`、日次と7日移動平均の2系列`LineChart`、
+入口から3ページ目までの上位12回遊を示す`SankeyDiagram`へ
+配置します。分析ごとの`Tabs`で結果と生成プロセス・SQLを切り替えるため、対応関係を記憶する必要は
+ありません。R16はCTEとウィンドウ関数、R17はセッション内の時系列化・経路集約を必要とする追加設問です。
 
 実Vertex AI（約2円）とBigQuery（1か月、最大20GiB）を使うため、開始前に確認が出ます。
 非対話環境でビルドまで行う場合は明示的に費用を承認します。
@@ -311,8 +310,9 @@ make demo PROJECT=example-project DRY_RUN=yes
 3. `npm audit --audit-level=critical`を実行し、critical advisoryがあれば停止
 4. 日本語のレポート定義からSQLを生成し、`SELECT *`・書込み・対象外データセットを拒否してから
    BigQueryで実行。登録済み設問だけ既知値と照合
-5. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
-6. `http://localhost:3000/`でレポートを開く
+5. 実行SQLの原文を`source`へ保存し、画面表示だけ`sqlparse==0.5.5`で整形
+6. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
+7. `http://localhost:3000/`でレポートを開く
 
 `out/.demo/`は使い捨てでgit管理外です。生成器が出す接続設定はADCを使うため、鍵ファイルは置きません。
 デモで話す内容と限界は[5分説明](../../docs/demo.md)にまとめています。
@@ -321,6 +321,11 @@ make demo PROJECT=example-project DRY_RUN=yes
 [BigQuery anti-pattern recognition](https://github.com/GoogleCloudPlatform/bigquery-antipattern-recognition)
 にある`SimpleSelectStar`と同じ判断です。デモの実行前検査に必要な規則はコード内で固定できるため、
 Java/Docker製のツール全体は依存に加えていません。
+
+SQL表示の整形には、Python 3.13対応・BSDライセンスの`sqlparse==0.5.5`をデモ専用venvにpinしています。
+トップレベルのSELECT列を4スペースで分け、主要句を改行し、Evidence標準`CodeBlock`でsyntax highlight、
+コピー、横スクロールを提供します。整形対象は表示文字列だけで、BigQueryへ送るSQLと
+`out/sources/ga4/*.sql`はモデルの原文です。
 
 ### 1問モードの実環境確認（2026-07-29）
 
@@ -334,6 +339,28 @@ Java/Docker製のツール全体は依存に加えていません。
 | BigQuery SQL | 必要列を集計し、`SELECT *`なし |
 | Evidence SQL | `select sessions from ga4.r1` |
 | 描画 | BigValue **118,380**、browser error/warning **0** |
+
+### 高度なショーケースの実環境確認（2026-07-30）
+
+R4/R11/R12/R9/R16/R17の6問で、実Vertex AI生成、BigQuery実行、参照SQLとの照合、Evidence
+materialize/buildを実行しました。
+
+| 確認項目 | 結果 |
+|---|---|
+| 生成・参照値照合 | **6/6** |
+| 主な値 | 購入895件・購入金額57,350、リピートユーザー率14.56%、平均エンゲージメント49.51秒、ファネル23,105→4,537→1,115 |
+| 移動平均 | 日次31行。CTE＋ウィンドウ関数で当日を含む7日移動平均を生成・照合 |
+| 回遊 | 入口から3ページ目までの上位12経路を段階付き12 edgeへ集約。入口`/`→2ページ目`/`は38,913セッション |
+| Vertex AI推定費用 | **¥1.285** |
+| Evidence | r4/r11/r12/r9/r16/r17をmaterializeし、production build成功。ブラウザerror/warning 0 |
+| SQL表示 | タブ文字0。SELECT列は半角スペース4個、58行のR17 SQLも横スクロール可能 |
+
+Evidenceのdevelopment serverは描画用ローカルクエリを検査UIとして露出するため、対面デモは
+production previewで起動します。生成BigQuery SQLは各分析の「生成プロセス・SQL」タブだけに表示します。
+
+R17の初回生成は完全URLと離脱ノードを出して5/6でした。URLパスの定義、対象セッション、上位経路を
+edgeへ分解する順序、段階接頭辞を分析契約に追加して再生成し、手書きSQLへの置換なしで6/6になりました。
+これは自由文だけでは出力意味が揺れ、生成前に分析仕様を確定する必要があることも示しています。
 
 **任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
 詳しくは後述の「実際に2テナントへ配った」。

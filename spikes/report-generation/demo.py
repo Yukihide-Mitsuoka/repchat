@@ -28,6 +28,7 @@ EVIDENCE_PACKAGE = {
     "scripts": {
         "build": "evidence build",
         "dev": "evidence dev --open /",
+        "preview": "evidence preview",
         "sources": "evidence sources",
     },
     "engines": {"npm": ">=7.0.0", "node": ">=18.0.0"},
@@ -158,12 +159,16 @@ def prepare_evidence() -> None:
     run(["npm", "audit", "--audit-level=critical"], cwd=EVIDENCE_DIR)
 
 
-def generate_report(python: Path, project: str, question: str | None) -> None:
+def generate_report(
+    python: Path, project: str, question: str | None, showcase: bool
+) -> None:
     env = os.environ.copy()
     env["GOOGLE_CLOUD_PROJECT"] = project
     command = [str(python), str(HERE / "run_report.py"), "--project", project]
     if question is not None:
         command.extend(["--question", question])
+    if showcase:
+        command.append("--showcase")
     run(command, env=env)
 
 
@@ -184,11 +189,17 @@ def install_generated_report() -> None:
     shutil.copy2(generated_page, EVIDENCE_DIR / "pages" / "index.md")
 
 
-def planned_steps(project: str, question: str | None) -> None:
+def planned_steps(project: str, question: str | None, showcase: bool) -> None:
     print(f"project: {project}")
     print(f"Evidence template: {TEMPLATE_COMMIT}")
     if question is not None:
         print(f"one-question mode: {question}")
+    if showcase:
+        print(
+            "showcase mode: 6 Japanese questions "
+            "(purchase KPIs + retention + engagement + funnel + 7-day trend + "
+            "navigation Sankey)"
+        )
     for step in (
         "create isolated Python venv and install pinned dependencies",
         "fetch the pinned Evidence scaffold and install the minimal audited lockfile",
@@ -205,12 +216,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--accept-cost", action="store_true")
     parser.add_argument("--build-only", action="store_true", help="build but do not start the server")
     parser.add_argument("--dry-run", action="store_true", help="show the paid workflow without changing files")
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--question",
         default=os.environ.get("QUESTION"),
         help="run one Japanese question instead of the 15-question report",
     )
-    return parser.parse_args()
+    mode.add_argument(
+        "--showcase",
+        action="store_true",
+        default=os.environ.get("SHOWCASE") == "yes",
+        help="generate the five-panel dashboard showcase",
+    )
+    args = parser.parse_args()
+    if args.showcase and args.question is not None:
+        parser.error("--showcase is not allowed with QUESTION or --question")
+    return args
 
 
 def main() -> int:
@@ -226,14 +247,14 @@ def main() -> int:
         if question is not None and len(question) > 500:
             raise DemoError("question must be at most 500 characters")
         if args.dry_run:
-            planned_steps(project, question)
+            planned_steps(project, question, args.showcase)
             return 0
         confirm_paid_run(args.accept_cost)
         require_tools()
         require_adc()
         python = prepare_python()
         prepare_evidence()
-        generate_report(python, project, question)
+        generate_report(python, project, question, args.showcase)
         install_generated_report()
         run(["npm", "run", "sources"], cwd=EVIDENCE_DIR)
         run(["npm", "run", "build"], cwd=EVIDENCE_DIR)
@@ -241,7 +262,9 @@ def main() -> int:
             print(f"demo built: {EVIDENCE_DIR / 'build'}")
             return 0
         print(f"opening report at {REPORT_URL}")
-        run(["npm", "run", "dev"], cwd=EVIDENCE_DIR)
+        # The development server exposes every local page query and result.
+        # Production preview keeps the presentation focused on the dashboard.
+        run(["npm", "run", "preview"], cwd=EVIDENCE_DIR)
         return 0
     except DemoError as error:
         print(f"error: {error}", file=sys.stderr)
