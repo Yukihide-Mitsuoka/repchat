@@ -2,7 +2,7 @@
 id: requirements
 title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
-updated: 2026-07-29
+updated: 2026-07-30
 ---
 
 <!--
@@ -191,6 +191,17 @@ updated: 2026-07-29
 - 因果、目標、業務文脈を推測で補わない。不確実性、欠損、交絡、サンプル不足を明示する。
 - 外部配布前に人間の承認と監査履歴を必須にする。
 
+### 4.8 Phase 1後のSlack分析インターフェース
+
+- SlackをWebと同じ分析pipelineへ接続する任意の入口とし、独立した生成engineや成果物storeを作らない。
+- 初期は許可channelのbot mentionだけを扱い、要約、任意のgraph、認証付きdashboard linkを返す。
+- workspace、channel、Slack user、RepChat user、tenantの対応を検証し、Slack OAuthだけでdata参照を許可しない。
+- Slackへの数値・graph投稿をdata exportとして管理し、既定は機密値を含まない要約とlinkだけにする。
+- 任意の独自schemaへの自由質問は、未知nested schema検証（Issue #188）の合格後にだけ有効化する。
+
+詳細は[Slack分析インターフェース要件](requirements/slack-analysis-interface.md)と
+[ADR-0017](adr/0017-use-slack-as-an-authorized-analysis-interface.md)を参照する。
+
 ---
 
 ## 5. 非機能要件（v1で明示）
@@ -276,6 +287,12 @@ updated: 2026-07-29
 1. **NL→SQL精度スパイク**：実データ・実スキーマ数種で、生成成功率・検証で弾けた率・要問い返し率を実測。→ AI/UX/価格を設計する前提データにする。
 2. **テナント分離の攻撃テスト**：越境参照を意図的に試み、アプリ層/DB層のどちらでも止まることを確認。
 3. **キャッシュ×認可の整合**：認可キー付きキャッシュで越境が起きないことを検証。
+4. **未知nested schemaへの一般化**：GA4の語彙・意味・公開例を流用しないnested/repeated schemaで、
+   `UNNEST`、複数階層、join、window、funnelを含む日本語設問を反復する。独立review済みの参照SQLと
+   結果に対する一致率、誤推測率、確認質問・拒否率、scan上限違反を測る（Issue #188）。
+
+公開GA4 schemaでの6/6・15/15は、そのschema上の複雑なSQL生成を実証するが、未知の独自nested schemaへ
+一般化できる証拠ではない。Issue #188に合格するまで、任意schema対応を製品能力として表明しない。
 
 これらが通ってからPhase1本開発に入る。
 

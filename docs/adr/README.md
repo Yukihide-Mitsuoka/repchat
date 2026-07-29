@@ -37,5 +37,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0014](0014-who-owns-the-generated-artifacts.md) | 生成物と定義の所有を3種類に分ける | accepted | 2026-07-28 |
 | [0015](0015-publish-artifacts-through-customer-git.md) | 顧客Gitをbuild時の生成物配送境界にする | accepted | 2026-07-29 |
 | [0016](0016-authenticate-oversized-foundation-sync-prs.md) | 大規模な基盤同期PRを厳密に認証する | accepted | 2026-07-29 |
+| [0017](0017-use-slack-as-an-authorized-analysis-interface.md) | Slackを認可付き分析インターフェースとして使う | proposed | 2026-07-30 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
