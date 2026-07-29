@@ -12,6 +12,8 @@
 #   4. Child repositories with a manifest satisfy the local inheritance and legacy
 #      Template Sync protection contract.
 #   5. Foundation-owned project-documentation guides do not occupy project-owned paths.
+#   6. Declared AI context routes remain bounded without omitting mandatory authorities.
+#   7. Root README ownership is valid when marked; legacy missing markers remain warnings.
 
 set -u
 cd "$(dirname "$0")/.." || exit 9
@@ -93,8 +95,26 @@ if [ "$is_foundation_root" = true ]; then
   fi
 fi
 
+# 6. ADR-0012: route shape is enforced everywhere. Byte and word ceilings fail in the
+# canonical foundation; descendants receive measurements and compatibility warnings
+# because their protected entry documents can legitimately differ.
+context_budget_args=(validate --root .)
+if [ "$is_foundation_root" = true ]; then
+  context_budget_args+=(--enforce-budget)
+fi
+python3 scripts/context_budget.py "${context_budget_args[@]}" || \
+  err "AI context routes or budgets are invalid (ADR-0012)"
+
+# 7. ADR-0011: detect ownership mismatches without moving or rewriting files. Existing
+# repositories without a marker receive a warning so rule propagation does not force a
+# fleet-wide migration. An unpacked repository without an origin also remains auditable
+# by the other doctor checks.
+python3 scripts/readme_ownership.py audit --root . --allow-missing-marker \
+  --allow-unknown-repository || err "Root README ownership is invalid (ADR-0011)"
+
 for path in \
   docs/foundation/guides/README.md \
+  docs/foundation/guides/ai-context.md \
   docs/foundation/guides/api.md \
   docs/foundation/guides/architecture.md \
   docs/foundation/guides/deployment.md \

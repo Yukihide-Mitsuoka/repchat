@@ -11,6 +11,13 @@ AI_GUIDE = (
     / "guides"
     / "ai-instruction-files.ja.md"
 )
+PROJECT_DOCUMENTATION_GUIDE = (
+    REPOSITORY_ROOT
+    / "docs"
+    / "foundation"
+    / "guides"
+    / "project-documentation.md"
+)
 
 
 class FoundationDocsPortabilityTest(unittest.TestCase):
@@ -37,6 +44,20 @@ class FoundationDocsPortabilityTest(unittest.TestCase):
             guide,
         )
         self.assertIn("`src/modules/catalog/MODULE.md`", guide)
+
+    def test_doc_014_links_to_its_current_authority(self):
+        guide = PROJECT_DOCUMENTATION_GUIDE.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "[DOC-014](../../../.ai/project-document-maintenance.md"
+            "#doc-014-root-readme-ownership)",
+            guide,
+        )
+        self.assertNotIn(
+            "[DOC-014](../../../.ai/documentation.md"
+            "#doc-014-root-readme-ownership)",
+            guide,
+        )
 
 
 if __name__ == "__main__":
