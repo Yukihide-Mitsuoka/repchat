@@ -322,6 +322,19 @@ make demo PROJECT=example-project DRY_RUN=yes
 にある`SimpleSelectStar`と同じ判断です。デモの実行前検査に必要な規則はコード内で固定できるため、
 Java/Docker製のツール全体は依存に加えていません。
 
+### 1問モードの実環境確認（2026-07-29）
+
+`QUESTION='2021年1月のセッション数を出して'`で、実Vertex AI生成、BigQuery実行、
+参照SQLとの照合、Evidence materialize/build、ブラウザ表示まで実行しました。
+
+| 確認項目 | 結果 |
+|---|---|
+| 生成・参照値照合 | **1/1**。生成SQLと参照SQLがともに**118,380** |
+| Vertex AI推定費用 | **¥0.154** |
+| BigQuery SQL | 必要列を集計し、`SELECT *`なし |
+| Evidence SQL | `select sessions from ga4.r1` |
+| 描画 | BigValue **118,380**、browser error/warning **0** |
+
 **任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
 詳しくは後述の「実際に2テナントへ配った」。
 

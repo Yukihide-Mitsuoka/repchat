@@ -22,9 +22,9 @@ updated: 2026-07-29
 **現在の作業**は[Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
 [PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。日本語1問からVertex AI生成SQL、BigQuery実行、
 Evidence描画までを画面内で追跡できるようにする。BigQuery SQLとEvidenceローカルSQLは必要列を
-明示する。生成BigQuery SQLの`SELECT *`は実行前に拒否する。クラウド不要の単体テストは通過済みで、
-次はオーナーの課金承認後に実Vertex AI・BigQuery、Evidence build、ブラウザ表示を確認し、PRのCIを
-確認する。完了後は
+明示する。生成BigQuery SQLの`SELECT *`は実行前に拒否する。2026-07-29に実Vertex AI・BigQueryで
+1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidence materialize/build、ブラウザ表示、
+browser error/warning 0を確認した。PRのCIも12/12成功。次はPR #175をmergeし、
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
 デザインパートナーへ[5分デモ](demo.md)を見せる。
 

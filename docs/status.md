@@ -33,8 +33,9 @@ updated: 2026-07-29
 [PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。
 既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
 手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
-実行・参照値照合の状態、描画結果を同じページへ出す変更を実装し、クラウド不要の単体テストは通過した。
-**実Vertex AI・BigQueryとブラウザでの最終確認は未完了**。完了後は
+実行・参照値照合の状態、描画結果を同じページへ出す変更を実装した。2026-07-29に実Vertex AI・
+BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidence materialize/build、
+ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功。merge後は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ見せる。
 
 「デモを見せられる形」の基礎は**完了**（LOG-0081）。
@@ -68,12 +69,12 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 |---|---|---|
 | **起動を1コマンドに** | `make demo PROJECT=<project>`。隔離venv、Evidence公式テンプレート、生成、照合、materialize、build、ブラウザ起動まで含む | 通常の`npm ci`から実環境でr1〜r12がmaterialize、HTTP 200、ブラウザで検証済みの値と未定義3指標の拒否を確認。ブラウザerror 0（Evidence依存側の非致命warningあり）。完全にキャッシュのない別マシンでは未確認 |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
-| **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 単体テスト済み。実Vertex AI・BigQuery、Evidence build、ブラウザ表示はIssue #173で最終確認中 |
+| **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 実Vertex AI・BigQueryで1/1、参照値118,380と一致、Vertex AI推定¥0.154。Evidence buildとブラウザ表示を確認し、error/warning 0。PR #175のCIは12/12成功 |
 
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: Issue #173の実環境確認後、デザインパートナーへ5分デモを見せ、
+**次のボトルネック**: PR #175のmerge後、デザインパートナーへ5分デモを見せ、
 [demo.md](demo.md)末尾の5問を聞く。
 「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
 
