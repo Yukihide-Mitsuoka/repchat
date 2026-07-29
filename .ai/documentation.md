@@ -75,6 +75,7 @@ build on this rule.
 | `docs/foundation/adr/` | synchronized foundation decisions with context | yes (accepted ADRs) |
 | `docs/foundation/` | other synchronized foundation-owned guidance and document templates | descriptive |
 | `docs/adr/` | repository-specific decisions with context | yes (accepted ADRs) |
+| `docs/inheritance/readmes/<owner>/<repository>.md` | repository-owned snapshots of inherited ancestor READMEs | descriptive |
 | `docs/requirements.md`, `docs/requirements/` | whole-project and initiative requirements | contract |
 | `docs/glossary.md` | project-specific ubiquitous language | descriptive |
 | `docs/roadmap.md` | project direction and sequencing | descriptive |
@@ -109,42 +110,18 @@ fact between the singleton and collection (DOC-001). Create a project-owned dire
 local index only when it contains actual maintained project content; do not create empty
 scaffolding or a foundation-owned placeholder in a project namespace.
 
-## DOC-012: Development handoff snapshot
+## Conditional project-document maintenance rules
 
-An active project whose work continues across sessions or agents SHOULD maintain the
-project-wide singleton `docs/development-handoff.md` from the foundation template
-([ADR-0010](../docs/foundation/adr/0010-separate-roadmap-work-tracking-and-handoff.md)).
-Every agent MUST read it during task intake when it exists.
+Read
+[`.ai/project-document-maintenance.md`](project-document-maintenance.md)
+completely before acting when any trigger matches. If relevance is uncertain, apply the
+broader fallback in [`.ai/README.md`](README.md) and read the authority.
 
-The handoff MUST contain only information needed to resume safely: active issue and pull
-request links, lifecycle phase, material progress since the previous handoff, blockers,
-ordered next actions, last verified baseline and results, and required reading. GitHub
-issues and milestones remain authoritative for task status and checklists; the roadmap
-owns direction; ADRs and the decision log own durable decisions. Link to those sources
-instead of copying their histories (DOC-001).
-
-Update the handoff before transferring work and whenever the active issue, pull request,
-blocker, next action, or verified baseline materially changes. Remove completed detail
-once it no longer affects the next action. If the project stops maintaining the handoff,
-delete it rather than leave a stale restart instruction (DOC-040).
-
-## DOC-013: Roadmap completion and review
-
-`docs/roadmap.md` MUST describe direction and milestone outcomes, not duplicate the live
-task queue. Each current outcome SHOULD link to a GitHub milestone or tracking issue with
-an explicit completion checklist. During active development, the repository SHOULD
-declare and follow a review cadence; use weekly when no project-specific cadence is set.
-
-At each review:
-
-- reconcile roadmap outcomes with the linked issue or milestone status;
-- record completed outcomes with an absolute completion date and evidence link;
-- re-sequence `Now`, `Next`, and `Later` when priorities changed;
-- remove stale or duplicated task detail; and
-- update `last_reviewed` even when direction did not change, and `updated` when it did.
-
-Also review immediately when a milestone completes or project scope, priority, or
-direction changes. Detailed completed-task history remains in GitHub and release records.
+| Trigger | Required rule |
+|---------|---------------|
+| Read or change `docs/development-handoff.md`; transfer active work; change an active issue, pull request, blocker, next action, or verified baseline | DOC-012 |
+| Read or change `docs/roadmap.md`; complete a milestone; change project direction, priority, scope, or roadmap review cadence | DOC-013 |
+| Read or change the root README, onboarding documentation, or inheritance configuration; trace inheritance provenance | DOC-014 |
 
 ## DOC-030: Doc-update matrix (binding — GR-024)
 
@@ -161,8 +138,9 @@ When a PR contains a change of type X, it MUST update the docs listed:
 | New error state / failure mode | `docs/troubleshooting/`, `docs/runbook/` if ops action needed |
 | New or changed reusable foundation term | `docs/foundation/glossary.md` |
 | New domain term | `docs/glossary.md` |
-| Active work, blocker, next action, or verified baseline changes when a handoff is maintained | `docs/development-handoff.md` |
-| Milestone completes or project direction, priority, or scope changes | `docs/roadmap.md` |
+| Root README, onboarding, or inheritance configuration read or changed | Verify [DOC-014](project-document-maintenance.md#doc-014-root-readme-ownership) ownership; repair or open a migration issue when mismatched |
+| Active work, blocker, next action, or verified baseline changes when a handoff is maintained | Update `docs/development-handoff.md` per [DOC-012](project-document-maintenance.md#doc-012-development-handoff-snapshot) |
+| Milestone completes or project direction, priority, or scope changes | Update `docs/roadmap.md` per [DOC-013](project-document-maintenance.md#doc-013-roadmap-completion-and-review) |
 | Decision that constrains the future | ADR + `.ai/decision-log.md` |
 | Change to how AI should behave | `.ai/*` (via reviewed PR) |
 

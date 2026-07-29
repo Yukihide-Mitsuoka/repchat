@@ -21,17 +21,23 @@ process in `.skills/architecture.skill.md`.
 
 ## Index
 
-| # | Title | Status | Date |
-|---|-------|--------|------|
-| [0001](0001-record-architecture-decisions.md) | Record architecture decisions | accepted | 2026-07-02 |
-| [0002](0002-ai-facing-docs-in-english.md) | AI-facing docs are written in English | accepted | 2026-07-02 |
-| [0003](0003-reconcile-github-governance-from-inherited-policy.md) | Reconcile GitHub governance from inherited policy | accepted | 2026-07-15 |
-| [0004](0004-harden-multi-level-template-inheritance.md) | Harden multi-level template inheritance | accepted | 2026-07-16 |
-| [0005](0005-separate-foundation-and-project-document-languages.md) | Separate foundation and project document languages | accepted | 2026-07-18 |
-| [0006](0006-reserve-a-foundation-documentation-namespace.md) | Reserve a foundation documentation namespace | accepted | 2026-07-18 |
-| [0007](0007-constrain-transitional-template-sync.md) | Constrain transitional Template Sync | accepted | 2026-07-22 |
-| [0008](0008-enforce-english-foundation-docs-with-named-exceptions.md) | Enforce English foundation docs with two named Japanese exceptions | accepted | 2026-07-22 |
-| [0009](0009-place-project-document-singletons-and-collections.md) | Place project document singletons and collections by scope | accepted | 2026-07-26 |
-| [0010](0010-separate-roadmap-work-tracking-and-handoff.md) | Separate roadmap, work tracking, and handoff | accepted | 2026-07-28 |
+Use the Scope column for bounded discovery. Read every matching ADR completely and
+broaden the search under ADR-0012 when relevance is uncertain.
+
+| # | Title | Scope | Status | Date |
+|---|-------|-------|--------|------|
+| [0001](0001-record-architecture-decisions.md) | Record architecture decisions | ADR process, governance | accepted | 2026-07-02 |
+| [0002](0002-ai-facing-docs-in-english.md) | AI-facing docs are written in English | AI context, documentation language | accepted | 2026-07-02 |
+| [0003](0003-reconcile-github-governance-from-inherited-policy.md) | Reconcile GitHub governance from inherited policy | GitHub governance, repository policy | accepted | 2026-07-15 |
+| [0004](0004-harden-multi-level-template-inheritance.md) | Harden multi-level template inheritance | GitHub governance, template inheritance | accepted | 2026-07-16 |
+| [0005](0005-separate-foundation-and-project-document-languages.md) | Separate foundation and project document languages | documentation language, template instantiation | accepted | 2026-07-18 |
+| [0006](0006-reserve-a-foundation-documentation-namespace.md) | Reserve a foundation documentation namespace | documentation ownership, Template Sync | accepted | 2026-07-18 |
+| [0007](0007-constrain-transitional-template-sync.md) | Constrain transitional Template Sync | Template Sync, template inheritance | accepted | 2026-07-22 |
+| [0008](0008-enforce-english-foundation-docs-with-named-exceptions.md) | Enforce English foundation docs with two named Japanese exceptions | documentation language, foundation docs | accepted | 2026-07-22 |
+| [0009](0009-place-project-document-singletons-and-collections.md) | Place project document singletons and collections by scope | documentation placement | accepted | 2026-07-26 |
+| [0010](0010-separate-roadmap-work-tracking-and-handoff.md) | Separate roadmap, work tracking, and handoff | handoff, roadmap, work tracking | accepted | 2026-07-28 |
+| [0011](0011-own-the-root-readme-in-the-current-repository.md) | Own the root README in the current repository | AI context, inheritance, README ownership | accepted | 2026-07-28 |
+| [0012](0012-bound-context-acquisition-without-reducing-quality.md) | Bound context acquisition without reducing quality | AI context, task routing, token efficiency | accepted | 2026-07-29 |
+| [0013](0013-conditionally-route-project-document-maintenance-rules.md) | Conditionally route project-document maintenance rules | AI context, documentation rules, task routing | accepted | 2026-07-29 |
 
 <!-- Append new ADRs to this table (newest last). -->

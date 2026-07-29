@@ -15,6 +15,7 @@ Binding rules live in [`.ai/`](../../../.ai/); inherited decisions live in the
 | [docs/foundation/adr/](../adr/) | Synchronized foundation Architecture Decision Records (**normative** when accepted) | "why does the inherited foundation work this way?" |
 | `docs/adr/` | Project Architecture Decision Records (**normative** when accepted) | "why is this project built this way?" |
 | [docs/foundation/](../) | Synchronized foundation-owned guidance and document templates | use inherited documentation support |
+| `docs/inheritance/readmes/<owner>/<repository>.md` | Repository-owned snapshots of inherited ancestor READMEs | retain parent context without misidentifying the current repository |
 | `docs/requirements.md`, `docs/requirements/` | Project-owned whole-project and initiative requirements | determine what must be built and why |
 | `docs/architecture/` | System structure, C4 diagrams, data flows | understand before changing structure |
 | `docs/domain/` | Domain model, bounded contexts, ubiquitous language | understand the business rules |
@@ -81,6 +82,55 @@ different cadence. Each current outcome links to a milestone or tracking issue t
 its completion checklist. A roadmap review checks completed outcomes, records an
 absolute completion date plus evidence link, re-sequences direction, and removes stale
 detail; it does not copy individual completed tasks from GitHub.
+
+## Own the root README
+
+The root README is a singleton owned by the current repository. It contains the marker
+defined by
+[DOC-014](../../../.ai/project-document-maintenance.md#doc-014-root-readme-ownership):
+
+```html
+<!-- repository-readme-owner: owner/repository -->
+```
+
+During repository initialization, replace inherited parent content with a README for
+the new repository. Before replacement, preserve each inherited README at the
+owner-qualified lowercase path:
+
+```text
+README.md
+docs/
+└── inheritance/
+    └── readmes/
+        └── parent-owner/
+            └── parent-repository.md
+```
+
+Add this frontmatter above the preserved content:
+
+```yaml
+---
+id: inherited-readme-parent-owner-parent-repository
+title: Inherited README — parent-owner/parent-repository
+source-repository: parent-owner/parent-repository
+source-commit: 0123456789abcdef0123456789abcdef01234567
+---
+```
+
+Use the accepted direct-parent lock or other verified Git provenance for
+`source-commit`; use `unknown` when the exact commit is unavailable. Preserve the source
+language and substantive content, then repair links relative to the archive location.
+Review an existing archive before replacing it. Multiple ancestors coexist because the
+owner-qualified paths do not collide.
+
+Run `make doctor` after changing the README or inheritance configuration. For
+compatibility with existing repositories, a missing marker produces a migration warning.
+A present marker that names another repository is an error. The audit never moves,
+rewrites, or deletes files.
+
+Archived READMEs are not normal task context. Do not load or summarize
+`docs/inheritance/readmes/**` during routine intake or broad documentation discovery.
+Read one only to migrate or review README ownership, or to trace inheritance provenance.
 
 The guides in this directory define structure and **update triggers** without placing
 foundation-owned README files in project-owned paths. The doc-update matrix (DOC-030)

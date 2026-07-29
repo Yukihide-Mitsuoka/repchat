@@ -8,6 +8,9 @@ title: Foundation Documentation
 This directory contains descriptive guidance and document templates owned by
 `ai-dev-foundation`. In an instantiated repository, project-owned documentation stays at
 task-oriented paths directly under `docs/`; it MUST NOT be placed below this directory.
+Preserved ancestor READMEs are repository-owned inheritance records and use the separate
+`docs/inheritance/readmes/<owner>/<repository>.md` namespace defined by
+[ADR-0011](adr/0011-own-the-root-readme-in-the-current-repository.md).
 
 Binding AI rules remain in [`.ai/`](../../.ai/), and task procedures remain in
 [`.skills/`](../../.skills/). Files here link to those sources instead of duplicating
@@ -54,7 +57,9 @@ docs/**
 The local `.templatesyncignore` is itself protected from synchronization. Review and
 merge this change in each existing downstream repository before manually running the
 Template Sync workflow. New repositories created from the updated template already have
-the exception.
+the exception. The broad `docs/**` exclusion continues to protect
+`docs/inheritance/**`; do not add that repository-owned namespace to the synchronized
+exceptions.
 
 **Update trigger:** add or update an entry whenever foundation-owned guidance or a
 template moves into, within, or out of this namespace.
