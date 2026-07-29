@@ -39,6 +39,8 @@ SQLをSELECT列・主要句単位で整形し、各分析内の結果／生成�
 3ページ目までの上位12回遊を段階付きで集計するR17とEvidence標準`SankeyDiagram`を追加した。
 R17を含む6問版は実Vertex AI・BigQueryで**6/6**、推定**¥1.285**、R17は12 edgeをmaterializeし、
 production build・ブラウザ描画・SQLの4スペースインデント／横スクロール・error/warning 0まで確認した。
+これは公開GA4 schema上の実測であり、未知の独自nested/repeated schemaへの一般化は未検証
+（[Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)）。
 製品UX、目的からKPI・複数グラフ・読順を設計する対話型ダッシュボードbuild、AI所見は
 Issue #179〜#181へ分離した。
 
@@ -164,7 +166,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | テナント越境は構造的に不可能 | 実BigQuery | **7/7**。同一SQLで各テナントが自分のデータのみ（LOG-0033） |
 | 縦串が実データで通る | JWT→認可→境界注入→BigQuery→KV | **8/8**（LOG-0035） |
 | 縦串が**デプロイ済み構成**で通る | 実HTTP・実JWT（Workers→Cloud Run→Neon→BigQuery、スタブ無し） | **10/10**。越境ゼロを含む。ここで初めて出た3欠陥はいずれもローカルでは原理的に検出不能だった（LOG-0059） |
-| 日本語の記述からレポートを生成できる | 実GA4エクスポート（公開サンプル）＋実Vertex。手書き参照SQLと値を照合 | **15/15 を2回連続**、1レポート約¥2。未定義指標の拒否を含む（LOG-0072） |
+| 日本語の記述からレポートを生成できる | 実GA4エクスポート（公開サンプル）＋実Vertex。手書き参照SQLと値を照合 | **15/15 を2回連続**、1レポート約¥2。未定義指標の拒否を含む（LOG-0072）。未知の独自nested schemaは未検証（Issue #188） |
 | 生成ページを1シェルで複数テナントに配れる | 1度だけビルドし、テナント別 `.arrow` を被せて2ポートで配信 | **シェルHTMLは byte 同一**（sha256一致）で、desktop **68,649**セッション / mobile **47,088** と別々に描画。差し替えていない項目は両テナントで同一。ただし**テナント境界は `device.category` の代用**で、gate も認証も経路に無い（LOG-0076） |
 | 指標定義を固定すると数値が安定する | 同上、定義あり/なしで3回ずつ実行 | 定義なしでは購入件数が**1204↔895で揺れ**、定義ありで**12/12が実行間一致**。ただし**SQLの文面は12中7で毎回変わる**＝固定されるのは意味であって構文ではない（LOG-0066） |
 
@@ -207,6 +209,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
+| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。公開GA4の6/6・15/15とTheLookの12/12は、この一般化を証明しない（LOG-0083） | GA4語彙を流用しない複数schema、独立review済み参照結果、反復測定で対応・確認・拒否境界を決める（Issue #188） |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
@@ -225,11 +228,13 @@ ADR-0005 §10の残り2件は、**実顧客のデータ形態が分からない�
 
 ## 4. 現在地の評価
 
-**技術的な未知はほぼ解消しました。** 事業として残っているリスクは技術ではなく、
-「この製品を必要とする顧客が実在するか」です（[requirements §1.5](requirements.md)の
+認可・tenant分離・配信基盤の大きな技術的不確実性は解消した。一方、**未知の独自nested schemaへ
+NL→SQLを一般化できるかは未検証**で、Issue #188を製品化gateとして残す。事業上の最大リスクは引き続き
+「この製品を必要とする顧客が実在するか」である（[requirements §1.5](requirements.md)の
 「小さく黒字」方針、LOG-0021）。
 
-机上で詰められる検証は出尽くしており、**次の最大レバレッジはデザインパートナー探し**という
+未知schema benchmarkは必要だが、実顧客のmetadataと業務定義でも再検証する。したがって、
+**次の最大レバレッジはデザインパートナー探し**という
 [discovery-log §8.9](discovery-log.md)の結論は現在も有効です。実データで動く縦串が出来たので、
 以前より説明しやすい状態にはなっています。
 
