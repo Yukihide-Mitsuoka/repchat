@@ -20,11 +20,11 @@ updated: 2026-07-29
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
 **現在の作業**は[Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
-branch `feat/173-japanese-question-demo`。日本語1問からVertex AI生成SQL、BigQuery実行、
+[PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。日本語1問からVertex AI生成SQL、BigQuery実行、
 Evidence描画までを画面内で追跡できるようにする。BigQuery SQLとEvidenceローカルSQLは必要列を
 明示する。生成BigQuery SQLの`SELECT *`は実行前に拒否する。クラウド不要の単体テストは通過済みで、
-次は実Vertex AI・BigQuery、
-Evidence build、ブラウザ表示を確認してPRを作る。完了後は
+次はオーナーの課金承認後に実Vertex AI・BigQuery、Evidence build、ブラウザ表示を確認し、PRのCIを
+確認する。完了後は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
 デザインパートナーへ[5分デモ](demo.md)を見せる。
 

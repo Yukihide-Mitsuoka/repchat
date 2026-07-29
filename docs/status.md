@@ -29,7 +29,8 @@ updated: 2026-07-29
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**今の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173)。
+**今の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
+[PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。
 既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
 手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
 実行・参照値照合の状態、描画結果を同じページへ出す変更を実装し、クラウド不要の単体テストは通過した。
