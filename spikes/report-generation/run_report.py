@@ -671,13 +671,6 @@ def evidence_page(spec: dict, results: list) -> str:
                 "",
             ]
         )
-        # Evidence queries are declarations and do not render as visible SQL.
-        # Keep them together so each visible analysis can focus on its result
-        # and a nearby drill-down into the warehouse SQL that produced it.
-        for result in results:
-            out.extend(evidence_query(result))
-            out.extend(showcase_chart_query(result))
-
     for index, r in enumerate(results, start=1):
         heading = f"{index}. {r['title']}" if showcase else r["title"]
         out.append(f"## {heading}")
@@ -722,6 +715,18 @@ def evidence_page(spec: dict, results: list) -> str:
             out.extend(
                 [
                     "> **実行・参照値照合済み**: 生成SQLの結果は登録済みの参照値と一致しました。",
+                    "",
+                    "</Tab>",
+                    "",
+                    '<Tab label="集計データ">',
+                    "",
+                ]
+            )
+            out.extend(evidence_query(r))
+            out.extend(showcase_chart_query(r))
+            out.extend(
+                [
+                    f'<DataTable data={{{r["id"].lower()}}}/>',
                     "",
                     "</Tab>",
                     "</Tabs>",

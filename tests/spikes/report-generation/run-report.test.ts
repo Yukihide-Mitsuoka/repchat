@@ -244,7 +244,7 @@ print(page)
   assert.doesNotMatch(result.stdout, /select \*/i);
 });
 
-test('showcase keeps each question, visualization, and generated SQL in one tab set', () => {
+test('showcase keeps each question, visualization, SQL, and aggregate data in one tab set', () => {
   const result = loadRunReport(`
 base = {
     "question": "日本語の問い合わせ",
@@ -280,6 +280,21 @@ print(module["evidence_page"](spec, results))
   assert.equal((result.stdout.match(/<Tabs id=/g) ?? []).length, 6);
   assert.equal((result.stdout.match(/label="分析結果"/g) ?? []).length, 6);
   assert.equal((result.stdout.match(/label="生成プロセス・SQL"/g) ?? []).length, 6);
+  assert.equal((result.stdout.match(/label="集計データ"/g) ?? []).length, 6);
+  assert.equal((result.stdout.match(/<DataTable data=\{/g) ?? []).length, 6);
+  assert.match(
+    result.stdout,
+    /## 1\. 購入件数と売上[\s\S]*?<Tab label="集計データ">[\s\S]*?```sql r4/,
+  );
+  assert.match(result.stdout, /```sql r4[\s\S]*?<DataTable data=\{r4\}\/\>/);
+  assert.match(
+    result.stdout,
+    /## 4\. 購入までのファネル[\s\S]*?<Tab label="集計データ">[\s\S]*?```sql r9[\s\S]*?```sql r9_chart/,
+  );
+  assert.ok(
+    result.stdout.indexOf('```sql r4') > result.stdout.indexOf('## 1. 購入件数と売上'),
+    'the first aggregate query must not appear above its analysis',
+  );
   assert.match(result.stdout, /series=metric/);
   assert.match(result.stdout, /7日移動平均/);
   assert.match(result.stdout, /nameCol=stage valueCol=sessions/);

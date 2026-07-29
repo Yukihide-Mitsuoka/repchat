@@ -82,7 +82,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **起動を1コマンドに** | `make demo PROJECT=<project>`。隔離venv、Evidence公式テンプレート、生成、照合、materialize、build、ブラウザ起動まで含む | 通常の`npm ci`から実環境でr1〜r12がmaterialize、HTTP 200、ブラウザで検証済みの値と未定義3指標の拒否を確認。ブラウザerror 0（Evidence依存側の非致命warningあり）。完全にキャッシュのない別マシンでは未確認 |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
 | **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 実Vertex AI・BigQueryで1/1、参照値118,380と一致、Vertex AI推定¥0.154。Evidence buildとブラウザ表示を確認し、error/warning 0。PR #175のCIは12/12成功 |
-| **高度な分析ショーケース** | `make demo PROJECT=<project> SHOWCASE=yes`。6つの分析ごとに結果／SQLタブを持ち、購入KPI、ファネル、日次＋7日移動平均、入口から3ページ目までの回遊Sankeyを表示 | 6/6・¥1.285。R17は12 edgeをmaterializeし、production build・ブラウザ描画・SQL 4スペース／横スクロール・error/warning 0まで確認 |
+| **高度な分析ショーケース** | `make demo PROJECT=<project> SHOWCASE=yes`。6つの分析ごとに分析結果／生成プロセス・SQL／集計データの3タブを持ち、購入KPI、ファネル、日次＋7日移動平均、入口から3ページ目までの回遊Sankeyを表示 | 6/6・¥1.285。R17は12 edgeをmaterializeし、production build・ブラウザ描画・SQL 4スペース／横スクロール・error/warning 0まで確認 |
 
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
