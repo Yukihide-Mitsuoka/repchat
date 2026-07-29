@@ -36,6 +36,7 @@ updated: 2026-07-29
 実行・参照値照合の状態、描画結果を同じページへ出す変更を実装した。2026-07-29に実Vertex AI・
 BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidence materialize/build、
 ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功した。次は
+[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)で実測記録を反映した後、
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ見せる。
 
 「デモを見せられる形」の基礎は**完了**（LOG-0081）。

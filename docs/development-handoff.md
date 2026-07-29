@@ -25,7 +25,8 @@ updated: 2026-07-29
 BigQuery SQLとEvidenceローカルSQLは必要列を明示し、生成BigQuery SQLの`SELECT *`は実行前に
 拒否する。実Vertex AI・BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、
 Evidence materialize/build、ブラウザ表示、browser error/warning 0を確認し、CIも12/12成功した。
-次は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)に戻り、
+実測記録の反映は[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)。merge後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)に戻り、
 デザインパートナーへ[5分デモ](demo.md)を見せる。
 
 進行中の作業、ブロッカー、次のアクション、検証済みの基準点が変わった場合は
