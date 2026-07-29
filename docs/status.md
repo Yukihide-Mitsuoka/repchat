@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-07-29
+updated: 2026-07-30
 ---
 
 # 実装状況サマリー
@@ -29,15 +29,27 @@ updated: 2026-07-29
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
+**現在の作業スレッド**: [Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
+branch `feat/178-formatted-showcase`。初版の5問は実Vertex AI・BigQueryで5/5、Vertex AI推定¥0.723、
+Evidence materialize/buildまで成功した。その表示レビューを受け、現在はSQLをSELECT列・主要句単位で
+整形し、各分析内の結果／生成プロセス・SQLタブ、購入KPI、リピート率、平均エンゲージメント、
+購入ファネル、日次＋7日移動平均へ改修した。改修版は実Vertex AI・BigQueryで**5/5**、Vertex AI
+推定**¥0.877**、Evidence materialize/build、HTTP 200まで成功。開発サーバーが描画用ローカルSQLを
+露出することをブラウザで発見し、デモ起動をproduction previewへ変更した。さらに、入口から
+3ページ目までの上位12回遊を段階付きで集計するR17とEvidence標準`SankeyDiagram`を追加した。
+R17を含む6問版は実Vertex AI・BigQueryで**6/6**、推定**¥1.285**、R17は12 edgeをmaterializeし、
+production build・ブラウザ描画・SQLの4スペースインデント／横スクロール・error/warning 0まで確認した。
+[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)の
+実測記録を土台にしたstacked branchである。製品UX、目的からKPI・複数グラフ・読順を設計する
+対話型ダッシュボードbuild、AI所見はIssue #179〜#181へ分離した。
+
 **直前の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
 [PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)（2026-07-29 merge済み）。
 既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
 手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
 実行・参照値照合の状態、描画結果を同じページへ出す変更を実装した。2026-07-29に実Vertex AI・
 BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidence materialize/build、
-ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功した。次は
-[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)で実測記録を反映した後、
-[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ見せる。
+ブラウザ表示、browser error/warning 0を確認した。PRのCIも12/12成功した。
 
 「デモを見せられる形」の基礎は**完了**（LOG-0081）。
 顧客Gitへの配送方式は[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)として
@@ -71,11 +83,12 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **起動を1コマンドに** | `make demo PROJECT=<project>`。隔離venv、Evidence公式テンプレート、生成、照合、materialize、build、ブラウザ起動まで含む | 通常の`npm ci`から実環境でr1〜r12がmaterialize、HTTP 200、ブラウザで検証済みの値と未定義3指標の拒否を確認。ブラウザerror 0（Evidence依存側の非致命warningあり）。完全にキャッシュのない別マシンでは未確認 |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
 | **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 実Vertex AI・BigQueryで1/1、参照値118,380と一致、Vertex AI推定¥0.154。Evidence buildとブラウザ表示を確認し、error/warning 0。PR #175のCIは12/12成功 |
+| **高度な分析ショーケース** | `make demo PROJECT=<project> SHOWCASE=yes`。6つの分析ごとに結果／SQLタブを持ち、購入KPI、ファネル、日次＋7日移動平均、入口から3ページ目までの回遊Sankeyを表示 | 6/6・¥1.285。R17は12 edgeをmaterializeし、production build・ブラウザ描画・SQL 4スペース／横スクロール・error/warning 0まで確認 |
 
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: デザインパートナーへ5分デモを見せ、
+**次のボトルネック**: Issue #178をPRにしてCI確認後、デザインパートナーへ5分デモを見せ、
 [demo.md](demo.md)末尾の5問を聞く。
 「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
 

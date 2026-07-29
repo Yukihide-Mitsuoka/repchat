@@ -5,7 +5,7 @@
     "to": "20210131",
     "label": "2021年1月"
   },
-  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した12セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。 R13-R15 は metrics.json に定義が無い指標で、ADR-0013 C5（未定義なら生成せず問い返す）の測定用。 shape は ADR-0013 C4（出力形状も宣言する）の測定用。R9 の縦持ち/横持ちが実行ごとに揺れていた（LOG-0071）。",
+  "note": "月次サイトレポート。代理店が Looker Studio で毎月作っている内容を想定した17セクション。gold_sql は手書きの参照実装で、production では顧客が持っている先月の完成品がこの役割を果たす。 metrics.json を渡す条件では、gold_sql は宣言された定義に一致させてある（定義ファイルが正本のため）。 R13-R15 は metrics.json に定義が無い指標で、ADR-0013 C5（未定義なら生成せず問い返す）の測定用。 shape は ADR-0013 C4（出力形状も宣言する）の測定用。R9 の縦持ち/横持ちが実行ごとに揺れていた（LOG-0071）。",
   "sections": [
     {
       "id": "R1",
@@ -221,6 +221,47 @@
       "expect": "refusal",
       "compare": "rows_ordered",
       "component": "table"
+    },
+    {
+      "id": "R16",
+      "title": "日別セッションと7日移動平均",
+      "text": "2021年1月の日別セッション数と当日を含む7日移動平均を算出し、短期変動と基調を比較できるよう日付昇順で出して",
+      "trap": "GA4のイベントをセッション粒度へ集約した日次系列をCTEで作り、その結果へウィンドウ関数を適用する必要がある",
+      "compare": "rows_ordered",
+      "component": "line",
+      "gold_sql": "WITH daily AS (SELECT PARSE_DATE('%Y%m%d', event_date) AS day, COUNT(DISTINCT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING))) AS sessions FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY day) SELECT day, sessions, ROUND(AVG(sessions) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW), 2) AS sessions_7d_avg FROM daily ORDER BY day",
+      "shape": {
+        "rows": "日付ごとに1行、日付の昇順",
+        "columns": [
+          "日付",
+          "セッション数",
+          "7日移動平均"
+        ]
+      }
+    },
+    {
+      "id": "R17",
+      "title": "入口から3ページ目までの主要回遊",
+      "text": "2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して",
+      "trap": "GA4イベントをセッション単位・時系列へ並べ直し、URLからパスだけを抽出した上で最初の3ページを横持ちにする必要がある。全遷移を出すと図が読めないため上位12経路へ制限し、同じURLへの回帰が循環にならないよう段階名を付ける",
+      "compare": "rows_ordered",
+      "component": "sankey",
+      "generation_requirements": [
+        "page_pathはpage_locationのURLからホスト・クエリ・フラグメントを除いたパスとし、空なら`/`にする。完全なURLをsource/targetへ出さない",
+        "入口・2ページ目・3ページ目はevent_timestamp順の1件目・2件目・3件目とし、同時刻ならpage_path順にして決定的にする",
+        "2ページ目が存在するセッションだけを対象にする。`(exit)`などの離脱ノードは作らない",
+        "まず入口・2ページ目・3ページ目の組ごとにセッション数を数え、セッション数降順で上位12経路を確定してから、1→2と2→3のedgeへ分割して同一edgeをSUMする",
+        "source/targetの段階接頭辞は正確に`1. 入口: `、`2. `、`3. `とし、最終列のASCII別名はsource、target、sessionsにする"
+      ],
+      "gold_sql": "WITH pageviews AS (SELECT CONCAT(user_pseudo_id, '-', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS session_id, event_timestamp, COALESCE(NULLIF(REGEXP_EXTRACT((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_location'), r'^https?://[^/]+([^?#]*)'), ''), '/') AS page_path FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'page_view'), sequenced AS (SELECT session_id, page_path, ROW_NUMBER() OVER (PARTITION BY session_id ORDER BY event_timestamp, page_path) AS step FROM pageviews), journeys AS (SELECT session_id, MAX(IF(step = 1, page_path, NULL)) AS entry_page, MAX(IF(step = 2, page_path, NULL)) AS second_page, MAX(IF(step = 3, page_path, NULL)) AS third_page FROM sequenced WHERE step <= 3 GROUP BY session_id HAVING second_page IS NOT NULL), top_journeys AS (SELECT entry_page, second_page, third_page, COUNT(DISTINCT session_id) AS sessions FROM journeys GROUP BY entry_page, second_page, third_page ORDER BY sessions DESC, entry_page, second_page, third_page LIMIT 12), edges AS (SELECT CONCAT('1. 入口: ', entry_page) AS source, CONCAT('2. ', second_page) AS target, SUM(sessions) AS sessions FROM top_journeys GROUP BY source, target UNION ALL SELECT CONCAT('2. ', second_page) AS source, CONCAT('3. ', third_page) AS target, SUM(sessions) AS sessions FROM top_journeys WHERE third_page IS NOT NULL GROUP BY source, target) SELECT source, target, sessions FROM edges ORDER BY source, target",
+      "shape": {
+        "rows": "上位12経路を構成する遷移ごとに1行、source・targetの昇順",
+        "columns": [
+          "段階付き遷移元（source）",
+          "段階付き遷移先（target）",
+          "セッション数"
+        ]
+      }
     }
   ]
 }

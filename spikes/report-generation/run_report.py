@@ -34,6 +34,7 @@ DEFAULT_MODEL = "gemini-3.5-flash"
 USD_JPY = 155.0
 PRICING = {"gemini-3.5-flash": (0.30, 2.50)}  # USD per 1M tokens (in, out)
 MAX_QUESTION_CHARS = 500
+SHOWCASE_IDS = ("R4", "R11", "R12", "R9", "R16", "R17")
 
 # Hand-transcribed from the public sample. Deliberately the raw export shape:
 # no semantic layer, no pre-aggregation. That is the point of the measurement.
@@ -93,7 +94,7 @@ def metrics_block(path: Path) -> str:
         lines.append(f"- 指標「{name}」 = {spec['expr']}{flt}{alias(spec)}{extra}")
     for name, spec in m["dimensions"].items():
         lines.append(f"- 軸「{name}」 = {spec['expr']}{alias(spec)}")
-    return "\n".join(lines)
+    return "\n".join(lines).replace("\t", "    ")
 
 
 def prompt_rules(metrics: str) -> str:
@@ -152,9 +153,8 @@ SHAPE_HINT = {
 }
 
 
-def generate(client, model: str, section: dict, period: dict, rules: str):
-    from google.genai import types
-
+def generation_request(section: dict, period: dict) -> str:
+    """Build the user-level analysis contract independently of the model client."""
     # ADR-0013 C4. A declared shape beats a generic hint: LOG-0071 measured the
     # funnel coming back long on one run and wide on the next, with identical
     # numbers both times. Both are legitimate reports, so nothing decided it.
@@ -170,14 +170,26 @@ def generate(client, model: str, section: dict, period: dict, rules: str):
         shape = SHAPE_HINT[section["compare"]]
         if section["component"] == "line":
             shape = "1列目に日付、2列目に値の、2列で返すこと。"
-    ask = (
+    request = (
         f"{section['text']}\n"
         f"（対象期間: _TABLE_SUFFIX は '{period['from']}' から '{period['to']}'）\n"
         f"（出力形式: {shape}）"
     )
+    requirements = section.get("generation_requirements") or []
+    if requirements:
+        request += "\n（実装要件:\n" + "\n".join(
+            f"- {requirement}" for requirement in requirements
+        )
+        request += "\n）"
+    return request
+
+
+def generate(client, model: str, section: dict, period: dict, rules: str):
+    from google.genai import types
+
     resp = client.models.generate_content(
         model=model,
-        contents=ask,
+        contents=generation_request(section, period),
         config=types.GenerateContentConfig(
             system_instruction=rules,
             response_mime_type="application/json",
@@ -292,8 +304,30 @@ def compare(kind: str, got, want):
     raise ValueError(kind)
 
 
-def select_sections(spec: dict, question: str | None) -> list[dict]:
+def select_sections(
+    spec: dict, question: str | None, showcase: bool = False
+) -> list[dict]:
     """Select the full regression report or one operator-supplied question."""
+    if showcase and question is not None:
+        raise ValueError("showcase and question modes are mutually exclusive")
+    if showcase:
+        by_id = {section["id"]: section for section in spec["sections"]}
+        components = {
+            "R4": "kpi_pair",
+            "R11": "big_value",
+            "R12": "big_value",
+            "R9": "funnel",
+            "R16": "trend",
+            "R17": "sankey",
+        }
+        return [
+            {
+                **by_id[section_id],
+                "component": components[section_id],
+                "verification": "reference",
+            }
+            for section_id in SHOWCASE_IDS
+        ]
     if question is None:
         return [{**section, "verification": "reference"} for section in spec["sections"]]
 
@@ -337,11 +371,268 @@ def component_for_result(rows: list[tuple], columns: list[str]) -> str:
 EVIDENCE_COMPONENT = {
     "big_value": '<BigValue data={{{q}}} value={col} title="{title}"/>',
     "table": "<DataTable data={{{q}}}/>",
+    "bar": '<BarChart data={{{q}}} x={x} y={y} title="{title}"/>',
     "line": "<LineChart data={{{q}}} x={x} y={y} title=\"{title}\"/>",
 }
 
 
 SOURCE = "ga4"  # Evidence source name; sources/<SOURCE>/<id>.sql holds warehouse SQL
+
+
+def break_select_columns(sql: str) -> str:
+    """Put each expression in every SELECT list on its own logical line."""
+    out: list[str] = []
+    select_depths: list[int] = []
+    depth = 0
+    quote: str | None = None
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        if quote:
+            out.append(char)
+            if char == quote:
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    out.append(sql[index + 1])
+                    index += 1
+                else:
+                    quote = None
+            index += 1
+            continue
+        if char in {"'", '"', "`"}:
+            quote = char
+            out.append(char)
+            index += 1
+            continue
+        if char == "(":
+            depth += 1
+            out.append(char)
+            index += 1
+            continue
+        if char == ")":
+            out.append(char)
+            depth = max(0, depth - 1)
+            index += 1
+            continue
+        if char.isalpha() or char == "_":
+            end = index + 1
+            while end < len(sql) and (sql[end].isalnum() or sql[end] == "_"):
+                end += 1
+            word = sql[index:end]
+            upper = word.upper()
+            if upper == "SELECT":
+                select_depths.append(depth)
+            elif upper == "FROM" and select_depths and select_depths[-1] == depth:
+                select_depths.pop()
+            out.append(word)
+            index = end
+            continue
+        if char == "," and select_depths and select_depths[-1] == depth:
+            out.append(",\n" + " " * (4 * (depth + 1)))
+            index += 1
+            while index < len(sql) and sql[index].isspace():
+                index += 1
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def format_sql_for_display(sql: str) -> str:
+    """Format SQL for the page without changing the executable source text."""
+    try:
+        import sqlparse
+    except ModuleNotFoundError:
+        # Unit tests run without the paid demo venv. Keep this dependency-free
+        # fallback deterministic; the demo venv pins sqlparse for full nesting.
+        clauses = r"\s+(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|LIMIT)\s+"
+        formatted = re.sub(
+            clauses,
+            lambda match: f"\n{match.group(1).upper()} ",
+            break_select_columns(sql.strip()),
+            flags=re.I,
+        )
+    else:
+        formatted = sqlparse.format(
+            sql.strip(),
+            keyword_case="upper",
+            reindent_aligned=True,
+            indent_width=4,
+            use_space_around_operators=True,
+            wrap_after=100,
+        ).strip()
+
+    # sqlparse's aligned mode keeps each expression readable, but leaves the
+    # first one beside SELECT and can put SELECT beside UNION or the final CTE
+    # close. Keep those structural keywords on their own lines as requested.
+    formatted = re.sub(
+        r"(?im)^([ \t]*)UNION\s+ALL\s+SELECT\s+",
+        lambda match: f"{match.group(1)}UNION ALL\n{match.group(1)}SELECT ",
+        formatted,
+    )
+    formatted = re.sub(
+        r"(?i)\bUNION[ \t]+ALL[ \t]+SELECT[ \t]+",
+        "UNION ALL\nSELECT ",
+        formatted,
+    )
+    formatted = re.sub(r"(?i)\)[ \t]+SELECT[ \t]+", ")\nSELECT ", formatted)
+    formatted = re.sub(
+        r"(?im)^(\s*)SELECT\s+",
+        lambda match: f"{match.group(1)}SELECT\n{match.group(1)}    ",
+        formatted,
+    )
+
+    # The dependency-free unit-test fallback receives the compact source, so
+    # expose CTE SELECTs before applying the same line-start rule a second time.
+    formatted = re.sub(
+        r"(?i)\bAS[ \t]*\([ \t]*SELECT[ \t]+",
+        "AS (\n    SELECT ",
+        formatted,
+    )
+    formatted = re.sub(
+        r"(?im)^(\s*)SELECT\s+",
+        lambda match: f"{match.group(1)}SELECT\n{match.group(1)}    ",
+        formatted,
+    )
+
+    # Aligned mode reserves space based on keyword width, which otherwise
+    # leaves the first SELECT expression at a different column from the rest.
+    # Keep every projected expression at one consistent four-space offset.
+    lines = formatted.splitlines()
+    select_column_indent: int | None = None
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.upper() == "SELECT":
+            select_column_indent = len(line) - len(line.lstrip()) + 4
+            continue
+        if select_column_indent is not None and re.match(
+            r"^(FROM|INTO)\b", stripped, flags=re.I
+        ):
+            select_column_indent = None
+            continue
+        if select_column_indent is not None and stripped:
+            lines[index] = " " * select_column_indent + stripped
+    return "\n".join(lines)
+
+
+def evidence_query(result: dict) -> list[str]:
+    columns = result["columns"] or []
+    selected_columns = ", ".join(evidence_identifier(column) for column in columns)
+    query_name = result["id"].lower()
+    return [
+        f"```sql {query_name}",
+        f"select {selected_columns} from {SOURCE}.{query_name}",
+        "```",
+        "",
+    ]
+
+
+def showcase_chart_query(result: dict) -> list[str]:
+    """Create only the local reshaping needed by an Evidence visualization."""
+    columns = [evidence_identifier(column) for column in result["columns"] or []]
+    query_name = result["id"].lower()
+    if result["component"] == "funnel":
+        labels = ("商品閲覧", "カート追加", "購入")
+        lines = [f"```sql {query_name}_chart"]
+        for index, (label, column) in enumerate(zip(labels, columns), start=1):
+            prefix = "select" if index == 1 else "union all\nselect"
+            lines.append(
+                f"{prefix} '{label}' as stage, {column} as sessions, "
+                f"{index} as stage_order from {SOURCE}.{query_name}"
+            )
+        return [*lines, "order by stage_order", "```", ""]
+    if result["component"] == "trend":
+        day, sessions, rolling = columns
+        return [
+            f"```sql {query_name}_chart",
+            f"select {day} as date, '日次セッション' as metric, "
+            f"{sessions} as value from {SOURCE}.{query_name}",
+            "union all",
+            f"select {day} as date, '7日移動平均' as metric, "
+            f"{rolling} as value from {SOURCE}.{query_name}",
+            "```",
+            "",
+        ]
+    return []
+
+
+def evidence_component(result: dict) -> str:
+    columns = result["columns"] or []
+    query_name = result["id"].lower()
+    component = result["component"]
+    if component == "kpi_pair":
+        first = columns[0] if columns else "value"
+        second = columns[1] if len(columns) > 1 else "value_2"
+        return (
+            '<Grid cols=2>\n'
+            f'<BigValue data={{{query_name}}} value={first} title="購入件数" fmt=num0/>\n'
+            f'<BigValue data={{{query_name}}} value={second} '
+            'title="購入金額（USD）" fmt=usd0/>\n'
+            "</Grid>"
+        )
+    if component == "funnel":
+        return (
+            f'<FunnelChart data={{{query_name}_chart}} nameCol=stage '
+            'valueCol=sessions title="購入までのファネル"/>'
+        )
+    if component == "trend":
+        return (
+            f'<LineChart data={{{query_name}_chart}} x=date y=value series=metric '
+            'title="日別セッションと7日移動平均" legend=true/>'
+        )
+    if component == "sankey":
+        return (
+            f'<SankeyDiagram data={{{query_name}}} sourceCol=source targetCol=target '
+            'valueCol=sessions valueFmt=num0 nodeLabels=name linkLabels=value '
+            'linkColor=gradient chartAreaHeight=420 '
+            'title="入口から3ページ目までの主要回遊"/>'
+        )
+    if result["id"] == "R11":
+        value_column = columns[0] if columns else "repeat_user_pct"
+        return (
+            f'<BigValue data={{{query_name}}} value={value_column} '
+            'title="リピートユーザー率（%）" fmt=num2/>'
+        )
+    if result["id"] == "R12":
+        value_column = columns[0] if columns else "avg_engagement_time_seconds"
+        return (
+            f'<BigValue data={{{query_name}}} value={value_column} '
+            'title="平均エンゲージメント時間（秒）" fmt=num1/>'
+        )
+    template = EVIDENCE_COMPONENT[component]
+    if result["component"] == "big_value":
+        return template.format(
+            q=query_name,
+            col=columns[0] if columns else "value",
+            title=result["title"],
+        )
+    if result["component"] in {"bar", "line"}:
+        x = columns[0] if columns else "x"
+        y = columns[1] if len(columns) > 1 else "y"
+        return template.format(
+            q=query_name,
+            x=x,
+            y=y,
+            title=result["title"],
+        )
+    return template.format(q=query_name)
+
+
+def generated_sql_block(sql: str) -> list[str]:
+    formatted = json.dumps(format_sql_for_display(sql), ensure_ascii=False)
+    return [
+        '<div class="generated-sql-label">実際にBigQueryへ送ったSQL</div>',
+        f'<CodeBlock source={{{formatted}}} language="sql" copyToClipboard={{true}}/>',
+        "",
+    ]
+
+
+GENERATED_SQL_STYLE = """\
+<style>
+  .generated-sql-label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+  }
+</style>"""
 
 
 def evidence_page(spec: dict, results: list) -> str:
@@ -353,9 +644,15 @@ def evidence_page(spec: dict, results: list) -> str:
     <SOURCE>.<id>. Emitting one page with warehouse SQL inline does not build.
     """
     p = spec["period"]
+    showcase = tuple(result["id"] for result in results) == SHOWCASE_IDS
+    page_title = (
+        f"自動生成ダッシュボード {p['label']}"
+        if showcase
+        else f"月次サイトレポート {p['label']}"
+    )
     out = [
         "---",
-        f"title: 月次サイトレポート {p['label']}",
+        f"title: {page_title}",
         "---",
         "",
         f"<!-- 自動生成。dataset: {spec['dataset']} / 期間: {p['from']}–{p['to']} -->",
@@ -364,8 +661,26 @@ def evidence_page(spec: dict, results: list) -> str:
         "読み取り専用で実行し、その結果をEvidenceで描画しています。",
         "",
     ]
-    for r in results:
-        out.append(f"## {r['title']}")
+    if showcase:
+        out.extend(
+            [
+                "## 自動生成ダッシュボード",
+                "",
+                "> 6つの日本語設問から、購入KPI、定着・エンゲージメントKPI、"
+                "購入ファネル、日別セッションと7日移動平均、主要なサイト回遊を生成しました。",
+                "",
+            ]
+        )
+        # Evidence queries are declarations and do not render as visible SQL.
+        # Keep them together so each visible analysis can focus on its result
+        # and a nearby drill-down into the warehouse SQL that produced it.
+        for result in results:
+            out.extend(evidence_query(result))
+            out.extend(showcase_chart_query(result))
+
+    for index, r in enumerate(results, start=1):
+        heading = f"{index}. {r['title']}" if showcase else r["title"]
+        out.append(f"## {heading}")
         out.append("")
         question = html.escape(r.get("question") or "")
         reason = html.escape(r.get("reason") or "")
@@ -374,7 +689,7 @@ def evidence_page(spec: dict, results: list) -> str:
             out.append("")
             out.append(f"> {question}")
             out.append("")
-        if reason:
+        if reason and not showcase:
             out.append(f"生成理由: {reason}")
             out.append("")
         if not r["ok"]:
@@ -395,46 +710,44 @@ def evidence_page(spec: dict, results: list) -> str:
             )
             out.append("")
             continue
-        out.append("### Vertex AIが生成したBigQuery SQL")
-        out.append("")
-        out.append("<details open><summary>実際にBigQueryへ送ったSQL</summary>")
-        out.append("")
-        out.append(f"<pre><code>{html.escape(r['sql'])}</code></pre>")
-        out.append("")
-        out.append("</details>")
-        out.append("")
-        if r.get("verification") == "execution":
-            out.append(
-                "> **実行済み・参照値未照合**: BigQueryの実行とEvidence描画は完了しています。"
-                "既知値との一致は確認していません。"
+        if showcase:
+            out.extend(
+                [f'<Tabs id="analysis-{r["id"].lower()}">', '<Tab label="分析結果">', ""]
+            )
+            out.extend([evidence_component(r), "", "</Tab>", ""])
+            out.extend(['<Tab label="生成プロセス・SQL">', ""])
+            if reason:
+                out.extend([f"生成理由: {reason}", ""])
+            out.extend(generated_sql_block(r["sql"]))
+            out.extend(
+                [
+                    "> **実行・参照値照合済み**: 生成SQLの結果は登録済みの参照値と一致しました。",
+                    "",
+                    "</Tab>",
+                    "</Tabs>",
+                    "",
+                ]
             )
         else:
-            out.append("> **実行・参照値照合済み**: 生成SQLの結果は登録済みの参照値と一致しました。")
-        out.append("")
-        out.append("### Evidenceでの描画結果")
-        out.append("")
-        out.append(f"```sql {r['id'].lower()}")
-        columns = r["columns"] or []
-        selected_columns = ", ".join(evidence_identifier(column) for column in columns)
-        out.append(f"select {selected_columns} from {SOURCE}.{r['id'].lower()}")
-        out.append("```")
-        out.append("")
-        tpl = EVIDENCE_COMPONENT[r["component"]]
-        if r["component"] == "big_value":
-            out.append(
-                tpl.format(
-                    q=r["id"].lower(),
-                    col=columns[0] if columns else "value",
-                    title=r["title"],
+            out.append("### Vertex AIが生成したBigQuery SQL")
+            out.append("")
+            out.extend(generated_sql_block(r["sql"]))
+            if r.get("verification") == "execution":
+                out.append(
+                    "> **実行済み・参照値未照合**: BigQueryの実行とEvidence描画は完了しています。"
+                    "既知値との一致は確認していません。"
                 )
-            )
-        elif r["component"] == "line":
-            x = columns[0] if columns else "x"
-            y = columns[1] if len(columns) > 1 else "y"
-            out.append(tpl.format(q=r["id"].lower(), x=x, y=y, title=r["title"]))
-        else:
-            out.append(tpl.format(q=r["id"].lower()))
-        out.append("")
+            else:
+                out.append(
+                    "> **実行・参照値照合済み**: "
+                    "生成SQLの結果は登録済みの参照値と一致しました。"
+                )
+            out.append("")
+            out.append("### Evidenceでの描画結果")
+            out.append("")
+            out.extend(evidence_query(r))
+            out.extend([evidence_component(r), ""])
+    out.extend([GENERATED_SQL_STYLE, ""])
     return "\n".join(out)
 
 
@@ -486,7 +799,13 @@ def main() -> int:
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--no-metrics", action="store_true",
                     help="指標定義を渡さずに走らせる（LOG-0065 と同じ条件）")
-    ap.add_argument("--question", help="日本語の問い合わせ1件だけを生成・実行・描画する")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--question", help="日本語の問い合わせ1件だけを生成・実行・描画する")
+    mode.add_argument(
+        "--showcase",
+        action="store_true",
+        help="購入KPI・ファネル・7日移動平均を含むデモを生成する",
+    )
     args = ap.parse_args()
     if not args.project:
         print("--project or GOOGLE_CLOUD_PROJECT is required", file=sys.stderr)
@@ -494,7 +813,7 @@ def main() -> int:
 
     spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
     try:
-        sections = select_sections(spec, args.question)
+        sections = select_sections(spec, args.question, args.showcase)
     except ValueError as error:
         print(str(error), file=sys.stderr)
         return 2

@@ -65,6 +65,57 @@ print(json.dumps(sections, ensure_ascii=False))
   assert.equal('gold_sql' in sections[0], false);
 });
 
+test('showcase mode selects KPI, funnel, trend, and navigation-flow analyses', () => {
+  const result = loadRunReport(`
+sections = module["select_sections"](spec, None, showcase=True)
+print(json.dumps([{
+    "id": section["id"],
+    "component": section["component"],
+    "verification": section["verification"],
+} for section in sections]))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    { id: 'R4', component: 'kpi_pair', verification: 'reference' },
+    { id: 'R11', component: 'big_value', verification: 'reference' },
+    { id: 'R12', component: 'big_value', verification: 'reference' },
+    { id: 'R9', component: 'funnel', verification: 'reference' },
+    { id: 'R16', component: 'trend', verification: 'reference' },
+    { id: 'R17', component: 'sankey', verification: 'reference' },
+  ]);
+});
+
+test('the navigation-flow reference SQL creates bounded staged Sankey edges', () => {
+  const result = loadRunReport(`
+section = next(section for section in spec["sections"] if section["id"] == "R17")
+print(section["gold_sql"])
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /ROW_NUMBER\(\) OVER \(PARTITION BY session_id ORDER BY event_timestamp/,
+  );
+  assert.match(result.stdout, /step <= 3/);
+  assert.match(result.stdout, /LIMIT 12/);
+  assert.match(result.stdout, /'1\. 入口: '/);
+  assert.match(result.stdout, /'2\. '/);
+  assert.match(result.stdout, /'3\. '/);
+  assert.doesNotMatch(result.stdout, /SELECT\s+(?:DISTINCT\s+)?\*/i);
+});
+
+test('the navigation-flow generation request fixes normalization and edge semantics', () => {
+  const result = loadRunReport(`
+section = next(section for section in spec["sections"] if section["id"] == "R17")
+print(module["generation_request"](section, spec["period"]))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /URLからホスト・クエリ・フラグメントを除いたパス/);
+  assert.match(result.stdout, /2ページ目が存在するセッションだけ/);
+  assert.match(result.stdout, /上位12経路を確定してから/);
+  assert.match(result.stdout, /離脱ノードは作らない/);
+  assert.match(result.stdout, /`1\. 入口: `、`2\. `、`3\. `/);
+});
+
 test('one-question mode rejects empty and oversized input before cloud access', () => {
   for (const question of ['', ' '.repeat(3), 'あ'.repeat(501), '1月の\nセッション数']) {
     const result = loadRunReport(`
@@ -78,6 +129,51 @@ else:
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /question/);
   }
+});
+
+test('warehouse SQL is formatted for display without changing its source text', () => {
+  const result = loadRunReport(`
+raw = "SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY users DESC"
+formatted = module["format_sql_for_display"](raw)
+print(json.dumps({"raw": raw, "formatted": formatted}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const sql = JSON.parse(result.stdout);
+  assert.equal(
+    sql.raw,
+    "SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS users FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY users DESC",
+  );
+  assert.match(sql.formatted, /\nFROM /);
+  assert.match(sql.formatted, /\nWHERE /);
+  assert.match(sql.formatted, /\nGROUP BY /);
+  assert.match(sql.formatted, /\nORDER BY /);
+  assert.match(sql.formatted, /^SELECT\n\s+traffic_source\.medium AS medium,\n\s+COUNT/);
+  assert.doesNotMatch(sql.formatted, /\t/);
+  assert.equal(sql.formatted.split('\n')[1]?.match(/^ */)?.[0].length, 4);
+  assert.ok(sql.formatted.split('\n').length >= 6);
+});
+
+test('every top-level SELECT expression is placed on its own display line', () => {
+  const result = loadRunReport(`
+raw = "WITH daily AS (SELECT event_date AS day, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY day) SELECT day, sessions, AVG(sessions) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS sessions_7d_avg FROM daily ORDER BY day"
+print(module["format_sql_for_display"](raw))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /SELECT\n\s+event_date AS day,\n\s+COUNT/);
+  assert.match(result.stdout, /SELECT\n\s+day,\n\s+sessions,\n\s+AVG/);
+  assert.match(result.stdout, /\nFROM daily\nORDER BY day/);
+});
+
+test('complex display SQL keeps CTE and UNION SELECT clauses on readable lines', () => {
+  const result = loadRunReport(`
+section = next(section for section in spec["sections"] if section["id"] == "R17")
+print(module["format_sql_for_display"](section["gold_sql"]))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /pageviews AS \(\n\s+SELECT\n\s+CONCAT/);
+  assert.match(result.stdout, /UNION ALL\n\s*SELECT\n\s+CONCAT/);
+  assert.match(result.stdout, /\)\nSELECT\n\s+source,/i);
+  assert.doesNotMatch(result.stdout, /\n\s*\n\s*\n/);
 });
 
 test('generated SQL must be read-only and bounded to the demo dataset', () => {
@@ -140,9 +236,62 @@ print(page)
   assert.match(result.stdout, /購入ユーザー数をデバイス別/);
   assert.match(result.stdout, /Vertex AIが生成したBigQuery SQL/);
   assert.match(result.stdout, /COUNT\(DISTINCT user_pseudo_id\)/);
+  assert.match(result.stdout, /<CodeBlock source=\{/);
+  assert.match(result.stdout, /language="sql"/);
+  assert.match(result.stdout, /copyToClipboard=\{true\}/);
   assert.match(result.stdout, /実行済み・参照値未照合/);
   assert.match(result.stdout, /select category, users from ga4\.q1/);
   assert.doesNotMatch(result.stdout, /select \*/i);
+});
+
+test('showcase keeps each question, visualization, and generated SQL in one tab set', () => {
+  const result = loadRunReport(`
+base = {
+    "question": "日本語の問い合わせ",
+    "sql": "SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
+    "columns": ["value"],
+    "ok": True,
+    "detail": "matched",
+    "undefined_terms": [],
+    "reason": "定義に従って集計しました。",
+    "verification": "reference",
+}
+results = [
+    {**base, "id": "R4", "title": "購入件数と売上", "component": "kpi_pair",
+     "columns": ["purchases", "revenue"]},
+    {**base, "id": "R11", "title": "リピートユーザー率", "component": "big_value",
+     "columns": ["repeat_user_pct"]},
+    {**base, "id": "R12", "title": "平均エンゲージメント時間", "component": "big_value",
+     "columns": ["avg_engagement_time_seconds"]},
+    {**base, "id": "R9", "title": "購入までのファネル", "component": "funnel",
+     "columns": ["view_item", "add_to_cart", "purchase"]},
+    {**base, "id": "R16", "title": "セッションの7日移動平均", "component": "trend",
+     "columns": ["day", "sessions", "sessions_7d_avg"]},
+    {**base, "id": "R17", "title": "入口から3ページ目までの回遊", "component": "sankey",
+     "columns": ["source", "target", "sessions"]},
+]
+print(module["evidence_page"](spec, results))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal((result.stdout.match(/<BigValue /g) ?? []).length, 4);
+  assert.equal((result.stdout.match(/<FunnelChart /g) ?? []).length, 1);
+  assert.equal((result.stdout.match(/<LineChart /g) ?? []).length, 1);
+  assert.equal((result.stdout.match(/<SankeyDiagram /g) ?? []).length, 1);
+  assert.equal((result.stdout.match(/<Tabs id=/g) ?? []).length, 6);
+  assert.equal((result.stdout.match(/label="分析結果"/g) ?? []).length, 6);
+  assert.equal((result.stdout.match(/label="生成プロセス・SQL"/g) ?? []).length, 6);
+  assert.match(result.stdout, /series=metric/);
+  assert.match(result.stdout, /7日移動平均/);
+  assert.match(result.stdout, /nameCol=stage valueCol=sessions/);
+  assert.match(result.stdout, /sourceCol=source targetCol=target valueCol=sessions/);
+  assert.match(result.stdout, /title="入口から3ページ目までの主要回遊"/);
+  assert.match(result.stdout, /value=repeat_user_pct title="リピートユーザー率（%）" fmt=num2/);
+  assert.match(
+    result.stdout,
+    /value=avg_engagement_time_seconds title="平均エンゲージメント時間（秒）" fmt=num1/,
+  );
+  assert.match(result.stdout, /value=revenue title="購入金額（USD）" fmt=usd0/);
+  assert.match(result.stdout, /自動生成ダッシュボード/);
 });
 
 test('an undefined metric is shown as a refusal without an Evidence query', () => {
@@ -195,6 +344,42 @@ print(json.dumps(sorted(str(path.relative_to(out_dir)) for path in out_dir.rglob
     assert.equal(result.status, 0, result.stderr);
     const files = JSON.parse(result.stdout);
     assert.deepEqual(files, ['pages/monthly_report.md', 'sources/ga4/connection.yaml']);
+  } finally {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  }
+});
+
+test('writing an answered section preserves the executable SQL source verbatim', () => {
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'repchat-report-'));
+  try {
+    const result = loadRunReport(`
+from pathlib import Path
+out_dir = Path(${JSON.stringify(outputDir)})
+raw_sql = "SELECT COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+module["write_outputs"](out_dir, spec, [{
+    "id": "Q1",
+    "title": "ユーザー数",
+    "question": "2021年1月のユーザー数を出して",
+    "component": "big_value",
+    "sql": raw_sql,
+    "columns": ["users"],
+    "ok": True,
+    "detail": "executed",
+    "undefined_terms": [],
+    "reason": "ユーザー数を集計しました。",
+    "verification": "execution",
+}], "example-project")
+print(json.dumps({
+    "raw": raw_sql,
+    "source": (out_dir / "sources" / "ga4" / "q1.sql").read_text(encoding="utf-8"),
+    "page": (out_dir / "pages" / "monthly_report.md").read_text(encoding="utf-8"),
+}))
+`);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.source, `${output.raw}\n`);
+    assert.match(output.page, /\\nFROM /);
+    assert.match(output.page, /<CodeBlock source=\{/);
   } finally {
     fs.rmSync(outputDir, { recursive: true, force: true });
   }
