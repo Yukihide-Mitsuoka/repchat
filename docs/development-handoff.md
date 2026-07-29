@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-07-30
+updated: 2026-07-29
 ---
 
 # 開発引き継ぎ
@@ -19,25 +19,15 @@ updated: 2026-07-30
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在の作業**は[Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
-branch `feat/178-formatted-showcase`。生成SQLの実行原文を変えずに表示だけを整形し、対面デモを
-分析単位の結果／生成プロセス・SQLタブへ再構成する。購入KPI、リピート率、平均エンゲージメント、
-購入ファネル、日次＋7日移動平均、入口から3ページ目までの主要回遊Sankeyを扱い、SQLはSELECT列・
-主要句単位で整形する。初版は5/5、
-Vertex AI推定¥0.723、Evidence build成功。レビュー反映版は実Vertex AI・BigQueryで5/5、推定¥0.877、
-Evidence materialize/build、HTTP 200まで成功。開発用Evidenceサーバーが描画用SQLを露出するため、
-production previewへ変更した。Sankeyを含む6問版は実Vertex AI・BigQueryで6/6、推定¥1.285、
-R17の12 edge materialize、production build・ブラウザ描画、SQLの4スペースインデント／横スクロール、
-error/warning 0まで確認した。次はPRを作ってCIを確認する。製品版の閲覧／SQL面分離、
-目的を分解してKPI・複数グラフ・1画面前後の読順を設計する対話build、AI会議所見はIssue #179〜#181。
-このbranchは[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)の実測記録を含む。
-
 **直前の作業**は[Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
 [PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)で、2026-07-29にmerge済み。
 日本語1問からVertex AI生成SQL、BigQuery実行、Evidence描画までを画面内で追跡できる。
 BigQuery SQLとEvidenceローカルSQLは必要列を明示し、生成BigQuery SQLの`SELECT *`は実行前に
 拒否する。実Vertex AI・BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、
 Evidence materialize/build、ブラウザ表示、browser error/warning 0を確認し、CIも12/12成功した。
+実測記録の反映は[PR #177](https://github.com/Yukihide-Mitsuoka/repchat/pull/177)。merge後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)に戻り、
+デザインパートナーへ[5分デモ](demo.md)を見せる。
 
 進行中の作業、ブロッカー、次のアクション、検証済みの基準点が変わった場合は
 `docs/status.md`を更新します。この文書は正本の場所または再開順序が変わった場合だけ更新します。
