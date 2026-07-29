@@ -33,5 +33,9 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0010](0010-connection-identity-is-never-a-person.md) | 接続主体は決して人間にしない — 多接続SaaSのアクセス制御モデル | accepted | 2026-07-24 |
 | [0011](0011-datasource-scope-and-tiers.md) | 接続データソースを階層化し、2つ目はアーキテクチャ検証で選ぶ | accepted | 2026-07-24 |
 | [0012](0012-terraform-cloud-run-deployment.md) | NodeサービスをTerraform＋Cloud Runで一括デプロイし、秘密はstateに入れない | proposed | 2026-07-25 |
+| [0013](0013-metric-definitions-live-in-our-own-layer.md) | 指標定義は自前の層に持ち、平坦化を顧客環境に持ち込まない | accepted | 2026-07-28 |
+| [0014](0014-who-owns-the-generated-artifacts.md) | 生成物と定義の所有を3種類に分ける | accepted | 2026-07-28 |
+| [0015](0015-publish-artifacts-through-customer-git.md) | 顧客Gitをbuild時の生成物配送境界にする | accepted | 2026-07-29 |
+| [0016](0016-authenticate-oversized-foundation-sync-prs.md) | 大規模な基盤同期PRを厳密に認証する | accepted | 2026-07-29 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
