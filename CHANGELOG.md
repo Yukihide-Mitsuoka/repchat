@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.0...v1.11.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **demo:** group aggregate data with each analysis ([#185](https://github.com/Yukihide-Mitsuoka/repchat/issues/185)) ([fc1b383](https://github.com/Yukihide-Mitsuoka/repchat/commit/fc1b3831758006f21bfc6506b01d049cc6d7da3a))
+
 ## [1.11.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.10.1...v1.11.0) (2026-07-29)
 
 
