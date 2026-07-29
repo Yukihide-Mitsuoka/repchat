@@ -19,11 +19,12 @@ updated: 2026-07-29
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在のblocking fix**は
-[Issue #164](https://github.com/Yukihide-Mitsuoka/repchat/issues/164) /
-[PR #166](https://github.com/Yukihide-Mitsuoka/repchat/pull/166)。
-最小Evidence依存とtemplate plugin設定の不整合を直し、2026-07-29にr1〜r12 materialize、
-HTTP 200、検証済み主要値、未定義3指標の拒否、browser error 0を再確認した。merge後は
+**現在の作業**は[Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) /
+[PR #175](https://github.com/Yukihide-Mitsuoka/repchat/pull/175)。日本語1問からVertex AI生成SQL、BigQuery実行、
+Evidence描画までを画面内で追跡できるようにする。BigQuery SQLとEvidenceローカルSQLは必要列を
+明示する。生成BigQuery SQLの`SELECT *`は実行前に拒否する。クラウド不要の単体テストは通過済みで、
+次はオーナーの課金承認後に実Vertex AI・BigQuery、Evidence build、ブラウザ表示を確認し、PRのCIを
+確認する。完了後は
 [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
 デザインパートナーへ[5分デモ](demo.md)を見せる。
 

@@ -19,11 +19,12 @@ are marked in the page rather than hidden.
     python3 spikes/report-generation/run_report.py --project <gcp-project>
 """
 import argparse
+import html
 import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -32,6 +33,7 @@ MAX_BYTES_BILLED = 20 * 1024**3  # 20 GiB — the sample month is far under this
 DEFAULT_MODEL = "gemini-3.5-flash"
 USD_JPY = 155.0
 PRICING = {"gemini-3.5-flash": (0.30, 2.50)}  # USD per 1M tokens (in, out)
+MAX_QUESTION_CHARS = 500
 
 # Hand-transcribed from the public sample. Deliberately the raw export shape:
 # no semantic layer, no pre-aggregation. That is the point of the measurement.
@@ -108,6 +110,8 @@ def prompt_rules(metrics: str) -> str:
   BigQuery のフィールド名には日本語や記号（全角括弧など）を使えない。
 - **指定された列名は「表示名」であって、SQLの識別子ではない。** 表示名はレポートを組み立てる
   側が付けるので、SQLには**指定された順序**だけを守ればよい。
+- **`SELECT *` は使わず、レポートに必要な列だけを明示する。** BigQueryは列指向なので、
+  不要な列の読み取りを避け、生成結果の契約を列名で固定する。
 - SELECT 文のみ。DDL/DML は書かない。
 - **指標定義に無い語を求められたら、推測でSQLを書かない。** `sql` を空文字にし、
   `undefined_terms` にその語を入れて返す（ADR-0013 C5）。**別の指標の式を流用して代用しない。**
@@ -142,6 +146,9 @@ SHAPE_HINT = {
     "scalar": "値ひとつだけを、1行1列で返すこと。内訳の列は付けない。",
     "rows_unordered": "区分の列と値の列で返すこと。",
     "rows_ordered": "レポートの表にそのまま出せる列構成で返すこと。",
+    "execution": (
+        "問い合わせに答える最小限の列を返すこと。時系列なら1列目を日付、2列目を値にすること。"
+    ),
 }
 
 
@@ -189,18 +196,10 @@ def exec_bq(bq, sql: str):
     """Read-only execution, guarded the same way the executor guards tenant SQL."""
     from google.cloud import bigquery
 
-    s = sql.strip().rstrip(";")
-    if not re.match(r"^(select|with)\b", s, re.I):
-        return None, "rejected: not a SELECT"
-    if re.search(
-        r"\b(insert|update|delete|drop|create|merge|alter|call|export|grant)\b",
-        re.sub(r"'[^']*'", "", s),
-        re.I,
-    ):
-        return None, "rejected: forbidden keyword"
-    for m in re.finditer(r"`?([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)\.[a-zA-Z0-9_*]+`?", s):
-        if f"{m.group(1)}.{m.group(2)}" != DATASET:
-            return None, f"rejected: foreign table ref {m.group(0)}"
+    s, validation_error = validate_sql(sql)
+    if validation_error:
+        return None, validation_error
+    assert s is not None
     try:
         job = bq.query(
             s,
@@ -224,6 +223,42 @@ def exec_bq(bq, sql: str):
         if not why:
             why = getattr(e, "message", "") or str(e)
         return None, f"bq error: {type(e).__name__}: {why[:220]}"
+
+
+def validate_sql(sql: str) -> tuple[str | None, str | None]:
+    """Return a normalized dataset-bounded SELECT or a refusal reason."""
+    s = sql.strip()
+    if s.endswith(";"):
+        s = s[:-1].rstrip()
+    if not re.match(r"^(select|with)\b", s, re.I):
+        return None, "rejected: not a SELECT"
+    if ";" in s:
+        return None, "rejected: multiple statements"
+    without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", s, flags=re.S)
+    without_literals = re.sub(r"'(?:''|[^'])*'", "''", without_comments)
+    if re.search(
+        r"\b(insert|update|delete|drop|create|merge|alter|call|export|grant)\b",
+        without_literals,
+        re.I,
+    ):
+        return None, "rejected: forbidden keyword"
+    if re.search(
+        r"\bselect\s+(?:distinct\s+)?(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?\*",
+        without_literals,
+        re.I,
+    ):
+        return None, "rejected: SELECT * anti-pattern"
+    found_dataset = False
+    for m in re.finditer(
+        r"`?([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)\.[a-zA-Z0-9_*]+`?",
+        without_literals,
+    ):
+        if f"{m.group(1)}.{m.group(2)}" != DATASET:
+            return None, f"rejected: foreign table ref {m.group(0)}"
+        found_dataset = True
+    if not found_dataset:
+        return None, f"rejected: query must reference dataset {DATASET}"
+    return s, None
 
 
 def _norm(c):
@@ -257,6 +292,48 @@ def compare(kind: str, got, want):
     raise ValueError(kind)
 
 
+def select_sections(spec: dict, question: str | None) -> list[dict]:
+    """Select the full regression report or one operator-supplied question."""
+    if question is None:
+        return [{**section, "verification": "reference"} for section in spec["sections"]]
+
+    normalized = question.strip()
+    if not normalized:
+        raise ValueError("question must not be empty")
+    if len(normalized) > MAX_QUESTION_CHARS:
+        raise ValueError(f"question must be at most {MAX_QUESTION_CHARS} characters")
+    if any(ord(char) < 32 for char in normalized):
+        raise ValueError("question must be a single line without control characters")
+
+    for section in spec["sections"]:
+        if section["text"].strip() == normalized:
+            return [{**section, "verification": "reference"}]
+
+    return [
+        {
+            "id": "Q1",
+            "title": "日本語問い合わせの結果",
+            "text": normalized,
+            "compare": "execution",
+            "component": "table",
+            "verification": "execution",
+        }
+    ]
+
+
+def component_for_result(rows: list[tuple], columns: list[str]) -> str:
+    """Choose the smallest Evidence component supported by the actual result."""
+    if len(rows) == 1 and len(columns) == 1:
+        return "big_value"
+    if (
+        rows
+        and len(columns) == 2
+        and all(row and isinstance(row[0], (date, datetime)) for row in rows)
+    ):
+        return "line"
+    return "table"
+
+
 EVIDENCE_COMPONENT = {
     "big_value": '<BigValue data={{{q}}} value={col} title="{title}"/>',
     "table": "<DataTable data={{{q}}}/>",
@@ -283,13 +360,27 @@ def evidence_page(spec: dict, results: list) -> str:
         "",
         f"<!-- 自動生成。dataset: {spec['dataset']} / 期間: {p['from']}–{p['to']} -->",
         "",
+        "> このページは、日本語の問い合わせをVertex AIへ渡し、生成したBigQuery SQLを"
+        "読み取り専用で実行し、その結果をEvidenceで描画しています。",
+        "",
     ]
     for r in results:
         out.append(f"## {r['title']}")
         out.append("")
+        question = html.escape(r.get("question") or "")
+        reason = html.escape(r.get("reason") or "")
+        if question:
+            out.append("### 日本語の問い合わせ")
+            out.append("")
+            out.append(f"> {question}")
+            out.append("")
+        if reason:
+            out.append(f"生成理由: {reason}")
+            out.append("")
         if not r["ok"]:
+            detail = html.escape(str(r["detail"]))
             out.append(
-                f"> **未検証**: 参照実装と一致しませんでした（{r['detail']}）。"
+                f"> **未検証**: 参照実装と一致しませんでした（{detail}）。"
                 "数値をそのまま使わないこと。"
             )
             out.append("")
@@ -297,29 +388,93 @@ def evidence_page(spec: dict, results: list) -> str:
             # ADR-0013 C5: the reader must learn a DEFINITION is missing, not
             # that some machinery failed. "SQLを生成できませんでした" reads like a
             # bug and invites a retry; naming the term says what to do.
-            terms = "・".join(r.get("undefined_terms") or []) or "不明"
+            terms = html.escape("・".join(r.get("undefined_terms") or []) or "不明")
             out.append(
                 f"> **未定義の指標のため、この節は生成していません**（{terms}）。"
                 "推測した数値を載せないための挙動です。指標定義に追加してください。"
             )
             out.append("")
             continue
+        out.append("### Vertex AIが生成したBigQuery SQL")
+        out.append("")
+        out.append("<details open><summary>実際にBigQueryへ送ったSQL</summary>")
+        out.append("")
+        out.append(f"<pre><code>{html.escape(r['sql'])}</code></pre>")
+        out.append("")
+        out.append("</details>")
+        out.append("")
+        if r.get("verification") == "execution":
+            out.append(
+                "> **実行済み・参照値未照合**: BigQueryの実行とEvidence描画は完了しています。"
+                "既知値との一致は確認していません。"
+            )
+        else:
+            out.append("> **実行・参照値照合済み**: 生成SQLの結果は登録済みの参照値と一致しました。")
+        out.append("")
+        out.append("### Evidenceでの描画結果")
+        out.append("")
         out.append(f"```sql {r['id'].lower()}")
-        out.append(f"select * from {SOURCE}.{r['id'].lower()}")
+        columns = r["columns"] or []
+        selected_columns = ", ".join(evidence_identifier(column) for column in columns)
+        out.append(f"select {selected_columns} from {SOURCE}.{r['id'].lower()}")
         out.append("```")
         out.append("")
-        cols = r["columns"] or []
         tpl = EVIDENCE_COMPONENT[r["component"]]
         if r["component"] == "big_value":
-            out.append(tpl.format(q=r["id"].lower(), col=cols[0] if cols else "value", title=r["title"]))
+            out.append(
+                tpl.format(
+                    q=r["id"].lower(),
+                    col=columns[0] if columns else "value",
+                    title=r["title"],
+                )
+            )
         elif r["component"] == "line":
-            x = cols[0] if cols else "x"
-            y = cols[1] if len(cols) > 1 else "y"
+            x = columns[0] if columns else "x"
+            y = columns[1] if len(columns) > 1 else "y"
             out.append(tpl.format(q=r["id"].lower(), x=x, y=y, title=r["title"]))
         else:
             out.append(tpl.format(q=r["id"].lower()))
         out.append("")
     return "\n".join(out)
+
+
+def evidence_identifier(column: str) -> str:
+    """Accept only the ASCII identifiers required by the generation prompt."""
+    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", column):
+        raise ValueError(f"unsafe Evidence column identifier: {column}")
+    return column
+
+
+def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Path:
+    """Replace generated Evidence sources and page without retaining stale SQL."""
+    pages_dir = out_dir / "pages"
+    sources_dir = out_dir / "sources"
+    src_dir = sources_dir / SOURCE
+    out_path = pages_dir / "monthly_report.md"
+    connection_path = src_dir / "connection.yaml"
+    for path in (out_dir, pages_dir, sources_dir, src_dir, out_path, connection_path):
+        if path.is_symlink():
+            raise ValueError(f"refusing symlink in generated output path: {path}")
+
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    src_dir.mkdir(parents=True, exist_ok=True)
+    for previous_sql in src_dir.glob("*.sql"):
+        previous_sql.unlink()
+
+    out_path.write_text(evidence_page(spec, results), encoding="utf-8")
+    # One .sql per answered section. Refused sections get no source file, so a
+    # missing definition cannot silently become an empty chart.
+    for result in results:
+        if result["sql"]:
+            (src_dir / f"{result['id'].lower()}.sql").write_text(
+                result["sql"].strip() + "\n", encoding="utf-8"
+            )
+    connection_path.write_text(
+        f"name: {SOURCE}\ntype: bigquery\noptions:\n"
+        f"  project_id: {project}\n  authenticator: gcloud-cli\n",
+        encoding="utf-8",
+    )
+    return out_path
 
 
 def main() -> int:
@@ -331,12 +486,18 @@ def main() -> int:
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--no-metrics", action="store_true",
                     help="指標定義を渡さずに走らせる（LOG-0065 と同じ条件）")
+    ap.add_argument("--question", help="日本語の問い合わせ1件だけを生成・実行・描画する")
     args = ap.parse_args()
     if not args.project:
         print("--project or GOOGLE_CLOUD_PROJECT is required", file=sys.stderr)
         return 2
 
     spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
+    try:
+        sections = select_sections(spec, args.question)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 2
     metrics = "" if args.no_metrics else metrics_block(HERE / "metrics.json")
     rules = prompt_rules(metrics)
     print(f"metrics definitions: {'off' if not metrics else 'on'}", flush=True)
@@ -368,7 +529,7 @@ def main() -> int:
     bq = bigquery.Client(project=args.project)
 
     results, passed, tokens = [], 0, {"input_tokens": 0, "output_tokens": 0}
-    for s in spec["sections"]:
+    for s in sections:
         ans, usage = generate(client, args.model, s, spec["period"], rules)
         for k in tokens:
             tokens[k] += usage[k]
@@ -384,9 +545,21 @@ def main() -> int:
                       else f"answered anyway: undefined={undefined} sql={sql[:70]}")
             passed += ok
             print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
-            results.append({"id": s["id"], "title": s["title"], "component": s["component"],
+            results.append({"id": s["id"], "title": s["title"], "question": s["text"],
+                            "component": s["component"],
                             "sql": sql or None, "columns": None, "ok": ok, "detail": detail,
-                            "undefined_terms": undefined, "reason": ans.get("reason", "")})
+                            "undefined_terms": undefined, "reason": ans.get("reason", ""),
+                            "verification": "refused"})
+            continue
+
+        if s["verification"] == "execution" and not sql and undefined:
+            detail = f"refused, undefined={undefined}"
+            passed += 1
+            print(f"PASS  {s['id']} {s['title']}  {detail[:110]}", flush=True)
+            results.append({"id": s["id"], "title": s["title"], "question": s["text"],
+                            "component": s["component"], "sql": None, "columns": None,
+                            "ok": True, "detail": detail, "undefined_terms": undefined,
+                            "reason": ans.get("reason", ""), "verification": "refused"})
             continue
 
         # Record why, not just that. A bare "no sql" made an over-refusal
@@ -396,17 +569,25 @@ def main() -> int:
             if sql
             else (None, f"refused: undefined={undefined} reason={ans.get('reason', '')[:80]}")
         )
-        want_res, want_err = exec_bq(bq, s["gold_sql"])
-        if want_err:  # the reference itself is wrong — say so loudly
-            print(f"REFERENCE BROKEN  {s['id']}  {want_err}", file=sys.stderr, flush=True)
+        if s["verification"] == "execution":
+            want_res, want_err = None, None
+        else:
+            want_res, want_err = exec_bq(bq, s["gold_sql"])
+            if want_err:  # the reference itself is wrong — say so loudly
+                print(f"REFERENCE BROKEN  {s['id']}  {want_err}", file=sys.stderr, flush=True)
 
         if got_err or want_err:
-            ok, detail = False, got_err or want_err
+            ok, detail, component = False, got_err or want_err, s["component"]
             columns = None
         else:
             got, columns = got_res
-            want, _ = want_res
-            ok, detail = compare(s["compare"], got, want)
+            if s["verification"] == "execution":
+                ok, detail = True, "executed; reference value not registered"
+                component = component_for_result(got, columns)
+            else:
+                want, _ = want_res
+                ok, detail = compare(s["compare"], got, want)
+                component = s["component"]
         passed += ok
 
         print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
@@ -414,32 +595,20 @@ def main() -> int:
             {
                 "id": s["id"],
                 "title": s["title"],
-                "component": s["component"],
+                "question": s["text"],
+                "component": component,
                 "sql": sql,
                 "columns": columns,
                 "ok": ok,
                 "detail": detail,
                 "undefined_terms": undefined,
                 "reason": ans.get("reason", ""),
+                "verification": s["verification"],
             }
         )
 
     out_dir = HERE / "out"
-    (out_dir / "pages").mkdir(parents=True, exist_ok=True)
-    src_dir = out_dir / "sources" / SOURCE
-    src_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "pages" / "monthly_report.md"
-    out_path.write_text(evidence_page(spec, results), encoding="utf-8")
-    # One .sql per answered section. Refused sections get no source file, so a
-    # missing definition cannot silently become an empty chart.
-    for r in results:
-        if r["sql"]:
-            (src_dir / f"{r['id'].lower()}.sql").write_text(r["sql"].strip() + "\n", encoding="utf-8")
-    (src_dir / "connection.yaml").write_text(
-        f"name: {SOURCE}\ntype: bigquery\noptions:\n"
-        f"  project_id: {args.project}\n  authenticator: gcloud-cli\n",
-        encoding="utf-8",
-    )
+    out_path = write_outputs(out_dir, spec, results, args.project)
 
     cost = (
         tokens["input_tokens"] * PRICING[args.model][0]
@@ -451,7 +620,7 @@ def main() -> int:
                 "ran_at": datetime.now(timezone.utc).isoformat(),
                 "model": args.model,
                 "passed": passed,
-                "total": len(spec["sections"]),
+                "total": len(sections),
                 "cost_jpy": round(cost, 3),
                 "sections": results,
             },
@@ -461,10 +630,10 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(f"\nresult: {passed} / {len(spec['sections'])} sections verified")
+    print(f"\nresult: {passed} / {len(sections)} sections handled")
     print(f"cost: ¥{cost:.2f}  ({tokens['input_tokens']}in / {tokens['output_tokens']}out)")
     print(f"page: {out_path}")
-    return 0 if passed == len(spec["sections"]) else 1
+    return 0 if passed == len(sections) else 1
 
 
 if __name__ == "__main__":

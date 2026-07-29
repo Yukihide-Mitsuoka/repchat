@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-07-27
+updated: 2026-07-29
 ---
 
 # Spike: レポート生成
@@ -278,6 +278,18 @@ gcloud auth application-default login
 make demo PROJECT=kotonoha-bi-dev
 ```
 
+上のコマンドは参照値を持つ15問の回帰測定です。対面デモでは1問に絞り、日本語問い合わせ、
+Vertex AIが生成したBigQuery SQL、生成理由、実行・参照値照合の状態、Evidence描画結果を
+同じページに表示します。
+
+```bash
+make demo PROJECT=kotonoha-bi-dev QUESTION='2021年1月のセッション数を出して'
+```
+
+`report.json`にある設問と完全一致する場合は登録済みの参照SQLとも値を照合します。それ以外の
+日本語問い合わせは生成SQLをBigQueryで実行して描画しますが、既知値とは照合せず、ページに
+「実行済み・参照値未照合」と明記します。未定義指標を拒否した場合はSQLソースを生成しません。
+
 実Vertex AI（約2円）とBigQuery（1か月、最大20GiB）を使うため、開始前に確認が出ます。
 非対話環境でビルドまで行う場合は明示的に費用を承認します。
 
@@ -297,12 +309,18 @@ make demo PROJECT=example-project DRY_RUN=yes
 2. pin済みcommitのEvidence公式テンプレートを`out/.demo/evidence-app`へ取得し、plugin設定と
    sample sourceをBigQueryだけの最小構成へ置換してから、最小lockfileどおり`npm ci`
 3. `npm audit --audit-level=critical`を実行し、critical advisoryがあれば停止
-4. 日本語のレポート定義からSQLを生成し、BigQueryの実行結果を既知値と照合
+4. 日本語のレポート定義からSQLを生成し、`SELECT *`・書込み・対象外データセットを拒否してから
+   BigQueryで実行。登録済み設問だけ既知値と照合
 5. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
 6. `http://localhost:3000/`でレポートを開く
 
 `out/.demo/`は使い捨てでgit管理外です。生成器が出す接続設定はADCを使うため、鍵ファイルは置きません。
 デモで話す内容と限界は[5分説明](../../docs/demo.md)にまとめています。
+
+`SELECT *`の拒否は、Google Cloudの
+[BigQuery anti-pattern recognition](https://github.com/GoogleCloudPlatform/bigquery-antipattern-recognition)
+にある`SimpleSelectStar`と同じ判断です。デモの実行前検査に必要な規則はコード内で固定できるため、
+Java/Docker製のツール全体は依存に加えていません。
 
 **任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
 詳しくは後述の「実際に2テナントへ配った」。
@@ -335,7 +353,7 @@ BigQuery ではなく DuckDB が解釈しようとします。
 ```
 out/sources/ga4/<id>.sql   # ウェアハウスSQL（BigQuery方言）
 out/sources/ga4/connection.yaml
-out/pages/monthly_report.md  # select * from ga4.<id> ＋ コンポーネント
+out/pages/monthly_report.md  # select <必要列> from ga4.<id> ＋ コンポーネント
 ```
 
 **拒否されたセクションはソースファイルを作りません。** 定義漏れが、空のグラフに化けないためです。

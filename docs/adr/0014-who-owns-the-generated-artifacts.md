@@ -20,6 +20,9 @@
   Revision (2026-07-29): 顧客所有の方針は維持し、ADR-0015で配送方式を具体化した。
   「顧客repositoryだけでEvidenceが動く」という不正確な記述、接続情報の境界、
   GitHub接続・build・有効化・fallbackの未決を訂正した。
+
+  Revision (2026-07-29): G2のEvidenceページSQL例を、生成結果の必要列を明示する形へ訂正した。
+  生成物の所有・配置に関する決定は変更していない。
 -->
 
 ## Context（強制する問題）
@@ -63,7 +66,9 @@ LookMLのGit連携と共通する。RepChatは生成済みのページとSQLを�
 モデル開発・branch運用と同一の仕組みではない。
 
 LOG-0073の分離により、`sources/*.sql`には具体的なウェアハウスSQLが入り、ページは
-`select * from ga4.<id>`でそれを読む。指標定義は生成時の入力であり、生成後の実行時依存ではない。
+`select <必要列> from ga4.<id>`でそれを読む。列指向処理で不要列を読まず、生成結果の列契約を
+明示するため、ウェアハウスSQLとページSQLの双方で`SELECT *`を使わない。指標定義は生成時の入力であり、
+生成後の実行時依存ではない。
 ただし、**ページとSQLだけではEvidenceアプリとして単独実行できない。** 固定されたrendererと
 依存関係が別途必要である。顧客repositoryに置くのは
 [ADR-0015](0015-publish-artifacts-through-customer-git.md)のArtifactBundleであり、
