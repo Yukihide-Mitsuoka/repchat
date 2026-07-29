@@ -29,13 +29,18 @@ updated: 2026-07-29
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**今の作業スレッド**: 「デモを見せられる形」は**完了**（LOG-0081）。
+**今の作業スレッド**: [Issue #173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173)。
+既存デモは日本語からSQLを生成・実行していたが、画面にはEvidence側のローカルSQLしか出ず、
+手書きSQLの描画に見える欠陥があった。日本語1問、Vertex AIが生成したBigQuery SQL、生成理由、
+実行・参照値照合の状態、描画結果を同じページへ出す変更を実装し、クラウド不要の単体テストは通過した。
+**実Vertex AI・BigQueryとブラウザでの最終確認は未完了**。完了後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ見せる。
+
+「デモを見せられる形」の基礎は**完了**（LOG-0081）。
 顧客Gitへの配送方式は[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)として
 オーナー承認済み（LOG-0082）。GitHub Appとartifact pipelineの実装は未着手。
 [ADR-0013](adr/0013-metric-definitions-live-in-our-own-layer.md) はオーナー承認済みで、
 **日本語の記述 → SQL生成 → 検証 → Evidenceで実データ描画 → テナント別配信**まで実測済み。
-次は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)に従い、
-[5分説明](demo.md)をデザインパートナーへ実際に見せ、利用仮説を人間から測る。
 
 **前回立てた3手の現在地:**
 
@@ -62,10 +67,13 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 |---|---|---|
 | **起動を1コマンドに** | `make demo PROJECT=<project>`。隔離venv、Evidence公式テンプレート、生成、照合、materialize、build、ブラウザ起動まで含む | 通常の`npm ci`から実環境でr1〜r12がmaterialize、HTTP 200、ブラウザで検証済みの値と未定義3指標の拒否を確認。ブラウザerror 0（Evidence依存側の非致命warningあり）。完全にキャッシュのない別マシンでは未確認 |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
+| **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 単体テスト済み。実Vertex AI・BigQuery、Evidence build、ブラウザ表示はIssue #173で最終確認中 |
 
-**やらないこと**: 新機能。デモのために `src/` を触る必要はない（全部 `spikes/` 内で完結する）。
+**やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
+`src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: デザインパートナーへ5分デモを見せ、[demo.md](demo.md)末尾の5問を聞く。
+**次のボトルネック**: Issue #173の実環境確認後、デザインパートナーへ5分デモを見せ、
+[demo.md](demo.md)末尾の5問を聞く。
 「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
 
 ### 0.2 手を動かす前に知っておくこと
@@ -86,6 +94,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 - **「動いた」と「検証した」を混同しない。** 破棄→再構築後の 10/10 は**キャッシュ配信**で、
   実行系は動いていなかった（LOG-0060）。**監査行やジョブ履歴など、経路を通った証跡で確かめる**
 - **BigQuery のプラン成功は実行成功ではない**（LOG-0067 で訂正）。dry-run が通っても実行は別
+- **画面のSQLを2層に分けて読む。** Vertex生成SQLはBigQueryへ送り、EvidenceのページSQLは
+  materialize済み結果をDuckDBで読む。どちらも必要列を明示し、`SELECT *`は実行前に拒否する
 - **測っていないことは「測っていない」と書く**（GR-042）。README とPRに限界を明記するのがこのリポジトリの作法
 - **主要顧客は確定済み**（LOG-0079）。複数顧客へ分析・定期レポートを提供する日本の小規模代理店・
   ソフトウェアベンダーが初期の主経路で、直販はフォールバック。mission.md との不整合は

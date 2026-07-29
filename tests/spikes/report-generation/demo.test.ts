@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -39,6 +40,34 @@ test('dry-run reports every stage without installing or calling cloud services',
   assert.match(result.stdout, /generate and verify.*Vertex AI \+ BigQuery/);
   assert.match(result.stdout, /materialize Evidence sources and build/);
   assert.match(result.stdout, /open http:\/\/localhost:3000\//);
+});
+
+test('dry-run carries one Japanese question into the generation plan', () => {
+  const question = '2021年1月のセッション数を出して';
+  const result = demo(['--project', 'example-project', '--question', question, '--dry-run']);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, new RegExp(question));
+  assert.match(result.stdout, /one-question mode/);
+});
+
+test('the Make target passes QUESTION without evaluating shell syntax', () => {
+  const marker = path.join(os.tmpdir(), `repchat-question-${process.pid}`);
+  fs.rmSync(marker, { force: true });
+  try {
+    const result = spawnSync(
+      'make',
+      ['demo', 'PROJECT=example-project', 'DRY_RUN=yes', `QUESTION=セッション数$(touch ${marker})`],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(fs.existsSync(marker), false);
+    assert.match(result.stdout, /one-question mode/);
+  } finally {
+    fs.rmSync(marker, { force: true });
+  }
 });
 
 test('the Evidence package definition matches the minimal audited lockfile', () => {

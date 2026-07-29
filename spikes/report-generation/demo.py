@@ -158,10 +158,13 @@ def prepare_evidence() -> None:
     run(["npm", "audit", "--audit-level=critical"], cwd=EVIDENCE_DIR)
 
 
-def generate_report(python: Path, project: str) -> None:
+def generate_report(python: Path, project: str, question: str | None) -> None:
     env = os.environ.copy()
     env["GOOGLE_CLOUD_PROJECT"] = project
-    run([str(python), str(HERE / "run_report.py"), "--project", project], env=env)
+    command = [str(python), str(HERE / "run_report.py"), "--project", project]
+    if question is not None:
+        command.extend(["--question", question])
+    run(command, env=env)
 
 
 def install_generated_report() -> None:
@@ -181,9 +184,11 @@ def install_generated_report() -> None:
     shutil.copy2(generated_page, EVIDENCE_DIR / "pages" / "index.md")
 
 
-def planned_steps(project: str) -> None:
+def planned_steps(project: str, question: str | None) -> None:
     print(f"project: {project}")
     print(f"Evidence template: {TEMPLATE_COMMIT}")
+    if question is not None:
+        print(f"one-question mode: {question}")
     for step in (
         "create isolated Python venv and install pinned dependencies",
         "fetch the pinned Evidence scaffold and install the minimal audited lockfile",
@@ -200,6 +205,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--accept-cost", action="store_true")
     parser.add_argument("--build-only", action="store_true", help="build but do not start the server")
     parser.add_argument("--dry-run", action="store_true", help="show the paid workflow without changing files")
+    parser.add_argument(
+        "--question",
+        default=os.environ.get("QUESTION"),
+        help="run one Japanese question instead of the 15-question report",
+    )
     return parser.parse_args()
 
 
@@ -210,15 +220,20 @@ def main() -> int:
         print("error: --project or GOOGLE_CLOUD_PROJECT is required", file=sys.stderr)
         return 2
     try:
+        question = args.question.strip() if args.question is not None else None
+        if args.question is not None and not question:
+            raise DemoError("question must not be empty")
+        if question is not None and len(question) > 500:
+            raise DemoError("question must be at most 500 characters")
         if args.dry_run:
-            planned_steps(project)
+            planned_steps(project, question)
             return 0
         confirm_paid_run(args.accept_cost)
         require_tools()
         require_adc()
         python = prepare_python()
         prepare_evidence()
-        generate_report(python, project)
+        generate_report(python, project, question)
         install_generated_report()
         run(["npm", "run", "sources"], cwd=EVIDENCE_DIR)
         run(["npm", "run", "build"], cwd=EVIDENCE_DIR)
