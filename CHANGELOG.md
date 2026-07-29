@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.10.1...v1.11.0) (2026-07-29)
+
+
+### Features
+
+* **demo:** expose Japanese question generation trace ([#175](https://github.com/Yukihide-Mitsuoka/repchat/issues/175)) ([97fb3c4](https://github.com/Yukihide-Mitsuoka/repchat/commit/97fb3c46cc042bec3841a569d0ee19626c75a593)), closes [#173](https://github.com/Yukihide-Mitsuoka/repchat/issues/173) [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)
+
 ## [1.10.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.10.0...v1.10.1) (2026-07-29)
 
 
