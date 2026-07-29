@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.10.0...v1.10.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **ci:** authenticate foundation sync size exception ([#170](https://github.com/Yukihide-Mitsuoka/repchat/issues/170)) ([812f685](https://github.com/Yukihide-Mitsuoka/repchat/commit/812f685ba6b1c4076afc0dc27c3f94c383e370e5))
+* **demo:** align Evidence plugins with dependencies ([#166](https://github.com/Yukihide-Mitsuoka/repchat/issues/166)) ([1376318](https://github.com/Yukihide-Mitsuoka/repchat/commit/137631804fc507c56eaedafb9609720af9a2032d))
+
 ## [1.10.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.9.1...v1.10.0) (2026-07-28)
 
 
