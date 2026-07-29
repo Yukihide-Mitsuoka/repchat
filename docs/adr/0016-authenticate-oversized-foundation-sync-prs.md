@@ -1,7 +1,7 @@
 ---
 id: adr-0016
 title: ADR-0016 — 大規模な基盤同期PRを厳密に認証する
-status: proposed
+status: accepted
 updated: 2026-07-29
 ---
 
@@ -9,9 +9,9 @@ updated: 2026-07-29
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-07-29 |
-| Deciders | repository owner |
+| Deciders | repository owner（PR #168を2026-07-29にマージして承認） |
 | Author | Codex (AI agent) |
 | Supersedes / Superseded by | ADR-0008を補足し、GR-020の基盤同期時の扱いを限定する |
 
