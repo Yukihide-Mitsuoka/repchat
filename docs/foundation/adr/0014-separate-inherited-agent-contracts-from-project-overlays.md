@@ -1,7 +1,7 @@
 ---
 id: adr-0014
 title: ADR-0014 — Separate inherited agent contracts from project overlays
-status: proposed
+status: accepted
 updated: 2026-07-29
 ---
 
@@ -9,9 +9,9 @@ updated: 2026-07-29
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-07-29 |
-| Deciders | repository owner |
+| Deciders | repository owner (approved 2026-07-29) |
 | Author | Codex (AI agent) |
 | Supersedes / Superseded by | Extends ADR-0004 and ADR-0007 |
 
