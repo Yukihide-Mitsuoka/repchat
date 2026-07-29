@@ -176,6 +176,50 @@ print(module["format_sql_for_display"](section["gold_sql"]))
   assert.doesNotMatch(result.stdout, /\n\s*\n\s*\n/);
 });
 
+test('display SQL indents every non-empty line by a multiple of four spaces', () => {
+  const result = loadRunReport(`
+section = next(section for section in spec["sections"] if section["id"] == "R17")
+formatted = module["format_sql_for_display"](section["gold_sql"])
+violations = [{
+    "line": index + 1,
+    "spaces": len(line) - len(line.lstrip(" ")),
+    "text": line.strip(),
+} for index, line in enumerate(formatted.splitlines())
+  if line.strip() and (len(line) - len(line.lstrip(" "))) % 4 != 0]
+print(json.dumps(violations, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), []);
+});
+
+test('display SQL normalizes sqlparse aligned output to four-space levels', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+aligned = """SELECT COUNT(DISTINCT ecommerce.transaction_id) AS purchases,
+       SUM(ecommerce.purchase_revenue) AS revenue
+  FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\u0060
+ WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'
+   AND event_name = 'purchase'"""
+sqlparse = types.ModuleType("sqlparse")
+sqlparse.format = lambda *_args, **_kwargs: aligned
+sys.modules["sqlparse"] = sqlparse
+
+raw = "SELECT COUNT(DISTINCT ecommerce.transaction_id) AS purchases, SUM(ecommerce.purchase_revenue) AS revenue FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\u0060 WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' AND event_name = 'purchase'"
+formatted = module["format_sql_for_display"](raw)
+violations = [{
+    "line": index + 1,
+    "spaces": len(line) - len(line.lstrip(" ")),
+    "text": line.strip(),
+} for index, line in enumerate(formatted.splitlines())
+  if line.strip() and (len(line) - len(line.lstrip(" "))) % 4 != 0]
+print(json.dumps(violations, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), []);
+});
+
 test('generated SQL must be read-only and bounded to the demo dataset', () => {
   const result = loadRunReport(`
 queries = [
