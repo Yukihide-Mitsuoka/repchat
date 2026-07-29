@@ -220,6 +220,70 @@ print(json.dumps(violations, ensure_ascii=False))
   assert.deepEqual(JSON.parse(result.stdout), []);
 });
 
+test('display SQL keeps CTE and UNION structure after aligned indentation is removed', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+aligned = """WITH first AS (
+        SELECT
+            a,
+            b
+          FROM source
+         WHERE x = 1
+           AND y = 2
+       ),
+       second AS (
+        SELECT
+            a,
+            b
+          FROM first
+     UNION ALL
+     SELECT
+         a,
+         b
+          FROM fallback
+       )
+SELECT
+    a,
+    b
+  FROM second
+ ORDER BY a"""
+sqlparse = types.ModuleType("sqlparse")
+sqlparse.format = lambda *_args, **_kwargs: aligned
+sys.modules["sqlparse"] = sqlparse
+print(module["format_sql_for_display"]("SELECT 1"))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    `WITH first AS (
+    SELECT
+        a,
+        b
+    FROM source
+    WHERE x = 1
+        AND y = 2
+),
+second AS (
+    SELECT
+        a,
+        b
+    FROM first
+    UNION ALL
+    SELECT
+        a,
+        b
+    FROM fallback
+)
+SELECT
+    a,
+    b
+FROM second
+ORDER BY a`,
+  );
+});
+
 test('generated SQL must be read-only and bounded to the demo dataset', () => {
   const result = loadRunReport(`
 queries = [

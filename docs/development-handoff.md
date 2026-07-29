@@ -19,8 +19,10 @@ updated: 2026-07-30
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在の作業**は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
-デザインパートナーへ[5分デモ](demo.md)を見せ、末尾の質問で価値仮説と価格感を検証する。
+**現在の作業**は[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190)。
+デモのSQL表示を構文階層ごとの0、4、8、12...スペースへ正規化する。完了後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ
+[5分デモ](demo.md)を見せて価値仮説と価格感を検証する。
 
 デモ画面の情報配置は[Issue #184](https://github.com/Yukihide-Mitsuoka/repchat/issues/184) /
 [PR #185](https://github.com/Yukihide-Mitsuoka/repchat/pull/185)で、2026-07-30にmerge済み。6設問それぞれの
@@ -39,8 +41,9 @@ updated: 2026-07-30
 分析単位の結果／生成プロセス・SQLタブへ再構成する。購入KPI、リピート率、平均エンゲージメント、
 購入ファネル、日次＋7日移動平均、入口から3ページ目までの主要回遊Sankeyを扱い、SQLはSELECT列・
 主要句単位で整形する。Sankeyを含む6問版は実Vertex AI・BigQueryで6/6、推定¥1.285、
-R17の12 edge materialize、production build・ブラウザ描画、SQLの4スペースインデント／横スクロール、
-error/warning 0まで確認した。ただし公開GA4 schema固有の実測であり、未知nested schemaは未検証。
+R17の12 edge materialize、production build・ブラウザ描画、横スクロール、error/warning 0まで確認した。
+後続調査でSQLに`sqlparse`の予約語幅による1〜3文字等の位置合わせが残ると判明し、Issue #190で是正中。
+ただし公開GA4 schema固有の実測であり、未知nested schemaは未検証。
 製品版の閲覧／SQL面分離、
 目的を分解してKPI・複数グラフ・1画面前後の読順を設計する対話build、AI会議所見はIssue #179〜#181。
 
