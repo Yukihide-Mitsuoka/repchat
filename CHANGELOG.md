@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.1...v1.11.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* **demo:** normalize SQL indentation levels ([#191](https://github.com/Yukihide-Mitsuoka/repchat/issues/191)) ([a45ae5f](https://github.com/Yukihide-Mitsuoka/repchat/commit/a45ae5fe9fd34e63b668ca6bff2891e36a67c555))
+
 ## [1.11.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.0...v1.11.1) (2026-07-29)
 
 
