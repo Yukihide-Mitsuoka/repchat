@@ -1,7 +1,7 @@
 ---
 id: ai-context-guide
 title: AI Context Acquisition and Budgets
-updated: 2026-07-29
+updated: 2026-07-30
 ---
 
 # AI Context Acquisition and Budgets
@@ -17,7 +17,7 @@ across model providers. They are regression proxies, not exact token counts.
 
 | Measurement | Included | Excluded |
 |-------------|----------|----------|
-| Baseline | `AGENTS.md`, `CLAUDE.md`, `.ai/README.md`, `.ai/guardrails.md` | Active handoff and runtime-owned instructions, including `.claude/README.md` |
+| Baseline | `AGENTS.md`, `CLAUDE.md`, `.ai/README.md`, `.ai/guardrails.md`, the agent profile, and every ordered profile input | Active handoff and runtime-owned instructions, including `.claude/README.md` |
 | Declared task route | Baseline, selected skill, every file in its `reads` declaration | Task-specific sources found through bounded discovery |
 | Conditional authority | One authority selected by an explicit trigger contract | Baseline and unrelated declared task routes |
 
@@ -39,6 +39,7 @@ did not record that dimension for the stated point.
 | After Claude-specific routing | 16,329 | 2,288 | 40,066 | 5,592 |
 | After AI inventory unification | 16,156 | 2,258 | 39,893 | 5,562 |
 | After conditional project-document routing | 16,300 | 2,272 | 37,121 | 5,151 |
+| After profile entry activation | 16,645 | 2,260 | — | — |
 
 ADR-0013 also changed the declared `documentation` route and introduced a separately
 measured conditional authority:
@@ -66,14 +67,16 @@ indexes and search instead of declared as directory-wide reads.
 | Any declared task-route words | 6,500 |
 
 `make doctor` rejects a directory, glob, missing file, traversal path, redundant
-baseline read, or missing mandatory authority in any skill route. It enforces the
-ceilings in the canonical foundation repository. Descendants always receive structural
-validation and measurement output, but budget excess is initially a warning because
-their protected entry documents can legitimately differ. Exact canonical baseline
-wording is validated only in the foundation; descendants retain their protected local
-entry wording. The strict foundation validation also pins the §12 link and all obligations
-in `.claude/README.md`, although that conditional runtime file is excluded from baseline
-measurement.
+baseline read, or missing mandatory authority in any skill route. When an agent profile
+exists, it also validates schema version 1, `strengthen-only`, exact input order, bounded
+file paths, and duplicates, then includes the profile and every input in baseline
+measurement. It enforces the ceilings in the canonical foundation repository.
+Descendants always receive structural validation and measurement output, but budget
+excess is initially a warning because their protected entry documents can legitimately
+differ. Exact canonical adapter and contract wording is validated only in the
+foundation; descendants retain their protected local profile and project overlay. The
+strict foundation validation also pins all obligations in `.claude/README.md`, although
+that conditional runtime file is excluded from baseline measurement.
 
 The validator also rejects a missing conditional authority, routing reference, or
 required rule marker. It reports each conditional authority separately and does not add

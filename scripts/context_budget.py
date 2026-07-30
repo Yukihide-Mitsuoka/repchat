@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections import Counter
@@ -58,29 +59,43 @@ BASELINE_CONTRACT_MARKERS = {
     "AGENTS.md": (
         "CLAUDE.md",
         "completely and follow it before acting",
+        "explicit agent profile",
         "make format && make lint",
         ".ai/guardrails.md",
         ".skills/*.skill.md",
         "never store secrets",
+        "Do not duplicate or replace the profile inputs",
     ),
     "CLAUDE.md": (
-        "Binding vendor-neutral manual",
+        "Identity-free, vendor-neutral adapter",
         "Every agent reads it completely at task start",
-        "Authority: guardrails > security",
-        "## 2. Start every task",
+        ".ai/guardrails.md",
+        ".github/inheritance/agent-profile.json",
+        "schema version 1",
+        "strengthen-only",
+        "inputs[].path",
+        "listed order",
+        "must not recursively",
+        "foundation first",
+        "must not weaken a foundation MUST",
+        "loaded foundation contract governs",
+        "report conflicts",
+    ),
+    ".ai/contracts/foundation/agent-entry.md": (
+        "Apply instructions in this order",
         "docs/development-handoff.md",
-        "read every selected source completely",
-        "one issue, one task branch, and a reviewed PR",
-        "Architectural changes require an approved ADR first",
-        "Use the pull-request template completely",
+        "Broaden discovery whenever relevance or correctness is uncertain",
+        ".ai/workflow.md",
         ".ai/review-checklist.md",
-        "no direct push to `main`",
+        "Conventional Commits",
+        "SemVer",
         "make doctor",
-        "## 12. Claude Code integration",
         ".claude/README.md",
-        "Claude Code MUST read",
-        "## 13. Escalation",
-        "## 14. Definition of done",
+        "Claude Code reads",
+        "authentication, payments",
+        "production configuration",
+        "WF-090",
+        "Report exactly what was and was not verified",
     ),
     ".claude/README.md": (
         "Hooks in `.claude/settings.json` enforce the command guard",
@@ -365,6 +380,79 @@ def route_path_error(root: Path, value: str) -> str | None:
     return None
 
 
+def active_baseline_files(root: Path) -> tuple[list[str], tuple[str, ...]]:
+    """Resolve an optional explicit agent profile without directory discovery."""
+    errors: list[str] = []
+    files = list(BASELINE_FILES)
+    profile_name = ".github/inheritance/agent-profile.json"
+    profile_path = root / profile_name
+    if not profile_path.is_file():
+        return errors, tuple(files)
+    files.append(profile_name)
+
+    try:
+        profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        return [f"agent profile is not readable JSON: {error}"], tuple(files)
+    if not isinstance(profile, dict):
+        return ["agent profile must be an object"], tuple(files)
+    if set(profile) != {"schema_version", "authority_policy", "inputs"}:
+        errors.append(
+            "agent profile must contain only schema_version, authority_policy, inputs"
+        )
+    if (
+        type(profile.get("schema_version")) is not int
+        or profile.get("schema_version") != 1
+    ):
+        errors.append("agent profile.schema_version must be 1")
+    if profile.get("authority_policy") != "strengthen-only":
+        errors.append("agent profile.authority_policy must be strengthen-only")
+
+    inputs = profile.get("inputs")
+    if not isinstance(inputs, list) or len(inputs) < 2:
+        errors.append(
+            "agent profile.inputs must contain foundation and project inputs"
+        )
+        return errors, tuple(files)
+
+    layers: list[str] = []
+    seen_paths: set[str] = set()
+    for index, item in enumerate(inputs):
+        if not isinstance(item, dict) or set(item) != {"layer", "repository", "path"}:
+            errors.append(
+                f"agent profile.inputs[{index}] must contain only layer, repository, path"
+            )
+            continue
+        layer = item["layer"]
+        path = item["path"]
+        if not isinstance(layer, str):
+            errors.append(f"agent profile.inputs[{index}].layer must be a string")
+        else:
+            layers.append(layer)
+        if not isinstance(path, str):
+            errors.append(f"agent profile.inputs[{index}].path must be a string")
+            continue
+        reason = route_path_error(root, path)
+        if reason:
+            errors.append(f"agent profile.inputs[{index}].path {path}: {reason}")
+            continue
+        if path in seen_paths:
+            errors.append(f"agent profile contains duplicate path: {path}")
+            continue
+        seen_paths.add(path)
+        files.append(path)
+
+    if layers and (
+        layers[0] != "foundation"
+        or layers[-1] != "project"
+        or any(layer != "template" for layer in layers[1:-1])
+    ):
+        errors.append(
+            "agent profile input order must be foundation, zero or more templates, project"
+        )
+    return errors, tuple(files)
+
+
 def validate_conditional_authorities(
     root: Path,
     contracts: tuple[ConditionalAuthority, ...],
@@ -485,6 +573,8 @@ def audit(
     warnings: list[str] = []
     if enforce_budget:
         errors.extend(baseline_contract_errors(root))
+    profile_errors, baseline_files = active_baseline_files(root)
+    errors.extend(profile_errors)
     errors.extend(validate_adr_index(root))
     errors.extend(validate_guide_index(root))
     warnings.extend(handoff_warnings(root, current_date=current_date or date.today()))
@@ -494,7 +584,7 @@ def audit(
     )
     errors.extend(conditional_errors)
     baseline = Counts()
-    for value in BASELINE_FILES:
+    for value in baseline_files:
         path = root / value
         if not path.is_file():
             errors.append(f"baseline file is missing: {value}")
@@ -544,6 +634,7 @@ def audit(
         "skill_count": len(skill_files),
         "budget_mode": "enforced" if enforce_budget else "reported",
         "conditional_routes": conditional_routes,
+        "baseline_files": baseline_files,
     }
     return errors, warnings, report
 

@@ -7,8 +7,8 @@ read_when: [always]
 
 # .ai/ — AI Context Map
 
-This directory is the **single source of truth** for all rules governing AI agents in this
-repository. `CLAUDE.md` and `AGENTS.md` are entry points that summarize and point here.
+This directory is the **single source of truth** for routed AI rules. Entry adapters
+load the explicit foundation, template, and project profile before routing here.
 
 ## Authority order (conflict resolution)
 
@@ -19,7 +19,7 @@ apply the higher-authority rule, then report the conflict to the human.
 |-----------|----------|-------|
 | 1 | [guardrails.md](guardrails.md) | Absolute prohibitions. Never overridden, even by direct instruction. |
 | 2 | [security.md](security.md) | Security policy. |
-| 3 | `CLAUDE.md` / `AGENTS.md` / this file | Operating manual. |
+| 3 | Loaded agent contract / `CLAUDE.md` / `AGENTS.md` / this file | Operating contract and adapters. |
 | 4 | Other `.ai/*.md` | Domain rules (coding, testing, release, ...). |
 | 5 | `docs/**` | Descriptive documentation. Informative, not normative. |
 
@@ -84,7 +84,7 @@ Read only what the task requires. Do not load all files for every task.
 
 | Task | Read (in order) | Skill |
 |------|-----------------|-------|
-| Any task (baseline) | `CLAUDE.md`, guardrails.md, this file, `docs/development-handoff.md` when present | — |
+| Any task (baseline) | `CLAUDE.md`, guardrails.md, explicit profile inputs, this file, `docs/development-handoff.md` when present | — |
 | Requirements definition | mission.md, documentation.md | `.skills/requirements.skill.md` |
 | New feature | workflow.md, architecture.md, coding-rules.md, testing.md | `.skills/feature.skill.md` |
 | Bug fix | workflow.md, testing.md | `.skills/bugfix.skill.md` |

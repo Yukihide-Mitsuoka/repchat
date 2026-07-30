@@ -71,7 +71,7 @@ class TemplateInheritanceTest(unittest.TestCase):
 
     def test_manifest_rejects_unknown_or_invalid_boundary_values(self):
         mutations = [
-            lambda value: value.update(schema_version=2),
+            lambda value: value.update(schema_version=3),
             lambda value: value["parent"].update(repository="not-a-target"),
             lambda value: value["parent"].update(branch="../main"),
             lambda value: value.update(inherited_paths=[]),

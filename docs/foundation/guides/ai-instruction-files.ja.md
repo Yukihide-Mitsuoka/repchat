@@ -1,7 +1,7 @@
 ---
 id: ai-instruction-files-ja
 title: AI指示ファイル・ガイド（日本語）
-updated: 2026-07-18
+updated: 2026-07-30
 ---
 
 # AIへ指示を出すファイル群ガイド（日本語）
@@ -16,12 +16,12 @@ updated: 2026-07-18
 ## 0. 全体像 — 3層 + 補助
 
 ```
-┌─ 入口 ────────────────────────────────────────────────┐
+┌─ 薄い入口アダプター ────────────────────────────────────┐
 │ CLAUDE.md（Claude Code）/ AGENTS.md（他エージェント）   │  ← まずここを読む
 └───────────────┬───────────────────────────────────────┘
-                │ 参照
-┌─ ルール本体（.ai/）─────────────────────────────────────┐
-│ guardrails > security > CLAUDE.md > その他 .ai/ > docs/  │  ← 唯一の「正」
+                │ agent profileのinputsを順番に読込
+┌─ 合成契約 + ルール本体（.ai/）──────────────────────────┐
+│ guardrails > security > 読込済み契約/入口 > その他 .ai/ > docs/ │  ← 唯一の「正」
 │ README(索引/ルーティング) + 各ドメインのルール           │
 └───────────────┬───────────────────────────────────────┘
                 │ タスク種別で選ぶ
@@ -34,14 +34,17 @@ updated: 2026-07-18
         ~/.claude・~/projects/CLAUDE.md（全リポ共通のグローバル指示）
 ```
 
-**優先順位（矛盾時に強い方）**：`guardrails.md > security.md > CLAUDE.md/AGENTS.md >
-その他の .ai/*.md > docs/**`。矛盾は黙って解決せず、強い方に従い人間へ報告します。
+**優先順位（矛盾時に強い方）**：`guardrails.md > security.md > 読込済みagent契約 /
+CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解決せず、強い方に従い
+人間へ報告します。
 
 ## 1. カテゴリ早見表
 
 | カテゴリ | ファイル | 一言 |
 |----------|----------|------|
-| 入口 | [CLAUDE.md](../../../CLAUDE.md), [AGENTS.md](../../../AGENTS.md) | 最初に読む運用マニュアル |
+| 入口 | [CLAUDE.md](../../../CLAUDE.md), [AGENTS.md](../../../AGENTS.md) | 明示的なagent profileを読み込む薄いアダプター |
+| 構成 | [agent-profile.json](../../../.github/inheritance/agent-profile.json) | 基盤・テンプレート・プロジェクト入力の順序付き一覧 |
+| プロジェクト情報 | [agent-overlay.md](../../../.ai/project/agent-overlay.md) | 利用先固有の識別情報・役割・スタック |
 | ルール索引 | [.ai/README.md](../../../.ai/README.md) | 優先順位・タスク別ルーティング表 |
 | ルール本体 | [.ai/](../../../.ai/) の各 `*.md` | 分野別の正準ルール（ID付き） |
 | 手順書 | [.skills/](../../../.skills/) の各 `*.skill.md` | タスク別の実行プレイブック |
@@ -60,21 +63,28 @@ updated: 2026-07-18
 
 ### `CLAUDE.md`
 
-- **利用目的**：全AIエージェント共通の運用マニュアル（拘束力あり）。§12 のみ Claude Code 固有。
-- **利用シーン**：セッション開始時に必ず全読。タスク種別の判定、`.ai/` へのルーティング、禁止事項の把握。
-- **利用しないシーン**：詳細な分野ルールの参照（要約なので、深掘りは `.ai/` 本体を読む）。個別スタックの具体コマンド（Makefile 実装を見る）。
-- **利用例**：Claude Code でリポジトリを開くと自動で読み込まれる。§2 のルーティング表で「バグ修正なら workflow.md + testing.md + bugfix.skill.md だけ読む」と判断。
+- **利用目的**：全AIエージェント共通の、識別情報を持たない薄い入口アダプター。agent profileを検証し、宣言された契約とoverlayを順番に読み込む。
+- **利用シーン**：セッション開始時に必ず全読。Claude Codeでは自動読込される。
+- **利用しないシーン**：プロジェクト情報や詳細ルールの記述（profile入力側に置く）。タスク種別の判定（読込後の`.ai/README.md`を使う）。
+- **利用例**：profileのfoundation入力、owner-qualified template入力、project入力を記載順に全文読込する。
 
 ### `AGENTS.md`
 
-- **利用目的**：Claude 以外のエージェント（ChatGPT/Gemini/Codex）の入口。`CLAUDE.md` へ誘導し、§12（Claude固有）の等価手段を示す。
+- **利用目的**：Claude以外のエージェント（ChatGPT/Gemini/Codex）の入口。`CLAUDE.md`アダプターへ誘導し、ランタイム機能の等価手段を示す。
 - **利用シーン**：非Claudeエージェントにこのリポジトリを触らせるとき、最初に読ませる。
 - **利用しないシーン**：Claude Code を使うとき（`CLAUDE.md` が自動で読まれるため不要）。
-- **利用例**：ChatGPT に「まず `AGENTS.md` を読んで、その指示に従って」と指定 → フックが無い分、`make lint` を手動実行するなどの等価手段に読み替える。
+- **利用例**：ChatGPTに「まず`AGENTS.md`を読んで、その指示に従って」と指定 → profile入力を読み、フックが無い分、`make lint`を手動実行するなどの等価手段に読み替える。
+
+### `.github/inheritance/agent-profile.json` と `.ai/project/agent-overlay.md`
+
+- **利用目的**：profileはfoundation → template（親から子）→ projectの正確な構成順を宣言する。project overlayはリポジトリ識別情報、役割、スタックなど利用先固有の事実だけを持つ。
+- **利用シーン**：新規利用先の初期化、継承親の変更、manifest schema version 2への移行時。どちらも子リポジトリの保護対象としてレビューする。
+- **利用しないシーン**：profileに長いルール本文を複製する、project overlayで基盤のMUST・guardrail・security controlを弱める、`CLAUDE.md`へプロジェクト情報を埋め込む。
+- **利用例**：テンプレートを継承するSaaSでは、基盤契約、テンプレートoverlay、SaaS自身のproject overlayを順番に列挙する。
 
 ---
 
-## 3. ルール本体（`.ai/`）— 唯一の「正」
+## 3. 合成契約とルール本体（`.ai/`）
 
 すべて**ID付き**（GR-/SEC-/ARC-/COD-/TST-/REL-/DOC-/REV-/WF-/LOG-）。コミットやレビューで
 `「GR-010 違反」`のように一意参照します。
@@ -225,7 +235,7 @@ updated: 2026-07-18
 
 ### [profiles/README.md](../../../profiles/README.md)（正準ターゲット契約）
 
-- **利用目的**：`make` 正準ターゲット（setup/format/lint/test/…/doctor）の**拘束力ある意味論**を定義。CLAUDE.md §11 が参照。
+- **利用目的**：`make` 正準ターゲット（setup/format/lint/test/…/doctor）の**拘束力ある意味論**を定義。読込済みfoundation契約が参照。
 - **利用シーン**：`make` ターゲットの挙動を確認するとき、スタック別プロファイル（Makefile）を追加/編集するとき。
 - **利用しないシーン**：特定スタックの具体コマンドそのもの（各 Makefile 実装を見る）。
 - **利用例**：`lint` は「チェック専用・自動修正しない」という契約を確認し、lint に fmt を混ぜない。
@@ -271,7 +281,7 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 
 | | Claude Code | ChatGPT / Gemini / Codex |
 |--|-------------|--------------------------|
-| 入口 | `CLAUDE.md`（自動読込） | `AGENTS.md` → `CLAUDE.md` を明示的に読ませる |
+| 入口 | `CLAUDE.md`（自動読込）→ agent profile | `AGENTS.md` → `CLAUDE.md` → agent profileを明示的に読ませる |
 | ルール/スキル | 同じ（`.ai/`, `.skills/`） | 同じ（プレーンMarkdownなので読める） |
 | 自動強制 | `.claude/` フックが自動で効く | フックは効かない → `make lint` 等を手動実行、GR を自己チェック |
 | グローバル層 | `~/.claude`・親 `CLAUDE.md` 自動 | 読まれない → 必要なら手動で貼る |
@@ -282,7 +292,8 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 
 - **ハードルールをグローバル層だけに置く** → 他エージェント/他リポで失われる。`.ai/` とフックに置く。
 - **`.claude/` を他エージェントに期待する** → 読まれない。等価手段（手動 lint・自己チェック）を使う。
-- **要約（CLAUDE.md）と本体（.ai/）の食い違いを本体無視で進める** → 本体（.ai/）が正。迷ったら本体を読む。
+- **入口アダプターだけ読んでprofile入力を省略する** → 基盤契約やプロジェクト情報が欠ける。記載順に全入力を読む。
+- **プロジェクト情報を`CLAUDE.md`へ複製する** → 継承時に衝突する。`.ai/project/agent-overlay.md`へ置く。
 - **`CLAUDE.md` は強制ではない**（公式明記）。確実に止めたい操作は PreToolUse フックで実装する。
 - **フックを手動回避する（`--no-verify` 等）** → GR-012 違反。原因を直す。
 

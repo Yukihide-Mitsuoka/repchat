@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-07-16
+updated: 2026-07-30
 ---
 
 # Usage
@@ -44,10 +44,15 @@ Every customizable value is a `{{...}}` token. Find them all:
 ```bash
 grep -rn "{{" . --exclude-dir=.git
 ```
-Replace at minimum: `{{PROJECT_NAME}}`, `{{STACK}}` and the other `{{...}}` in
-`.ai/mission.md` and `CLAUDE.md`; `{{ORG}}` in `.github/CODEOWNERS`,
-`.github/ISSUE_TEMPLATE/config.yml`, and `.github/workflows/template-sync.yml`;
-`{{PACKAGE}}` if you use the python profile.
+Replace at minimum the `{{...}}` values in `.ai/mission.md`; `{{ORG}}` in
+`.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`, and
+`.github/workflows/template-sync.yml`; and `{{PACKAGE}}` if you use the Python profile.
+
+Project identity and stack facts do not belong in `CLAUDE.md`. Update
+`.ai/project/agent-overlay.md` for the new repository. In
+`.github/inheritance/agent-profile.json`, keep the foundation input unchanged and set
+the final project input's `repository` to the new `OWNER/REPOSITORY`. Keep the profile
+and project overlay protected when you add a child inheritance manifest.
 
 ### 3. Fix CODEOWNERS for your account type
 
@@ -111,8 +116,10 @@ as shown above and use this guide as the onboarding checklist.
 ```bash
 make setup                             # installs deps + pre-commit hooks
 ```
-Open the repo with Claude Code (reads `CLAUDE.md` automatically) or tell any other agent
-to read `AGENTS.md`. Assign it an issue and go.
+Open the repo with Claude Code (it reads the thin `CLAUDE.md` adapter automatically) or
+tell any other agent to read `AGENTS.md`. The adapter validates the explicit agent
+profile and loads every listed foundation, template, and project input in order. Assign
+it an issue and go.
 
 The template ships a worked example module (`src/modules/catalog/` + `tests/modules/catalog/`)
 — imitate its shape (COD-050) or delete both when you start real code. Run `make doctor`
