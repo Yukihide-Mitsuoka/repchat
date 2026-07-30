@@ -310,8 +310,8 @@ repositoryを持たない顧客には、同じpipelineを使うmanaged fallback�
 初期の主経路、直販をフォールバック**とする方針に統一しました。
 
 残る未決は2点です。**閲覧者と作成者の課金区分**と、**エンドユーザーの認証方式**（SSO推奨）。
-いずれも課金・認証に関わるため、オーナー決定後に mission.md と requirements.md を更新し、この節を
-削除します。
+いずれも課金・認証に関わるため、[Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)で
+オーナー判断を記録します。決定後に mission.md と requirements.md を更新し、この節を削除します。
 
 ## 関連
 

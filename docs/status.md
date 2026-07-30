@@ -19,7 +19,7 @@ updated: 2026-07-30
 ## 0. 再開手順（新しいAIセッション向け）
 
 規約は [AGENTS.md](../AGENTS.md) → [CLAUDE.md](../CLAUDE.md) → [.ai/README.md](../.ai/README.md)
-の順。**この節は「規約」ではなく「今どこにいるか」**で、LOG番号が0082まであり全部読むのは非効率なため置く。
+の順。**この節は「規約」ではなく「今どこにいるか」**で、LOG番号が0083まであり全部読むのは非効率なため置く。
 
 **この順で読めば同期できる:**
 
@@ -32,6 +32,9 @@ updated: 2026-07-30
 **現在の作業スレッド**: [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
 主要顧客に該当する日本の小規模代理店またはソフトウェアベンダーを1社以上選定・日程調整し、
 5分デモで価値仮説と価格感を検証する。参加者の選定と日程調整はリポジトリオーナーが行う。
+Issue #160の結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。
+条件付きの次タスク順と設計判断索引は
+[development-handoff](development-handoff.md)を参照する。
 
 **直前の作業スレッド**: [Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
 [PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)（2026-07-30 merge済み）。
@@ -124,7 +127,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 - **測っていないことは「測っていない」と書く**（GR-042）。README とPRに限界を明記するのがこのリポジトリの作法
 - **主要顧客は確定済み**（LOG-0079）。複数顧客へ分析・定期レポートを提供する日本の小規模代理店・
   ソフトウェアベンダーが初期の主経路で、直販はフォールバック。mission.md との不整合は
-  **課金区分と認証方式の2点だけ**残る（positioning §6）。この2点はオーナー決定前に推測しない
+  **課金区分と認証方式の2点だけ**残る（[Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)）。
+  この2点はオーナー決定前に推測しない
 
 **オーナーとのやりとりは日本語。** 断定と、**限界の明示**の両方を求められる。
 推奨があるなら「選択肢の羅列」ではなく**推奨を先に**述べること。
@@ -192,7 +196,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 - LOG-0033 の「実BigQuery 7/7」は**②バインダの出力**の証明であり、②アプリ層の話。LOG-0052 はその**独立した③データ層**の証明：バインダを完全にバイパスして越境SQLを直接投げても、なりすましSAには相手データセットへのIAM権限が無く BigQuery が `Access Denied` を返す。
 - 実行時のD1接続主体は `datasources.connection_ref`（なりすまし対象SAメール）から解決される（実Neonで確認、LOG-0047）。`ImpersonatingTokenProvider` が IAM の短命トークンを都度発行（鍵不保存）。
-- したがって「Lookerより安全」は**管理データ・分析データの双方で裏付けられた**状態。残るのは実デプロイでの結線のみ（合成ルートは実装済み、LOG-0050）。
+- したがって「Lookerより安全」は**管理データ・分析データの双方で裏付けられた**状態。合成ルートは
+  LOG-0050で実装し、デプロイ済み構成の結線はLOG-0059で10/10を確認済み。
 
 同一テナント内の**②行スコープ**（店舗フィルタ）には、書き換え後の構造検証が入った（LOG-0042）が、これは同一プロセス・同一パーサの自己点検であって独立層ではない — ADR-0010 D4／LOG-0040/0041。
 
@@ -211,7 +216,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 | 項目 | 状態 | 何が要るか |
 |---|---|---|
-| **コントロールプレーン**（tenants/users/roles/reports の実装） | **コード完成・デプロイのみ**。スキーマ・RLS・アダプタは実Neonで実証済み（LOG-0039）、Workers対応トランスポート＋`worker.ts`結線済み（PR #99/#100）、**Node合成ルート `src/main/control-plane-server.ts` も実装済み**（本PR、LOG-0050） | サービスのデプロイ（Cloud Run等）＋env設定 |
+| **コントロールプレーン**（tenants/users/roles/reports の実装） | **コード完成・デプロイ済み**。スキーマ・RLS・アダプタは実Neonで実証（LOG-0039）、Workers対応transportとNode合成ルートを実装（PR #99〜#101）、デプロイ済み経路を10/10で確認（LOG-0059） | — |
 | **テナント別の接続資格情報**（ADR-0010 D1） | **デプロイ済み・本番構成で実証**。シーム＋`ImpersonatingTokenProvider`＋control-planeがD1 identityを返す（PR #93/#95/#97）、executor合成ルートで実結線（PR #101）、バックストップを実BigQueryで実証（5/5、LOG-0052）、**デプロイ済み構成で各テナントが自分のSAとしてクエリしていることをBigQueryジョブ履歴で確認（LOG-0059）** | — |
 | **②行スコープの構造検証**（ADR-0010 / LOG-0040・0041） | **実装済み**（PR #89、LOG-0042）。`scopeColumn` を必須化し、書き換え後の再パースで行スコープ対象表が主体のフィルタ内にあることを検証（`assertRowScopeBound`） | — |
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
