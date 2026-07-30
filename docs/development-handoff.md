@@ -19,11 +19,9 @@ updated: 2026-07-30
 5. 実験を再現するなら `spikes/*/README.md`。レポート生成は
    [spikes/report-generation/](../spikes/report-generation/README.md)
 
-**現在の作業**は[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
-[PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)。
-デモのSQL表示を構文階層ごとの0、4、8、12...スペースへ正規化する。完了後は
-[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、デザインパートナーへ
-[5分デモ](demo.md)を見せて価値仮説と価格感を検証する。
+**現在の作業**は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
+主要顧客に該当する日本の小規模代理店またはソフトウェアベンダーを1社以上選定・日程調整し、
+[5分デモ](demo.md)で価値仮説と価格感を検証する。参加者の選定と日程調整はリポジトリオーナーが行う。
 
 デモ画面の情報配置は[Issue #184](https://github.com/Yukihide-Mitsuoka/repchat/issues/184) /
 [PR #185](https://github.com/Yukihide-Mitsuoka/repchat/pull/185)で、2026-07-30にmerge済み。6設問それぞれの
@@ -36,14 +34,19 @@ updated: 2026-07-30
 証明しないため、自由質問の実装前に[Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)を
 合格させる。検証済みrevisionのlink通知pilotは分離して先行できる。
 
-**直前の作業**は[Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
-[PR #182](https://github.com/Yukihide-Mitsuoka/repchat/pull/182)で、2026-07-30にmerge済み。
+**直前の作業**は[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
+[PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)で、2026-07-30にmerge済み。
+`sqlparse==0.5.5`のaligned modeによる予約語幅の位置合わせを表示時に正規化し、SQLの字下げを
+構文階層ごとの0、4、8、12...スペースへ揃えた。検証済み基準は[status §0](status.md#0-再開手順新しいaiセッション向け)を参照する。
+
+その前の[Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
+[PR #182](https://github.com/Yukihide-Mitsuoka/repchat/pull/182)は、2026-07-30にmerge済み。
 生成SQLの実行原文を変えずに表示だけを整形し、対面デモを
 分析単位の結果／生成プロセス・SQLタブへ再構成する。購入KPI、リピート率、平均エンゲージメント、
 購入ファネル、日次＋7日移動平均、入口から3ページ目までの主要回遊Sankeyを扱い、SQLはSELECT列・
 主要句単位で整形する。Sankeyを含む6問版は実Vertex AI・BigQueryで6/6、推定¥1.285、
 R17の12 edge materialize、production build・ブラウザ描画、横スクロール、error/warning 0まで確認した。
-後続調査でSQLに`sqlparse`の予約語幅による1〜3文字等の位置合わせが残ると判明し、Issue #190で是正中。
+後続調査で判明した`sqlparse`の予約語幅による位置合わせはPR #191で是正済み。
 ただし公開GA4 schema固有の実測であり、未知nested schemaは未検証。
 製品版の閲覧／SQL面分離、
 目的を分解してKPI・複数グラフ・1画面前後の読順を設計する対話build、AI会議所見はIssue #179〜#181。
