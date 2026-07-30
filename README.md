@@ -47,7 +47,10 @@ make format
 make lint
 make test
 make doctor
+make demo-live PROJECT=<gcp-project>
 ```
+
+`demo-live`は実Vertex AIとBigQueryを使うため、起動時に費用確認を行います。
 
 基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
 からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、

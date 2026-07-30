@@ -16,8 +16,9 @@ updated: 2026-07-30
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) — 主要顧客に該当する参加者へ[5分デモ](demo.md)を実施する |
+| 準備中 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197) — 参加者が画面で日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認するローカルデモ |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | デモのローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
+| AIができること | `make demo-live PROJECT=<project>`のローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 

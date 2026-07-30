@@ -7,7 +7,7 @@
 
 .PHONY: setup format lint test test-unit test-integration coverage build run \
         security-scan sbom clean help doctor \
-        deploy destroy infra-plan demo
+        deploy destroy infra-plan demo demo-live
 
 FILE ?=
 
@@ -77,6 +77,12 @@ demo: ## Generate, verify, build, and open the report demo (uses paid Vertex/Big
 		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
 		$(if $(filter yes,$(BUILD_ONLY)),--build-only) \
 		$(if $(filter yes,$(SHOWCASE)),--showcase) \
+		$(if $(filter yes,$(DRY_RUN)),--dry-run)
+
+demo-live: ## Open the live Japanese prompt → SQL → graph demo (each prompt is paid)
+	python3 spikes/report-generation/live_demo.py \
+		$(if $(PROJECT),--project "$(PROJECT)") \
+		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
 		$(if $(filter yes,$(DRY_RUN)),--dry-run)
 
 # --- deployment (project-specific; ADR-0012) ---------------------------------

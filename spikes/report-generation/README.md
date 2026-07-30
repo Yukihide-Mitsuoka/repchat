@@ -277,8 +277,15 @@ gcloud auth application-default login
 | 用途 | コマンド |
 |---|---|
 | 対面デモ（購入KPI＋ファネル＋移動平均＋回遊Sankey） | `make demo PROJECT=kotonoha-bi-dev SHOWCASE=yes` |
+| 参加者が日本語を入力するライブデモ | `make demo-live PROJECT=kotonoha-bi-dev` |
 | 1問の経路確認 | `make demo PROJECT=kotonoha-bi-dev QUESTION='2021年1月のセッション数を出して'` |
 | 17問の回帰測定 | `make demo PROJECT=kotonoha-bi-dev` |
+
+`demo-live`は`127.0.0.1:8765`だけで待ち受け、各送信で同じ指標定義、SQL安全検査、
+20GiB上限を使用します。生成・検査・実行・描画の段階、生成理由、SQL、結果、Vertex AI推定費用を
+同じ画面に表示します。1列1行はBigValue、日付＋数値は折れ線、カテゴリ＋数値は棒グラフ、
+その他は表として描画します。登録済み設問だけ参照値を照合し、任意設問は既知値未照合と明示します。
+未定義指標ではBigQueryを呼びません。
 
 `report.json`にある設問と完全一致する場合は登録済みの参照SQLとも値を照合します。それ以外の
 日本語問い合わせは生成SQLをBigQueryで実行して描画しますが、既知値とは照合せず、ページに
