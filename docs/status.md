@@ -29,8 +29,10 @@ updated: 2026-07-30
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
-デザインパートナーへ5分デモを見せ、価値仮説と価格感を検証する。
+**現在の作業スレッド**: [Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
+[PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)。
+デモのSQL表示を構文階層ごとの0、4、8、12...スペースへ正規化する。完了後は
+[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証へ戻る。
 
 **直前の作業スレッド**: [Issue #178](https://github.com/Yukihide-Mitsuoka/repchat/issues/178) /
 [PR #182](https://github.com/Yukihide-Mitsuoka/repchat/pull/182)（2026-07-30 merge済み）。
@@ -38,7 +40,8 @@ SQLをSELECT列・主要句単位で整形し、各分析内の結果／生成�
 リピート率、平均エンゲージメント、購入ファネル、日次＋7日移動平均へ改修した。さらに、入口から
 3ページ目までの上位12回遊を段階付きで集計するR17とEvidence標準`SankeyDiagram`を追加した。
 R17を含む6問版は実Vertex AI・BigQueryで**6/6**、推定**¥1.285**、R17は12 edgeをmaterializeし、
-production build・ブラウザ描画・SQLの4スペースインデント／横スクロール・error/warning 0まで確認した。
+production build・ブラウザ描画・横スクロール・error/warning 0まで確認した。後続調査で、SQLは
+タブ文字を含まない一方、`sqlparse`の予約語幅による1〜3文字等の位置合わせが残ると判明した（Issue #190）。
 これは公開GA4 schema上の実測であり、未知の独自nested/repeated schemaへの一般化は未検証
 （[Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)）。
 製品UX、目的からKPI・複数グラフ・読順を設計する対話型ダッシュボードbuild、AI所見は
@@ -84,7 +87,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **起動を1コマンドに** | `make demo PROJECT=<project>`。隔離venv、Evidence公式テンプレート、生成、照合、materialize、build、ブラウザ起動まで含む | 通常の`npm ci`から実環境でr1〜r12がmaterialize、HTTP 200、ブラウザで検証済みの値と未定義3指標の拒否を確認。ブラウザerror 0（Evidence依存側の非致命warningあり）。完全にキャッシュのない別マシンでは未確認 |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
 | **生成経路の画面内表示** | `make demo PROJECT=<project> QUESTION='<日本語>'`。質問、生成BigQuery SQL、理由、照合状態、結果を1ページに表示。BigQueryとEvidence双方で`SELECT *`を使わない | 実Vertex AI・BigQueryで1/1、参照値118,380と一致、Vertex AI推定¥0.154。Evidence buildとブラウザ表示を確認し、error/warning 0。PR #175のCIは12/12成功 |
-| **高度な分析ショーケース** | `make demo PROJECT=<project> SHOWCASE=yes`。6つの分析ごとに分析結果／生成プロセス・SQL／集計データの3タブを持ち、購入KPI、ファネル、日次＋7日移動平均、入口から3ページ目までの回遊Sankeyを表示 | 6/6・¥1.285。R17は12 edgeをmaterializeし、production build・ブラウザ描画・SQL 4スペース／横スクロール・error/warning 0まで確認 |
+| **高度な分析ショーケース** | `make demo PROJECT=<project> SHOWCASE=yes`。6つの分析ごとに分析結果／生成プロセス・SQL／集計データの3タブを持ち、購入KPI、ファネル、日次＋7日移動平均、入口から3ページ目までの回遊Sankeyを表示 | 6/6・¥1.285。R17は12 edgeをmaterializeし、production build・ブラウザ描画・横スクロール・error/warning 0まで確認。厳密な4スペース階層はIssue #190で是正 |
 
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
