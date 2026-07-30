@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.2...v1.12.0) (2026-07-30)
+
+
+### Features
+
+* **demo:** add live Japanese prompt flow ([#197](https://github.com/Yukihide-Mitsuoka/repchat/issues/197)) ([9509f72](https://github.com/Yukihide-Mitsuoka/repchat/commit/9509f720e3af25c452dcb981b3e8bbbc5b2fdbe9))
+
 ## [1.11.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.1...v1.11.2) (2026-07-30)
 
 
