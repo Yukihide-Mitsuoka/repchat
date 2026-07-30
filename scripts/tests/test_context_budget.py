@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from datetime import date
@@ -75,10 +76,23 @@ class ContextBudgetTest(unittest.TestCase):
     def test_baseline_contract_detector_preserves_safety_markers(self):
         self.assertTrue(
             {
-                "## 12. Claude Code integration",
-                ".claude/README.md",
-                "Claude Code MUST read",
+                ".github/inheritance/agent-profile.json",
+                "strengthen-only",
+                "inputs[].path",
+                "must not recursively",
             }.issubset(context_budget.BASELINE_CONTRACT_MARKERS["CLAUDE.md"])
+        )
+        self.assertTrue(
+            {
+                ".claude/README.md",
+                "Claude Code reads",
+                "WF-090",
+                "make doctor",
+            }.issubset(
+                context_budget.BASELINE_CONTRACT_MARKERS[
+                    ".ai/contracts/foundation/agent-entry.md"
+                ]
+            )
         )
         self.assertEqual(
             (
@@ -115,6 +129,84 @@ class ContextBudgetTest(unittest.TestCase):
             ".claude/README.md: canonical contract file is missing",
             missing_file_errors,
         )
+
+    def test_active_profile_extends_baseline_in_declared_order(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            profile_path = root / ".github/inheritance/agent-profile.json"
+            foundation = root / ".ai/contracts/foundation/agent-entry.md"
+            project = root / ".ai/project/agent-overlay.md"
+            profile_path.parent.mkdir(parents=True)
+            foundation.parent.mkdir(parents=True)
+            project.parent.mkdir(parents=True)
+            foundation.write_text("foundation", encoding="utf-8")
+            project.write_text("project", encoding="utf-8")
+            profile_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "authority_policy": "strengthen-only",
+                        "inputs": [
+                            {
+                                "layer": "foundation",
+                                "repository": "acme/foundation",
+                                "path": ".ai/contracts/foundation/agent-entry.md",
+                            },
+                            {
+                                "layer": "project",
+                                "repository": "acme/project",
+                                "path": ".ai/project/agent-overlay.md",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            errors, files = context_budget.active_baseline_files(root)
+
+        self.assertEqual([], errors)
+        self.assertEqual(
+            (
+                *context_budget.BASELINE_FILES,
+                ".github/inheritance/agent-profile.json",
+                ".ai/contracts/foundation/agent-entry.md",
+                ".ai/project/agent-overlay.md",
+            ),
+            files,
+        )
+
+    def test_active_profile_rejects_weak_authority_and_unbounded_path(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            profile_path = root / ".github/inheritance/agent-profile.json"
+            profile_path.parent.mkdir(parents=True)
+            profile_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "authority_policy": "last-wins",
+                        "inputs": [
+                            {
+                                "layer": "foundation",
+                                "repository": "acme/foundation",
+                                "path": ".ai/contracts/foundation/*.md",
+                            },
+                            {
+                                "layer": "project",
+                                "repository": "acme/project",
+                                "path": ".ai/project/agent-overlay.md",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            errors, _ = context_budget.active_baseline_files(root)
+
+        self.assertTrue(any("strengthen-only" in error for error in errors))
+        self.assertTrue(any("glob" in error for error in errors))
 
     def test_requirements_route_preserves_method_and_template_contract(self):
         skill_path = REPOSITORY_ROOT / ".skills/requirements.skill.md"

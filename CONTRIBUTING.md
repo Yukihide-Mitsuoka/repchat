@@ -5,8 +5,9 @@ The same rules bind both.
 
 ## Quick start (human or AI)
 
-1. Read [CLAUDE.md](CLAUDE.md) — the operating manual (vendor-neutral despite the name;
-   non-Claude agents enter via [AGENTS.md](AGENTS.md)).
+1. Enter through [CLAUDE.md](CLAUDE.md), or [AGENTS.md](AGENTS.md) for runtimes that do
+   not load it automatically. These thin adapters load the ordered operating contract
+   and project facts declared by the explicit agent profile.
 2. Run `make setup`, then `pre-commit install --hook-type pre-commit --hook-type pre-push`.
 3. Pick/create a GitHub issue; claim it (assign yourself / `status:in-progress` label).
 4. Branch `<type>/<issue>-<slug>` → implement with tests → PR using the template.

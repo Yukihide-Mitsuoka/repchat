@@ -9,7 +9,8 @@ This directory defines the child-owned, direct-parent contract from
 [ADR-0004](../../docs/foundation/adr/0004-harden-multi-level-template-inheritance.md)
 and the bounded legacy transport from
 [ADR-0007](../../docs/foundation/adr/0007-constrain-transitional-template-sync.md).
-Validation and local history planning are read-only; materialization remains a follow-up.
+ADR-0014 adds ordered agent-contract validation. Validation and local history planning
+are read-only; materialization remains a follow-up.
 
 ## Schema version 1
 
@@ -30,6 +31,33 @@ The lock records the exact accepted parent commit:
 ```json
 {"schema_version": 1, "parent": {"repository": "acme/parent-template", "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
 ```
+
+Schema version 1 remains valid during migration and has no agent profile.
+
+## Schema version 2 agent profile
+
+Manifest version 2 keeps the version 1 fields and requires the protected file
+`.github/inheritance/agent-profile.json`:
+
+```json
+{
+  "schema_version": 1,
+  "authority_policy": "strengthen-only",
+  "inputs": [
+    {"layer": "foundation", "repository": "acme/ai-foundation", "path": ".ai/contracts/foundation/agent-entry.md"},
+    {"layer": "template", "repository": "acme/stack-template", "path": ".ai/contracts/templates/acme/stack-template/agent-overlay.md"},
+    {"layer": "project", "repository": "acme/product", "path": ".ai/project/agent-overlay.md"}
+  ]
+}
+```
+
+The loader order is exactly one foundation input, zero or more template inputs in
+parent-to-child order, then exactly one project input. Foundation and template files
+must be inherited; the project file and profile must be protected. Template paths are
+owner-qualified, and the last template repository must be the direct parent unless the
+foundation itself is the direct parent. Every reference is a bounded, existing,
+non-symlink file. `strengthen-only` prohibits later layers from weakening foundation
+MUST, guardrail, or security controls.
 
 An ownership root is either a literal file or a directory prefix ending in `/`. Globs,
 absolute paths, traversal, `.git`, duplicates, and overlap within or across ownership
@@ -69,11 +97,11 @@ manifest; the foundation root has no manifest and skips only this child-specific
 Apply each row in order. Do not prepare a grandchild from an unmerged intermediate
 template.
 
-The transitional workflow is scheduled for Monday at 07:00 UTC and may also be started
-with `workflow_dispatch`. A schedule shared by every repository does not collapse
+The transitional workflow is scheduled daily at 07:17 UTC and may also be started with
+`workflow_dispatch`. A schedule shared by every repository does not collapse
 multiple inheritance hops: a grandchild run at the same time still sees the previously
 merged intermediate parent. After the intermediate template PR merges, either start its
-children manually or wait for their next weekly schedule. Every resulting PR remains a
+children manually or wait for their next daily schedule. Every resulting PR remains a
 separate review and must not auto-merge.
 
 | Step | Required evidence |

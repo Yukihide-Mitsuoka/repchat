@@ -10,10 +10,14 @@ from pathlib import Path
 
 
 SCHEMA_VERSION = 1
+SUPPORTED_MANIFEST_SCHEMA_VERSIONS = {1, 2}
+AGENT_PROFILE_SCHEMA_VERSION = 1
 MANIFEST_PATH = ".github/inheritance/manifest.json"
+AGENT_PROFILE_PATH = ".github/inheritance/agent-profile.json"
 TEMPLATE_SYNC_IGNORE_PATH = ".templatesyncignore"
 MAX_CONTRACT_BYTES = 1_000_000
 MAX_OWNERSHIP_ROOTS = 1_000
+MAX_AGENT_INPUTS = 32
 MAX_FIRST_PARENT_COMMITS = 100_000
 MAX_CHANGED_PATHS = 1_000
 REPOSITORY_TARGET = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -184,6 +188,126 @@ def _covers(outer, inner):
     return outer == inner or (outer.endswith("/") and inner.startswith(outer))
 
 
+def _owned_by(path, roots):
+    return any(root == path or (root.endswith("/") and path.startswith(root)) for root in roots)
+
+
+def _require_regular_file(root, relative_path, label):
+    candidate = root / relative_path
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as error:
+        raise InheritanceError(f"{label} must be a file inside the repository root") from error
+    if (
+        resolved != candidate
+        or not resolved.is_relative_to(root)
+        or not resolved.is_file()
+    ):
+        raise InheritanceError(f"{label} must be a non-symlink file inside the repository root")
+
+
+def _agent_profile_inputs(root, inputs):
+    if type(inputs) is not list or not 2 <= len(inputs) <= MAX_AGENT_INPUTS:
+        raise InheritanceError(
+            f"agent profile.inputs must contain 2 to {MAX_AGENT_INPUTS} ordered inputs"
+        )
+
+    validated = []
+    for index, item in enumerate(inputs):
+        label = f"agent profile.inputs[{index}]"
+        _object(item, {"layer", "repository", "path"}, label)
+        layer = item["layer"]
+        if layer not in {"foundation", "template", "project"}:
+            raise InheritanceError(f"{label}.layer must be foundation, template, or project")
+        repository = _repository(item["repository"], f"{label}.repository")
+        path = _ownership_root(item["path"], f"{label}.path", file_only=True)
+        _require_regular_file(root, path, f"{label}.path")
+        validated.append({"layer": layer, "repository": repository, "path": path})
+    return validated
+
+
+def _validate_agent_input_order(inputs, parent_repository):
+    layers = [item["layer"] for item in inputs]
+    if (
+        layers[0] != "foundation"
+        or layers[-1] != "project"
+        or layers.count("foundation") != 1
+        or layers.count("project") != 1
+        or any(layer != "template" for layer in layers[1:-1])
+    ):
+        raise InheritanceError(
+            "agent profile inputs must use foundation, template..., project order"
+        )
+    if len({item["repository"].casefold() for item in inputs}) != len(inputs):
+        raise InheritanceError("agent profile input repositories must be unique")
+    if len({item["path"] for item in inputs}) != len(inputs):
+        raise InheritanceError("agent profile input paths must be unique")
+
+    templates = inputs[1:-1]
+    foundation_repository = inputs[0]["repository"]
+    if parent_repository.casefold() == foundation_repository.casefold():
+        if templates:
+            raise InheritanceError(
+                "agent profile template order must be empty when foundation is the direct parent"
+            )
+    elif not templates or templates[-1]["repository"].casefold() != parent_repository.casefold():
+        raise InheritanceError("agent profile final template input must match the direct parent")
+
+
+def _validate_agent_input_ownership(inputs, inherited, protected):
+    foundation = inputs[0]
+    project = inputs[-1]
+
+    if not foundation["path"].startswith(".ai/contracts/foundation/"):
+        raise InheritanceError(
+            "foundation agent profile input must use .ai/contracts/foundation/"
+        )
+    if not project["path"].startswith(".ai/project/"):
+        raise InheritanceError("project agent profile input must use .ai/project/")
+
+    for item in inputs[:-1]:
+        if not _owned_by(item["path"], inherited):
+            raise InheritanceError(f"agent profile {item['layer']} input must be inherited")
+        if item["layer"] == "template":
+            owner, repository = item["repository"].casefold().split("/", 1)
+            expected_root = f".ai/contracts/templates/{owner}/{repository}/"
+            if not item["path"].startswith(expected_root):
+                raise InheritanceError(
+                    f"template agent profile input must use owner-qualified root {expected_root}"
+                )
+    if not _owned_by(project["path"], protected):
+        raise InheritanceError("agent profile project input must be protected")
+
+
+def _validate_agent_profile(root, parent_repository, inherited, protected):
+    if not _owned_by(AGENT_PROFILE_PATH, protected):
+        raise InheritanceError(f"manifest.protected_paths must protect {AGENT_PROFILE_PATH}")
+    profile = _read_json(root, AGENT_PROFILE_PATH)
+    _object(
+        profile,
+        {"schema_version", "authority_policy", "inputs"},
+        "agent profile",
+    )
+    if (
+        type(profile["schema_version"]) is not int
+        or profile["schema_version"] != AGENT_PROFILE_SCHEMA_VERSION
+    ):
+        raise InheritanceError(
+            f"agent profile.schema_version must be {AGENT_PROFILE_SCHEMA_VERSION}"
+        )
+    if profile["authority_policy"] != "strengthen-only":
+        raise InheritanceError("agent profile.authority_policy must be strengthen-only")
+    inputs = _agent_profile_inputs(root, profile["inputs"])
+    _validate_agent_input_order(inputs, parent_repository)
+    _validate_agent_input_ownership(inputs, inherited, protected)
+
+    return {
+        "profile_file": AGENT_PROFILE_PATH,
+        "authority_policy": "strengthen-only",
+        "inputs": inputs,
+    }
+
+
 def _validate_template_sync_ignore(root, protected):
     positive, exceptions = _read_template_sync_ignore(root)
     required = sorted(set(protected) | REQUIRED_TEMPLATE_SYNC_IGNORES)
@@ -218,8 +342,13 @@ def validate_inheritance(root):
 
     manifest = _read_json(repository_root, MANIFEST_PATH)
     _object(manifest, {"schema_version", "parent", "lock_file", "inherited_paths", "protected_paths"}, "manifest")
-    if type(manifest["schema_version"]) is not int or manifest["schema_version"] != SCHEMA_VERSION:
-        raise InheritanceError(f"manifest.schema_version must be {SCHEMA_VERSION}")
+    manifest_version = manifest["schema_version"]
+    if (
+        type(manifest_version) is not int
+        or manifest_version not in SUPPORTED_MANIFEST_SCHEMA_VERSIONS
+    ):
+        supported = ", ".join(str(version) for version in sorted(SUPPORTED_MANIFEST_SCHEMA_VERSIONS))
+        raise InheritanceError(f"manifest.schema_version must be one of: {supported}")
     _object(manifest["parent"], {"repository", "branch"}, "manifest.parent")
     parent_repository = _repository(manifest["parent"]["repository"], "manifest.parent.repository")
     parent_branch = _branch(manifest["parent"]["branch"], "manifest.parent.branch")
@@ -238,6 +367,8 @@ def validate_inheritance(root):
                 )
 
     required = REQUIRED_PROTECTED_PATHS | {lock_file}
+    if manifest_version == 2:
+        required.add(AGENT_PROFILE_PATH)
     missing = sorted(path for path in required if not any(_overlaps(root, path) for root in protected))
     if missing:
         raise InheritanceError(f"manifest is missing required protected paths: {missing}")
@@ -256,13 +387,21 @@ def validate_inheritance(root):
     if type(commit) is not str or not COMMIT_ID.fullmatch(commit) or commit == "0" * 40:
         raise InheritanceError("lock.parent.commit must be a full non-zero lowercase commit ID")
 
-    return {
-        "schema_version": SCHEMA_VERSION,
+    result = {
+        "schema_version": manifest_version,
         "parent": {"repository": parent_repository, "branch": parent_branch, "commit": commit},
         "lock_file": lock_file,
         "ownership": {"inherited": sorted(inherited), "protected": sorted(protected)},
         "template_sync": template_sync,
     }
+    if manifest_version == 2:
+        result["agent_contract"] = _validate_agent_profile(
+            repository_root,
+            parent_repository,
+            inherited,
+            protected,
+        )
+    return result
 
 
 def _git(root, arguments, operation):

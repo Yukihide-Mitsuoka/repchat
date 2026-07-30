@@ -1,13 +1,12 @@
-# AGENTS.md — Entry Point for All AI Agents
+# AI Runtime Adapter
 
-**Read [CLAUDE.md](CLAUDE.md) completely and follow it before acting.** Only §12 is
-Claude Code-specific; other runtimes map it as follows:
+Read [CLAUDE.md](CLAUDE.md) completely and follow it before acting; it loads the explicit
+agent profile.
 
-| CLAUDE.md §12 concept | Your equivalent |
-|-----------------------|-----------------|
-| Hooks | Run `make format && make lint` after each edit; check `.ai/guardrails.md` before commands |
-| Skills | Read the matching `.skills/*.skill.md` completely |
+| Capability | Runtime equivalent |
+|------------|--------------------|
+| Hooks | Run `make format && make lint` after edits; guard commands with `.ai/guardrails.md` |
+| Skills | Read matching `.skills/*.skill.md` completely |
 | Memory | Use runtime context; never store secrets |
 
-`CLAUDE.md` solely defines task intake, authority, routing, canonical commands, change
-protocol, and conflict handling.
+Do not duplicate or replace the profile inputs.

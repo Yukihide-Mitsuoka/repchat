@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-07-16
+updated: 2026-07-30
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -46,9 +46,15 @@ cd <新プロジェクト>
 ```bash
 grep -rn "{{" . --exclude-dir=.git
 ```
-最低限置換するもの: `.ai/mission.md` と `CLAUDE.md` の `{{PROJECT_NAME}}` `{{STACK}}` 等、
-`.github/CODEOWNERS` ・`.github/ISSUE_TEMPLATE/config.yml`・
-`.github/workflows/template-sync.yml` の `{{ORG}}`、pythonプロファイルを使うなら `{{PACKAGE}}`。
+最低限置換するもの: `.ai/mission.md` の `{{...}}`、`.github/CODEOWNERS`・
+`.github/ISSUE_TEMPLATE/config.yml`・`.github/workflows/template-sync.yml` の `{{ORG}}`、
+Pythonプロファイルを使うなら `{{PACKAGE}}`。
+
+プロジェクトの識別情報とスタック情報は `CLAUDE.md` に書きません。新しいリポジトリに合わせて
+`.ai/project/agent-overlay.md` を更新してください。
+`.github/inheritance/agent-profile.json` は基盤入力を維持し、最後のproject入力の
+`repository`だけを新しい`OWNER/REPOSITORY`へ変更します。子の継承manifestを追加するときは、
+agent profileとproject overlayを保護対象にしてください。
 
 ### 3. CODEOWNERS をアカウント種別に合わせて修正
 
@@ -109,8 +115,9 @@ repository overrideで選択できます。setup互換ラッパーは`gh`を直�
 ```bash
 make setup                             # 依存導入 + pre-commit フック
 ```
-Claude Code でリポジトリを開けば `CLAUDE.md` を自動で読みます。他のエージェントには
-`AGENTS.md` を読ませてください。あとは issue を割り当てるだけ。
+Claude Codeは薄い`CLAUDE.md`アダプターを自動で読みます。他のエージェントには`AGENTS.md`を
+読ませてください。アダプターは明示的なagent profileを検証し、記載された基盤・テンプレート・
+プロジェクト入力を順番にすべて読み込みます。あとはissueを割り当てるだけです。
 
 テンプレートには参照用の例モジュール（`src/modules/catalog/` ＋ `tests/modules/catalog/`）が
 同梱されています。形を真似る（COD-050）か、実コードを書き始めるときに両方削除してください。
