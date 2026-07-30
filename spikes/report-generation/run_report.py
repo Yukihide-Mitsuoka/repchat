@@ -204,7 +204,7 @@ def generate(client, model: str, section: dict, period: dict, rules: str):
     }
 
 
-def exec_bq(bq, sql: str):
+def exec_bq(bq, sql: str, max_results: int | None = None):
     """Read-only execution, guarded the same way the executor guards tenant SQL."""
     from google.cloud import bigquery
 
@@ -219,7 +219,7 @@ def exec_bq(bq, sql: str):
                 maximum_bytes_billed=MAX_BYTES_BILLED, use_query_cache=True
             ),
         )
-        it = job.result(timeout=180)
+        it = job.result(timeout=180, max_results=max_results)
         # Column names come off this same job. Re-querying just to read the
         # schema would triple the scan cost of every section.
         return ([tuple(r.values()) for r in it], [f.name for f in it.schema]), None
