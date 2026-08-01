@@ -152,7 +152,7 @@ embedding類似度をidentityまたはauthorizationに使わない。
 |------|------|
 | データモデル | `analysis_policies`、`policy_revisions`、`memory_candidates`、`feedback_events`、`analysis_spec_revisions`。有効版は不変revisionへの参照で表す |
 | 想定量 | 初期3〜5社ではtenantごとに数百〜数千revisionを想定し、実測後に更新する |
-| 保持 | raw conversationとquery-result bodyは既定で長期保存しない。候補、revision、監査の保持日数はQ-1で決定する |
+| 保持 | 有効方針は置換・削除まで、未承認候補30日、構造化feedback 90日、旧revision・承認・取消監査365日、解約後30日で完全削除。raw conversation・query-result bodyは既定0日。design partnerの要望を確認しtenant契約単位で変更できる |
 | 個人情報 | user ID、修正理由、表示嗜好は顧客データとしてtenant境界内で扱う。秘密情報は保存しない |
 | backup・recovery | control planeのRPO/RTOへ従い、rollbackに必要なrevisionと監査イベントを同じ復旧点へ揃える |
 
@@ -226,5 +226,4 @@ Phase 1の実装IssueはIssue #160が`proceed`になった後に作る。Issue #
 
 | ID | 問い | block対象 | owner | 必要時期 |
 |----|------|-----------|-------|----------|
-| Q-1 | policy、候補、feedback、監査それぞれの保持日数と削除猶予を何日にするか | FR-013、NFR-008 | repository ownerとdesign partner | Phase 1実装前 |
-| Q-2 | 編集者・管理者の本番認証方式と、分析対象scopeへのrole mappingをどう確定するか | FR-010、NFR-003 | repository owner | Issue #194、Phase 1実装前 |
+| Q-1 | 編集者・管理者の本番認証方式と、分析対象scopeへのrole mappingをどう確定するか。デモをblockせず、デモ後の専用grill-meで決める | FR-010、NFR-003 | repository owner | Issue #194、Phase 1実装前 |
