@@ -84,15 +84,32 @@ with tempfile.TemporaryDirectory() as directory:
     calls: ['adc', 'prepare', 'reexec'],
   });
 });
-test('live prompt confirms a bounded yen estimate before sending the request', () => {
+test('live prompt uses an accessible in-page cost dialog before sending the request', () => {
   const result = python(`
 html=m.HTML
-confirm=html.index("confirm(COST_CONFIRMATION)")
-request=html.index('fetch("/api/query"')
-print(json.dumps({"copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),"cancel":"if(!confirm(COST_CONFIRMATION))return" in html,"order":0<=confirm<request}))
+print(json.dumps({
+ "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
+ "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=runQuery']),
+ "portable":"confirm(COST_CONFIRMATION)" not in html,
+ "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
+}))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), { copy: true, cancel: true, order: true });
+  assert.deepEqual(JSON.parse(result.stdout), {
+    copy: true,
+    dialog: true,
+    actions: true,
+    portable: true,
+    progress: true,
+  });
+});
+test('live page JavaScript parses before the user can interact', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
+  assert.equal(syntax.status, 0, syntax.stderr);
 });
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
