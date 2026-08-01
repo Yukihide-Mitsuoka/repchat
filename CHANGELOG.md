@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.0...v1.12.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **identity:** complete active RepChat rename ([#205](https://github.com/Yukihide-Mitsuoka/repchat/issues/205)) ([5885d3d](https://github.com/Yukihide-Mitsuoka/repchat/commit/5885d3d6fab436df90630b4ebb48fc999dc4f7ec))
+* **inheritance:** restore RepChat agent profile ([#203](https://github.com/Yukihide-Mitsuoka/repchat/issues/203)) ([f50e3b1](https://github.com/Yukihide-Mitsuoka/repchat/commit/f50e3b1a7a3c59fa55d8b7bf79c37821f03a89fd))
+
 ## [1.12.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.11.2...v1.12.0) (2026-07-30)
 
 
