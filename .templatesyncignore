@@ -6,6 +6,7 @@
 .ai/decision-log.md
 .ai/guardrails.md
 .ai/mission.md
+.ai/project/**
 .ai/review-checklist.md
 .ai/workflow.md
 .claude/hooks/guard-bash.sh
@@ -19,6 +20,7 @@
 .github/governance/repository.json
 .github/inheritance/lock.json
 .github/inheritance/manifest.json
+.github/inheritance/agent-profile.json
 # The default GITHUB_TOKEN cannot push workflow-file changes. Keep executable workflows
 # target-owned and port parent changes through reviewed PRs without a privileged PAT
 # (ADR-0007).

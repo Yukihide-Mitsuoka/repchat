@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "parent": {
     "repository": "Yukihide-Mitsuoka/ai-dev-foundation",
     "branch": "main"
@@ -7,6 +7,7 @@
   "lock_file": ".github/inheritance/lock.json",
   "inherited_paths": [
     ".ai/README.md",
+    ".ai/contracts/foundation/",
     ".ai/documentation.md",
     ".ai/project-document-maintenance.md",
     ".ai/release.md",
@@ -49,6 +50,7 @@
     ".ai/decision-log.md",
     ".ai/guardrails.md",
     ".ai/mission.md",
+    ".ai/project/",
     ".ai/review-checklist.md",
     ".ai/workflow.md",
     ".claude/hooks/guard-bash.sh",
@@ -62,6 +64,7 @@
     ".github/governance/repository.json",
     ".github/inheritance/lock.json",
     ".github/inheritance/manifest.json",
+    ".github/inheritance/agent-profile.json",
     ".github/workflows/ci.yml",
     ".github/workflows/iac.yml",
     ".github/workflows/security.yml",
