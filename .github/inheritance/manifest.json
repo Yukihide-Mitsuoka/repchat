@@ -104,6 +104,7 @@
     ".skills/security.skill.md",
     ".skills/test.skill.md",
     ".templatesyncignore",
+    "CHANGELOG.md",
     "CLAUDE.md",
     "Makefile",
     "README.md",
