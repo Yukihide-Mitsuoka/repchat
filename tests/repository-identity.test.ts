@@ -10,7 +10,13 @@ test('tracked files use only the RepChat repository identity', () => {
   })
     .split('\0')
     .filter(Boolean);
+  const historicalEvidence = new Set([
+    '.ai/decision-log.md',
+    'CHANGELOG.md',
+    'docs/discovery-log.md',
+  ]);
   const occurrences = trackedFiles.flatMap((path) => {
+    if (historicalEvidence.has(path)) return [];
     const content = readFileSync(path, 'utf8');
     return legacyIdentityTokens.some((token) => content.toLowerCase().includes(token))
       ? [path]
