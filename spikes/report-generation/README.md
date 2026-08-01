@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-07-30
+updated: 2026-08-02
 ---
 
 # Spike: レポート生成
@@ -285,7 +285,8 @@ gcloud auth application-default login
 20GiB上限を使用します。生成・検査・実行・描画の段階、生成理由、SQL、結果、Vertex AI推定費用を
 同じ画面に表示します。1列1行はBigValue、日付＋数値は折れ線、カテゴリ＋数値は棒グラフ、
 その他は表として描画します。登録済み設問だけ参照値を照合し、任意設問は既知値未照合と明示します。
-未定義指標ではBigQueryを呼びません。
+未定義指標ではBigQueryを呼びません。起動ごとに`out/.demo/venv`へpin済みrequirementsを確認・導入し、
+現在のPythonとvenv Pythonが異なる場合だけvenvへ再起動します。
 
 `report.json`にある設問と完全一致する場合は登録済みの参照SQLとも値を照合します。それ以外の
 日本語問い合わせは生成SQLをBigQueryで実行して描画しますが、既知値とは照合せず、ページに

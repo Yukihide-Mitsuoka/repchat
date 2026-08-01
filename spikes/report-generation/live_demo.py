@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 import run_report as report
-from demo import DemoError, prepare_python, require_adc, run, venv_python
+from demo import DemoError, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_RESULT_ROWS = 4096, 100
@@ -243,9 +243,8 @@ def main() -> int:
         if sys.version_info < (3, 13) or shutil.which("gcloud") is None:
             raise DemoError("Python 3.13 or newer and gcloud are required")
         require_adc()
-        expected_python = venv_python()
-        if not expected_python.exists() or Path(sys.executable).resolve() != expected_python.resolve():
-            python = prepare_python()
+        python = prepare_python()
+        if Path(sys.executable).resolve() != Path(python).resolve():
             command = [str(python), str(Path(__file__).resolve()), "--project", project,
                        "--host", args.host, "--port", str(args.port), "--accept-cost"]
             if args.no_open:
