@@ -36,10 +36,13 @@
 .skills/security.skill.md
 .skills/test.skill.md
 .templatesyncignore
-# Release Please output and target-specific SAST invariants belong to RepChat.
+# Release Please output and target-specific automation invariants belong to RepChat.
 CHANGELOG.md
+scripts/pr-size-policy.sh
+scripts/tests/pr-size-policy.test.sh
 scripts/tests/test_codeql_workflow.py
 scripts/tests/test_template_sync_ignore.py
+scripts/tests/test_template_sync_workflow.py
 CLAUDE.md
 Makefile
 README.md
