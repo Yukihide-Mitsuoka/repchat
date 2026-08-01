@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-07-30
+updated: 2026-08-01
 ---
 
 # Usage
@@ -23,22 +23,75 @@ drag this repo's history and identity into your new project; use the template fl
 
 ## Scenario A — start a new project from the template
 
-The template repository flag is enabled, so this is one action plus a short setup.
+Select the parent by the contract the repository needs now, then initialize its explicit
+inheritance metadata.
 
-### 1. Create the new repo from the template
+### 1. Choose the direct parent template
+
+Use the closest maintained template whose exported contract applies to the repository's
+**primary deliverable**:
+
+| Current repository role | Direct parent |
+|-------------------------|---------------|
+| General project with no applicable maintained specialization | `Yukihide-Mitsuoka/ai-dev-foundation` |
+| Terraform-managed Google Cloud infrastructure is the primary deliverable and the Terraform family overlay plus `iac-scan` are required | `Yukihide-Mitsuoka/terraform-gcp-template` |
+| Another maintained template exports a family or product contract the repository needs now | That intermediate template |
+
+Incidental use of Terraform or Google Cloud does not select `terraform-gcp-template`.
+Do not choose a parent for a possible future need. Do not bypass an applicable
+intermediate template: direct-parent provenance and family overlays require every hop.
+
+### 2. Create the new repo from the selected template
 
 Web: open the template repo → **Use this template** → **Create a new repository**.
 
 CLI (equivalent):
 ```bash
 gh repo create <your-account>/<new-project> \
-  --template Yukihide-Mitsuoka/ai-dev-foundation \
+  --template <selected-owner>/<selected-parent> \
   --private --clone
 cd <new-project>
 ```
 This gives you a **fresh repo with clean history** under your account.
 
-### 2. Replace template placeholders
+Record the selected parent's exact 40-character commit at creation. Do not replace that
+evidence later with a newer branch head that was not the instantiated source.
+
+### 3. Establish inheritance and repository ownership
+
+Complete these items in one reviewed initialization PR:
+
+1. Set `.github/inheritance/manifest.json` to the selected direct parent and classify
+   every path as inherited, protected, or deliberately unowned. Use the schema in the
+   [inheritance contract](../../../.github/inheritance/README.md).
+2. Set `.github/inheritance/lock.json` to the exact parent commit used for creation.
+3. Set `.github/inheritance/agent-profile.json` to foundation, applicable intermediate
+   template inputs in parent-to-child order, then the new repository's project input.
+   Keep `.ai/project/agent-overlay.md` and the profile protected.
+4. Before replacing the copied root README, preserve it under
+   `docs/inheritance/readmes/<owner>/<repository>.md`; set the root ownership marker to
+   the new `OWNER/REPOSITORY` (DOC-014).
+5. Make `.templatesyncignore` cover every protected root and all workflows. Extra
+   repository-owned exclusions are allowed; the two lists do not need to be identical.
+6. Validate locally before enabling scheduled PR creation:
+
+```bash
+make doctor
+python3 scripts/template_inheritance.py validate --root .
+python3 scripts/template_inheritance.py plan \
+  --root . --parent-root ../<selected-parent-worktree>
+```
+
+After the initialization PR is green and merged, opt in to daily reviewed synchronization:
+
+```bash
+gh variable set TEMPLATE_SYNC_ENABLED --body true
+```
+
+For an intermediate parent, the agent profile MUST include its owner-qualified template
+overlay. Propagation then proceeds parent to child one merged hop at a time.
+
+### 4. Replace template placeholders
 
 Every customizable value is a `{{...}}` token. Find them all:
 ```bash
@@ -54,7 +107,7 @@ Project identity and stack facts do not belong in `CLAUDE.md`. Update
 the final project input's `repository` to the new `OWNER/REPOSITORY`. Keep the profile
 and project overlay protected when you add a child inheritance manifest.
 
-### 3. Fix CODEOWNERS for your account type
+### 5. Fix CODEOWNERS for your account type
 
 `.github/CODEOWNERS` ships with **team** references (`@{{ORG}}/maintainers`). Teams only
 exist under **GitHub Organizations**. On a **personal account**, replace them with your
@@ -66,7 +119,7 @@ Leaving team syntax on a personal repo makes CODEOWNERS silently ineffective —
 fix this file before applying governance because account-type inference is outside the
 compatibility wrapper.
 
-### 4. Pick a Makefile profile
+### 6. Pick a Makefile profile
 
 Copy the closest reference implementation to the repo root and wire it to your stack:
 ```bash
@@ -74,7 +127,7 @@ cp profiles/python-uv/Makefile ./Makefile      # or typescript-node / terraform-
 ```
 See [profiles/README.md](../../../profiles/README.md) for the canonical target contract.
 
-### 5. Inspect GitHub governance
+### 7. Inspect GitHub governance
 
 ```bash
 python3 scripts/github_governance.py validate --root .
@@ -111,7 +164,7 @@ Migration from the fixed script: the no-argument form is removed, and the wrappe
 longer prints CODEOWNERS or other manual onboarding reminders. Pass the target explicitly
 as shown above and use this guide as the onboarding checklist.
 
-### 6. Install local gates and point your agent at it
+### 8. Install local gates and point your agent at it
 
 ```bash
 make setup                             # installs deps + pre-commit hooks
@@ -202,5 +255,5 @@ stays inert until you deliberately enable it.
 - **To develop this foundation** (Scenario B): yes — `git clone` + `make setup` +
   `gh auth refresh -s workflow` on that machine.
 - **To start a new project** (Scenario A): no — use "Use this template", then the
-  6 setup steps above. Cloning would give the new project this repo's history and
+  initialization steps above. Cloning would give the new project this repo's history and
   placeholders instead of a clean start.

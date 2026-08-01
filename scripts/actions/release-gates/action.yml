@@ -1,0 +1,33 @@
+name: Release gates implementation
+description: Run tests, vulnerability checks, SBOM generation, build, and provenance attestation
+runs:
+  using: composite
+  steps:
+    - run: make setup
+      shell: bash
+    - name: Full test suite (gate)
+      run: make test
+      shell: bash
+    - name: Vulnerability gate
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: fs
+        scanners: vuln
+        severity: HIGH,CRITICAL
+        exit-code: "1"
+        ignore-unfixed: true
+    - name: Generate SBOM (SPDX + CycloneDX)
+      uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+      with:
+        format: spdx-json
+        output-file: sbom.spdx.json
+        upload-artifact: true
+        upload-release-assets: true
+    - name: Build release artifact
+      run: make build
+      shell: bash
+    - name: Attest build provenance (SLSA — SEC-031)
+      if: hashFiles('dist/**') != ''
+      uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+      with:
+        subject-path: "dist/**"

@@ -59,6 +59,13 @@ foundation itself is the direct parent. Every reference is a bounded, existing,
 non-symlink file. `strengthen-only` prohibits later layers from weakening foundation
 MUST, guardrail, or security controls.
 
+Validation proves the declared policy, layer order, bounded references, and ownership;
+it does not claim to decide whether arbitrary natural-language statements are
+semantically equivalent. Guardrails therefore keep one authority body under
+`.ai/contracts/foundation/guardrails.md`, and `.ai/guardrails.md` is a stable entry
+adapter. Higher authority wins and a semantic conflict in an overlay fails closed for
+human review.
+
 An ownership root is either a literal file or a directory prefix ending in `/`. Globs,
 absolute paths, traversal, `.git`, duplicates, and overlap within or across ownership
 classes are invalid. Protected roots must cover the manifest, selected lock file,
@@ -162,12 +169,16 @@ command validates its `OWNER/REPOSITORY` shape but does not call GitHub to verif
 |----------|---------|
 | `synchronized` | Inherited child content equals the selected candidate or current parent target |
 | `pending_sync` | Inherited content is missing or differs and can synchronize through the reviewed parent PR |
-| `manually_ported` | Protected child content equals the selected candidate or current parent target exactly |
+| `pending_manual_port` | Inherited content differs but the transitional transport intentionally excludes it; each item reports the manual-port reason |
+| `manually_ported` | Content at a manual transport or protected boundary equals the selected candidate or current parent target exactly |
 | `protected_review` | Protected child content differs; the reported reason identifies the manual boundary |
 | `ownership_review` | The path is unowned and needs an explicit ownership decision |
 | `deletion_review` | The parent deleted inherited content; the read-only tool never deletes it |
 
-Manual boundaries are intentional. Protected workflow callers retain local events,
+An inherited path excluded by `.templatesyncignore` is reported as `pending_manual_port`
+instead of `pending_sync`; an exact child copy is reported as `manually_ported`.
+`workflow-security-boundary` means maintainer authentication and a separate reviewed PR
+are required. Manual boundaries are intentional. Protected workflow callers retain local events,
 permissions, secrets, and environment selection. Project overlays and profiles retain
 repository identity and semantics. Manifests, locks, and ignore files retain accepted
 provenance and ownership. Other protected paths remain repository-owned unless a

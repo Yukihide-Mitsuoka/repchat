@@ -1,0 +1,33 @@
+name: Container scan implementation
+description: Build and scan a repository Dockerfile when one exists
+
+runs:
+  using: composite
+  steps:
+    - name: Detect Dockerfile
+      id: detect
+      shell: bash
+      run: |
+        if [ -n "$(find . -name Dockerfile -not -path './.git/*' -print -quit)" ]; then
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+          echo "No Dockerfile found — skipping container scan."
+        fi
+    - name: Build image
+      if: steps.detect.outputs.found == 'true'
+      shell: bash
+      run: docker build -t local/scan-target:${{ github.sha }} .
+    - name: Trivy image scan
+      if: steps.detect.outputs.found == 'true'
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: local/scan-target:${{ github.sha }}
+        severity: HIGH,CRITICAL
+        exit-code: "1"
+        ignore-unfixed: true
+    - name: Dockerfile best practices
+      if: steps.detect.outputs.found == 'true'
+      uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+      with:
+        dockerfile: Dockerfile

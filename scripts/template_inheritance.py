@@ -569,23 +569,50 @@ def _manual_boundary_reason(path):
     return "repository-owned-boundary"
 
 
+def _manual_transport_reason(path):
+    if path.startswith(".github/workflows/"):
+        return "workflow-security-boundary"
+    return "legacy-transport-exclusion"
+
+
+def _template_sync_excludes(path, excluded, exceptions):
+    return _owned_by(path, excluded) and not _owned_by(path, exceptions)
+
+
 def _fleet_repository(repository, child_root, parent_root):
     child_root = Path(child_root).resolve(strict=True)
     parent_root = _parent_root(parent_root)
     plan = plan_inheritance(child_root, parent_root)
     candidate = plan["parent"]["candidate_commit"]
     target = plan["parent"]["target_commit"]
-    synchronized = list(plan["changes"]["already_current"])
+    excluded, exceptions = _read_template_sync_ignore(child_root)
+    synchronized = []
     pending_sync = []
+    pending_manual_port = []
     manually_ported = []
     protected_review = []
 
     if candidate:
+        for path in plan["changes"]["already_current"]:
+            destination = (
+                manually_ported
+                if _template_sync_excludes(path, excluded, exceptions)
+                else synchronized
+            )
+            destination.append(path)
         for path in plan["changes"]["add"] + plan["changes"]["modify"]:
             child_entry = _child_entry(child_root, parent_root, path)
             target_entry = _parent_entry(parent_root, target, path)
-            destination = synchronized if child_entry == target_entry else pending_sync
-            destination.append(path)
+            is_manual = _template_sync_excludes(path, excluded, exceptions)
+            if child_entry == target_entry:
+                destination = manually_ported if is_manual else synchronized
+                destination.append(path)
+            elif is_manual:
+                pending_manual_port.append(
+                    {"path": path, "reason": _manual_transport_reason(path)}
+                )
+            else:
+                pending_sync.append(path)
         for path in plan["skipped"]["protected"]:
             child_entry = _child_entry(child_root, parent_root, path)
             accepted_entries = {
@@ -605,6 +632,9 @@ def _fleet_repository(repository, child_root, parent_root):
         "parent": plan["parent"],
         "synchronized": sorted(synchronized),
         "pending_sync": sorted(pending_sync),
+        "pending_manual_port": sorted(
+            pending_manual_port, key=lambda item: item["path"]
+        ),
         "manually_ported": sorted(manually_ported),
         "protected_review": protected_review,
         "ownership_review": [
@@ -652,6 +682,7 @@ def _fleet_summary(reports):
     categories = (
         "synchronized",
         "pending_sync",
+        "pending_manual_port",
         "manually_ported",
         "protected_review",
         "ownership_review",
@@ -676,6 +707,7 @@ def fleet_report(repositories):
         summary[category]
         for category in (
             "pending_sync",
+            "pending_manual_port",
             "protected_review",
             "ownership_review",
             "deletion_review",

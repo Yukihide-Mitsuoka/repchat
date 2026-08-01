@@ -17,6 +17,14 @@ checked-in agent profile and thin `CLAUDE.md` / `AGENTS.md` adapters. Each desce
 activates its own reviewed profile and adapters when its manifest migrates to schema
 version 2; transport alone must not overwrite those child-owned protected files.
 
+The complete non-overridable `GR-*` authority lives in
+[`guardrails.md`](guardrails.md). The root [guardrail entry](../../guardrails.md) is a
+small adapter so descendants can inherit future rule changes through this directory
+without duplicating the rule body. A legacy child may retain its full protected
+`.ai/guardrails.md` during the expand phase. Its one-time migration copies the adapter,
+moves that path from protected to inherited ownership, and removes the matching
+Template Sync exclusion only after the canonical file is present.
+
 The profile is the composition source of truth. It preserves commands, escalation
 conditions, and completion rules while allowing owner-qualified template overlays and
 one project-owned overlay to add facts or strengthen controls without duplicating the
