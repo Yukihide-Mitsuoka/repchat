@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-07-30
+updated: 2026-08-01
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -25,22 +25,74 @@ updated: 2026-07-30
 
 ## シナリオA — テンプレートから新規プロジェクトを作る
 
-テンプレートリポジトリ化フラグは有効済みなので、1アクション＋短いセットアップで済みます。
+現在必要な契約に基づいて親を選び、明示的な継承情報を初期化します。
 
-### 1. テンプレートから新リポジトリを作成
+### 1. 直接の親テンプレートを選ぶ
+
+リポジトリの**主要な成果物**に現在適用される契約を公開している、最も近い保守中の
+テンプレートを選びます。
+
+| 現在のリポジトリの役割 | 直接の親 |
+|--------------------------|----------|
+| 適用可能な保守中の特化テンプレートがない一般プロジェクト | `Yukihide-Mitsuoka/ai-dev-foundation` |
+| Terraformで管理するGoogle Cloud基盤が主要成果物で、Terraform family overlayと`iac-scan`が必要 | `Yukihide-Mitsuoka/terraform-gcp-template` |
+| 現在必要なfamilyまたはproduct契約を別の保守中テンプレートが公開している | その中間テンプレート |
+
+TerraformやGoogle Cloudを付随的に使うだけでは`terraform-gcp-template`を選びません。
+将来使うかもしれない機能を理由に親を選びません。直接の親による来歴とfamily overlayを
+維持するため、適用可能な中間テンプレートを飛ばさないでください。
+
+### 2. 選んだテンプレートから新リポジトリを作成
 
 Web: テンプレートリポジトリを開く → **Use this template** → **Create a new repository**。
 
 CLI（同等）:
 ```bash
 gh repo create <あなたのアカウント>/<新プロジェクト> \
-  --template Yukihide-Mitsuoka/ai-dev-foundation \
+  --template <選んだowner>/<選んだparent> \
   --private --clone
 cd <新プロジェクト>
 ```
 これで**クリーンな履歴**の新リポジトリがあなたのアカウント配下にできます。
 
-### 2. テンプレートのプレースホルダを置換
+作成時点の親の40文字commitを記録してください。後から、生成元ではない新しいbranch先端へ
+証跡を置き換えてはいけません。
+
+### 3. 継承情報とリポジトリ所有権を確立
+
+次を1つのレビュー付き初期化PRで完了します。
+
+1. `.github/inheritance/manifest.json`の親を選択した直接の親に設定し、全pathを
+   inherited、protected、意図的なunownedに分類します。schemaは
+   [継承契約](../../../.github/inheritance/README.md)を参照してください。
+2. `.github/inheritance/lock.json`を作成に使用した親commitへ固定します。
+3. `.github/inheritance/agent-profile.json`をfoundation、適用する中間templateの
+   parent-to-child順、当該repositoryのproject入力の順に設定します。
+   `.ai/project/agent-overlay.md`とprofileはprotectedにします。
+4. コピーされたroot READMEを置き換える前に
+   `docs/inheritance/readmes/<owner>/<repository>.md`へ保存し、rootの所有者markerを新しい
+   `OWNER/REPOSITORY`へ変更します（DOC-014）。
+5. `.templatesyncignore`で全protected rootと全workflowを保護します。リポジトリ固有の
+   追加除外は許可されるため、2つのlistは完全一致である必要はありません。
+6. 定期PR作成を有効にする前にローカル検証します。
+
+```bash
+make doctor
+python3 scripts/template_inheritance.py validate --root .
+python3 scripts/template_inheritance.py plan \
+  --root . --parent-root ../<選択した親のworktree>
+```
+
+初期化PRがgreenでmergeされた後、日次のレビュー付き同期へopt-inします。
+
+```bash
+gh variable set TEMPLATE_SYNC_ENABLED --body true
+```
+
+中間templateを親にした場合、agent profileへowner-qualified template overlayを必ず含めます。
+伝播は親から子へ、merge済みの1 hopずつ進みます。
+
+### 4. テンプレートのプレースホルダを置換
 
 カスタマイズ対象はすべて `{{...}}` トークンです。全部洗い出す:
 ```bash
@@ -56,7 +108,7 @@ Pythonプロファイルを使うなら `{{PACKAGE}}`。
 `repository`だけを新しい`OWNER/REPOSITORY`へ変更します。子の継承manifestを追加するときは、
 agent profileとproject overlayを保護対象にしてください。
 
-### 3. CODEOWNERS をアカウント種別に合わせて修正
+### 5. CODEOWNERS をアカウント種別に合わせて修正
 
 `.github/CODEOWNERS` は既定で**チーム記法**（`@{{ORG}}/maintainers`）です。チームは
 **GitHub Organization にしか存在しません**。**個人アカウント**ではユーザー名に置換してください:
@@ -66,7 +118,7 @@ agent profileとproject overlayを保護対象にしてください。
 個人リポジトリにチーム記法を残すと、CODEOWNERS が**黙って無効化**されます
 この判定は互換ラッパーの対象外なので、ガバナンス適用前に修正してください。
 
-### 4. Makefile プロファイルを選ぶ
+### 6. Makefile プロファイルを選ぶ
 
 最も近いリファレンス実装をルートにコピーしてスタックに合わせます:
 ```bash
@@ -74,7 +126,7 @@ cp profiles/python-uv/Makefile ./Makefile      # または typescript-node / ter
 ```
 正準ターゲット契約は [profiles/README.md](../../../profiles/README.md) を参照。
 
-### 5. GitHub ガバナンスを点検
+### 7. GitHub ガバナンスを点検
 
 ```bash
 python3 scripts/github_governance.py validate --root .
@@ -110,7 +162,7 @@ repository overrideで選択できます。setup互換ラッパーは`gh`を直�
 ラッパーからは出力されません。上記のとおり対象を明示し、このガイドをチェックリストとして
 使用してください。
 
-### 6. ローカルゲート導入 → エージェントに向ける
+### 8. ローカルゲート導入 → エージェントに向ける
 
 ```bash
 make setup                             # 依存導入 + pre-commit フック
@@ -245,5 +297,5 @@ Claude Code は起動時にディレクトリツリーを遡って `CLAUDE.md` �
 
 - **基盤を開発する**（シナリオB）: はい。`git clone` ＋ `make setup` ＋（そのマシンで一度）
   `gh auth refresh -s workflow`。
-- **新規プロジェクトを作る**（シナリオA）: いいえ。「Use this template」→ 上の6ステップ。
+- **新規プロジェクトを作る**（シナリオA）: いいえ。「Use this template」→ 上の初期化手順。
   cloneでは新規プロジェクトにこの基盤の履歴とプレースホルダが混入します。

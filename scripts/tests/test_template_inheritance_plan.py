@@ -42,6 +42,7 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             "inherited/modify.txt": "old\n",
             "inherited/delete.txt": "old\n",
             "inherited/current.txt": "old\n",
+            ".github/workflows/shared.yml": "old\n",
             ".gitignore": "parent-old\n",
             ".github/workflows/template-sync.yml": "parent-old\n",
         }.items():
@@ -52,6 +53,7 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             "inherited/modify.txt": "future\n",
             "inherited/delete.txt": "old\n",
             "inherited/current.txt": "new\n",
+            ".github/workflows/shared.yml": "old\n",
             ".gitignore": "child-local\n",
             ".github/workflows/template-sync.yml": "parent-new\n",
         }.items():
@@ -62,6 +64,7 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             "inherited/add.txt": "new\n",
             "inherited/modify.txt": "new\n",
             "inherited/current.txt": "new\n",
+            ".github/workflows/shared.yml": "new\n",
             ".gitignore": "parent-new\n",
             ".github/workflows/template-sync.yml": "parent-new\n",
             "unowned.txt": "new\n",
@@ -100,7 +103,7 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             "schema_version": 1,
             "parent": {"repository": PARENT_REPOSITORY, "branch": "main"},
             "lock_file": ".github/inheritance/lock.json",
-            "inherited_paths": ["inherited/"],
+            "inherited_paths": ["inherited/", ".github/workflows/shared.yml"],
             "protected_paths": PROTECTED_PATHS,
         }
         lock = {"schema_version": 1, "parent": {"repository": PARENT_REPOSITORY, "commit": commit}}
@@ -127,7 +130,10 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         self.assertEqual(result["parent"]["candidate_commit"], self.candidate_commit)
         self.assertEqual(result["parent"]["target_commit"], self.target_commit)
         self.assertEqual(result["changes"]["add"], ["inherited/add.txt"])
-        self.assertEqual(result["changes"]["modify"], ["inherited/modify.txt"])
+        self.assertEqual(
+            result["changes"]["modify"],
+            [".github/workflows/shared.yml", "inherited/modify.txt"],
+        )
         self.assertEqual(result["changes"]["candidate_delete"], ["inherited/delete.txt"])
         self.assertEqual(result["changes"]["already_current"], ["inherited/current.txt"])
         self.assertEqual(
@@ -198,6 +204,15 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         )
         self.assertEqual(repository["pending_sync"], ["inherited/add.txt"])
         self.assertEqual(
+            repository["pending_manual_port"],
+            [
+                {
+                    "path": ".github/workflows/shared.yml",
+                    "reason": "workflow-security-boundary",
+                }
+            ],
+        )
+        self.assertEqual(
             repository["manually_ported"],
             [".github/workflows/template-sync.yml"],
         )
@@ -214,6 +229,7 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             [{"path": "inherited/delete.txt", "reason": "deletion-review-required"}],
         )
         self.assertEqual(result["summary"]["repositories"], 1)
+        self.assertEqual(result["summary"]["pending_manual_port"], 1)
         self.assertEqual(result["status"], "attention")
 
     def test_fleet_report_aggregates_multiple_explicit_children(self):
@@ -235,7 +251,19 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         )
         self.assertEqual(result["summary"]["repositories"], 2)
         self.assertEqual(result["summary"]["manually_ported"], 2)
+        self.assertEqual(result["summary"]["pending_manual_port"], 2)
         self.assertEqual(result["summary"]["protected_review"], 2)
+
+    def test_fleet_report_recognizes_an_exact_ignored_inherited_manual_port(self):
+        self.write(self.child, ".github/workflows/shared.yml", "new\n")
+
+        result = inheritance.fleet_report(
+            [("acme/child-template", self.child, self.parent)]
+        )
+
+        repository = result["repositories"][0]
+        self.assertEqual(repository["pending_manual_port"], [])
+        self.assertIn(".github/workflows/shared.yml", repository["manually_ported"])
 
     def test_fleet_report_rejects_duplicate_children_and_pair_limit(self):
         with self.assertRaisesRegex(inheritance.InheritanceError, "duplicate child"):

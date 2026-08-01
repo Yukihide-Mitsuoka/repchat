@@ -11,7 +11,9 @@ USES = re.compile(r"\buses:\s*([^\s#]+)")
 class WorkflowDependencyPinsTest(unittest.TestCase):
     def test_external_workflow_dependencies_use_commit_shas(self) -> None:
         unpinned: list[str] = []
-        for workflow in sorted((ROOT / ".github/workflows").glob("*.y*ml")):
+        sources = list((ROOT / ".github/workflows").glob("*.y*ml"))
+        sources.extend((ROOT / "scripts/actions").glob("*/action.yml"))
+        for workflow in sorted(sources):
             for line_number, line in enumerate(workflow.read_text().splitlines(), 1):
                 match = USES.search(line)
                 if not match:

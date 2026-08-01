@@ -1,7 +1,7 @@
 ---
 id: ai-context-guide
 title: AI Context Acquisition and Budgets
-updated: 2026-07-30
+updated: 2026-08-01
 ---
 
 # AI Context Acquisition and Budgets
@@ -17,7 +17,7 @@ across model providers. They are regression proxies, not exact token counts.
 
 | Measurement | Included | Excluded |
 |-------------|----------|----------|
-| Baseline | `AGENTS.md`, `CLAUDE.md`, `.ai/README.md`, `.ai/guardrails.md`, the agent profile, and every ordered profile input | Active handoff and runtime-owned instructions, including `.claude/README.md` |
+| Baseline | `AGENTS.md`, `CLAUDE.md`, `.ai/README.md`, the `.ai/guardrails.md` adapter, its canonical foundation guardrails, the agent profile, and every ordered profile input | Active handoff and runtime-owned instructions, including `.claude/README.md` |
 | Declared task route | Baseline, selected skill, every file in its `reads` declaration | Task-specific sources found through bounded discovery |
 | Conditional authority | One authority selected by an explicit trigger contract | Baseline and unrelated declared task routes |
 
@@ -40,6 +40,7 @@ did not record that dimension for the stated point.
 | After AI inventory unification | 16,156 | 2,258 | 39,893 | 5,562 |
 | After conditional project-document routing | 16,300 | 2,272 | 37,121 | 5,151 |
 | After profile entry activation | 16,645 | 2,260 | — | — |
+| After canonical guardrail separation | 17,222 | 2,329 | 38,097 | 5,209 |
 
 ADR-0013 also changed the declared `documentation` route and introduced a separately
 measured conditional authority:
@@ -89,6 +90,11 @@ bounded discovery depends on those indexes. A project-owned
 warning when it exceeds 1,500 words, has an invalid or future `updated` date, or has not
 been updated for more than 30 days. These handoff findings never justify skipping the
 document.
+
+Canonical guardrail separation intentionally crosses the byte soft-warning threshold:
+the complete rule body is still read once, while the additional 69 words are the stable
+adapter that lets future rule changes synchronize from one inherited source. The hard
+ceiling was not raised and no mandatory instruction was removed to hide the warning.
 
 These changes removed no mandatory source and did not alter Claude Code obligations. A PR
 that intentionally increases a ceiling states the reason and confirms that no narrower
