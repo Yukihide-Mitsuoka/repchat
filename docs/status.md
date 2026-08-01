@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-07-30
+updated: 2026-08-02
 ---
 
 # 実装状況サマリー
@@ -9,7 +9,8 @@ updated: 2026-07-30
 **何が出来ていて、何が未着手か**を一枚で示します。優先順位は[ロードマップ](roadmap.md)、
 決定の経緯は[decision-log](../.ai/decision-log.md)と[discovery-log](discovery-log.md)、
 設計の中身は[ADR-0005](adr/0005-cache-and-authorization-architecture.md)、
-[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)と
+[ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、
+[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md)と
 [system-design](system-design.md)が正本です。この文書はそれらへの索引を兼ねた現在地です。
 
 更新契機：モジュール完成、実環境検証の完了、フェーズ移行。
@@ -19,7 +20,7 @@ updated: 2026-07-30
 ## 0. 再開手順（新しいAIセッション向け）
 
 規約は [AGENTS.md](../AGENTS.md) → [CLAUDE.md](../CLAUDE.md) → [.ai/README.md](../.ai/README.md)
-の順。**この節は「規約」ではなく「今どこにいるか」**で、LOG番号が0083まであり全部読むのは非効率なため置く。
+の順。**この節は「規約」ではなく「今どこにいるか」**で、LOG番号が0086まであり全部読むのは非効率なため置く。
 
 **この順で読めば同期できる:**
 
@@ -36,7 +37,12 @@ Issue #160の結果を`proceed` / `revise` / `reject`に分類するまで製品
 条件付きの次タスク順と設計判断索引は
 [development-handoff](development-handoff.md)を参照する。
 
-**直前の作業スレッド**: [Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
+**直前の実装修正**: [Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) /
+[PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)（2026-08-02 merge済み）。`demo-live`起動時に
+pin済み依存を確認して必要時だけvenvへ再起動する形へ修正し、unit testとPR CIは成功した。修正後の実Vertex AI・
+BigQuery問い合わせと実ブラウザ確認は未実施で、検証費用は発生していない。
+
+その前の[Issue #190](https://github.com/Yukihide-Mitsuoka/repchat/issues/190) /
 [PR #191](https://github.com/Yukihide-Mitsuoka/repchat/pull/191)（2026-07-30 merge済み）。
 `sqlparse==0.5.5`のaligned modeが`indent_width`を使わず予約語幅で字下げするため、表示時に
 構文階層ごとの0、4、8、12...スペースへ正規化した。保守対象14クエリ179行と保存済みデモ6クエリ99行で、
@@ -223,6 +229,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
 | **未知の独自nested schemaでのNL→SQL品質** | **未検証**。公開GA4の6/6・15/15とTheLookの12/12は、この一般化を証明しない（LOG-0083） | GA4語彙を流用しない複数schema、独立review済み参照結果、反復測定で対応・確認・拒否境界を決める（Issue #188） |
+| **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | Issue #160=`proceed`、#179/#188完了、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
