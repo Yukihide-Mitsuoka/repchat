@@ -43,8 +43,8 @@ role-describing names instead (e.g. `app_runtime`, `t_<tenant_slug>`). Rationale
 name is expected to change; renaming prose is one grep-replace, renaming identifiers is
 a migration (LOG-0030). The GCP project id predates the name, is
 name-independent, and stays unchanged. The repo slug is the one deliberate exception:
-the owner renames it alongside the product (chat-chart → repchat, LOG-0038) because
-GitHub's redirects make that rename cheap — an escape hatch code identifiers don't have.
+the owner may rename it alongside the product (LOG-0038) because GitHub redirects make
+that rename cheap — an escape hatch code identifiers don't have.
 
 ## Error handling
 
