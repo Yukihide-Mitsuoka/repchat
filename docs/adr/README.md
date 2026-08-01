@@ -38,5 +38,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0015](0015-publish-artifacts-through-customer-git.md) | 顧客Gitをbuild時の生成物配送境界にする | accepted | 2026-07-29 |
 | [0016](0016-authenticate-oversized-foundation-sync-prs.md) | 大規模な基盤同期PRを厳密に認証する | accepted | 2026-07-29 |
 | [0017](0017-use-slack-as-an-authorized-analysis-interface.md) | Slackを認可付き分析インターフェースとして使う | proposed | 2026-07-30 |
+| [0018](0018-govern-adaptive-analysis-memory.md) | 適応型分析メモリーを版管理された方針として統制する | accepted | 2026-08-02 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->

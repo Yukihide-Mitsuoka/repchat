@@ -16,7 +16,7 @@ updated: 2026-08-02
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) — 主要顧客に該当する参加者へ[5分デモ](demo.md)を実施する |
-| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。既存venvの依存欠落は[Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) / [PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)で修正中。回帰テストを含むunit test 193件は成功したが、実Vertex AI・BigQueryと実ブラウザでの最終表示確認は未実施 |
+| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。既存venvの依存欠落は[Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) / [PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)で修正し、2026-08-02にmainへmerge済み。回帰テストとPR CIは成功したが、修正後の実Vertex AI・BigQueryと実ブラウザでの最終表示確認は未実施 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | `make demo-live PROJECT=<project>`のローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
@@ -41,6 +41,7 @@ updated: 2026-08-02
 | 現在 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | [demo](demo.md)、[positioning §5](positioning.md#5-未検証の仮説と検証方法) |
 | #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
 | #179と#188が完了 | [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179の設計成果、ADR-0013/0015 |
+| #180でanalysis specification revision契約を確定 | Issue #160が`proceed`なら、適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |
 | 統制された生成・公開経路が安定 | [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | #180のrevision契約、SQL来歴・検証結果 |
 | 課金または本番オンボーディングへ着手 | [#194 課金区分と認証方式のオーナー決定](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)を先に完了する | [mission](../.ai/mission.md)、[positioning §6](positioning.md#6-missionmd-との残る不一致未解消) |
 | Slack利用が実顧客で確認された | オーナーがADR-0017を承認した後、検証済みrevisionのlink通知pilot用Issueを作る | ADR-0017。自由質問は#180と#188の完了後 |
@@ -59,6 +60,7 @@ positioningとroadmapを再評価します。
 | 生成物の所有 | accepted。ページ・SQL・manifestは顧客Git、共有指標定義はこちら側 | [ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) |
 | Git配送と閲覧 | accepted。Gitはbuild時だけ使用し、閲覧経路へ入れない。GitHub/managedは同じpipelineの保存先adapter | [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md) |
 | Slack | proposed。Webを正本UIとする認可付きadapter案。オーナー承認前は実装禁止 | [ADR-0017](adr/0017-use-slack-as-an-authorized-analysis-interface.md) |
+| 適応型分析メモリー | accepted。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresの正本で管理し、AIは候補を作るが自動昇格しない | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md) |
 | 課金区分・エンドユーザー認証 | 未決。AIは推測しない | [Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) |
 
 ## 誤って前提にしてはいけないこと
@@ -66,6 +68,7 @@ positioningとroadmapを再評価します。
 - ローカルデモは`spikes/`内にあり、本番の認証、gate、executor、顧客Git配送を通らない。
 - 公開GA4の成功は未知の独自nested/repeated schemaへの対応を証明しない。
 - 生成SQLの構文は毎回同じでなくてよい。指標の意味、出力形状、既知値照合を固定する。
+- 生の会話履歴、生成SQL、query resultは分析方針メモリーの正本ではない。類似度を認可境界に使わない。
 - BigQuery SQLとEvidence SQLの双方で必要列を明示し、`SELECT *`を生成しない。
 - 顧客Gitをページ表示時に参照せず、失敗したbuildを有効化しない。
 - `make demo`は実Vertex AIとBigQueryを使う。実行前に費用を明示し、オーナーの同意を得る。
