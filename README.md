@@ -50,7 +50,8 @@ make doctor
 make demo-live PROJECT=<gcp-project>
 ```
 
-`demo-live`は実Vertex AIとBigQueryを使うため、起動時に費用確認を行います。
+`demo-live`は起動時に費用確認を行い、同意後にデモ用venvのpin済みPython依存を
+確認・導入します。実Vertex AIとBigQueryは、日本語の問い合わせを送信したときに使用します。
 
 基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
 からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、

@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-07-30
+updated: 2026-08-02
 ---
 
 # 開発引き継ぎ
@@ -16,7 +16,7 @@ updated: 2026-07-30
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) — 主要顧客に該当する参加者へ[5分デモ](demo.md)を実施する |
-| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。実Vertex AI・BigQueryと実ブラウザでの最終表示確認は未実施 |
+| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。既存venvの依存欠落は[Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) / [PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)で修正中。回帰テストを含むunit test 193件は成功したが、実Vertex AI・BigQueryと実ブラウザでの最終表示確認は未実施 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | `make demo-live PROJECT=<project>`のローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
