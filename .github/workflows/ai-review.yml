@@ -27,17 +27,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-      # TEMPLATE: verify inputs against the installed version of the action —
-      # https://github.com/anthropics/claude-code-action
-      - uses: anthropics/claude-code-action@fa7e2f0a29a126f0b81cdcf360561b36e44cf608 # v1
+      - uses: ./scripts/actions/ai-review
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            You are reviewing pull request #${{ github.event.pull_request.number }} in this repository.
-            Follow .skills/review.skill.md exactly, using the checklist in
-            .ai/review-checklist.md and the guardrails in .ai/guardrails.md.
-            Post your findings as a single PR review comment: severity-ranked
-            (Blocker > Major > Minor), each finding citing file:line + rule ID +
-            concrete fix, skipped viewpoints named, explicit verdict at the end.
-            Do not push commits; do not approve/merge — comment only.
-          claude_args: "--max-turns 40"
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          pull-request-number: ${{ github.event.pull_request.number }}

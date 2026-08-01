@@ -16,11 +16,12 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.rp.outputs.release_created }}
-      tag_name: ${{ steps.rp.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
-        id: rp
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: ./scripts/actions/release-please
+        id: release
         with:
           # TEMPLATE: set release-type (node, python, go, rust, simple, ...)
           release-type: simple
@@ -38,30 +39,6 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
-      - run: make setup
-      - name: Full test suite (gate)
-        run: make test
-      - name: Vulnerability gate
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: fs
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          exit-code: "1"
-          ignore-unfixed: true
-      - name: Generate SBOM (SPDX + CycloneDX)
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
-        with:
-          format: spdx-json
-          output-file: sbom.spdx.json
-          upload-artifact: true
-          upload-release-assets: true
-      - name: Build release artifact
-        run: make build
-      - name: Attest build provenance (SLSA — SEC-031)
-        if: hashFiles('dist/**') != ''
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
-        with:
-          subject-path: "dist/**"
+      - uses: ./scripts/actions/release-gates
       # TEMPLATE: add artifact publishing (registry push, package publish) here;
       # for container images, prefer cosign keyless signing — see docs/deployment/.
