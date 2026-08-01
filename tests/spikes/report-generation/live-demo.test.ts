@@ -31,6 +31,7 @@ from pathlib import Path
 calls=[]
 m.sys.argv=[str(m.Path(m.__file__)),"--project","example-project","--accept-cost","--no-open"]
 m.sys.executable="/usr/bin/python3"
+m.sys.prefix=str(m.VENV_DIR)
 m.sys.version_info=(3,13,0)
 m.shutil.which=lambda _tool:"/usr/bin/gcloud"
 m.require_adc=lambda:calls.append("adc")
@@ -53,6 +54,62 @@ print(json.dumps({"status":status,"calls":calls}))
     status: 0,
     calls: ['adc', 'prepare', 'engine', 'serve', 'close'],
   });
+});
+test('live startup re-enters the venv when executable symlinks share one target', () => {
+  const result = python(`
+import tempfile
+from pathlib import Path
+with tempfile.TemporaryDirectory() as directory:
+ root=Path(directory);base=root/"python";base.touch();system=root/"system-python";venv_python=root/"venv-python"
+ system.symlink_to(base);venv_python.symlink_to(base);calls=[]
+ m.sys.argv=[str(m.Path(m.__file__)),"--project","example-project","--accept-cost","--no-open"]
+ m.sys.executable=str(system);m.sys.prefix=str(root/"system-prefix");m.sys.version_info=(3,13,0)
+ m.shutil.which=lambda _tool:"/usr/bin/gcloud";m.require_adc=lambda:calls.append("adc")
+ m.VENV_DIR=root/"demo-venv"
+ m.prepare_python=lambda:(calls.append("prepare") or venv_python)
+ m.run=lambda _command:calls.append("reexec")
+ m.LiveQueryEngine=lambda _project:(calls.append("engine") or object())
+ class Server:
+  server_port=8765
+  def serve_forever(self):calls.append("serve");raise KeyboardInterrupt
+  def server_close(self):calls.append("close")
+ m.create_server=lambda _host,_port,_engine:Server()
+ status=m.main()
+ print(json.dumps({"status":status,"same_target":system.resolve()==venv_python.resolve(),"calls":calls}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
+    status: 0,
+    same_target: true,
+    calls: ['adc', 'prepare', 'reexec'],
+  });
+});
+test('live prompt uses an accessible in-page cost dialog before sending the request', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
+ "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=runQuery']),
+ "portable":"confirm(COST_CONFIRMATION)" not in html,
+ "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    copy: true,
+    dialog: true,
+    actions: true,
+    portable: true,
+    progress: true,
+  });
+});
+test('live page JavaScript parses before the user can interact', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
+  assert.equal(syntax.status, 0, syntax.stderr);
 });
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`

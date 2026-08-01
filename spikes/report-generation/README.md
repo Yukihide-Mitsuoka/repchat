@@ -286,7 +286,11 @@ gcloud auth application-default login
 同じ画面に表示します。1列1行はBigValue、日付＋数値は折れ線、カテゴリ＋数値は棒グラフ、
 その他は表として描画します。登録済み設問だけ参照値を照合し、任意設問は既知値未照合と明示します。
 未定義指標ではBigQueryを呼びません。起動ごとに`out/.demo/venv`へpin済みrequirementsを確認・導入し、
-現在のPythonとvenv Pythonが異なる場合だけvenvへ再起動します。
+現在のPython環境がdemo venvではない場合だけvenvへ再起動します。質問を送信する直前にページ内の費用確認を表示し、
+「費用を確認して実行」が選ばれるまでVertex AIにもBigQueryにもリクエストを送りません。1問あたりVertex AIは約¥0.2、BigQueryは
+生成SQLと参照SQLの最大2クエリを各20GiBに制限します。[BigQueryのオンデマンド標準単価](https://cloud.google.com/bigquery/pricing)で
+40GiBを換算した上限目安は約¥38、合計は最大約¥39です。無料枠、キャッシュ、実際のスキャン量によっては0円または
+これより少額になります。
 
 `report.json`にある設問と完全一致する場合は登録済みの参照SQLとも値を照合します。それ以外の
 日本語問い合わせは生成SQLをBigQueryで実行して描画しますが、既知値とは照合せず、ページに
