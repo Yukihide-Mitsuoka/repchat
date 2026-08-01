@@ -31,6 +31,7 @@ from pathlib import Path
 calls=[]
 m.sys.argv=[str(m.Path(m.__file__)),"--project","example-project","--accept-cost","--no-open"]
 m.sys.executable="/usr/bin/python3"
+m.sys.version_info=(3,13,0)
 m.shutil.which=lambda _tool:"/usr/bin/gcloud"
 m.require_adc=lambda:calls.append("adc")
 m.venv_python=lambda:Path(m.sys.executable)
