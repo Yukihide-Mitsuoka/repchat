@@ -27,6 +27,12 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
     def test_legacy_sync_excludes_every_workflow(self):
         self.assertIn(".github/workflows/**", self.entries())
 
+    def test_legacy_sync_protects_agent_profile_and_project_overlay(self):
+        entries = self.entries()
+
+        self.assertIn(".github/inheritance/agent-profile.json", entries)
+        self.assertIn(".ai/project/**", entries)
+
     def test_project_release_history_and_codeql_invariant_are_target_owned(self):
         entries = self.entries()
 

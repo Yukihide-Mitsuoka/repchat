@@ -140,3 +140,44 @@ commit immediately after it. The report classifies that commit's paths:
 Exit `0` prints the deterministic plan, including candidate and branch-head commits.
 Exit `2` reports invalid metadata, parent identity/history, Git state, or child path.
 See [template inheritance troubleshooting](../../docs/foundation/troubleshooting/template-inheritance.md).
+
+## Report fleet propagation boundaries
+
+Run `fleet-report` against explicit local child/parent worktree pairs. Repeat
+`--repository` for each child; the command never discovers repositories recursively.
+
+```bash
+python3 scripts/template_inheritance.py fleet-report \
+  --repository acme/terraform-template ../terraform-template ../foundation \
+  --repository acme/product ../product ../terraform-template
+```
+
+The command reuses validation and one-first-parent planning for every pair, compares
+protected child content with the selected parent candidate, and emits deterministic
+JSON. At most 32 unique children are accepted. The reported child repository name comes
+from the explicit argument and is labeled `repository_source: explicit-argument`; the
+command validates its `OWNER/REPOSITORY` shape but does not call GitHub to verify it.
+
+| Category | Meaning |
+|----------|---------|
+| `synchronized` | Inherited child content equals the selected candidate or current parent target |
+| `pending_sync` | Inherited content is missing or differs and can synchronize through the reviewed parent PR |
+| `manually_ported` | Protected child content equals the selected candidate or current parent target exactly |
+| `protected_review` | Protected child content differs; the reported reason identifies the manual boundary |
+| `ownership_review` | The path is unowned and needs an explicit ownership decision |
+| `deletion_review` | The parent deleted inherited content; the read-only tool never deletes it |
+
+Manual boundaries are intentional. Protected workflow callers retain local events,
+permissions, secrets, and environment selection. Project overlays and profiles retain
+repository identity and semantics. Manifests, locks, and ignore files retain accepted
+provenance and ownership. Other protected paths remain repository-owned unless a
+reviewed contract change moves their ownership. Unowned paths require a reviewed
+ownership decision before synchronization.
+
+Target comparison recognizes content accepted ahead of its lock during a reviewed
+mechanical sync. The report does not advance provenance: every intermediate
+first-parent checkpoint still requires its own reviewed lock update.
+
+Fleet reporting performs no fetch, checkout, file write, deletion, GitHub API call, or
+network request. Refresh each local `origin/<branch>` explicitly before the report when
+current remote state is required.
