@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-08-02 | LOG-0086 | 受理済み基盤ADR-0014の直接子migrate段階として、`.ai/guardrails.md`を重複した保護対象ルール本文から基盤所有の薄いadapterへ切り替える。正本`contracts/foundation/guardrails.md`を通常同期し、RepChat固有の強化は宣言済みproject overlayだけに置き、完全に受理した親commitを`c3b5dbf`へ進める | [Issue #211](https://github.com/Yukihide-Mitsuoka/repchat/issues/211) |
 | 2026-08-01 | LOG-0085 | 受理済み基盤ADR-0014に従い、汎用`bugfix` skillをRepChat固有の保護対象から基盤所有の同期対象へ移す。今後の同型バグ探索規約は通常のreviewed Template Syncで受け取り、project-owned回帰テストで所有権・transport・探索契約を固定する | [Issue #208](https://github.com/Yukihide-Mitsuoka/repchat/issues/208) |
 | 2026-08-01 | LOG-0084 | 受理済み基盤ADR-0014の直接子移行として、誤って同期されたai-dev-foundation自身のproject profileとoverlayをRepChat固有の保護済みprofile・overlayへ置き換え、manifest v2でfoundation contractの後にRepChatの識別情報とstack factsだけを読み込む | [Issue #201](https://github.com/Yukihide-Mitsuoka/repchat/issues/201) |
 | 2026-07-30 | ADR-0017 (proposed) | Slackを独立した分析botにせず、既存の分析仕様・SQL生成・検証・実行・ArtifactBundle・build・immutable revisionへ接続する任意の認可付きadapterにする。Webをdashboard・SQL・指標定義・来歴の正本UIとし、Slackは許可channelでの相談、進捗、要約、任意のgraph、認証付きlinkに限定する。`team_id + channel_id`とSlack userの両方をtenant・RepChat userへ対応付け、workspaceをtenant境界にしない。Slack投稿はdata exportとして既定link-only、graph・数値はopt-in、SQLとprotected linkの汎用unfurlは禁止する。自由質問はIssue #180と#188の後、検証済みrevision通知は分離して先行できる。Slack自体を差別化とは表現しない | [ADR-0017](../docs/adr/0017-use-slack-as-an-authorized-analysis-interface.md), [requirements](../docs/requirements/slack-analysis-interface.md) |
