@@ -104,6 +104,13 @@ print(json.dumps({
     progress: true,
   });
 });
+test('live page JavaScript parses before the user can interact', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
+  assert.equal(syntax.status, 0, syntax.stderr);
+});
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
 import threading
