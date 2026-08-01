@@ -15,10 +15,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 import run_report as report
-from demo import DemoError, prepare_python, require_adc, run
+from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_RESULT_ROWS = 4096, 100
+
+
+def running_in_demo_venv() -> bool:
+    """Return whether this process is using the demo virtual environment."""
+    return Path(sys.prefix).resolve() == VENV_DIR.resolve()
 
 HTML = """<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
@@ -38,6 +43,13 @@ label{font-weight:700;display:block;margin-bottom:9px}textarea{width:100%;min-he
 <section id="output" class="hidden"><div class="grid"><section class="panel"><h2>生成理由</h2><p id="reason"></p><p id="verification" class="notice"></p></section><section class="panel"><h2>推定費用</h2><p id="cost"></p></section></div>
 <section class="panel"><h2>Vertex AIが生成したSQL</h2><pre id="sql" class="sql"></pre></section><section class="panel"><h2>BigQuery実行結果</h2><div id="chart" class="chart"></div></section></section>
 <p class="lead">ローカルデモです。本番の認証・gate・executor・顧客Git配送は通りません。</p></main><script>
+const COST_CONFIRMATION=`この質問を実行しますか？
+
+Vertex AI 約¥0.2
+BigQuery 最大40 GiB（20 GiB × 最大2クエリ）、オンデマンド標準単価換算で最大約¥38
+合計最大約¥39
+
+無料枠やキャッシュで0円の場合があります。`;
 const $=id=>document.getElementById(id),stages=["generate","validate","execute","render"];document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{$("question").value=b.dataset.q});
 function stage(name){let reached=false;for(const s of stages){const el=$("s-"+s);if(s===name){el.className="active";reached=true}else el.className=reached?"":"done"}}
 function node(name,attrs={}){const n=document.createElementNS("http://www.w3.org/2000/svg",name);for(const[k,v]of Object.entries(attrs))n.setAttribute(k,v);return n}
@@ -45,7 +57,7 @@ function table(cols,rows){const t=document.createElement("table"),h=t.createTHea
 function graph(r){const box=$("chart");box.replaceChildren();if(!r.rows.length){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"該当する行はありませんでした。"}));return}if(r.visualization==="scalar"){box.appendChild(Object.assign(document.createElement("div"),{className:"metric",textContent:r.rows[0][0]}));return}if(!["bar","line"].includes(r.visualization)){box.appendChild(table(r.columns,r.rows));return}
 const rows=r.rows,w=820,h=r.visualization==="bar"?Math.max(260,rows.length*38+45):360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`});box.appendChild(svg);if(r.visualization==="bar"){const vals=rows.map(x=>Number(x[1])),max=Math.max(...vals,1);rows.forEach((x,i)=>{const y=20+i*38,bw=(w-260)*vals[i]/max;svg.append(node("text",{x:4,y:y+16})).textContent=String(x[0]).slice(0,28);svg.append(node("rect",{x:205,y,width:bw,height:24,rx:4,fill:"#3973c6"}));svg.append(node("text",{x:215+bw,y:y+16})).textContent=String(x[1])})}else{const vals=rows.map(x=>Number(x[1])),min=Math.min(...vals),max=Math.max(...vals),span=max-min||1,pts=vals.map((v,i)=>[45+i*(w-80)/Math.max(rows.length-1,1),25+(max-v)*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:"#3973c6","stroke-width":3}));pts.forEach(p=>svg.append(node("circle",{cx:p[0],cy:p[1],r:4,fill:"#185adb"}))}}
 function handle(e){if(e.type==="stage"){stage(e.stage);$("message").textContent=e.message}else if(e.type==="sql"){stage("validate");$("output").className="";$("sql").textContent=e.sql;$("reason").textContent=e.reason}else if(e.type==="result"){stage("render");$("output").className="";$("verification").className=e.verification==="matched"?"notice":"notice warning";$("verification").textContent=e.verification_label;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}（BigQuery利用料は別）`;graph(e);$("message").textContent="生成・実行・描画が完了しました。";stages.forEach(s=>$("s-"+s).className="done")}else if(e.type==="refusal"){stage("render");$("output").className="";$("sql").textContent="";$("reason").textContent=e.reason;$("verification").className="notice warning";$("verification").textContent=`未定義のため生成しません: ${e.undefined_terms.join("、")}`;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;$("chart").replaceChildren();$("message").textContent="推測した数値を出さずに停止しました。"}else if(e.type==="error")throw new Error(e.message)}
-$("submit").onclick=async()=>{const q=$("question").value.trim();$("submit").disabled=true;$("output").className="hidden";stage("generate");$("message").className="notice";$("message").textContent="Vertex AIへ問い合わせています。";try{const res=await fetch("/api/query",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:q})});if(!res.ok)throw new Error((await res.json()).error);const reader=res.body.getReader(),dec=new TextDecoder();let buf="";while(true){const{done,value}=await reader.read();buf+=dec.decode(value||new Uint8Array(),{stream:!done});const lines=buf.split("\\n");buf=lines.pop();for(const line of lines)if(line)handle(JSON.parse(line));if(done){if(buf.trim())handle(JSON.parse(buf));break}}}catch(e){$("message").className="notice error";$("message").textContent=e.message}finally{$("submit").disabled=false}};
+$("submit").onclick=async()=>{const q=$("question").value.trim();if(!confirm(COST_CONFIRMATION))return;$("submit").disabled=true;$("output").className="hidden";stage("generate");$("message").className="notice";$("message").textContent="Vertex AIへ問い合わせています。";try{const res=await fetch("/api/query",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question:q})});if(!res.ok)throw new Error((await res.json()).error);const reader=res.body.getReader(),dec=new TextDecoder();let buf="";while(true){const{done,value}=await reader.read();buf+=dec.decode(value||new Uint8Array(),{stream:!done});const lines=buf.split("\\n");buf=lines.pop();for(const line of lines)if(line)handle(JSON.parse(line));if(done){if(buf.trim())handle(JSON.parse(buf));break}}}catch(e){$("message").className="notice error";$("message").textContent=e.message}finally{$("submit").disabled=false}};
 </script></body></html>"""
 class LiveDemoError(RuntimeError):
     """A local-demo failure that is safe to show in the browser."""
@@ -244,7 +256,7 @@ def main() -> int:
             raise DemoError("Python 3.13 or newer and gcloud are required")
         require_adc()
         python = prepare_python()
-        if Path(sys.executable).resolve() != Path(python).resolve():
+        if not running_in_demo_venv():
             command = [str(python), str(Path(__file__).resolve()), "--project", project,
                        "--host", args.host, "--port", str(args.port), "--accept-cost"]
             if args.no_open:
