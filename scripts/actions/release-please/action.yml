@@ -1,0 +1,21 @@
+name: Release Please implementation
+description: Create or update a release PR and expose release metadata to the caller
+inputs:
+  release-type:
+    description: Release Please strategy for the downstream repository
+    required: false
+    default: simple
+outputs:
+  release_created:
+    description: Whether Release Please created a release
+    value: ${{ steps.release.outputs.release_created }}
+  tag_name:
+    description: Tag created by Release Please
+    value: ${{ steps.release.outputs.tag_name }}
+runs:
+  using: composite
+  steps:
+    - id: release
+      uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+      with:
+        release-type: ${{ inputs.release-type }}

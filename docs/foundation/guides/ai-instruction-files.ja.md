@@ -132,7 +132,7 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 |--------|----------|------------------|--------|
 | [requirements](../../../.skills/requirements.skill.md) | 何を作るかを要件定義（目的優先・ゼロベース・対話で決定を詰める） | 実装作業そのもの（featureへ） | 目的を1文で固定→決定を1つずつ推奨案付きで詰める→FR/NFR採番→テンプレ記入 |
 | [feature](../../../.skills/feature.skill.md) | 新機能を端から端まで実装 | 既存バグの修正（bugfixへ） | issue の受入基準を Definition of Done として実装 |
-| [bugfix](../../../.skills/bugfix.skill.md) | 欠陥を根本原因から修正 | 新機能追加、純粋な整形 | 再現→落ちる回帰テスト→原因修正→周辺捜索 |
+| [bugfix](../../../.skills/bugfix.skill.md) | 欠陥を堅牢・冪等な恒久修正で根本解決 | 新機能追加、純粋な整形 | 再現→落ちる回帰テスト→原因修正→再実行安全性→周辺捜索。明示指示時のみ期限付き応急処置 |
 | [refactor](../../../.skills/refactor.skill.md) | 振る舞いを変えず構造改善 | 挙動を変える変更（featureへ） | 特性テストで固定→機械的に段階リネーム/抽出 |
 | [architecture](../../../.skills/architecture.skill.md) | 構造/境界/技術の変更（ADR必須） | 局所的なコード修正 | 2〜4案（何もしない含む）比較→ADR→人間承認→段階移行 |
 | [test](../../../.skills/test.skill.md) | テストの追加/改善/flaky修復 | 実装そのもの | 振る舞い列挙→境界マトリクス（空/1/多/最大/異常） |

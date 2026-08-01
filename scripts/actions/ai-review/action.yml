@@ -1,0 +1,26 @@
+name: AI review implementation
+description: Run the repository review procedure without owning PR permissions or triggers
+inputs:
+  anthropic-api-key:
+    description: Anthropic API key supplied by the protected caller
+    required: true
+  pull-request-number:
+    description: Pull request number supplied by the protected caller
+    required: true
+runs:
+  using: composite
+  steps:
+    # TEMPLATE: verify inputs against the installed version of the action —
+    # https://github.com/anthropics/claude-code-action
+    - uses: anthropics/claude-code-action@fa7e2f0a29a126f0b81cdcf360561b36e44cf608 # v1
+      with:
+        anthropic_api_key: ${{ inputs.anthropic-api-key }}
+        prompt: |
+          You are reviewing pull request #${{ inputs.pull-request-number }} in this repository.
+          Follow .skills/review.skill.md exactly, using the checklist in
+          .ai/review-checklist.md and the guardrails in .ai/guardrails.md.
+          Post your findings as a single PR review comment: severity-ranked
+          (Blocker > Major > Minor), each finding citing file:line + rule ID +
+          concrete fix, skipped viewpoints named, explicit verdict at the end.
+          Do not push commits; do not approve/merge — comment only.
+        claude_args: "--max-turns 40"

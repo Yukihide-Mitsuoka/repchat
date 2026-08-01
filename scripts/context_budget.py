@@ -19,6 +19,7 @@ BASELINE_FILES = (
     ".ai/README.md",
     ".ai/guardrails.md",
 )
+CANONICAL_GUARDRAILS = ".ai/contracts/foundation/guardrails.md"
 BASELINE_BYTE_LIMIT = 18_500
 BASELINE_WORD_LIMIT = 2_600
 ROUTE_BYTE_LIMIT = 46_000
@@ -107,6 +108,11 @@ BASELINE_CONTRACT_MARKERS = {
         "one task, one branch, one agent",
     ),
     ".ai/guardrails.md": (
+        ".ai/contracts/foundation/guardrails.md",
+        "Read it completely before any task work",
+        "MUST NOT duplicate guardrail rules",
+    ),
+    ".ai/contracts/foundation/guardrails.md": (
         "Never write secrets into the repository",
         "Never push directly to main/master",
         "Never bypass hooks or checks",
@@ -384,6 +390,13 @@ def active_baseline_files(root: Path) -> tuple[list[str], tuple[str, ...]]:
     """Resolve an optional explicit agent profile without directory discovery."""
     errors: list[str] = []
     files = list(BASELINE_FILES)
+    guardrail_entry = root / ".ai/guardrails.md"
+    if (
+        guardrail_entry.is_file()
+        and CANONICAL_GUARDRAILS
+        in guardrail_entry.read_text(encoding="utf-8")
+    ):
+        files.append(CANONICAL_GUARDRAILS)
     profile_name = ".github/inheritance/agent-profile.json"
     profile_path = root / profile_name
     if not profile_path.is_file():
