@@ -54,6 +54,45 @@ print(json.dumps({"status":status,"calls":calls}))
     calls: ['adc', 'prepare', 'engine', 'serve', 'close'],
   });
 });
+test('live startup re-enters the venv when executable symlinks share one target', () => {
+  const result = python(`
+import tempfile
+from pathlib import Path
+with tempfile.TemporaryDirectory() as directory:
+ root=Path(directory);base=root/"python";base.touch();system=root/"system-python";venv_python=root/"venv-python"
+ system.symlink_to(base);venv_python.symlink_to(base);calls=[]
+ m.sys.argv=[str(m.Path(m.__file__)),"--project","example-project","--accept-cost","--no-open"]
+ m.sys.executable=str(system);m.sys.prefix=str(root/"system-prefix");m.sys.version_info=(3,13,0)
+ m.shutil.which=lambda _tool:"/usr/bin/gcloud";m.require_adc=lambda:calls.append("adc")
+ m.VENV_DIR=root/"demo-venv"
+ m.prepare_python=lambda:(calls.append("prepare") or venv_python)
+ m.run=lambda _command:calls.append("reexec")
+ m.LiveQueryEngine=lambda _project:(calls.append("engine") or object())
+ class Server:
+  server_port=8765
+  def serve_forever(self):calls.append("serve");raise KeyboardInterrupt
+  def server_close(self):calls.append("close")
+ m.create_server=lambda _host,_port,_engine:Server()
+ status=m.main()
+ print(json.dumps({"status":status,"same_target":system.resolve()==venv_python.resolve(),"calls":calls}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
+    status: 0,
+    same_target: true,
+    calls: ['adc', 'prepare', 'reexec'],
+  });
+});
+test('live prompt confirms a bounded yen estimate before sending the request', () => {
+  const result = python(`
+html=m.HTML
+confirm=html.index("confirm(COST_CONFIRMATION)")
+request=html.index('fetch("/api/query"')
+print(json.dumps({"copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),"cancel":"if(!confirm(COST_CONFIRMATION))return" in html,"order":0<=confirm<request}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { copy: true, cancel: true, order: true });
+});
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
 import threading
