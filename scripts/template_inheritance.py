@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and plan local template inheritance defined by ADR-0004."""
+"""Validate, plan, and report local template inheritance defined by foundation ADRs."""
 
 import argparse
 import json
@@ -18,6 +18,7 @@ TEMPLATE_SYNC_IGNORE_PATH = ".templatesyncignore"
 MAX_CONTRACT_BYTES = 1_000_000
 MAX_OWNERSHIP_ROOTS = 1_000
 MAX_AGENT_INPUTS = 32
+MAX_FLEET_REPOSITORIES = 32
 MAX_FIRST_PARENT_COMMITS = 100_000
 MAX_CHANGED_PATHS = 1_000
 REPOSITORY_TARGET = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -558,6 +559,136 @@ def plan_inheritance(root, parent_root):
     }
 
 
+def _manual_boundary_reason(path):
+    if path.startswith(".github/workflows/"):
+        return "workflow-security-boundary"
+    if path == AGENT_PROFILE_PATH or path.startswith(".ai/project/"):
+        return "agent-project-boundary"
+    if path.startswith(".github/inheritance/") or path == TEMPLATE_SYNC_IGNORE_PATH:
+        return "inheritance-ownership-boundary"
+    return "repository-owned-boundary"
+
+
+def _fleet_repository(repository, child_root, parent_root):
+    child_root = Path(child_root).resolve(strict=True)
+    parent_root = _parent_root(parent_root)
+    plan = plan_inheritance(child_root, parent_root)
+    candidate = plan["parent"]["candidate_commit"]
+    target = plan["parent"]["target_commit"]
+    synchronized = list(plan["changes"]["already_current"])
+    pending_sync = []
+    manually_ported = []
+    protected_review = []
+
+    if candidate:
+        for path in plan["changes"]["add"] + plan["changes"]["modify"]:
+            child_entry = _child_entry(child_root, parent_root, path)
+            target_entry = _parent_entry(parent_root, target, path)
+            destination = synchronized if child_entry == target_entry else pending_sync
+            destination.append(path)
+        for path in plan["skipped"]["protected"]:
+            child_entry = _child_entry(child_root, parent_root, path)
+            accepted_entries = {
+                _parent_entry(parent_root, revision, path)
+                for revision in {candidate, target}
+            }
+            if child_entry in accepted_entries:
+                manually_ported.append(path)
+            else:
+                protected_review.append(
+                    {"path": path, "reason": _manual_boundary_reason(path)}
+                )
+
+    return {
+        "repository": repository,
+        "repository_source": "explicit-argument",
+        "parent": plan["parent"],
+        "synchronized": sorted(synchronized),
+        "pending_sync": sorted(pending_sync),
+        "manually_ported": sorted(manually_ported),
+        "protected_review": protected_review,
+        "ownership_review": [
+            {"path": path, "reason": "ownership-decision-required"}
+            for path in plan["skipped"]["unowned"]
+        ],
+        "deletion_review": [
+            {"path": path, "reason": "deletion-review-required"}
+            for path in plan["changes"]["candidate_delete"]
+        ],
+    }
+
+
+def _validated_fleet_entries(repositories):
+    if type(repositories) is not list or not 1 <= len(repositories) <= MAX_FLEET_REPOSITORIES:
+        raise InheritanceError(
+            f"fleet repositories must contain 1 to {MAX_FLEET_REPOSITORIES} entries"
+        )
+
+    entries = []
+    seen_repositories = set()
+    seen_roots = set()
+    for index, entry in enumerate(repositories):
+        if type(entry) not in {list, tuple} or len(entry) != 3:
+            raise InheritanceError(
+                f"fleet repositories[{index}] must contain repository, child root, parent root"
+            )
+        repository = _repository(entry[0], f"fleet repositories[{index}].repository")
+        try:
+            child_root = Path(entry[1]).resolve(strict=True)
+        except OSError as error:
+            raise InheritanceError(
+                f"fleet repositories[{index}].child root must exist"
+            ) from error
+        repository_key = repository.casefold()
+        if repository_key in seen_repositories or child_root in seen_roots:
+            raise InheritanceError("fleet repositories contain a duplicate child")
+        seen_repositories.add(repository_key)
+        seen_roots.add(child_root)
+        entries.append((repository, child_root, entry[2]))
+    return sorted(entries, key=lambda item: item[0].casefold())
+
+
+def _fleet_summary(reports):
+    categories = (
+        "synchronized",
+        "pending_sync",
+        "manually_ported",
+        "protected_review",
+        "ownership_review",
+        "deletion_review",
+    )
+    summary = {
+        category: sum(len(report[category]) for report in reports)
+        for category in categories
+    }
+    summary["repositories"] = len(reports)
+    return summary
+
+
+def fleet_report(repositories):
+    """Report bounded local propagation state without modifying any worktree."""
+    reports = [
+        _fleet_repository(repository, child_root, parent_root)
+        for repository, child_root, parent_root in _validated_fleet_entries(repositories)
+    ]
+    summary = _fleet_summary(reports)
+    needs_attention = any(
+        summary[category]
+        for category in (
+            "pending_sync",
+            "protected_review",
+            "ownership_review",
+            "deletion_review",
+        )
+    )
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "status": "attention" if needs_attention else "ready",
+        "repositories": reports,
+        "summary": summary,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -566,9 +697,23 @@ def main(argv=None):
     plan = commands.add_parser("plan", help="plan the next parent commit")
     plan.add_argument("--root", type=Path, default=Path("."), help="child repository root")
     plan.add_argument("--parent-root", type=Path, required=True, help="local parent Git worktree")
+    fleet = commands.add_parser("fleet-report", help="report local propagation boundaries")
+    fleet.add_argument(
+        "--repository",
+        action="append",
+        nargs=3,
+        required=True,
+        metavar=("REPOSITORY", "CHILD_ROOT", "PARENT_ROOT"),
+        help="explicit child repository and local child/parent worktrees",
+    )
     args = parser.parse_args(argv)
     try:
-        report = validate_inheritance(args.root) if args.command == "validate" else plan_inheritance(args.root, args.parent_root)
+        if args.command == "validate":
+            report = validate_inheritance(args.root)
+        elif args.command == "plan":
+            report = plan_inheritance(args.root, args.parent_root)
+        else:
+            report = fleet_report(args.repository)
     except InheritanceError as error:
         print(f"inheritance error: {error}", file=sys.stderr)
         return 2
