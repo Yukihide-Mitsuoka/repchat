@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.1...v1.12.2) (2026-08-01)
+
+
+### Bug Fixes
+
+* **inheritance:** inherit foundation bugfix skill ([#209](https://github.com/Yukihide-Mitsuoka/repchat/issues/209)) ([bf09690](https://github.com/Yukihide-Mitsuoka/repchat/commit/bf09690848e01bf4276c1cfa15e8dbbe49cbc1a8))
+
 ## [1.12.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.0...v1.12.1) (2026-08-01)
 
 
