@@ -240,7 +240,7 @@ print(m.visualization_for_result(
   assert.equal(gradients.length, 2, 'each transition should have a color gradient');
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
-    linkStrokes.every((stroke) => stroke.startsWith('url(#sankey-link-')),
+    linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
     'each transition should reference its own source-to-target gradient',
   );
 });
