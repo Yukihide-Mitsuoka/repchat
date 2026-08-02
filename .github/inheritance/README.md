@@ -9,8 +9,9 @@ This directory defines the child-owned, direct-parent contract from
 [ADR-0004](../../docs/foundation/adr/0004-harden-multi-level-template-inheritance.md)
 and the bounded legacy transport from
 [ADR-0007](../../docs/foundation/adr/0007-constrain-transitional-template-sync.md).
-ADR-0014 adds ordered agent-contract validation. Validation and local history planning
-are read-only; materialization remains a follow-up.
+ADR-0014 adds ordered agent-contract validation. Validation, local history planning, and
+fleet auditing are read-only. Reviewed Template Sync remains the only write transport;
+no materialization or second inheritance transport is active.
 
 ## Schema version 1
 
@@ -159,11 +160,19 @@ python3 scripts/template_inheritance.py fleet-report \
   --repository acme/product ../product ../terraform-template
 ```
 
-The command reuses validation and one-first-parent planning for every pair, compares
-protected child content with the selected parent candidate, and emits deterministic
-JSON. At most 32 unique children are accepted. The reported child repository name comes
-from the explicit argument and is labeled `repository_source: explicit-argument`; the
-command validates its `OWNER/REPOSITORY` shape but does not call GitHub to verify it.
+The command reuses validation and one-first-parent planning for every pair and emits
+deterministic JSON. When a next parent commit exists, it reports that bounded checkpoint.
+When the lock already equals the parent branch head, it compares every parent file with
+the child's Git-tracked and non-ignored untracked files below each `inherited_paths`
+root. That steady-state audit detects missing files, content differences,
+executable-mode differences, and child remnants deleted by the parent. Ignored build
+artifacts do not create false drift. `audited_inherited_files` reports the number of
+inherited paths examined.
+
+At most 32 unique children and 10,000 inherited files per child are accepted. Exceeding
+either bound fails closed. The reported child repository name comes from the explicit
+argument and is labeled `repository_source: explicit-argument`; the command validates
+its `OWNER/REPOSITORY` shape but does not call GitHub to verify it.
 
 | Category | Meaning |
 |----------|---------|
@@ -172,7 +181,7 @@ command validates its `OWNER/REPOSITORY` shape but does not call GitHub to verif
 | `pending_manual_port` | Inherited content differs but the transitional transport intentionally excludes it; each item reports the manual-port reason |
 | `manually_ported` | Content at a manual transport or protected boundary equals the selected candidate or current parent target exactly |
 | `protected_review` | Protected child content differs; the reported reason identifies the manual boundary |
-| `ownership_review` | The path is unowned and needs an explicit ownership decision |
+| `ownership_review` | An unowned path exists in the current parent target or child and needs an explicit ownership decision |
 | `deletion_review` | The parent deleted inherited content; the read-only tool never deletes it |
 
 An inherited path excluded by `.templatesyncignore` is reported as `pending_manual_port`
@@ -182,8 +191,11 @@ are required. Manual boundaries are intentional. Protected workflow callers reta
 permissions, secrets, and environment selection. Project overlays and profiles retain
 repository identity and semantics. Manifests, locks, and ignore files retain accepted
 provenance and ownership. Other protected paths remain repository-owned unless a
-reviewed contract change moves their ownership. Unowned paths require a reviewed
-ownership decision before synchronization.
+reviewed contract change moves their ownership. Unowned paths present in the current
+parent target or child require a reviewed ownership decision before synchronization. A
+transient unowned candidate path absent from both is reported by `plan` for history
+visibility but does not create fleet attention because the current transport target
+cannot write it.
 
 Target comparison recognizes content accepted ahead of its lock during a reviewed
 mechanical sync. The report does not advance provenance: every intermediate
@@ -192,3 +204,44 @@ first-parent checkpoint still requires its own reviewed lock update.
 Fleet reporting performs no fetch, checkout, file write, deletion, GitHub API call, or
 network request. Refresh each local `origin/<branch>` explicitly before the report when
 current remote state is required.
+
+## Audit the fixed fleet
+
+[`docs/foundation/inheritance-fleet.json`](../../docs/foundation/inheritance-fleet.json)
+is the canonical, machine-readable list of active direct-parent relationships and
+retired repositories. Its location is already inherited by every maintained direct
+child, so adding the config does not require a child-specific ownership migration. It
+stores repository identities and workspace-relative directory names, never absolute
+paths or credentials. The checked-in regression test pins all five active relationships
+and rejects reintroduction of the retired `Yukihide-Mitsuoka/chat-chart` repository.
+
+Place the configured repositories as sibling Git worktrees under one directory, refresh
+their remote refs explicitly, then run from the `ai-dev-foundation` worktree:
+
+```bash
+make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+```
+
+Descendant Makefiles are protected repository-owned files and do not receive this target.
+Use the Foundation worktree as the fleet-wide audit entry point.
+
+The target audits every configured relationship exactly once and labels repository
+identity as `repository_source: fixed-fleet-config`. It validates each child's declared
+parent against the configuration and the parent's credential-free GitHub origin. A
+missing worktree, mismatched parent, retired repository, symlink, invalid contract, or
+content drift fails closed or produces `status: attention`. The target is read-only and
+does not create synchronization PRs, so adding audit coverage does not add another
+inheritance path or another human approval queue.
+
+## Future transport review trigger
+
+Reviewed Template Sync remains the sole write and PR transport. Do not add a second
+transport while its operational burden remains acceptable. If measurements over a
+declared review period show materially excessive manual-port work, propagation latency,
+or human review volume, an exclusive hybrid may be reconsidered because it can improve
+the balance of safety, propagation speed, and approval effort.
+
+Reconsideration is not approval. A new or superseding ADR must define one transport for
+each path, prove that no change can be inherited twice or produce duplicate PRs, state
+measurable adoption thresholds, and include migration and rollback evidence before any
+write-capable hybrid is enabled.

@@ -15,10 +15,13 @@ AGENT_PROFILE_SCHEMA_VERSION = 1
 MANIFEST_PATH = ".github/inheritance/manifest.json"
 AGENT_PROFILE_PATH = ".github/inheritance/agent-profile.json"
 TEMPLATE_SYNC_IGNORE_PATH = ".templatesyncignore"
+DEFAULT_FLEET_CONFIG_PATH = Path("docs/foundation/inheritance-fleet.json")
 MAX_CONTRACT_BYTES = 1_000_000
 MAX_OWNERSHIP_ROOTS = 1_000
 MAX_AGENT_INPUTS = 32
 MAX_FLEET_REPOSITORIES = 32
+MAX_AUDITED_INHERITED_FILES = 10_000
+HASH_BATCH_SIZE = 256
 MAX_FIRST_PARENT_COMMITS = 100_000
 MAX_CHANGED_PATHS = 1_000
 REPOSITORY_TARGET = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -71,6 +74,20 @@ def _ownership_root(value, label, *, file_only=False):
         or any(char in "*?[]\\" or ord(char) < 32 or ord(char) == 127 for char in value)
     ):
         raise InheritanceError(f"{label} must be a safe repository-relative ownership root")
+    return value
+
+
+def _repository_file_path(value, label):
+    if type(value) is not str or not value or len(value) > 4_096:
+        raise InheritanceError(f"{label} must be a safe repository-relative file path")
+    parts = value.split("/")
+    if (
+        value.startswith("/")
+        or value.endswith("/")
+        or any(part in {"", ".", "..", ".git"} for part in parts)
+        or any(ord(char) < 32 or ord(char) == 127 for char in value)
+    ):
+        raise InheritanceError(f"{label} must be a safe repository-relative file path")
     return value
 
 
@@ -480,7 +497,7 @@ def _changed_paths(parent_root, locked, candidate):
     if len(paths) > MAX_CHANGED_PATHS:
         raise InheritanceError(f"candidate commit changes more than {MAX_CHANGED_PATHS} paths")
     for index, path in enumerate(paths):
-        _ownership_root(path, f"parent changed path[{index}]", file_only=True)
+        _repository_file_path(path, f"parent changed path[{index}]")
     return paths
 
 
@@ -517,6 +534,91 @@ def _child_entry(child_root, parent_root, path):
         raise InheritanceError(f"inherited child path must be a regular file: {path}")
     object_id = _git(parent_root, ["hash-object", "--no-filters", "--", str(current)], "child hash").strip()
     return object_id, bool(current.stat().st_mode & 0o111)
+
+
+def _parent_inherited_entries(parent_root, revision, ownership_roots):
+    output = _git(
+        parent_root,
+        ["ls-tree", "-r", "-z", revision, "--", *ownership_roots],
+        "inherited tree read",
+    )
+    entries = {}
+    for index, raw_entry in enumerate(entry for entry in output.split("\0") if entry):
+        try:
+            metadata, path = raw_entry.split("\t", 1)
+            mode, object_type, object_id = metadata.split(" ")
+        except ValueError as error:
+            raise InheritanceError("parent inherited tree has an invalid entry") from error
+        _repository_file_path(path, f"parent inherited path[{index}]")
+        if (
+            not _owned_by(path, ownership_roots)
+            or object_type != "blob"
+            or mode not in {"100644", "100755"}
+        ):
+            raise InheritanceError(f"parent inherited path must be a regular file: {path}")
+        if path in entries:
+            raise InheritanceError(f"parent inherited tree contains a duplicate path: {path}")
+        entries[path] = (object_id, mode == "100755")
+        if len(entries) > MAX_AUDITED_INHERITED_FILES:
+            raise InheritanceError(
+                f"inherited audit exceeds {MAX_AUDITED_INHERITED_FILES} files"
+            )
+    return entries
+
+
+def _child_inherited_entries(child_root, parent_root, ownership_roots):
+    output = _git(
+        child_root,
+        [
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *ownership_roots,
+        ],
+        "child inherited paths read",
+    )
+    files = []
+    for index, path in enumerate(path for path in output.split("\0") if path):
+        _repository_file_path(path, f"inherited child path[{index}]")
+        if not _owned_by(path, ownership_roots):
+            raise InheritanceError(f"child inherited path is outside ownership: {path}")
+        current = child_root
+        missing = False
+        for part in path.split("/"):
+            current /= part
+            if current.is_symlink():
+                raise InheritanceError(
+                    f"inherited child path must not use a symlink: {path}"
+                )
+            if not current.exists():
+                missing = True
+                break
+        if missing:
+            continue
+        if not current.is_file():
+            raise InheritanceError(f"inherited child path must be a regular file: {path}")
+        files.append((path, current, bool(current.stat().st_mode & 0o111)))
+        if len(files) > MAX_AUDITED_INHERITED_FILES:
+            raise InheritanceError(
+                f"inherited audit exceeds {MAX_AUDITED_INHERITED_FILES} files"
+            )
+
+    entries = {}
+    for start in range(0, len(files), HASH_BATCH_SIZE):
+        batch = files[start : start + HASH_BATCH_SIZE]
+        hashes = _git(
+            parent_root,
+            ["hash-object", "--no-filters", "--", *(str(item[1]) for item in batch)],
+            "child hash batch",
+        ).splitlines()
+        if len(hashes) != len(batch):
+            raise InheritanceError("child inherited file hashing returned an invalid result")
+        for (path, _current, executable), object_id in zip(batch, hashes, strict=True):
+            entries[path] = (object_id, executable)
+    return entries
 
 
 def plan_inheritance(root, parent_root):
@@ -591,6 +693,12 @@ def _fleet_repository(repository, child_root, parent_root):
     pending_manual_port = []
     manually_ported = []
     protected_review = []
+    ownership_review = []
+    deletion_review = [
+        {"path": path, "reason": "deletion-review-required"}
+        for path in plan["changes"]["candidate_delete"]
+    ]
+    audited_inherited_files = sum(len(paths) for paths in plan["changes"].values())
 
     if candidate:
         for path in plan["changes"]["already_current"]:
@@ -625,11 +733,47 @@ def _fleet_repository(repository, child_root, parent_root):
                 protected_review.append(
                     {"path": path, "reason": _manual_boundary_reason(path)}
                 )
+        for path in plan["skipped"]["unowned"]:
+            child_entry = _child_entry(child_root, parent_root, path)
+            target_entry = _parent_entry(parent_root, target, path)
+            if child_entry is None and target_entry is None:
+                continue
+            ownership_review.append(
+                {"path": path, "reason": "ownership-decision-required"}
+            )
+    else:
+        ownership_roots = validate_inheritance(child_root)["ownership"]["inherited"]
+        parent_entries = _parent_inherited_entries(parent_root, target, ownership_roots)
+        child_entries = _child_inherited_entries(child_root, parent_root, ownership_roots)
+        audited_paths = sorted(set(parent_entries) | set(child_entries))
+        if len(audited_paths) > MAX_AUDITED_INHERITED_FILES:
+            raise InheritanceError(
+                f"inherited audit exceeds {MAX_AUDITED_INHERITED_FILES} files"
+            )
+        audited_inherited_files = len(audited_paths)
+        for path in audited_paths:
+            parent_entry = parent_entries.get(path)
+            child_entry = child_entries.get(path)
+            is_manual = _template_sync_excludes(path, excluded, exceptions)
+            if parent_entry is None:
+                deletion_review.append(
+                    {"path": path, "reason": "deletion-review-required"}
+                )
+            elif child_entry == parent_entry:
+                destination = manually_ported if is_manual else synchronized
+                destination.append(path)
+            elif is_manual:
+                pending_manual_port.append(
+                    {"path": path, "reason": _manual_transport_reason(path)}
+                )
+            else:
+                pending_sync.append(path)
 
     return {
         "repository": repository,
         "repository_source": "explicit-argument",
         "parent": plan["parent"],
+        "audited_inherited_files": audited_inherited_files,
         "synchronized": sorted(synchronized),
         "pending_sync": sorted(pending_sync),
         "pending_manual_port": sorted(
@@ -637,14 +781,8 @@ def _fleet_repository(repository, child_root, parent_root):
         ),
         "manually_ported": sorted(manually_ported),
         "protected_review": protected_review,
-        "ownership_review": [
-            {"path": path, "reason": "ownership-decision-required"}
-            for path in plan["skipped"]["unowned"]
-        ],
-        "deletion_review": [
-            {"path": path, "reason": "deletion-review-required"}
-            for path in plan["changes"]["candidate_delete"]
-        ],
+        "ownership_review": ownership_review,
+        "deletion_review": sorted(deletion_review, key=lambda item: item["path"]),
     }
 
 
@@ -692,6 +830,9 @@ def _fleet_summary(reports):
         category: sum(len(report[category]) for report in reports)
         for category in categories
     }
+    summary["audited_inherited_files"] = sum(
+        report["audited_inherited_files"] for report in reports
+    )
     summary["repositories"] = len(reports)
     return summary
 
@@ -721,6 +862,139 @@ def fleet_report(repositories):
     }
 
 
+def _fleet_directory(value, label):
+    return _ownership_root(value, label, file_only=True)
+
+
+def _fleet_worktree(workspace_root, directory, label):
+    candidate = workspace_root / directory
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as error:
+        raise InheritanceError(f"{label} must exist under the fleet workspace root") from error
+    if resolved != candidate or not resolved.is_relative_to(workspace_root) or not resolved.is_dir():
+        raise InheritanceError(
+            f"{label} must be a non-symlink directory under the fleet workspace root"
+        )
+    return resolved
+
+
+def _read_fleet_config(config_path):
+    candidate = Path(config_path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    if candidate.is_symlink():
+        raise InheritanceError("fleet config must be a non-symlink file")
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as error:
+        raise InheritanceError("fleet config must be a file") from error
+    if not resolved.is_file():
+        raise InheritanceError("fleet config must be a non-symlink file")
+    try:
+        if resolved.stat().st_size > MAX_CONTRACT_BYTES:
+            raise InheritanceError(f"fleet config exceeds {MAX_CONTRACT_BYTES} bytes")
+        config = json.loads(
+            resolved.read_text(encoding="utf-8"), object_pairs_hook=_unique_object
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise InheritanceError("fleet config must contain valid UTF-8 JSON") from error
+
+    _object(
+        config,
+        {"schema_version", "retired_repositories", "repositories"},
+        "fleet config",
+    )
+    if type(config["schema_version"]) is not int or config["schema_version"] != SCHEMA_VERSION:
+        raise InheritanceError(f"fleet config.schema_version must be {SCHEMA_VERSION}")
+    retired = config["retired_repositories"]
+    if type(retired) is not list or len(retired) > MAX_FLEET_REPOSITORIES:
+        raise InheritanceError("fleet config.retired_repositories must be a bounded list")
+    retired_repositories = [
+        _repository(value, f"fleet config.retired_repositories[{index}]")
+        for index, value in enumerate(retired)
+    ]
+    retired_keys = {repository.casefold() for repository in retired_repositories}
+    if len(retired_keys) != len(retired_repositories):
+        raise InheritanceError("fleet config.retired_repositories must be unique")
+
+    repositories = config["repositories"]
+    if type(repositories) is not list or not 1 <= len(repositories) <= MAX_FLEET_REPOSITORIES:
+        raise InheritanceError(
+            f"fleet config.repositories must contain 1 to {MAX_FLEET_REPOSITORIES} entries"
+        )
+    validated = []
+    repository_keys = set()
+    directories = set()
+    for index, entry in enumerate(repositories):
+        label = f"fleet config.repositories[{index}]"
+        _object(
+            entry,
+            {"repository", "directory", "parent_repository", "parent_directory"},
+            label,
+        )
+        repository = _repository(entry["repository"], f"{label}.repository")
+        parent_repository = _repository(
+            entry["parent_repository"], f"{label}.parent_repository"
+        )
+        directory = _fleet_directory(entry["directory"], f"{label}.directory")
+        parent_directory = _fleet_directory(
+            entry["parent_directory"], f"{label}.parent_directory"
+        )
+        repository_key = repository.casefold()
+        if repository_key in retired_keys or parent_repository.casefold() in retired_keys:
+            raise InheritanceError("fleet config reintroduces a retired repository")
+        if repository_key == parent_repository.casefold() or directory == parent_directory:
+            raise InheritanceError("fleet config child and parent must be distinct")
+        if repository_key in repository_keys or directory in directories:
+            raise InheritanceError("fleet config contains a duplicate child")
+        repository_keys.add(repository_key)
+        directories.add(directory)
+        validated.append(
+            {
+                "repository": repository,
+                "directory": directory,
+                "parent_repository": parent_repository,
+                "parent_directory": parent_directory,
+            }
+        )
+    return sorted(validated, key=lambda item: item["repository"].casefold())
+
+
+def fleet_audit(config_path, workspace_root):
+    """Audit every fixed local fleet relationship without modifying a worktree."""
+    try:
+        workspace_root = Path(workspace_root).resolve(strict=True)
+    except OSError as error:
+        raise InheritanceError("fleet workspace root must exist") from error
+    if not workspace_root.is_dir():
+        raise InheritanceError("fleet workspace root must be a directory")
+
+    repositories = []
+    for index, entry in enumerate(_read_fleet_config(config_path)):
+        child_root = _fleet_worktree(
+            workspace_root, entry["directory"], f"fleet repository[{index}].directory"
+        )
+        parent_root = _fleet_worktree(
+            workspace_root,
+            entry["parent_directory"],
+            f"fleet repository[{index}].parent_directory",
+        )
+        contract = validate_inheritance(child_root)
+        if contract["parent"]["repository"].casefold() != entry[
+            "parent_repository"
+        ].casefold():
+            raise InheritanceError(
+                f"fleet repository parent does not match child manifest: {entry['repository']}"
+            )
+        repositories.append((entry["repository"], child_root, parent_root))
+
+    report = fleet_report(repositories)
+    for repository in report["repositories"]:
+        repository["repository_source"] = "fixed-fleet-config"
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -738,14 +1012,29 @@ def main(argv=None):
         metavar=("REPOSITORY", "CHILD_ROOT", "PARENT_ROOT"),
         help="explicit child repository and local child/parent worktrees",
     )
+    audit = commands.add_parser("fleet-audit", help="audit the fixed local fleet")
+    audit.add_argument(
+        "--config",
+        type=Path,
+        default=DEFAULT_FLEET_CONFIG_PATH,
+        help="machine-readable fleet configuration",
+    )
+    audit.add_argument(
+        "--workspace-root",
+        type=Path,
+        default=Path(".."),
+        help="directory containing every configured Git worktree",
+    )
     args = parser.parse_args(argv)
     try:
         if args.command == "validate":
             report = validate_inheritance(args.root)
         elif args.command == "plan":
             report = plan_inheritance(args.root, args.parent_root)
-        else:
+        elif args.command == "fleet-report":
             report = fleet_report(args.repository)
+        else:
+            report = fleet_audit(args.config, args.workspace_root)
     except InheritanceError as error:
         print(f"inheritance error: {error}", file=sys.stderr)
         return 2
