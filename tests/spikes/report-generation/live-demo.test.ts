@@ -117,6 +117,99 @@ test('live page JavaScript parses before the user can interact', () => {
   const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
   assert.equal(syntax.status, 0, syntax.stderr);
 });
+test('single-graph results expose and reset an accessible query-data tab', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const html = rendered.stdout;
+  for (const expected of [
+    'role="tablist" aria-label="BigQuery実行結果の表示"',
+    'id="result-tab-chart"',
+    'aria-controls="result-chart-panel"',
+    'id="result-tab-data"',
+    'aria-controls="result-data-panel"',
+    '>取得データ</button>',
+  ]) {
+    assert.ok(html.includes(expected), `missing accessible result tab markup: ${expected}`);
+  }
+
+  const script = html.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function table('),
+    script.indexOf('function sankey('),
+  );
+  class ElementStub {
+    attributes: Record<string, string> = {};
+    children: ElementStub[] = [];
+    className = '';
+    textContent = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+    insertRow(): ElementStub {
+      return this.appendChild(new ElementStub('tr'));
+    }
+    insertCell(): ElementStub {
+      return this.appendChild(new ElementStub('td'));
+    }
+    createTHead(): ElementStub {
+      return this.appendChild(new ElementStub('thead'));
+    }
+    createTBody(): ElementStub {
+      return this.appendChild(new ElementStub('tbody'));
+    }
+  }
+  const elements = new Map(
+    [
+      'result-tab-chart',
+      'result-tab-data',
+      'result-chart-panel',
+      'result-data-panel',
+      'result-data',
+      'chart',
+    ].map((id) => [id, new ElementStub('div')]),
+  );
+  const context = {
+    document: { createElement: (tag: string) => new ElementStub(tag) },
+    $: (id: string) => elements.get(id),
+    graph: () => {
+      elements.get('chart')?.replaceChildren(new ElementStub('svg'));
+    },
+    first: { columns: ['source', 'target', 'sessions'], rows: [['入口', '/shop', 12]] },
+    second: { columns: ['medium', 'sessions'], rows: [['organic', 20]] },
+  };
+  const state = vm.runInNewContext(
+    `${functions}
+populateResult(first);
+selectResultTab("data");
+const firstTable = $("result-data").children[0];
+const dataSelected = $("result-tab-data").attributes["aria-selected"];
+populateResult(second);
+const secondTable = $("result-data").children[0];
+const resetToChart = $("result-tab-chart").attributes["aria-selected"];
+clearResult();
+({firstHead:firstTable.children[0].children[0].children.map(cell=>cell.textContent),firstRow:firstTable.children[1].children[0].children.map(cell=>cell.textContent),dataSelected,secondRow:secondTable.children[1].children[0].children.map(cell=>cell.textContent),resetToChart,cleared:$("result-data").children.length});`,
+    context,
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(state)), {
+    firstHead: ['source', 'target', 'sessions'],
+    firstRow: ['入口', '/shop', 12],
+    dataSelected: 'true',
+    secondRow: ['organic', 20],
+    resetToChart: 'true',
+    cleared: 0,
+  });
+});
 test('live bar chart renders labels when DOM append returns undefined', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
