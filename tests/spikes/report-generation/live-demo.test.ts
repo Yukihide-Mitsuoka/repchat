@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const LIVE = path.join(ROOT, 'spikes/report-generation/live_demo.py');
@@ -110,6 +111,56 @@ test('live page JavaScript parses before the user can interact', () => {
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
   assert.equal(syntax.status, 0, syntax.stderr);
+});
+test('live bar chart renders labels when DOM append returns undefined', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function node('),
+    script.indexOf('function finish('),
+  );
+  class ElementStub {
+    children: ElementStub[] = [];
+    textContent = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute() {}
+    append(...children: ElementStub[]): void {
+      this.children.push(...children);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+  }
+  const chart = new ElementStub('div');
+  const context = {
+    document: { createElementNS: (_namespace: string, tag: string) => new ElementStub(tag) },
+    $: () => chart,
+    result: {
+      rows: [
+        ['organic', 120],
+        ['cpc', 80],
+      ],
+      visualization: 'bar',
+    },
+  };
+  assert.doesNotThrow(() =>
+    vm.runInNewContext(`${functions}\ngraph(result); graph(result);`, context),
+  );
+  assert.equal(chart.children.length, 1);
+  const svg = chart.children[0];
+  assert.ok(svg);
+  assert.deepEqual(
+    svg.children.filter((child) => child.tag === 'text').map((child) => child.textContent),
+    ['organic', '120', 'cpc', '80'],
+  );
 });
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
