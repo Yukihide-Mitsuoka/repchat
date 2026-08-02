@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "retired_repositories": [
+    "Yukihide-Mitsuoka/chat-chart"
+  ],
+  "repositories": [
+    {
+      "repository": "Yukihide-Mitsuoka/nextjs-saas-template",
+      "directory": "nextjs-saas-template",
+      "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+      "parent_directory": "ai-dev-foundation"
+    },
+    {
+      "repository": "Yukihide-Mitsuoka/repchat",
+      "directory": "repchat",
+      "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+      "parent_directory": "ai-dev-foundation"
+    },
+    {
+      "repository": "Yukihide-Mitsuoka/secure-ga4-bq-template",
+      "directory": "secure-ga4-bq-template",
+      "parent_repository": "Yukihide-Mitsuoka/terraform-gcp-template",
+      "parent_directory": "terraform-gcp-template"
+    },
+    {
+      "repository": "ea-Mitsuoka/secure-ai-controls",
+      "directory": "secure-ai-controls",
+      "parent_repository": "Yukihide-Mitsuoka/terraform-gcp-template",
+      "parent_directory": "terraform-gcp-template"
+    },
+    {
+      "repository": "Yukihide-Mitsuoka/terraform-gcp-template",
+      "directory": "terraform-gcp-template",
+      "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+      "parent_directory": "ai-dev-foundation"
+    }
+  ]
+}

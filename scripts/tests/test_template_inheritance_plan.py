@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 MODULE_PATH = Path(__file__).parents[1] / "template_inheritance.py"
+REPOSITORY_ROOT = MODULE_PATH.parent.parent
 SPEC = importlib.util.spec_from_file_location("template_inheritance_plan", MODULE_PATH)
 inheritance = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(inheritance)
@@ -115,6 +116,62 @@ class TemplateInheritancePlanTest(unittest.TestCase):
             "\n".join(PROTECTED_PATHS + [".github/workflows/**"]) + "\n",
         )
 
+    def synchronize_child_to_target(self):
+        for path, content in {
+            "inherited/add.txt": "new\n",
+            "inherited/modify.txt": "future\n",
+            "inherited/current.txt": "new\n",
+            "inherited/later.txt": "later\n",
+            ".github/workflows/shared.yml": "new\n",
+        }.items():
+            self.write(self.child, path, content)
+        (self.child / "inherited/delete.txt").unlink()
+        self.write_contract(self.target_commit)
+        for arguments in (
+            ("init", "-b", "main"),
+            ("config", "user.name", "Test User"),
+            ("config", "user.email", "test@example.invalid"),
+            ("add", "-A"),
+            ("commit", "-m", "synchronized child"),
+        ):
+            result = subprocess.run(
+                ["git", "-C", str(self.child), *arguments],
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=5,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def write_fleet_config(
+        self,
+        *,
+        repository="acme/child-template",
+        directory="child",
+        parent_repository=PARENT_REPOSITORY,
+        parent_directory="parent",
+        retired_repositories=None,
+        repositories=None,
+    ):
+        config_path = Path(self.temporary_directory.name) / "fleet.json"
+        entry = {
+            "repository": repository,
+            "directory": directory,
+            "parent_repository": parent_repository,
+            "parent_directory": parent_directory,
+        }
+        config_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "retired_repositories": retired_repositories or ["acme/retired"],
+                    "repositories": repositories or [entry],
+                }
+            ),
+            encoding="utf-8",
+        )
+        return config_path
+
     def snapshot_child(self):
         return {
             str(path.relative_to(self.child)): path.read_bytes()
@@ -190,6 +247,16 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(json.loads(stdout.getvalue())["parent"]["candidate_commit"], self.candidate_commit)
 
+    def test_plan_accepts_literal_glob_characters_in_a_git_path(self):
+        self.write(self.parent, "inherited/[literal].txt", "literal\n")
+        literal_commit = self.commit("literal path")
+        self.git("update-ref", "refs/remotes/origin/main", literal_commit)
+        self.write_contract(self.target_commit)
+
+        result = inheritance.plan_inheritance(self.child, self.parent)
+
+        self.assertEqual(result["changes"]["add"], ["inherited/[literal].txt"])
+
     def test_fleet_report_classifies_propagation_boundaries(self):
         result = inheritance.fleet_report(
             [("acme/child-template", self.child, self.parent)]
@@ -264,6 +331,182 @@ class TemplateInheritancePlanTest(unittest.TestCase):
         repository = result["repositories"][0]
         self.assertEqual(repository["pending_manual_port"], [])
         self.assertIn(".github/workflows/shared.yml", repository["manually_ported"])
+
+    def test_fleet_report_ignores_transient_unowned_path_absent_from_target_and_child(self):
+        (self.parent / "unowned.txt").unlink()
+        target_without_transient_path = self.commit("remove transient unowned path")
+        self.git(
+            "update-ref", "refs/remotes/origin/main", target_without_transient_path
+        )
+
+        result = inheritance.fleet_report(
+            [("acme/child-template", self.child, self.parent)]
+        )
+
+        repository = result["repositories"][0]
+        self.assertEqual(
+            repository["parent"]["candidate_commit"], self.candidate_commit
+        )
+        self.assertEqual(
+            repository["parent"]["target_commit"], target_without_transient_path
+        )
+        self.assertEqual(repository["ownership_review"], [])
+
+    def test_fleet_report_audits_all_inherited_files_when_lock_matches_head(self):
+        self.synchronize_child_to_target()
+        self.write(self.child, "inherited/modify.txt", "child drift\n")
+        (self.child / "inherited/add.txt").unlink()
+        (self.child / "inherited/current.txt").chmod(0o755)
+        self.write(self.child, "inherited/stale.txt", "removed upstream\n")
+
+        result = inheritance.fleet_report(
+            [("acme/child-template", self.child, self.parent)]
+        )
+
+        repository = result["repositories"][0]
+        self.assertEqual(result["status"], "attention")
+        self.assertEqual(repository["parent"]["locked_commit"], self.target_commit)
+        self.assertEqual(repository["parent"]["target_commit"], self.target_commit)
+        self.assertIsNone(repository["parent"]["candidate_commit"])
+        self.assertEqual(repository["audited_inherited_files"], 6)
+        self.assertEqual(
+            repository["pending_sync"],
+            ["inherited/add.txt", "inherited/current.txt", "inherited/modify.txt"],
+        )
+        self.assertEqual(
+            repository["deletion_review"],
+            [{"path": "inherited/stale.txt", "reason": "deletion-review-required"}],
+        )
+        self.assertEqual(result["summary"]["audited_inherited_files"], 6)
+
+    def test_fleet_report_proves_complete_steady_state(self):
+        self.synchronize_child_to_target()
+        self.write(self.child, ".gitignore", "child-local\n*.pyc\n")
+        self.write(self.child, "inherited/generated.pyc", "ignored build artifact\n")
+
+        result = inheritance.fleet_report(
+            [("acme/child-template", self.child, self.parent)]
+        )
+
+        repository = result["repositories"][0]
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(repository["audited_inherited_files"], 5)
+        self.assertEqual(
+            repository["synchronized"],
+            [
+                "inherited/add.txt",
+                "inherited/current.txt",
+                "inherited/later.txt",
+                "inherited/modify.txt",
+            ],
+        )
+        self.assertEqual(
+            repository["manually_ported"], [".github/workflows/shared.yml"]
+        )
+
+    def test_fleet_audit_loads_fixed_worktree_relationships(self):
+        self.synchronize_child_to_target()
+        config_path = self.write_fleet_config()
+
+        result = inheritance.fleet_audit(
+            config_path, Path(self.temporary_directory.name)
+        )
+
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(
+            result["repositories"][0]["repository_source"], "fixed-fleet-config"
+        )
+
+    def test_fleet_audit_rejects_retired_repository_reintroduction(self):
+        config_path = self.write_fleet_config(
+            retired_repositories=["acme/child-template"]
+        )
+
+        with self.assertRaisesRegex(inheritance.InheritanceError, "retired"):
+            inheritance.fleet_audit(config_path, Path(self.temporary_directory.name))
+
+    def test_fleet_audit_rejects_parent_mismatch_and_missing_worktree(self):
+        mismatch = self.write_fleet_config(parent_repository="acme/other-parent")
+        with self.assertRaisesRegex(inheritance.InheritanceError, "parent"):
+            inheritance.fleet_audit(mismatch, Path(self.temporary_directory.name))
+
+        missing = self.write_fleet_config(directory="missing-child")
+        with self.assertRaisesRegex(inheritance.InheritanceError, "must exist"):
+            inheritance.fleet_audit(missing, Path(self.temporary_directory.name))
+
+    def test_fleet_audit_rejects_duplicate_repository_and_directory(self):
+        entry = {
+            "repository": "acme/child-template",
+            "directory": "child",
+            "parent_repository": PARENT_REPOSITORY,
+            "parent_directory": "parent",
+        }
+        config_path = self.write_fleet_config(repositories=[entry, dict(entry)])
+
+        with self.assertRaisesRegex(inheritance.InheritanceError, "duplicate child"):
+            inheritance.fleet_audit(config_path, Path(self.temporary_directory.name))
+
+    def test_canonical_fleet_config_uses_the_common_foundation_docs_root(self):
+        expected = Path("docs/foundation/inheritance-fleet.json")
+
+        self.assertEqual(inheritance.DEFAULT_FLEET_CONFIG_PATH, expected)
+        self.assertTrue((REPOSITORY_ROOT / expected).is_file())
+
+    def test_canonical_fleet_contains_every_active_relationship_once(self):
+        config = json.loads(
+            (REPOSITORY_ROOT / inheritance.DEFAULT_FLEET_CONFIG_PATH).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(config["schema_version"], 1)
+        self.assertEqual(
+            config["retired_repositories"], ["Yukihide-Mitsuoka/chat-chart"]
+        )
+        self.assertEqual(
+            {
+                (
+                    item["repository"],
+                    item["directory"],
+                    item["parent_repository"],
+                    item["parent_directory"],
+                )
+                for item in config["repositories"]
+            },
+            {
+                (
+                    "Yukihide-Mitsuoka/terraform-gcp-template",
+                    "terraform-gcp-template",
+                    "Yukihide-Mitsuoka/ai-dev-foundation",
+                    "ai-dev-foundation",
+                ),
+                (
+                    "Yukihide-Mitsuoka/nextjs-saas-template",
+                    "nextjs-saas-template",
+                    "Yukihide-Mitsuoka/ai-dev-foundation",
+                    "ai-dev-foundation",
+                ),
+                (
+                    "Yukihide-Mitsuoka/repchat",
+                    "repchat",
+                    "Yukihide-Mitsuoka/ai-dev-foundation",
+                    "ai-dev-foundation",
+                ),
+                (
+                    "Yukihide-Mitsuoka/secure-ga4-bq-template",
+                    "secure-ga4-bq-template",
+                    "Yukihide-Mitsuoka/terraform-gcp-template",
+                    "terraform-gcp-template",
+                ),
+                (
+                    "ea-Mitsuoka/secure-ai-controls",
+                    "secure-ai-controls",
+                    "Yukihide-Mitsuoka/terraform-gcp-template",
+                    "terraform-gcp-template",
+                ),
+            },
+        )
+        self.assertEqual(len(config["repositories"]), 5)
 
     def test_fleet_report_rejects_duplicate_children_and_pair_limit(self):
         with self.assertRaisesRegex(inheritance.InheritanceError, "duplicate child"):
