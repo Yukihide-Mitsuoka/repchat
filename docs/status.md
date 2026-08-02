@@ -30,15 +30,14 @@ updated: 2026-08-02
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #243](https://github.com/Yukihide-Mitsuoka/repchat/issues/243)。
-単一グラフのBigQuery実行結果に、可視化と実際の取得列・行を切り替える表示を追加する。
-[Issue #236](https://github.com/Yukihide-Mitsuoka/repchat/issues/236)のダッシュボード生成は
-PR #239/#240でmerge済みで、固定応答によるブラウザ確認では6/6パネル、横方向overflow 0、
-console error/warning 0、単一グラフモードへの切替を確認した。実Vertex AI・BigQueryは再実行していない。
-Issue #243完了後は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
-主要顧客に該当する参加者で価値仮説を検証する。Issue #160の結果を`proceed` / `revise` / `reject`に
-分類するまで製品実装を開始しない。条件付きの次タスク順と設計判断索引は
-[development-handoff](development-handoff.md)を参照する。
+**現在の作業スレッド**: [Issue #253](https://github.com/Yukihide-Mitsuoka/repchat/issues/253)。
+単一グラフの取得データ表示（PR #245）と、1つの日本語依頼から6パネルを生成するダッシュボード
+（PR #239/#240）は実装・オーナー確認済みで、Issue #236はクローズした。ライブデモはダッシュボード／
+単一グラフの切替、起動表示、費用確認、固定応答のブラウザ確認を完了している。質問送信による実Vertex AI・
+BigQueryはこの確認では行っていない。v1.13.0のSBOM添付はPR #249で自動化済み。
+次は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)で、初期主要顧客に該当する
+参加者へ5分デモを行い、価値仮説を`proceed` / `revise` / `reject`に分類する。結果が出るまで製品実装を
+開始しない。条件付きの次タスク順と設計判断索引は[development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /
 [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)（2026-08-02 merge済み）で、ライブ画面の
