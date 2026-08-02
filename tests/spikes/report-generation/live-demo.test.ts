@@ -279,6 +279,99 @@ print(json.dumps({"values":values,"errors":errors},ensure_ascii=False))
   });
 });
 
+test('one dashboard request expands to the six validated analyses for its month', () => {
+  const result = python(`
+spec=json.loads((m.HERE/"report.json").read_text())
+period,sections=m.dashboard_sections(spec,"2020年12月のECサイト分析ダッシュボードを作って")
+error=""
+try:
+ m.dashboard_sections(spec,"2021年1月のECサイト分析をして")
+except m.LiveDemoError as caught:
+ error=str(caught)
+print(json.dumps({"period":period,"ids":[s["id"] for s in sections],"requested_month":all(period["label"] in s["text"] for s in sections),"verification":[s["verification"] for s in sections],"purposes":[bool(s["purpose"]) for s in sections],"error":error},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    period: { from: '20201201', to: '20201231', label: '2020年12月' },
+    ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    requested_month: true,
+    verification: Array(6).fill('execution'),
+    purposes: Array(6).fill(true),
+    error: '依頼に「ダッシュボード」を含めてください。',
+  });
+});
+
+test('dashboard engine streams six generated panels without paid dependencies', () => {
+  const result = python(`
+import threading
+from datetime import date
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
+generated=[];executed=[]
+results={
+ "R4": ([(895,57350)],["purchases","revenue"]),
+ "R11": ([(14.56,)],["repeat_rate"]),
+ "R12": ([(49.51,)],["engagement_seconds"]),
+ "R9": ([(23105,4537,1115)],["viewed","carted","purchased"]),
+ "R16": ([(date(2020,12,1),100,90.0)],["day","sessions","moving_average"]),
+ "R17": ([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),
+}
+def generate(_client,_model,section,period,_rules):
+ generated.append([section["id"],period["label"]])
+ sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' LIMIT 1 /* {section['id']} */"
+ return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+def execute(_bq,sql,**_kwargs):
+ section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)
+ executed.append(section_id)
+ return (results[section_id],None)
+m.report.generate=generate;m.report.exec_bq=execute
+events=[]
+e.dashboard("2020年12月のECサイト分析ダッシュボードを作って",events.append)
+panel_results=[event for event in events if event["type"]=="result"]
+print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    first: 'dashboard_plan',
+    last: 'dashboard_complete',
+    generated: [
+      ['R4', '2020年12月'],
+      ['R11', '2020年12月'],
+      ['R12', '2020年12月'],
+      ['R9', '2020年12月'],
+      ['R16', '2020年12月'],
+      ['R17', '2020年12月'],
+    ],
+    executed: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    result_ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    visualizations: ['kpi_pair', 'scalar', 'scalar', 'funnel', 'trend', 'sankey'],
+    first_columns: ['購入件数', '購入金額'],
+    count: 6,
+  });
+});
+
+test('dashboard result-shape validation fails closed before rendering', () => {
+  const result = python(`
+errors=[]
+for section,rows,columns in [
+ ({"title":"購入KPI","component":"kpi_pair"},[(1,)],["only_one"]),
+ ({"title":"ファネル","component":"funnel"},[(100,-1,2)],["a","b","c"]),
+ ({"title":"回遊","component":"sankey"},[("/","/shop","many")],["source","target","sessions"]),
+]:
+ try:
+  m.dashboard_visualization(section,rows,columns)
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps(errors,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '購入KPIの結果形状がダッシュボード仕様と一致しないため描画しません。',
+    'ファネルの結果形状がダッシュボード仕様と一致しないため描画しません。',
+    '回遊の結果形状がダッシュボード仕様と一致しないため描画しません。',
+  ]);
+});
+
 test('live query passes the requested period to SQL generation', () => {
   const result = python(`
 import threading
@@ -378,21 +471,25 @@ import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  def query(self,q,emit):emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
  req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
+ dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":"2021年1月のECサイト分析ダッシュボードを作って"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
  for ct,origin in [("text/plain",base),("application/json","https://attacker.example")]:
   try:urllib.request.urlopen(urllib.request.Request(base+"/api/query",data=b"{}",headers={"content-type":ct,"origin":origin},method="POST"))
   except urllib.error.HTTPError as e:statuses.append(e.code)
- print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"statuses":statuses}))
+ print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"statuses":statuses}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
     form: true,
     value: 118380,
+    dashboard_count: 6,
     statuses: [415, 403],
   });
   const bind = spawnSync(
