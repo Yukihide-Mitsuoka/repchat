@@ -15,7 +15,7 @@ updated: 2026-08-02
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #243](https://github.com/Yukihide-Mitsuoka/repchat/issues/243) — 単一グラフのBigQuery実行結果に「グラフ」と「取得データ」の切替を追加する。[PR #239](https://github.com/Yukihide-Mitsuoka/repchat/pull/239)と[PR #240](https://github.com/Yukihide-Mitsuoka/repchat/pull/240)のダッシュボード生成はmerge済み |
+| 作業 | [Issue #243](https://github.com/Yukihide-Mitsuoka/repchat/issues/243) / [PR #245](https://github.com/Yukihide-Mitsuoka/repchat/pull/245) — 単一グラフのBigQuery実行結果に「グラフ」と「取得データ」の切替を追加する。[PR #239](https://github.com/Yukihide-Mitsuoka/repchat/pull/239)と[PR #240](https://github.com/Yukihide-Mitsuoka/repchat/pull/240)のダッシュボード生成はmerge済み |
 | デモ準備 | `make demo-live PROJECT=<project>`は、ダッシュボード生成／単一グラフ生成を切り替える。Issue #243では単一グラフのAPI応答に既に含まれる列・行を表へ表示し、次の問い合わせや拒否時に古い結果を残さない。固定応答だけで検証し、実Vertex AI・BigQueryは再実行しない |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #243の実装・固定応答ブラウザ確認・PRを完了する。実データ再実行は費用を再提示してオーナー承認後だけ行う |
