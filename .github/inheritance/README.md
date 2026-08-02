@@ -197,6 +197,11 @@ transient unowned candidate path absent from both is reported by `plan` for hist
 visibility but does not create fleet attention because the current transport target
 cannot write it.
 
+Workflow implementations normally delegate synchronized local behavior under ADR-0014.
+When an external publisher validates the literal workflow for result provenance, its
+SHA-pinned approved actions remain direct protected-workflow steps. OpenSSF Scorecard is
+the current instance and therefore requires an explicit reviewed port at every child.
+
 Target comparison recognizes content accepted ahead of its lock during a reviewed
 mechanical sync. The report does not advance provenance: every intermediate
 first-parent checkpoint still requires its own reviewed lock update.

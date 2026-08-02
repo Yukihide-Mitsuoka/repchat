@@ -43,15 +43,6 @@ class LocalWorkflowActionsTest(unittest.TestCase):
                 "24d110aa46a59976b8a7f35518cb7f14f434c916"
             ),
         },
-        "scorecard": {
-            "workflow": ".github/workflows/scorecard.yml",
-            "action": "scripts/actions/scorecard/action.yml",
-            "implementation": "ossf/scorecard-action@",
-            "pinned_action": (
-                "ossf/scorecard-action@"
-                "4eaacf0543bb3f2c246792bd56e8cdeffafb205a"
-            ),
-        },
     }
 
     def test_protected_callers_keep_boundaries_and_delegate_implementation(self):
@@ -111,7 +102,7 @@ class LocalWorkflowActionsTest(unittest.TestCase):
             )
             self.assertIn("github.event.pull_request.number", workflow)
 
-    def test_scorecard_caller_keeps_security_permissions(self):
+    def test_scorecard_caller_keeps_security_permissions_and_verified_steps(self):
         workflow = (
             REPOSITORY_ROOT / ".github" / "workflows" / "scorecard.yml"
         ).read_text(encoding="utf-8")
@@ -119,6 +110,30 @@ class LocalWorkflowActionsTest(unittest.TestCase):
         self.assertIn("security-events: write", workflow)
         self.assertIn("id-token: write", workflow)
         self.assertIn("persist-credentials: false", workflow)
+        action_uses = [
+            line.strip().removeprefix("- uses: ").split(maxsplit=1)[0]
+            for line in workflow.splitlines()
+            if line.strip().startswith("- uses: ")
+        ]
+        self.assertEqual(
+            [
+                "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+                "ossf/scorecard-action@"
+                "4eaacf0543bb3f2c246792bd56e8cdeffafb205a",
+                "github/codeql-action/upload-sarif@"
+                "4187e74d05793876e9989daffde9c3e66b4acd07",
+            ],
+            action_uses,
+        )
+        self.assertFalse(
+            (
+                REPOSITORY_ROOT
+                / "scripts"
+                / "actions"
+                / "scorecard"
+                / "action.yml"
+            ).exists()
+        )
 
     def test_release_callers_keep_boundaries_and_delegate_implementations(self):
         workflow = (
