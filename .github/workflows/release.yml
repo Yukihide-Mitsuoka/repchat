@@ -1,5 +1,6 @@
 # Release automation (REL-001/010/020): release-please derives SemVer + changelog from
-# Conventional Commits; on tag, gates run and SBOM is attached to the GitHub Release.
+# Conventional Commits; after release-please creates a tag, gates run and the generated
+# SBOM is explicitly attached to that tag's GitHub Release.
 name: Release
 
 on:
@@ -40,5 +41,18 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
       - uses: ./scripts/actions/release-gates
+      # anchore/sbom-action only auto-detects a Release on release or tag-push events.
+      # This workflow is a main-push workflow, so checkout(ref: tag) alone is not enough.
+      - name: Attach generated SBOM to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          SBOM_PATH: sbom.spdx.json
+          SBOM_ASSET: ${{ github.event.repository.name }}-release-gates.spdx.json
+        run: |
+          test -n "$RELEASE_TAG"
+          test -s "$SBOM_PATH"
+          cp "$SBOM_PATH" "$SBOM_ASSET"
+          gh release upload "$RELEASE_TAG" "$SBOM_ASSET" --clobber
       # TEMPLATE: add artifact publishing (registry push, package publish) here;
       # for container images, prefer cosign keyless signing — see docs/deployment/.
