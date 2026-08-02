@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-08-02 | LOG-0092 | 直接親lockを`ef70594`から最終first-parent commit `74d9255`（ai-dev-foundation release 1.5.2）へ進め、PR #238/#241の継承内容とPR #244の保護workflowに対応する受理来歴を完成させる。子固有CHANGELOG、製品実装、GitHub設定、クラウド状態は変更しない | [Issue #246](https://github.com/Yukihide-Mitsuoka/repchat/issues/246) |
 | 2026-08-02 | LOG-0091 | 直接親lockを`919508c`から次のfirst-parent commit `ef70594`（ai-dev-foundation #152）へ進める。旧Scorecard compositeの削除と回帰テストはPR #241で、保護されたdirect callerはPR #244で受理済みのため、実装を二重化せず受理済み状態の来歴を記録する | [Issue #246](https://github.com/Yukihide-Mitsuoka/repchat/issues/246) |
 | 2026-08-02 | LOG-0090 | 直接親lockを`854b885`から次のfirst-parent commit `919508c`（ai-dev-foundation #149）へ進める。fleet artifactを既存の継承rootへ収める最終内容はPR #238/#241で受理済みであり、保護されたMakefileや中間配置へ戻さず来歴だけを前進させる | [Issue #246](https://github.com/Yukihide-Mitsuoka/repchat/issues/246) |
 | 2026-08-02 | LOG-0089 | 直接親lockを`cf4ebed`から次のfirst-parent commit `854b885`（ai-dev-foundation release 1.5.1）へ進める。親差分は保護されたFoundation CHANGELOGだけで、PR #238/#241で受理済みの最終継承blobとPR #244のScorecard workflowを変更せず、来歴だけを順序どおり記録する | [Issue #246](https://github.com/Yukihide-Mitsuoka/repchat/issues/246) |
