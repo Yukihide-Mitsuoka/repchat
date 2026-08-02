@@ -151,7 +151,10 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
       visualization: 'bar',
     },
   };
-  assert.doesNotThrow(() => vm.runInNewContext(`${functions}\ngraph(result);`, context));
+  assert.doesNotThrow(() =>
+    vm.runInNewContext(`${functions}\ngraph(result); graph(result);`, context),
+  );
+  assert.equal(chart.children.length, 1);
   const svg = chart.children[0];
   assert.ok(svg);
   assert.deepEqual(
