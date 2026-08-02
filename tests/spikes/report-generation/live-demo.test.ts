@@ -22,7 +22,10 @@ test('live dry-run describes the paid localhost workflow', () => {
     encoding: 'utf8',
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /live mode: enter a Japanese prompt/);
+  assert.match(
+    result.stdout,
+    /live mode: enter a Japanese prompt, then stream a graph or dashboard/,
+  );
   assert.match(result.stdout, /call Vertex AI and BigQuery after each submitted prompt/);
   assert.match(result.stdout, /open http:\/\/127\.0\.0\.1:8765\//);
 });
@@ -91,7 +94,8 @@ html=m.HTML
 print(json.dumps({
  "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
- "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=runQuery']),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=()=>pendingMode==="dashboard"?runDashboard():runQuery()']),
+ "dashboard":all(x in html for x in ["Vertex AI 約¥1.2（SQL生成6回）","BigQuery 最大240 GiB","最大12クエリ","合計最大約¥230"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -101,6 +105,7 @@ print(json.dumps({
     copy: true,
     dialog: true,
     actions: true,
+    dashboard: true,
     portable: true,
     progress: true,
   });
@@ -245,6 +250,81 @@ print(m.visualization_for_result(
   );
 });
 
+test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function node('),
+    script.indexOf('function finish('),
+  );
+  class ElementStub {
+    attributes: Record<string, string> = {};
+    children: ElementStub[] = [];
+    style: Record<string, string> = {};
+    textContent = '';
+    className = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
+    append(...children: ElementStub[]): void {
+      this.children.push(...children);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+  }
+  const chart = new ElementStub('div');
+  const context = {
+    document: {
+      createElementNS: (_namespace: string, tag: string) => new ElementStub(tag),
+      createElement: (tag: string) => new ElementStub(tag),
+      createTextNode: (value: string) =>
+        Object.assign(new ElementStub('#text'), { textContent: value }),
+    },
+    $: () => chart,
+  };
+  const cases = [
+    {
+      visualization: 'kpi_pair',
+      columns: ['購入件数', '売上'],
+      rows: [[895, 57350]],
+      expectedTag: 'div',
+    },
+    {
+      visualization: 'funnel',
+      columns: ['閲覧', 'カート', '購入'],
+      rows: [[23105, 4537, 1115]],
+      expectedTag: 'div',
+    },
+    {
+      visualization: 'trend',
+      columns: ['日付', 'セッション', '7日移動平均'],
+      rows: [
+        ['2021-01-01', 100, 90],
+        ['2021-01-02', 120, 95],
+      ],
+      expectedTag: 'svg',
+    },
+  ];
+  for (const result of cases) {
+    assert.doesNotThrow(() =>
+      vm.runInNewContext(`${functions}\ngraph(result);`, { ...context, result }),
+    );
+    assert.equal(chart.children[0]?.tag, result.expectedTag);
+  }
+  const polylines = chart.children[0]?.children.filter((child) => child.tag === 'polyline') ?? [];
+  assert.equal(polylines.length, 2, 'trend should contain daily and moving-average series');
+});
+
 test('live query derives the requested month and rejects unavailable periods', () => {
   const result = python(`
 values={}
@@ -277,6 +357,99 @@ print(json.dumps({"values":values,"errors":errors},ensure_ascii=False))
       '公開サンプルで利用できる期間は2020年11月〜2021年1月です。',
     ],
   });
+});
+
+test('one dashboard request expands to the six validated analyses for its month', () => {
+  const result = python(`
+spec=json.loads((m.HERE/"report.json").read_text())
+period,sections=m.dashboard_sections(spec,"2020年12月のECサイト分析ダッシュボードを作って")
+error=""
+try:
+ m.dashboard_sections(spec,"2021年1月のECサイト分析をして")
+except m.LiveDemoError as caught:
+ error=str(caught)
+print(json.dumps({"period":period,"ids":[s["id"] for s in sections],"requested_month":all(period["label"] in s["text"] for s in sections),"verification":[s["verification"] for s in sections],"purposes":[bool(s["purpose"]) for s in sections],"error":error},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    period: { from: '20201201', to: '20201231', label: '2020年12月' },
+    ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    requested_month: true,
+    verification: Array(6).fill('execution'),
+    purposes: Array(6).fill(true),
+    error: '依頼に「ダッシュボード」を含めてください。',
+  });
+});
+
+test('dashboard engine streams six generated panels without paid dependencies', () => {
+  const result = python(`
+import threading
+from datetime import date
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
+generated=[];executed=[]
+results={
+ "R4": ([(895,57350)],["purchases","revenue"]),
+ "R11": ([(14.56,)],["repeat_rate"]),
+ "R12": ([(49.51,)],["engagement_seconds"]),
+ "R9": ([(23105,4537,1115)],["viewed","carted","purchased"]),
+ "R16": ([(date(2020,12,1),100,90.0)],["day","sessions","moving_average"]),
+ "R17": ([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),
+}
+def generate(_client,_model,section,period,_rules):
+ generated.append([section["id"],period["label"]])
+ sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' LIMIT 1 /* {section['id']} */"
+ return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+def execute(_bq,sql,**_kwargs):
+ section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)
+ executed.append(section_id)
+ return (results[section_id],None)
+m.report.generate=generate;m.report.exec_bq=execute
+events=[]
+e.dashboard("2020年12月のECサイト分析ダッシュボードを作って",events.append)
+panel_results=[event for event in events if event["type"]=="result"]
+print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    first: 'dashboard_plan',
+    last: 'dashboard_complete',
+    generated: [
+      ['R4', '2020年12月'],
+      ['R11', '2020年12月'],
+      ['R12', '2020年12月'],
+      ['R9', '2020年12月'],
+      ['R16', '2020年12月'],
+      ['R17', '2020年12月'],
+    ],
+    executed: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    result_ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    visualizations: ['kpi_pair', 'scalar', 'scalar', 'funnel', 'trend', 'sankey'],
+    first_columns: ['購入件数', '購入金額'],
+    count: 6,
+  });
+});
+
+test('dashboard result-shape validation fails closed before rendering', () => {
+  const result = python(`
+errors=[]
+for section,rows,columns in [
+ ({"title":"購入KPI","component":"kpi_pair"},[(1,)],["only_one"]),
+ ({"title":"ファネル","component":"funnel"},[(100,-1,2)],["a","b","c"]),
+ ({"title":"回遊","component":"sankey"},[("/","/shop","many")],["source","target","sessions"]),
+]:
+ try:
+  m.dashboard_visualization(section,rows,columns)
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps(errors,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '購入KPIの結果形状がダッシュボード仕様と一致しないため描画しません。',
+    'ファネルの結果形状がダッシュボード仕様と一致しないため描画しません。',
+    '回遊の結果形状がダッシュボード仕様と一致しないため描画しません。',
+  ]);
 });
 
 test('live query passes the requested period to SQL generation', () => {
