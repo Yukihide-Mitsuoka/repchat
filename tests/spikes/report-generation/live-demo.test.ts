@@ -121,13 +121,16 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
     script.indexOf('function finish('),
   );
   class ElementStub {
+    attributes: Record<string, string> = {};
     children: ElementStub[] = [];
     textContent = '';
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
     }
-    setAttribute() {}
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
     append(...children: ElementStub[]): void {
       this.children.push(...children);
     }
@@ -180,13 +183,16 @@ print(m.visualization_for_result(
     script.indexOf('function finish('),
   );
   class ElementStub {
+    attributes: Record<string, string> = {};
     children: ElementStub[] = [];
     textContent = '';
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
     }
-    setAttribute() {}
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
     append(...children: ElementStub[]): void {
       this.children.push(...children);
     }
@@ -219,6 +225,26 @@ print(m.visualization_for_result(
   const tags = chart.children[0]?.children.map((child) => child.tag) ?? [];
   assert.ok(tags.includes('path'), 'Sankey links should be SVG paths');
   assert.ok(tags.includes('rect'), 'Sankey nodes should be SVG rectangles');
+  const descendants = (element: ElementStub): ElementStub[] => [
+    element,
+    ...element.children.flatMap(descendants),
+  ];
+  const elements = descendants(chart.children[0]);
+  const gradients = elements.filter((element) => element.tag === 'linearGradient');
+  const nodeColors = new Set(
+    elements
+      .filter((element) => element.tag === 'rect')
+      .map((element) => element.attributes.fill),
+  );
+  const linkStrokes = elements
+    .filter((element) => element.tag === 'path')
+    .map((element) => element.attributes.stroke);
+  assert.equal(gradients.length, 2, 'each transition should have a color gradient');
+  assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
+  assert.ok(
+    linkStrokes.every((stroke) => stroke.startsWith('url(#sankey-link-')),
+    'each transition should reference its own source-to-target gradient',
+  );
 });
 
 test('live query derives the requested month and rejects unavailable periods', () => {
