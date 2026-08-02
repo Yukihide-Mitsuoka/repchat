@@ -184,12 +184,13 @@ def generation_request(section: dict, period: dict) -> str:
     return request
 
 
-def generate(client, model: str, section: dict, period: dict, rules: str):
+def generate_request(client, model: str, request: str, rules: str):
+    """Generate structured SQL from an already-built analysis request."""
     from google.genai import types
 
     resp = client.models.generate_content(
         model=model,
-        contents=generation_request(section, period),
+        contents=request,
         config=types.GenerateContentConfig(
             system_instruction=rules,
             response_mime_type="application/json",
@@ -204,11 +205,21 @@ def generate(client, model: str, section: dict, period: dict, rules: str):
     }
 
 
-def exec_bq(bq, sql: str, max_results: int | None = None):
+def generate(client, model: str, section: dict, period: dict, rules: str):
+    """Generate SQL for the original GA4 report contract."""
+    return generate_request(client, model, generation_request(section, period), rules)
+
+
+def exec_bq(
+    bq,
+    sql: str,
+    max_results: int | None = None,
+    allowed_dataset: str = DATASET,
+):
     """Read-only execution, guarded the same way the executor guards tenant SQL."""
     from google.cloud import bigquery
 
-    s, validation_error = validate_sql(sql)
+    s, validation_error = validate_sql(sql, allowed_dataset)
     if validation_error:
         return None, validation_error
     assert s is not None
@@ -237,7 +248,9 @@ def exec_bq(bq, sql: str, max_results: int | None = None):
         return None, f"bq error: {type(e).__name__}: {why[:220]}"
 
 
-def validate_sql(sql: str) -> tuple[str | None, str | None]:
+def validate_sql(
+    sql: str, allowed_dataset: str = DATASET
+) -> tuple[str | None, str | None]:
     """Return a normalized dataset-bounded SELECT or a refusal reason."""
     s = sql.strip()
     if s.endswith(";"):
@@ -265,11 +278,11 @@ def validate_sql(sql: str) -> tuple[str | None, str | None]:
         r"`?([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)\.[a-zA-Z0-9_*]+`?",
         without_literals,
     ):
-        if f"{m.group(1)}.{m.group(2)}" != DATASET:
+        if f"{m.group(1)}.{m.group(2)}" != allowed_dataset:
             return None, f"rejected: foreign table ref {m.group(0)}"
         found_dataset = True
     if not found_dataset:
-        return None, f"rejected: query must reference dataset {DATASET}"
+        return None, f"rejected: query must reference dataset {allowed_dataset}"
     return s, None
 
 

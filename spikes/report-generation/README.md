@@ -287,6 +287,20 @@ gcloud auth application-default login
 GitHub Light相当の淡いコード領域で、予約語、関数、文字列、数値、コメント、識別子を色分けします。
 SQL文字列はHTMLとして解釈せず、改行とスペースインデントを保持します。
 
+単一グラフ画面の分析対象では、GA4に加えてIssue #188の最初の非GA4プロファイルとして
+`bigquery-public-data.crypto_bitcoin.transactions`を選択できます。画面の例題は、2024年1月の取引を
+`outputs`、`output.addresses`の順に二段階で展開し、取引ごとの異なる受取アドレス数を4区分に分けて
+取引数を棒グラフ化します。許可datasetはプロファイルIDからサーバー側で決め、ブラウザから任意の
+project/dataset/table名を渡しません。`block_timestamp_month`が指定月の月初と一致しない生成SQL、
+別dataset、`SELECT *`、DDL/DML、複数statement、100行超の結果はfail closedにします。
+
+2026-08-02に基準SQLをBigQuery dry runし、処理見積りは3,115,504,440 bytes（約2.91GiB）でした。
+dry runはデータ取得を実行せず、クエリ料金も発生しません。ライブ送信時は生成SQLの差を考慮して
+20GiBをhard limitに保ち、画面で通常約¥4・最大約¥20を再確認します。基準SQLは再現用に
+`bitcoin_profile.py`へ置きましたが、独立レビューも生成結果との実値照合も未実施です。したがってこの追加は
+「公開された非GA4 nested/repeated schema 1種類でUIから経路を通せる」という縦切りに限り、
+未知・非公開相当2種類の反復評価を求めるIssue #188は閉じません。
+
 ダッシュボード生成は、1つの具体的な月次ECサイト分析依頼を、`SHOWCASE_IDS`の6分析へ分解します。
 上段に購入成果・定着・エンゲージメントKPI、中段に購入ファネルと日次＋7日移動平均、下段に主要回遊
 Sankeyを配置します。各カード内の開閉領域が生成理由、SQL、検証状態、集計データを所有するため、
