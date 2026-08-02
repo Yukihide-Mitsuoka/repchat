@@ -192,8 +192,6 @@ def visualization_for_result(rows: list[tuple], columns: list[str]) -> str:
     ):
         return "bar"
     return "table"
-
-
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
     """Validate a planned panel's result shape before choosing its renderer."""
     component = section["component"]
@@ -236,7 +234,9 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         raise LiveDemoError(
             f"{section['title']}の結果形状がダッシュボード仕様と一致しないため描画しません。"
         )
-    return component if component in {"kpi_pair", "funnel", "trend", "sankey"} else visualization_for_result(rows, columns)
+    if component in {"kpi_pair", "funnel", "trend", "sankey"}:
+        return component
+    return visualization_for_result(rows, columns)
 
 
 class LiveQueryEngine:

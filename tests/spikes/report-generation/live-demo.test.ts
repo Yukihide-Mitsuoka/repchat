@@ -551,21 +551,25 @@ import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  def query(self,q,emit):emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
  req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
+ dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":"2021年1月のECサイト分析ダッシュボードを作って"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
  for ct,origin in [("text/plain",base),("application/json","https://attacker.example")]:
   try:urllib.request.urlopen(urllib.request.Request(base+"/api/query",data=b"{}",headers={"content-type":ct,"origin":origin},method="POST"))
   except urllib.error.HTTPError as e:statuses.append(e.code)
- print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"statuses":statuses}))
+ print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"statuses":statuses}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
     form: true,
     value: 118380,
+    dashboard_count: 6,
     statuses: [415, 403],
   });
   const bind = spawnSync(
