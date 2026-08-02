@@ -279,6 +279,33 @@ print(json.dumps({"periods":periods,"types":[event["type"] for event in events]}
   });
 });
 
+test('live query rejects generated SQL for a different month before BigQuery', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine)
+e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text())
+e.rules=""
+e.client=e.bq=object()
+e.lock=threading.Lock()
+sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium"
+m.report.generate=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+executions=[]
+m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
+error=""
+try:
+ e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",lambda _event:None)
+except m.LiveDemoError as caught:
+ error=str(caught)
+print(json.dumps({"error":error,"executions":executions},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: '生成SQLの対象期間が問い合わせの2020年12月と一致しません。',
+    executions: [],
+  });
+});
+
 test('live page uses an Evidence-like restrained visual system', () => {
   const result = python(`
 html=m.HTML
