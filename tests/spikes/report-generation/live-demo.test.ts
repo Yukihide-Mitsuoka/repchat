@@ -162,6 +162,167 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
     ['organic', '120', 'cpc', '80'],
   );
 });
+test('live Sankey result is classified and rendered as a diagram', () => {
+  const classified = python(`
+print(m.visualization_for_result(
+ [("1. 入口: /", "2. /shop", 120), ("2. /shop", "3. /cart", 48)],
+ ["source", "target", "sessions"]
+))
+`);
+  assert.equal(classified.status, 0, classified.stderr);
+  assert.equal(classified.stdout.trim(), 'sankey');
+
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function node('),
+    script.indexOf('function finish('),
+  );
+  class ElementStub {
+    children: ElementStub[] = [];
+    textContent = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute() {}
+    append(...children: ElementStub[]): void {
+      this.children.push(...children);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+  }
+  const chart = new ElementStub('div');
+  const context = {
+    document: {
+      createElementNS: (_namespace: string, tag: string) => new ElementStub(tag),
+      createElement: (tag: string) => new ElementStub(tag),
+    },
+    $: () => chart,
+    result: {
+      rows: [
+        ['1. 入口: /', '2. /shop', 120],
+        ['2. /shop', '3. /cart', 48],
+      ],
+      columns: ['source', 'target', 'sessions'],
+      visualization: 'sankey',
+    },
+  };
+  assert.doesNotThrow(() => vm.runInNewContext(`${functions}\ngraph(result);`, context));
+  assert.equal(chart.children[0]?.tag, 'svg');
+  const tags = chart.children[0]?.children.map((child) => child.tag) ?? [];
+  assert.ok(tags.includes('path'), 'Sankey links should be SVG paths');
+  assert.ok(tags.includes('rect'), 'Sankey nodes should be SVG rectangles');
+});
+
+test('live query derives the requested month and rejects unavailable periods', () => {
+  const result = python(`
+values={}
+for question in ["2020年12月のセッション数を出して", "2021年1月のセッション数を出して"]:
+ values[question]=m.period_for_question(question)
+errors=[]
+for question in ["2021年x月のセッション数を出して", "2021年2月のセッション数を出して"]:
+ try:
+  m.period_for_question(question)
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps({"values":values,"errors":errors},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    values: {
+      '2020年12月のセッション数を出して': {
+        from: '20201201',
+        to: '20201231',
+        label: '2020年12月',
+      },
+      '2021年1月のセッション数を出して': {
+        from: '20210101',
+        to: '20210131',
+        label: '2021年1月',
+      },
+    },
+    errors: [
+      '対象月を「YYYY年M月」の形式で指定してください。',
+      '公開サンプルで利用できる期間は2020年11月〜2021年1月です。',
+    ],
+  });
+});
+
+test('live query passes the requested period to SQL generation', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine)
+e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text())
+e.rules=""
+e.client=e.bq=object()
+e.lock=threading.Lock()
+periods=[]
+sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY medium"
+m.report.generate=lambda _client,_model,_section,period,_rules:(periods.append(period) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.exec_bq=lambda *_args,**_kwargs:(([('organic',10)],['medium','sessions']),None)
+events=[]
+e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",events.append)
+print(json.dumps({"periods":periods,"types":[event["type"] for event in events]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    periods: [{ from: '20201201', to: '20201231', label: '2020年12月' }],
+    types: ['stage', 'sql', 'stage', 'result'],
+  });
+});
+
+test('live query rejects generated SQL for a different month before BigQuery', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine)
+e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text())
+e.rules=""
+e.client=e.bq=object()
+e.lock=threading.Lock()
+sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium"
+m.report.generate=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+executions=[]
+m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
+error=""
+try:
+ e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",lambda _event:None)
+except m.LiveDemoError as caught:
+ error=str(caught)
+print(json.dumps({"error":error,"executions":executions},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: '生成SQLの対象期間が問い合わせの2020年12月と一致しません。',
+    executions: [],
+  });
+});
+
+test('live page uses an Evidence-like restrained visual system', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "theme":all(x in html for x in ['data-theme="evidence"','--color-primary:#1f4e79','--color-border:#d9dee7']),
+ "structure":all(x in html for x in ['class="app-header"','class="eyebrow"','class="workspace"']),
+ "restrained":'box-shadow:0 5px 18px' not in html and 'border-radius:14px' not in html
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    theme: true,
+    structure: true,
+    restrained: true,
+  });
+});
+
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
 import threading
