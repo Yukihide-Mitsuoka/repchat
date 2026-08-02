@@ -94,8 +94,8 @@ html=m.HTML
 print(json.dumps({
  "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
- "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=()=>pendingMode==="dashboard"?runDashboard():runQuery()']),
- "dashboard":all(x in html for x in ["Vertex AI 約¥1.2（SQL生成6回）","BigQuery 最大240 GiB","最大12クエリ","合計最大約¥230"]),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():runQuery()']),
+ "dashboard":all(x in html for x in ["今回の相談 約¥0.2","BigQuery ¥0（仕様確定前は実行しません）","count*40","Math.ceil(count*38.2)"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -829,5 +829,46 @@ print(json.dumps({
     bad_error:
       'rejected: foreign table ref `bigquery-public-data.ga4_obfuscated_sample_ecommerce.transactions`',
     period_error: '生成SQLの対象期間が問い合わせの2024年1月と一致しません。',
+  });
+});
+
+test('planning calls Vertex only and a confirmed plan narrows dashboard panels', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
+raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[{"id":panel_id,**m.planner.PANEL_CATALOG[panel_id],"reason":"理由"} for panel_id in ["R4","R9","R16","R17"]],"revision":"plan-test"}
+calls=[]
+m.planner.propose=lambda *_args:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
+events=[];e.plan(raw["objective"],raw["answers"],events.append)
+spec=json.loads((m.HERE/"report.json").read_text());period,sections=m.dashboard_sections(spec,raw["objective"],["R4","R9","R16","R17"])
+confirmed=m.planner.confirm_plan(raw)
+print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"ids":[section["id"] for section in sections],"period":period["label"],"confirmed":confirmed["status"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: ['vertex'],
+    events: ['plan_stage', 'plan'],
+    ids: ['R4', 'R9', 'R16', 'R17'],
+    period: '2021年1月',
+    confirmed: 'confirmed',
+  });
+});
+
+test('dashboard UI separates consultation from confirmed paid build', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "copy":all(value in html for value in ["AIと分析計画を相談","仕様を確定するまでBigQueryは実行しません","この仕様を確定してbuild"]),
+ "review":all(value in html for value in ['id="plan-review"','id="plan-clarifications"','id="plan-panels"','id="plan-revision"']),
+ "flow":all(value in html for value in ['/api/plan','answers:currentAnswers','analysis_plan:pendingPlan','selected.size<4']),
+ "memory":all(value in html for value in ["organization_context_revision","ローカルデモfixture・本番メモリー未接続"]),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    copy: true,
+    review: true,
+    flow: true,
+    memory: true,
   });
 });
