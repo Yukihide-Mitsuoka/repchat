@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.12.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.2...v1.12.3) (2026-08-02)
+
+
+### Bug Fixes
+
+* **demo:** prepare live dependencies before startup ([#218](https://github.com/Yukihide-Mitsuoka/repchat/issues/218)) ([eb003c0](https://github.com/Yukihide-Mitsuoka/repchat/commit/eb003c0b83d86c365e65fa966b3a5db5391b07e8))
+* **demo:** render bar chart labels safely ([#229](https://github.com/Yukihide-Mitsuoka/repchat/issues/229)) ([dd1d4e6](https://github.com/Yukihide-Mitsuoka/repchat/commit/dd1d4e65192d74f775a385ce27ad919bcfe5f4e6))
+* **demo:** restore live page interactions ([#227](https://github.com/Yukihide-Mitsuoka/repchat/issues/227)) ([e50d1eb](https://github.com/Yukihide-Mitsuoka/repchat/commit/e50d1eb69926eaab165d0fbff19ed4be38b19d45))
+* **demo:** Sankey描画と月指定を修正する ([#231](https://github.com/Yukihide-Mitsuoka/repchat/issues/231)) ([311bf06](https://github.com/Yukihide-Mitsuoka/repchat/commit/311bf066373b4c2a447eda279f8167d5154dafd6)), closes [#230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230)
+* live demoのvenv判定と質問ごとの費用確認を修正 ([#225](https://github.com/Yukihide-Mitsuoka/repchat/issues/225)) ([b8c0d96](https://github.com/Yukihide-Mitsuoka/repchat/commit/b8c0d965818759981bd15c20fd264fe8ac974d80)), closes [#224](https://github.com/Yukihide-Mitsuoka/repchat/issues/224)
+
 ## [1.12.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.1...v1.12.2) (2026-08-01)
 
 
