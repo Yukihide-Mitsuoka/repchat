@@ -37,9 +37,12 @@ Issue #160の結果を`proceed` / `revise` / `reject`に分類するまで製品
 条件付きの次タスク順と設計判断索引は
 [development-handoff](development-handoff.md)を参照する。
 
-**現在のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230)。ライブ画面の
-Sankey描画欠落、問い合わせ月を無視する固定期間、PR #197で離れたEvidence基調の視覚言語を修正中。
-固定応答の回帰テストを先行追加し、費用を伴うVertex AI・BigQueryは再実行していない。
+**直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /
+[PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)（2026-08-02 merge済み）で、ライブ画面の
+Sankey描画欠落、問い合わせ月を無視する固定期間、PR #197で離れたEvidence基調の視覚言語を修正した。
+[Issue #232](https://github.com/Yukihide-Mitsuoka/repchat/issues/232)では、同じページ種別を各段階で同色にし、
+Sankey linkを遷移元色から遷移先色へのgradientにした。固定応答のブラウザ確認ではカテゴリ色6色、
+gradient 7本、console error/warning 0。費用を伴うVertex AI・BigQueryは再実行していない。
 
 **直前の実装修正**: [Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) /
 [PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)（2026-08-02 merge済み）。`demo-live`起動時に

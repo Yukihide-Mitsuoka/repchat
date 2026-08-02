@@ -232,9 +232,7 @@ print(m.visualization_for_result(
   const elements = descendants(chart.children[0]);
   const gradients = elements.filter((element) => element.tag === 'linearGradient');
   const nodeColors = new Set(
-    elements
-      .filter((element) => element.tag === 'rect')
-      .map((element) => element.attributes.fill),
+    elements.filter((element) => element.tag === 'rect').map((element) => element.attributes.fill),
   );
   const linkStrokes = elements
     .filter((element) => element.tag === 'path')
