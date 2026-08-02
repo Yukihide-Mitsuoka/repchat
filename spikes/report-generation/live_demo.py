@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve a localhost-only live Japanese prompt → SQL → graph demonstration."""
+"""Serve a localhost-only Japanese prompt → graph or dashboard demonstration."""
 
 from __future__ import annotations
 import argparse
@@ -23,6 +23,15 @@ HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_RESULT_ROWS = 4096, 100
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
+DASHBOARD_SECTION_IDS = report.SHOWCASE_IDS
+DASHBOARD_PURPOSES = {
+    "R4": "購入成果の規模を最初に確認する",
+    "R11": "単発訪問だけでなく、ユーザーが定着しているかを確認する",
+    "R12": "訪問中に十分な関与が生まれているかを確認する",
+    "R9": "閲覧から購入までのどこで減少しているかを特定する",
+    "R16": "日々の変動と7日間の基調を分けて確認する",
+    "R17": "主要なページ遷移から回遊上の特徴を確認する",
+}
 
 
 def running_in_demo_venv() -> bool:
@@ -96,6 +105,26 @@ def period_for_question(question: str) -> dict[str, str]:
     }
 
 
+def dashboard_sections(spec: dict, question: str) -> tuple[dict[str, str], list[dict]]:
+    """Expand one concrete dashboard request into the validated showcase analyses."""
+    report.select_sections(spec, question)
+    if "ダッシュボード" not in question:
+        raise LiveDemoError("依頼に「ダッシュボード」を含めてください。")
+    period = period_for_question(question)
+    sections = report.select_sections(spec, None, showcase=True)
+    if tuple(section["id"] for section in sections) != DASHBOARD_SECTION_IDS:
+        raise LiveDemoError("ダッシュボード分析定義の構成が一致しません。")
+    month_pattern = re.compile(r"\d{4}年\s*\d{1,2}月")
+    for section in sections:
+        section["text"] = month_pattern.sub(period["label"], section["text"], count=1)
+        section["purpose"] = DASHBOARD_PURPOSES[section["id"]]
+        # Registered reference SQL is fixed to January 2021. Other available
+        # sample months can execute, but cannot be labelled reference-verified.
+        if period["from"] != "20210101" or period["to"] != "20210131":
+            section["verification"] = "execution"
+    return period, sections
+
+
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
     """Fail closed when generated SQL does not use the requested date shard."""
     ranges = re.findall(
@@ -142,6 +171,53 @@ def visualization_for_result(rows: list[tuple], columns: list[str]) -> str:
     ):
         return "bar"
     return "table"
+
+
+def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
+    """Validate a planned panel's result shape before choosing its renderer."""
+    component = section["component"]
+    numeric = (int, float, Decimal)
+    valid = True
+    if component == "kpi_pair":
+        valid = (
+            len(rows) == 1
+            and len(columns) == 2
+            and len(rows[0]) == 2
+            and all(isinstance(value, numeric) for value in rows[0])
+        )
+    elif component == "funnel":
+        valid = (
+            len(rows) == 1
+            and len(columns) == 3
+            and len(rows[0]) == 3
+            and all(
+                isinstance(value, numeric) and math.isfinite(float(value)) and value >= 0
+                for value in rows[0]
+            )
+        )
+    elif component == "trend":
+        valid = (
+            bool(rows)
+            and len(columns) == 3
+            and all(
+                len(row) == 3
+                and isinstance(row[0], (date, datetime))
+                and all(
+                    isinstance(value, numeric) and math.isfinite(float(value))
+                    for value in row[1:]
+                )
+                for row in rows
+            )
+        )
+    elif component == "sankey":
+        valid = visualization_for_result(rows, columns) == "sankey"
+    if not valid:
+        raise LiveDemoError(
+            f"{section['title']}の結果形状がダッシュボード仕様と一致しないため描画しません。"
+        )
+    if component in {"kpi_pair", "funnel", "trend", "sankey"}:
+        return component
+    return visualization_for_result(rows, columns)
 class LiveQueryEngine:
     def __init__(self, project: str, model: str = report.DEFAULT_MODEL):
         from google import genai
@@ -152,64 +228,163 @@ class LiveQueryEngine:
         self.client = genai.Client(vertexai=True, project=project, location="global")
         self.bq = bigquery.Client(project=project)
         self.lock = threading.Lock()
+
     def query(self, question: str, emit: Callable[[dict], None]) -> None:
         if not self.lock.acquire(blocking=False):
             raise LiveDemoError("別の問い合わせを処理中です。完了後に再送してください。")
         try:
             section = report.select_sections(self.spec, question)[0]
             period = period_for_question(question)
-            emit({"type": "stage", "stage": "generate", "message": "Vertex AIでSQLを生成中です。"})
-            answer, usage = report.generate(
-                self.client, self.model, section, period, self.rules
-            )
-            cost = (
-                usage["input_tokens"] * report.PRICING[self.model][0]
-                + usage["output_tokens"] * report.PRICING[self.model][1]
-            ) / 1e6 * report.USD_JPY
-            sql, undefined = (answer.get("sql") or "").strip(), answer.get("undefined_terms") or []
-            if not sql and undefined:
-                emit({"type": "refusal", "reason": answer.get("reason", ""),
-                      "undefined_terms": undefined, "cost_jpy": round(cost, 3)})
-                return
-            if not sql:
-                raise LiveDemoError("SQLが返りませんでした。指標定義または質問を確認してください。")
-            normalized, error = report.validate_sql(sql)
-            if error:
-                raise LiveDemoError(f"生成SQLを安全検査で拒否しました: {error}")
-            require_sql_period(normalized, period)
-            emit({"type": "sql", "sql": report.format_sql_for_display(normalized),
-                  "reason": answer.get("reason", "")})
-            emit({"type": "stage", "stage": "execute", "message": "BigQueryで読み取り実行中です。"})
-            result, error = report.exec_bq(self.bq, normalized,
-                                           max_results=MAX_RESULT_ROWS + 1)
-            if error:
-                raise LiveDemoError(f"BigQuery実行に失敗しました: {error}")
-            rows, columns = result
-            if len(rows) > MAX_RESULT_ROWS:
-                raise LiveDemoError(
-                    f"結果が{MAX_RESULT_ROWS}行を超えたため描画しません。集計条件を追加してください。"
-                )
-            verification, label = "unverified", "実行済み・既知値未照合"
-            if section["verification"] == "reference":
-                wanted, error = report.exec_bq(self.bq, section["gold_sql"])
-                if error:
-                    raise LiveDemoError("登録済み参照SQLの実行に失敗しました。")
-                matches, detail = report.compare(section["compare"], rows, wanted[0])
-                verification = "matched" if matches else "mismatch"
-                label = "実行・参照値照合済み" if matches else f"参照値と不一致: {detail}"
+            self._run_section(section, period, emit)
+        finally:
+            self.lock.release()
+
+    def dashboard(self, question: str, emit: Callable[[dict], None]) -> None:
+        """Build all dashboard panels from one concrete Japanese request."""
+        if not self.lock.acquire(blocking=False):
+            raise LiveDemoError("別の問い合わせを処理中です。完了後に再送してください。")
+        try:
+            period, sections = dashboard_sections(self.spec, question)
             emit(
                 {
-                    "type": "result",
-                    "columns": columns,
-                    "rows": [[json_value(value) for value in row] for row in rows],
-                    "visualization": visualization_for_result(rows, columns),
-                    "verification": verification,
-                    "verification_label": label,
-                    "cost_jpy": round(cost, 3),
+                    "type": "dashboard_plan",
+                    "period": period["label"],
+                    "panels": [
+                        {
+                            "id": section["id"],
+                            "title": section["title"],
+                            "purpose": section["purpose"],
+                        }
+                        for section in sections
+                    ],
+                }
+            )
+            total_cost = 0.0
+            for index, section in enumerate(sections, start=1):
+                context = {
+                    "panel_id": section["id"],
+                    "panel_index": index,
+                    "panel_count": len(sections),
+                    "title": section["title"],
+                    "purpose": section["purpose"],
+                }
+                total_cost += self._run_section(section, period, emit, context)
+            emit(
+                {
+                    "type": "dashboard_complete",
+                    "panel_count": len(sections),
+                    "cost_jpy": round(total_cost, 3),
                 }
             )
         finally:
             self.lock.release()
+
+    def _run_section(
+        self,
+        section: dict,
+        period: dict[str, str],
+        emit: Callable[[dict], None],
+        context: dict | None = None,
+    ) -> float:
+        """Generate, validate, execute, and optionally verify one panel."""
+        extra = context or {}
+
+        def send(event: dict) -> None:
+            emit({**event, **extra})
+
+        send(
+            {
+                "type": "stage",
+                "stage": "generate",
+                "message": "Vertex AIでSQLを生成中です。",
+            }
+        )
+        answer, usage = report.generate(
+            self.client, self.model, section, period, self.rules
+        )
+        cost = (
+            usage["input_tokens"] * report.PRICING[self.model][0]
+            + usage["output_tokens"] * report.PRICING[self.model][1]
+        ) / 1e6 * report.USD_JPY
+        sql = (answer.get("sql") or "").strip()
+        undefined = answer.get("undefined_terms") or []
+        if not sql and undefined:
+            send(
+                {
+                    "type": "refusal",
+                    "reason": answer.get("reason", ""),
+                    "undefined_terms": undefined,
+                    "cost_jpy": round(cost, 3),
+                }
+            )
+            return cost
+        if not sql:
+            raise LiveDemoError("SQLが返りませんでした。指標定義または質問を確認してください。")
+        normalized, error = report.validate_sql(sql)
+        if error:
+            raise LiveDemoError(f"生成SQLを安全検査で拒否しました: {error}")
+        assert normalized is not None
+        require_sql_period(normalized, period)
+        send(
+            {
+                "type": "sql",
+                "sql": report.format_sql_for_display(normalized),
+                "reason": answer.get("reason", ""),
+            }
+        )
+        send(
+            {
+                "type": "stage",
+                "stage": "execute",
+                "message": "BigQueryで読み取り実行中です。",
+            }
+        )
+        result, error = report.exec_bq(
+            self.bq, normalized, max_results=MAX_RESULT_ROWS + 1
+        )
+        if error:
+            raise LiveDemoError(f"BigQuery実行に失敗しました: {error}")
+        assert result is not None
+        rows, columns = result
+        if len(rows) > MAX_RESULT_ROWS:
+            raise LiveDemoError(
+                f"結果が{MAX_RESULT_ROWS}行を超えたため描画しません。集計条件を追加してください。"
+            )
+        verification, label = "unverified", "実行済み・既知値未照合"
+        if section["verification"] == "reference":
+            wanted, error = report.exec_bq(self.bq, section["gold_sql"])
+            if error:
+                raise LiveDemoError("登録済み参照SQLの実行に失敗しました。")
+            assert wanted is not None
+            matches, detail = report.compare(section["compare"], rows, wanted[0])
+            verification = "matched" if matches else "mismatch"
+            label = (
+                "実行・参照値照合済み"
+                if matches
+                else f"参照値と不一致: {detail}"
+            )
+        visualization = (
+            dashboard_visualization(section, rows, columns)
+            if context
+            else visualization_for_result(rows, columns)
+        )
+        send(
+            {
+                "type": "result",
+                "columns": (
+                    section.get("shape", {}).get("columns", columns)
+                    if context
+                    else columns
+                ),
+                "source_columns": columns,
+                "rows": [[json_value(value) for value in row] for row in rows],
+                "visualization": visualization,
+                "verification": verification,
+                "verification_label": label,
+                "cost_jpy": round(cost, 3),
+            }
+        )
+        return cost
 class LiveDemoHandler(BaseHTTPRequestHandler):
     engine: LiveQueryEngine
     def do_GET(self) -> None:
@@ -218,7 +393,7 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         else:
             self._send(204 if self.path == "/favicon.ico" else 404, b"", "text/plain")
     def do_POST(self) -> None:
-        if self.path != "/api/query":
+        if self.path not in {"/api/query", "/api/dashboard"}:
             self._send_json(404, {"error": "not found"})
             return
         content_type = self.headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -241,8 +416,11 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             question = body.get("question") if isinstance(body, dict) else None
             if not isinstance(question, str):
                 raise ValueError("question must be a string")
-            report.select_sections(self.engine.spec, question)
-            period_for_question(question)
+            if self.path == "/api/dashboard":
+                dashboard_sections(self.engine.spec, question)
+            else:
+                report.select_sections(self.engine.spec, question)
+                period_for_question(question)
         except (ValueError, json.JSONDecodeError, LiveDemoError) as error:
             self._send_json(400, {"error": str(error)})
             return
@@ -253,7 +431,10 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             self.wfile.write((json.dumps(event, ensure_ascii=False) + "\n").encode())
             self.wfile.flush()
         try:
-            self.engine.query(question, emit)
+            if self.path == "/api/dashboard":
+                self.engine.dashboard(question, emit)
+            else:
+                self.engine.query(question, emit)
         except LiveDemoError as error:
             emit({"type": "error", "message": str(error)})
         except Exception as error:  # noqa: BLE001 — details stay server-side
