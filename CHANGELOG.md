@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.13.0...v1.13.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* **release:** attach generated SBOM to GitHub Release ([#249](https://github.com/Yukihide-Mitsuoka/repchat/issues/249)) ([eac6134](https://github.com/Yukihide-Mitsuoka/repchat/commit/eac6134ba32274843de80e2a5abaa5a50c910e59)), closes [#248](https://github.com/Yukihide-Mitsuoka/repchat/issues/248)
+
 ## [1.13.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.12.2...v1.13.0) (2026-08-02)
 
 
