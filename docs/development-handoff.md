@@ -15,10 +15,10 @@ updated: 2026-08-02
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) — 主要顧客に該当する参加者へ[5分デモ](demo.md)を実施する |
-| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。依存準備はPR #218、venv判定と費用表示はPR #225、ページ全体を止めるJavaScript構文エラーはPR #227、棒グラフのDOM操作エラーはPR #229で修正済み。[Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) / [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)でSankey描画、入力月、Evidence基調UIを修正・merge済み。[Issue #232](https://github.com/Yukihide-Mitsuoka/repchat/issues/232)でSankeyをページ種別ごとの同色ノードと遷移元→遷移先のgradient linkへ改善した。公開サンプルは2020年11月〜2021年1月だけを許可し、範囲外は課金処理前に拒否する。費用を伴う修正後のVertex AI・BigQuery再実行は未確認 |
+| 作業 | [Issue #236](https://github.com/Yukihide-Mitsuoka/repchat/issues/236) — 1つの日本語依頼から複数パネルを生成するローカルダッシュボードデモ。[PR #239](https://github.com/Yukihide-Mitsuoka/repchat/pull/239)の生成・検証エンジンはmerge済みで、[PR #240](https://github.com/Yukihide-Mitsuoka/repchat/pull/240)の画面・文書は`main`基準でmerge待ちである |
+| デモ準備 | `make demo-live PROJECT=<project>`にダッシュボード生成／単一グラフ生成の切替を追加した。ダッシュボードは実測済み6分析を、成果KPI→ファネル・時系列→回遊の読順へ配置し、各カード内に生成理由・SQL・検証状態・集計データを置く。固定応答では6/6描画、横方向overflow 0、console error/warning 0、単一グラフへの切替を確認済み。結果形状不一致は描画前に拒否する。実Vertex AI・BigQuery再実行は未確認で、費用は発生していない。過去の起動・Sankey修正はPR #218/#225/#227/#229/#231/#233でmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | `make demo-live PROJECT=<project>`のローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
+| AIができること | #240 merge後にIssue #236を完了し、#160のデザインパートナー検証へ戻る。実データ再実行は費用を再提示してオーナー承認後だけ行う |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -38,7 +38,7 @@ updated: 2026-08-02
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | [demo](demo.md)、[positioning §5](positioning.md#5-未検証の仮説と検証方法) |
+| 現在 | `main`基準へ変更済みの#240を、CI成功後にmergeする。完了後、[#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻る | [demo](demo.md)、[report-generation spike](../spikes/report-generation/README.md) |
 | #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
 | #179と#188が完了 | [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179の設計成果、ADR-0013/0015 |
 | #180でanalysis specification revision契約を確定 | Issue #160が`proceed`なら、適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |

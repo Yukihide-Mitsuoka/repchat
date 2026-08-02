@@ -30,11 +30,13 @@ updated: 2026-08-02
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。
-主要顧客に該当する日本の小規模代理店またはソフトウェアベンダーを1社以上選定・日程調整し、
-5分デモで価値仮説と価格感を検証する。参加者の選定と日程調整はリポジトリオーナーが行う。
-Issue #160の結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。
-条件付きの次タスク順と設計判断索引は
+**現在の作業スレッド**: [Issue #236](https://github.com/Yukihide-Mitsuoka/repchat/issues/236)。
+1つの具体的な日本語依頼を実測済み6分析へ分解し、複数KPI・ファネル・2系列時系列・Sankeyを
+同一画面へ配置するローカルダッシュボードデモを追加する。固定応答によるブラウザ確認では6/6パネル、
+横方向overflow 0、console error/warning 0、単一グラフモードへの切替を確認した。実Vertex AI・BigQueryは
+再実行していない。完了後は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)へ戻り、
+主要顧客に該当する参加者で価値仮説を検証する。Issue #160の結果を`proceed` / `revise` / `reject`に
+分類するまで製品実装を開始しない。条件付きの次タスク順と設計判断索引は
 [development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /

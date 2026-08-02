@@ -22,7 +22,10 @@ test('live dry-run describes the paid localhost workflow', () => {
     encoding: 'utf8',
   });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /live mode: enter a Japanese prompt/);
+  assert.match(
+    result.stdout,
+    /live mode: enter a Japanese prompt, then stream a graph or dashboard/,
+  );
   assert.match(result.stdout, /call Vertex AI and BigQuery after each submitted prompt/);
   assert.match(result.stdout, /open http:\/\/127\.0\.0\.1:8765\//);
 });
@@ -91,7 +94,8 @@ html=m.HTML
 print(json.dumps({
  "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
- "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=runQuery']),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','$("confirm-cost").onclick=()=>pendingMode==="dashboard"?runDashboard():runQuery()']),
+ "dashboard":all(x in html for x in ["Vertex AI 約¥1.2（SQL生成6回）","BigQuery 最大240 GiB","最大12クエリ","合計最大約¥230"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -101,6 +105,7 @@ print(json.dumps({
     copy: true,
     dialog: true,
     actions: true,
+    dashboard: true,
     portable: true,
     progress: true,
   });
@@ -243,6 +248,81 @@ print(m.visualization_for_result(
     linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
     'each transition should reference its own source-to-target gradient',
   );
+});
+
+test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function node('),
+    script.indexOf('function finish('),
+  );
+  class ElementStub {
+    attributes: Record<string, string> = {};
+    children: ElementStub[] = [];
+    style: Record<string, string> = {};
+    textContent = '';
+    className = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
+    append(...children: ElementStub[]): void {
+      this.children.push(...children);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+  }
+  const chart = new ElementStub('div');
+  const context = {
+    document: {
+      createElementNS: (_namespace: string, tag: string) => new ElementStub(tag),
+      createElement: (tag: string) => new ElementStub(tag),
+      createTextNode: (value: string) =>
+        Object.assign(new ElementStub('#text'), { textContent: value }),
+    },
+    $: () => chart,
+  };
+  const cases = [
+    {
+      visualization: 'kpi_pair',
+      columns: ['購入件数', '売上'],
+      rows: [[895, 57350]],
+      expectedTag: 'div',
+    },
+    {
+      visualization: 'funnel',
+      columns: ['閲覧', 'カート', '購入'],
+      rows: [[23105, 4537, 1115]],
+      expectedTag: 'div',
+    },
+    {
+      visualization: 'trend',
+      columns: ['日付', 'セッション', '7日移動平均'],
+      rows: [
+        ['2021-01-01', 100, 90],
+        ['2021-01-02', 120, 95],
+      ],
+      expectedTag: 'svg',
+    },
+  ];
+  for (const result of cases) {
+    assert.doesNotThrow(() =>
+      vm.runInNewContext(`${functions}\ngraph(result);`, { ...context, result }),
+    );
+    assert.equal(chart.children[0]?.tag, result.expectedTag);
+  }
+  const polylines = chart.children[0]?.children.filter((child) => child.tag === 'polyline') ?? [];
+  assert.equal(polylines.length, 2, 'trend should contain daily and moving-average series');
 });
 
 test('live query derives the requested month and rejects unavailable periods', () => {
