@@ -15,10 +15,10 @@ updated: 2026-08-02
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #236](https://github.com/Yukihide-Mitsuoka/repchat/issues/236) — 1つの日本語依頼から複数パネルを生成するローカルダッシュボードデモ。[PR #239](https://github.com/Yukihide-Mitsuoka/repchat/pull/239)の生成・検証エンジンはmerge済みで、[PR #240](https://github.com/Yukihide-Mitsuoka/repchat/pull/240)の画面・文書を`main`基準で最終確認中である |
+| 作業 | [Issue #236](https://github.com/Yukihide-Mitsuoka/repchat/issues/236) — 1つの日本語依頼から複数パネルを生成するローカルダッシュボードデモ。[PR #239](https://github.com/Yukihide-Mitsuoka/repchat/pull/239)の生成・検証エンジンはmerge済みで、[PR #240](https://github.com/Yukihide-Mitsuoka/repchat/pull/240)の画面・文書は`main`基準でmerge待ちである |
 | デモ準備 | `make demo-live PROJECT=<project>`にダッシュボード生成／単一グラフ生成の切替を追加した。ダッシュボードは実測済み6分析を、成果KPI→ファネル・時系列→回遊の読順へ配置し、各カード内に生成理由・SQL・検証状態・集計データを置く。固定応答では6/6描画、横方向overflow 0、console error/warning 0、単一グラフへの切替を確認済み。結果形状不一致は描画前に拒否する。実Vertex AI・BigQuery再実行は未確認で、費用は発生していない。過去の起動・Sankey修正はPR #218/#225/#227/#229/#231/#233でmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | #240の`main`基準の差分とCIを確認してReadyにする。実データ再実行は費用を再提示してオーナー承認後だけ行う |
+| AIができること | #240 merge後にIssue #236を完了し、#160のデザインパートナー検証へ戻る。実データ再実行は費用を再提示してオーナー承認後だけ行う |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
