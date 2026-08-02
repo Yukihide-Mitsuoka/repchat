@@ -117,6 +117,69 @@ test('live page JavaScript parses before the user can interact', () => {
   const syntax = spawnSync(process.execPath, ['--check'], { input: script, encoding: 'utf8' });
   assert.equal(syntax.status, 0, syntax.stderr);
 });
+test('live SQL uses restrained GitHub colors and safe DOM token highlighting', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const html = rendered.stdout;
+  for (const expected of [
+    '.sql{white-space:pre;overflow:auto;background:#f6f8fa;color:#24292f',
+    '.sql-keyword{color:#cf222e}',
+    '.sql-string,.sql-identifier{color:#0a3069}',
+    '.sql-number{color:#0550ae}',
+    '.sql-comment{color:#6e7781}',
+    '.sql-function{color:#8250df}',
+  ]) {
+    assert.ok(html.includes(expected), `missing SQL theme token: ${expected}`);
+  }
+  assert.ok(!html.includes('innerHTML'), 'SQL must not be inserted as HTML');
+
+  const script = html.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const renderSql = script.slice(
+    script.indexOf('function renderSql('),
+    script.indexOf('function selectResultTab('),
+  );
+  class ElementStub {
+    children: ElementStub[] = [];
+    className = '';
+    textContent = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+  }
+  const target = new ElementStub('pre');
+  const context = {
+    document: {
+      createElement: (tag: string) => new ElementStub(tag),
+      createTextNode: (value: string) =>
+        Object.assign(new ElementStub('#text'), { textContent: value }),
+    },
+    target,
+    sql: "-- test\nSELECT\n    COUNT(*) AS sessions,\n    '20210101' AS start_date,\n    42 AS sample\nFROM\n    `project.dataset.table`\nWHERE\n    label = '<script>'\n    AND label2 = \"double\"",
+  };
+  const tokens = vm.runInNewContext(
+    `${renderSql}\nrenderSql(target,sql); target.children.map(node=>({className:node.className,textContent:node.textContent}));`,
+    context,
+  );
+  const classes = new Set(tokens.map((token: { className: string }) => token.className));
+  assert.deepEqual([...classes].sort(), [
+    '',
+    'sql-comment',
+    'sql-function',
+    'sql-identifier',
+    'sql-keyword',
+    'sql-number',
+    'sql-string',
+  ]);
+  assert.equal(
+    tokens.map((token: { textContent: string }) => token.textContent).join(''),
+    context.sql,
+    'highlighting must preserve SQL text, whitespace, and HTML-like strings',
+  );
+});
 test('single-graph results expose and reset an accessible query-data tab', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
@@ -627,7 +690,7 @@ limits=[];m.report.exec_bq=lambda *_args,**kw:(limits.append(kw.get("max_results
 events=[];engine().query("2021年1月のユーザー数を出して",events.append)
 m.report.generate=lambda *_:({"sql":"","reason":"未定義","undefined_terms":["直帰率"]},{"input_tokens":1,"output_tokens":1})
 refusal=[];engine().query("2021年1月の直帰率を出して",refusal.append)
-print(json.dumps({"shapes":[m.visualization_for_result([(1,)],["x"]),m.visualization_for_result([(date(2021,1,1),1)],["d","v"]),m.visualization_for_result([("a",Decimal("1"))],["k","v"])],"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"safe":"innerHTML" not in m.HTML and "textContent=e.sql" in m.HTML}))
+print(json.dumps({"shapes":[m.visualization_for_result([(1,)],["x"]),m.visualization_for_result([(date(2021,1,1),1)],["d","v"]),m.visualization_for_result([("a",Decimal("1"))],["k","v"])],"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"safe":"innerHTML" not in m.HTML and "renderSql($(\\"sql\\"),e.sql)" in m.HTML}))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {

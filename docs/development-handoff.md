@@ -15,10 +15,10 @@ updated: 2026-08-02
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #253](https://github.com/Yukihide-Mitsuoka/repchat/issues/253) — ダッシュボードデモ確認後の引き継ぎを更新する。#236は実装・オーナー確認済みでクローズ、v1.13.0のSBOM添付はPR #249で自動化済み |
+| 作業 | [Issue #255](https://github.com/Yukihide-Mitsuoka/repchat/issues/255) — ライブデモの単一グラフとダッシュボードに、GitHub Light相当の安全なSQLシンタックスハイライトを追加する |
 | デモ準備 | `make demo-live PROJECT=<project>`は、ダッシュボード生成／単一グラフ生成を切り替える。ダッシュボードは6パネル、単一グラフは「グラフ」と「取得データ」を切り替えられる。起動表示と固定応答を確認済み。質問送信は費用を再提示して承認後だけ行う |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | #253の文書更新、#160の検証準備、オーナーが取得した証拠の整理を行う。実データ再実行は費用を再提示してオーナー承認後だけ行う |
+| AIができること | オーナーが2026-08-02に優先したデモ／設計検証として、#255、組織コンテキストのメモリー要件、#188の非GA4公開nested dataset 1種類、#180と#181の明示的な未検証プロトタイプを小さいPRに分けて進める。実データ再実行は費用を再提示してオーナー承認後だけ行う |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -52,11 +52,11 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-02）
 
-1. **オーナー:** 初期主要顧客の定義に合う日本の小規模代理店またはソフトウェアベンダーから参加者を選び、5分デモの日程を決める。デモは既存のダッシュボードを使い、必要なら実行前に費用を提示する。
-2. **#160の後、`proceed`の場合:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立して進める。前者は生成品質と拒否境界、後者は閲覧面とSQL来歴面の分離を扱う。
-3. **#188と#179の成果後:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)で、目的→KPI・比較軸・期間・グラフ候補の提案→ユーザー確認→SQL生成→結果形状検証→非同期build・公開の契約を決める。
-4. **#180のrevision契約後:** [#220 適応型分析メモリー](https://github.com/Yukihide-Mitsuoka/repchat/issues/220)を、候補・scope・承認・期限・取消の手動Phase 1として実装する。
-5. **統制された生成・公開が安定後:** [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)で、グラフとSQL来歴に基づく会議報告を追加する。
+1. **現在:** [#255 SQLシンタックスハイライト](https://github.com/Yukihide-Mitsuoka/repchat/issues/255)を完了する。
+2. **次:** 適応型分析メモリー要件で、承認済みの組織コンテキストを分析レシピと個人設定から明確に分離し、#180と#181が同じrevisionを参照する契約を明文化する。
+3. **デモ／設計検証:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)として、非GA4のBigQuery公開nested/repeated dataset 1種類をライブデモへ追加する。これはIssueの2種類評価を完了した扱いにしない。
+4. **後続プロトタイプ:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、[#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の順に、ローカルデモで未検証プロトタイプを作る。
+5. **並行するオーナー作業:** 初期主要顧客の定義に合う日本の小規模代理店またはソフトウェアベンダーから参加者を選び、#160の5分デモ日程を決める。#160が`proceed`になるまで、上記プロトタイプを製品実装または検証済み能力とは表明しない。
 
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
