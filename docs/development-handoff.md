@@ -16,7 +16,7 @@ updated: 2026-08-02
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) — 主要顧客に該当する参加者へ[5分デモ](demo.md)を実施する |
-| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。依存準備はPR #218、venv判定と費用表示はPR #225、ページ全体を止めるJavaScript構文エラーはPR #227、棒グラフのDOM操作エラーは[PR #229](https://github.com/Yukihide-Mitsuoka/repchat/pull/229)で修正・merge済み。[Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230)では、回遊3列結果を表扱いしていた欠陥、問い合わせ月を2021年1月へ固定していた欠陥、Evidence基調を継承していないUIを修正中。公開サンプルは2020年11月〜2021年1月だけを許可し、範囲外は課金処理前に拒否する。費用を伴う修正後のVertex AI・BigQuery再実行は未確認 |
+| デモ準備 | [PR #197](https://github.com/Yukihide-Mitsuoka/repchat/pull/197)は2026-07-30にmerge済み。`make demo-live PROJECT=<project>`で参加者が日本語を入力し、生成SQLとBigQuery結果のグラフを同じ画面で確認できる。依存準備はPR #218、venv判定と費用表示はPR #225、ページ全体を止めるJavaScript構文エラーはPR #227、棒グラフのDOM操作エラーはPR #229で修正済み。[Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) / [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)でSankey描画、入力月、Evidence基調UIを修正・merge済み。[Issue #232](https://github.com/Yukihide-Mitsuoka/repchat/issues/232)でSankeyをページ種別ごとの同色ノードと遷移元→遷移先のgradient linkへ改善した。公開サンプルは2020年11月〜2021年1月だけを許可し、範囲外は課金処理前に拒否する。費用を伴う修正後のVertex AI・BigQuery再実行は未確認 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | `make demo-live PROJECT=<project>`のローカル表示確認、説明手順の準備、実施後の匿名化された結果整理 |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
