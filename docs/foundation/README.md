@@ -37,6 +37,7 @@ rule in ADR-0005.
 | [glossary.md](glossary.md) | Define reusable foundation terminology without occupying the project glossary path |
 | [requirements.md](requirements.md) | Choose the project-owned requirements location and naming |
 | [guides/](guides/) | Define project documentation structure, onboarding, and update triggers without occupying project-owned paths |
+| [inheritance-fleet.json](inheritance-fleet.json) | Declare the active direct-parent fleet and retired repositories for read-only fleet audit |
 | [templates/](templates/) | Copyable skeletons for project-owned documents |
 | [troubleshooting/](troubleshooting/) | Diagnose reusable foundation tooling without occupying project-owned troubleshooting paths |
 
