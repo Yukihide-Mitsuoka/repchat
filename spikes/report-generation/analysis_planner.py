@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 
@@ -53,6 +54,8 @@ PANEL_CATALOG = {
     },
 }
 
+CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
+
 PLAN_SCHEMA = {
     "type": "object",
     "properties": {
@@ -97,6 +100,21 @@ PLAN_SCHEMA = {
 
 class PlannerError(ValueError):
     """A planner contract violation safe to show in the local UI."""
+
+
+def _response_schema(answers: dict[str, str]) -> dict:
+    """Constrain clarification output to fields that still need an answer."""
+    unanswered = [field for field in CLARIFICATION_FIELDS if field not in answers]
+    schema = copy.deepcopy(PLAN_SCHEMA)
+    clarifications = schema["properties"]["clarifications"]
+    clarifications["maxItems"] = len(unanswered)
+    if len(unanswered) == len(CLARIFICATION_FIELDS):
+        clarifications["minItems"] = 1
+    if unanswered:
+        field_schema = clarifications["items"]["properties"]["field"]
+        field_schema["format"] = "enum"
+        field_schema["enum"] = unanswered
+    return schema
 
 
 def planning_request(
@@ -156,11 +174,14 @@ def normalize_plan(
     if not 1 <= len(hypotheses) <= 3:
         raise PlannerError("分析計画の仮説は1〜3件にしてください。")
     clarifications = []
-    allowed_fields = {"audience", "comparison", "business_goal"}
+    allowed_fields = set(CLARIFICATION_FIELDS)
     for item in raw.get("clarifications", []):
         field = item.get("field") if isinstance(item, dict) else None
-        if field not in allowed_fields or field in answers:
-            raise PlannerError("確認事項のfieldが許可範囲外または回答済みです。")
+        diagnostic = json.dumps(field, ensure_ascii=False)
+        if field not in allowed_fields:
+            raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
+        if field in answers:
+            raise PlannerError(f"確認事項のfieldは回答済みです: {diagnostic}")
         clarifications.append(
             {
                 "field": field,
@@ -214,7 +235,7 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
         config=types.GenerateContentConfig(
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
             response_mime_type="application/json",
-            response_schema=PLAN_SCHEMA,
+            response_schema=_response_schema(answers),
             temperature=0,
         ),
     )

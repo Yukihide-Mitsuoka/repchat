@@ -30,10 +30,12 @@ updated: 2026-08-08
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273)。
-2026-08-08の実Vertex AI相談で、plannerが許可外の確認fieldを返し、後段検証がfail closedした。
-BigQueryは未実行。response schemaと後段の許可集合を一致させる固定応答の回帰修正後、最新mainから
-デモを再起動する。費用を伴う再確認は、Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
+**現在の作業スレッド**: [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) /
+[PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275)。2026-08-08の実Vertex AI相談で、
+plannerが許可外の確認fieldを返し、後段検証がfail closedした。BigQueryは未実行。PR #275は
+response schemaを未回答の許可fieldへ制約し、固定応答で初回・一部回答後・全回答後と実field付き
+fail-closedを検証し、CIは全check成功した。merge後に最新mainからデモを再起動する。費用を伴う再確認は、
+Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
 公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・

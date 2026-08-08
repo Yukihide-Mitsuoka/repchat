@@ -82,3 +82,84 @@ print(json.dumps({"context":p.ORGANIZATION_CONTEXT["revision"] in request,"metri
     questions: true,
   });
 });
+
+test('planner constrains each response schema to unanswered clarification fields', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json,sys,types
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+base={
+ "objective_summary":"購入成果の阻害箇所を特定して優先施策を決める",
+ "audience":"月次マーケティング会議",
+ "comparison":"月内の日次推移とファネル段階",
+ "hypotheses":["商品閲覧からカート追加への減少が大きい"],
+ "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R9","R16","R17"]],
+}
+responses=[
+ {**base,"clarifications":[{"field":"channel","question":"流入は","recommended_answer":"organic"}]},
+ {**base,"clarifications":[{"field":"audience","question":"主な読者は","recommended_answer":"責任者"}]},
+ {**base,"clarifications":[]},
+]
+schemas=[];calls=0
+class Models:
+ def generate_content(self,**kwargs):
+  global calls
+  response=responses[calls];calls+=1
+  clarifications=kwargs["config"].response_schema["properties"]["clarifications"]
+  schemas.append({
+   "enum":clarifications["items"]["properties"]["field"].get("enum"),
+   "min_items":clarifications.get("minItems"),
+   "max_items":clarifications.get("maxItems"),
+  })
+  return types.SimpleNamespace(
+   text=json.dumps(response,ensure_ascii=False),
+   usage_metadata=types.SimpleNamespace(prompt_token_count=1,candidates_token_count=1),
+  )
+client=types.SimpleNamespace(models=Models());errors=[]
+answer_sets=[
+ {},
+ {"audience":"月次マーケティング会議"},
+ {"audience":"月次マーケティング会議","comparison":"前月","business_goal":"購入成果改善"},
+]
+for answers in answer_sets:
+ try:p.propose(client,"test-model","目的",period,"指標定義",answers)
+ except p.PlannerError as error:errors.append(str(error))
+print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: 3,
+    schemas: [
+      {
+        enum: ['audience', 'comparison', 'business_goal'],
+        min_items: 1,
+        max_items: 3,
+      },
+      {
+        enum: ['comparison', 'business_goal'],
+        min_items: null,
+        max_items: 2,
+      },
+      {
+        enum: null,
+        min_items: null,
+        max_items: 0,
+      },
+    ],
+    errors: [
+      '確認事項のfieldが許可範囲外です: "channel"',
+      '確認事項のfieldは回答済みです: "audience"',
+    ],
+  });
+});
