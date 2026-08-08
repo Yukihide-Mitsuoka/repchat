@@ -54,10 +54,9 @@ positioningとroadmapを再評価します。
 
 1. **現在:** [#255 SQLシンタックスハイライト](https://github.com/Yukihide-Mitsuoka/repchat/issues/255)を完了する。
 2. **次:** 適応型分析メモリー要件で、承認済みの組織コンテキストを分析レシピと個人設定から明確に分離し、#180と#181が同じrevisionを参照する契約を明文化する。
-3. **デモ／設計検証:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)として、非GA4のBigQuery公開nested/repeated dataset 1種類をライブデモへ追加する。これはIssueの2種類評価を完了した扱いにしない。
-4. **後続プロトタイプ:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、[#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の順に、ローカルデモで未検証プロトタイプを作る。
+3. **レビュー待ち:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の最初の縦切りとして、非GA4のBitcoin公開nested/repeated datasetをライブデモへ追加した。基準SQLのdry runは約2.91GiB。実値照合・独立レビュー・2種類評価は未完了なのでIssueは閉じない。
+4. **次:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)のローカル未検証プロトタイプを作る。その後、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)のrevisionを引き継いで[#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)へ進む。
 5. **並行するオーナー作業:** 初期主要顧客の定義に合う日本の小規模代理店またはソフトウェアベンダーから参加者を選び、#160の5分デモ日程を決める。#160が`proceed`になるまで、上記プロトタイプを製品実装または検証済み能力とは表明しない。
-
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
 ## 設計判断の索引

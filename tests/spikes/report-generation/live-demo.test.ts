@@ -736,3 +736,98 @@ finally:s.shutdown();s.server_close();t.join()
   assert.equal(bind.status, 2);
   assert.match(bind.stderr, /host must remain localhost-only/);
 });
+
+test('non-GA4 selector exposes the bounded Bitcoin nested-schema demonstration', () => {
+  const result = python(`
+html=m.HTML
+profile=m.bitcoin
+period=profile.period_for_question(profile.EXAMPLE_QUESTION)
+errors=[]
+for question in ["2023年12月の受取アドレス別の取引数", "2024年1月の手数料を出して"]:
+ try:
+  profile.period_for_question(question)
+  profile.section(question)
+ except ValueError as error:
+  errors.append(str(error))
+print(json.dumps({
+ "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"','Bitcoin受取先の複雑度']),
+ "cost":all(value in html for value in ["BigQuery dry run 約2.91 GiB","上限20 GiB","参照値照合なし","通常約¥4・最大約¥20"]),
+ "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
+ "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
+ "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
+ "period":period,
+ "errors":errors,
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    selector: true,
+    cost: true,
+    schema: true,
+    rules: true,
+    reference: true,
+    period: {
+      from: '2024-01-01',
+      to: '2024-01-31',
+      partition: '2024-01-01',
+      label: '2024年1月',
+    },
+    errors: [
+      'Bitcoinデモで検証する期間は2024年1月〜12月です。',
+      'Bitcoinデモは現在「取引ごとの受取アドレス数帯別の取引数」のみ対応します。',
+    ],
+  });
+});
+
+test('Bitcoin query uses its own schema, partition guard, and dataset boundary', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
+e.client=e.bq=object();e.lock=threading.Lock();generated=[];executed=[]
+sql="""WITH per_transaction AS (
+SELECT hash, COUNT(DISTINCT address) AS address_count
+FROM \`bigquery-public-data.crypto_bitcoin.transactions\`
+CROSS JOIN UNNEST(outputs) AS output
+CROSS JOIN UNNEST(output.addresses) AS address
+WHERE block_timestamp_month = DATE '2024-01-01'
+GROUP BY hash)
+SELECT CASE WHEN address_count = 1 THEN '1件' WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件' WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件' ELSE '10件以上' END AS address_count_band, COUNT(1) AS transaction_count
+FROM per_transaction GROUP BY address_count_band ORDER BY transaction_count DESC"""
+m.report.generate_request=lambda _client,_model,request,rules:(generated.append([request,rules]) or ({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+def execute(_bq,source,**kwargs):
+ executed.append([source,kwargs])
+ return (([("1件",10),("2〜3件",4)], ["address_count_band","transaction_count"]),None)
+m.report.exec_bq=execute;events=[]
+e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
+bad=sql.replace("bigquery-public-data.crypto_bitcoin", "bigquery-public-data.ga4_obfuscated_sample_ecommerce")
+_,bad_error=m.report.validate_sql(bad,m.bitcoin.DATASET)
+period_error=""
+try:m.bitcoin.require_sql_period(sql.replace("2024-01-01","2024-02-01"),m.bitcoin.period_for_question(m.bitcoin.EXAMPLE_QUESTION))
+except ValueError as error:period_error=str(error)
+print(json.dumps({
+ "types":[event["type"] for event in events],
+ "visualization":events[-1]["visualization"],
+ "columns":events[-1]["columns"],
+ "request_has_partition":"block_timestamp_month = DATE '2024-01-01'" in generated[0][0],
+ "rules_has_nested":"output.addresses" in generated[0][1],
+ "allowed":executed[0][1]["allowed_dataset"],
+ "max_results":executed[0][1]["max_results"],
+ "bad_error":bad_error,
+ "period_error":period_error,
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    types: ['stage', 'sql', 'stage', 'result'],
+    visualization: 'bar',
+    columns: ['address_count_band', 'transaction_count'],
+    request_has_partition: true,
+    rules_has_nested: true,
+    allowed: 'bigquery-public-data.crypto_bitcoin',
+    max_results: 101,
+    bad_error:
+      'rejected: foreign table ref `bigquery-public-data.ga4_obfuscated_sample_ecommerce.transactions`',
+    period_error: '生成SQLの対象期間が問い合わせの2024年1月と一致しません。',
+  });
+});
