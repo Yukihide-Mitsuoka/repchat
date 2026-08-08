@@ -351,7 +351,12 @@ print(m.visualization_for_result(
   class ElementStub {
     attributes: Record<string, string> = {};
     children: ElementStub[] = [];
+    className = '';
     textContent = '';
+    onblur?: () => void;
+    onfocus?: () => void;
+    onmouseenter?: () => void;
+    onmouseleave?: () => void;
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
@@ -417,9 +422,7 @@ print(m.visualization_for_result(
     ['入口', '2ページ目', '3ページ目'],
   );
   assert.ok(links.every((link) => link.attributes.tabindex === '0'));
-  assert.ok(
-    links.every((link) => link.attributes['aria-label']?.includes('セッション')),
-  );
+  assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
   assert.ok(
     links.every((link) => link.children.some((child) => child.tag === 'title')),
     'each transition should expose its value as an SVG tooltip',
@@ -436,6 +439,8 @@ test('navigation SQL requires deterministic tie-breaking before BigQuery executi
   const result = python(`
 queries=[
  "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY IF(path_sessions > 0, path_sessions, 0) DESC, p1 LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1 DESC, p2 DESC, p3 DESC LIMIT 12",
  "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1, p2, p3 LIMIT 12",
 ]
 out=[]
@@ -449,6 +454,8 @@ print(json.dumps(out,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
     '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
     'accepted',
   ]);
@@ -602,7 +609,8 @@ results={
 }
 def generate(_client,_model,section,period,_rules):
  generated.append([section["id"],period["label"]])
- sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' LIMIT 1 /* {section['id']} */"
+ order="ORDER BY value DESC, value, value, value LIMIT 12" if section["id"]=="R17" else "LIMIT 1"
+ sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' {order} /* {section['id']} */"
  return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 def execute(_bq,sql,**_kwargs):
  section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)
