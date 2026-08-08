@@ -21,7 +21,7 @@ EXAMPLE_QUESTION = (
 )
 REFERENCE_SQL = f"""WITH per_transaction AS (
     SELECT
-        t.hash,
+        t.`hash`,
         COUNT(DISTINCT address) AS address_count
     FROM
         `{TABLE}` AS t
@@ -30,7 +30,7 @@ REFERENCE_SQL = f"""WITH per_transaction AS (
     WHERE
         t.block_timestamp_month = DATE '2024-01-01'
     GROUP BY
-        t.hash
+        t.`hash`
 )
 SELECT
     CASE
@@ -50,7 +50,7 @@ ORDER BY
 SCHEMA_DDL = f"""
 -- BigQuery public dataset; block_timestamp_month is the partition column.
 CREATE TABLE `{TABLE}` (
-  hash STRING NOT NULL,                 -- transaction identifier
+  `hash` STRING NOT NULL,               -- transaction identifier; HASH is reserved
   block_timestamp TIMESTAMP,
   block_timestamp_month DATE,
   input_count INT64,
@@ -90,6 +90,8 @@ def prompt_rules() -> str:
 - テーブル参照は必ず `{TABLE}` と完全修飾する。
 - スキャン量を抑えるため、block_timestamp_month = DATE '<month-start>' を必ず使う。
 - outputs と output.addresses はそれぞれ UNNEST する。
+- hash はGoogleSQLの予約語なので、元テーブルでは t.`hash` と修飾・引用する。
+  後続CTEへ渡す場合は transaction_hash という別名を使い、裸の hash は書かない。
 - SELECT * は使わず、必要な列だけを明示する。
 - 列の別名は ASCII snake_case にする。
 - SELECT 文のみ。DDL/DML は書かない。
@@ -168,3 +170,30 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         raise ValueError(
             f"生成SQLの対象期間が問い合わせの{period['label']}と一致しません。"
         )
+
+
+def quote_reserved_hash_identifiers(sql: str) -> str:
+    """Quote bare Bitcoin hash identifiers without touching paths or literals.
+
+    GoogleSQL permits the reserved HASH token after a path separator (``t.hash``)
+    but not as the first part of an identifier.  The bounded Bitcoin profile knows
+    that a bare HASH token can only mean the transaction column, so quoting it is a
+    semantics-preserving normalization before execution.
+    """
+    protected = re.compile(
+        r"(`(?:``|[^`])*`|'(?:''|\\.|[^'])*'|\"(?:\"\"|\\.|[^\"])*\"|--[^\n]*|/\*.*?\*/)",
+        flags=re.DOTALL,
+    )
+
+    def normalize_code(code: str) -> str:
+        def replace(match: re.Match[str]) -> str:
+            prefix = code[: match.start()].rstrip()
+            return match.group(0) if prefix.endswith(".") else "`hash`"
+
+        return re.sub(r"\bhash\b", replace, code, flags=re.IGNORECASE)
+
+    parts = protected.split(sql)
+    return "".join(
+        part if index % 2 else normalize_code(part)
+        for index, part in enumerate(parts)
+    )

@@ -287,6 +287,10 @@ gcloud auth application-default login
 GitHub Light相当の淡いコード領域で、予約語、関数、文字列、数値、コメント、識別子を色分けします。
 SQL文字列はHTMLとして解釈せず、改行とスペースインデントを保持します。
 
+Bitcoinの実テーブル列`hash`はGoogleSQLの予約語です。生成SQLがCTEでこの列を裸の識別子として
+再参照した場合だけ、文字列・コメント・修飾済み／引用済み識別子を保ったまま`` `hash` ``へ補正します。
+画面には補正後の実際にBigQueryへ送るSQLを表示し、同じ補正を繰り返してもSQLは変化しません。
+
 単一グラフ画面の分析対象では、GA4に加えてIssue #188の最初の非GA4プロファイルとして
 `bigquery-public-data.crypto_bitcoin.transactions`を選択できます。画面の例題は、2024年1月の取引を
 `outputs`、`output.addresses`の順に二段階で展開し、取引ごとの異なる受取アドレス数を4区分に分けて

@@ -877,11 +877,15 @@ m.report.exec_bq=execute;events=[]
 e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
 shown=next(event["sql"] for event in events if event["type"]=="sql")
 quoted=chr(96)+"hash"+chr(96)
+protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
+protected_once=m.bitcoin.quote_reserved_hash_identifiers(protected)
 print(json.dumps({
  "executed_quoted":("SELECT\\n        "+quoted+",") in executed[0],
  "display_quoted":quoted in shown,
  "qualified_unchanged":"t.hash" in executed[0],
  "prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,
+ "protected_unchanged":protected_once==protected,
+ "idempotent":m.bitcoin.quote_reserved_hash_identifiers(executed[0])==executed[0],
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -890,6 +894,8 @@ print(json.dumps({
     display_quoted: true,
     qualified_unchanged: true,
     prompt_guard: true,
+    protected_unchanged: true,
+    idempotent: true,
   });
 });
 

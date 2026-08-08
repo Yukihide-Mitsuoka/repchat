@@ -142,7 +142,7 @@ Evidence描画まで行いますが、登録済みの参照値とは照合せず
 
 | 表示 | 実行場所 | 役割 |
 |---|---|---|
-| Vertex AIが生成したBigQuery SQL | BigQuery | 公開GA4データを集計する。`SELECT *`を実行前に拒否し、必要列だけを明示する。表示時だけ整形し、実行原文は変更しない |
+| BigQueryへ送ったSQL（AI生成・検査済み） | BigQuery | 公開データを集計する。`SELECT *`を実行前に拒否し、必要列だけを明示する。BitcoinプロファイルではGoogleSQL予約語の裸の`hash`だけを`` `hash` ``へ意味を変えずに補正し、その実行SQLを表示する。それ以外は表示時だけ整形し、実行SQLを変更しない |
 | Evidenceでの描画用SQL | materialize後のDuckDB層 | BigQuery結果から描画に使う列を明示して読む。BigQueryへは送らない |
 
 この区別を画面内に出すのは、Evidence側の`select ... from ga4.q1`だけを見て、手書きSQLを
