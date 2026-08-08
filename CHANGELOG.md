@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.1...v1.15.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **demo:** constrain planner clarification fields ([#275](https://github.com/Yukihide-Mitsuoka/repchat/issues/275)) ([2ab8643](https://github.com/Yukihide-Mitsuoka/repchat/commit/2ab8643f3b1d8fb45e10aa212501fdf2bdc317c7))
+
 ## [1.15.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.0...v1.15.1) (2026-08-08)
 
 
