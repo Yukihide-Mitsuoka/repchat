@@ -41,7 +41,8 @@ BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認
 **Prevention:** HTTP回帰テストで、4,096 bytes超かつ16,384 bytes以下の正常な計画を受理し、
 16,384 bytes超を拒否する両境界を検証します。
 
-**Refs:** [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279)
+**Refs:** [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279),
+[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)
 
 ## 分析計画の確認fieldが拒否される
 

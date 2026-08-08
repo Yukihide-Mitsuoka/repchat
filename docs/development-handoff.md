@@ -15,7 +15,7 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279) — PR #278はmerge済み。AI推奨を直接確定した後、正常な確定計画が共通4 KiB本文上限で拒否される問題を`fix/279-dashboard-body-limit`で修正中。ダッシュボードだけ16 KiBの有限上限とし、送信パネルを`id`・`reason`へ縮小した回帰テストは成功 |
+| 作業 | [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279) / [PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280) — PR #278はmerge済み。AI推奨を直接確定した後、正常な確定計画が共通4 KiB本文上限で拒否される問題を修正。ダッシュボードだけ16 KiBの有限上限とし、送信パネルを`id`・`reason`へ縮小してCI確認中 |
 | デモ実行状態 | `http://127.0.0.1:8765/`のプロセスは#279修正前のコードで起動中。実planner相談は成功したが、build POSTは400で停止し、Vertex AI・BigQuery buildは開始していない。#279修正後に再起動する |
 | 直近完了 | #279のfailing-first HTTP回帰で、4 KiB超の正常な計画が400となることを再現した。修正後は4 KiB超・16 KiB以下を受理し、16 KiB超を拒否する。全suiteとPR CIは未確認 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -51,7 +51,7 @@ updated: 2026-08-09
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ阻害 | [#279 確定計画が共通4 KiB本文上限で拒否される](https://github.com/Yukihide-Mitsuoka/repchat/issues/279)。HTTP境界のfailing-first testと修正は完了し、専用PR作成、CI確認、再起動が残る | #279、`live_demo.py`、live-demo tests |
+| 現在のデモ阻害 | [#279 確定計画が共通4 KiB本文上限で拒否される](https://github.com/Yukihide-Mitsuoka/repchat/issues/279) / [PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)。HTTP境界のfailing-first testと修正は完了し、CI確認と再起動が残る | #279、`live_demo.py`、live-demo tests |
 | #277 merge後 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と推奨回答の採用表示を無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
 | デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
@@ -68,7 +68,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-09）
 
-1. **現在:** [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279)の専用PRを作成し、CIを確認する。
+1. **現在:** [PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)のCIを確認してmergeする。
 2. **次:** #279の作業branchからデモを再起動し、HTTP 200と修正版HTMLを無料で確認する。実相談・buildの再実行は費用を別途提示して承認を得る。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
