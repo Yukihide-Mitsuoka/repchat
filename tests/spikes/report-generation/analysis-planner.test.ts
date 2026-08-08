@@ -163,3 +163,39 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
     ],
   });
 });
+
+test('confirmed plan requires a non-empty answer for every displayed clarification', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+plan={
+ "objective":"購入成果を改善する",
+ "objective_summary":"購入成果の課題を判断する",
+ "audience":"月次会議",
+ "comparison":"月内推移",
+ "period":period,
+ "hypotheses":["導線に課題がある"],
+ "clarifications":[{"field":"business_goal","question":"優先する目標は","recommended_answer":"購入件数の改善"}],
+ "answers":{},
+ "panels":[{"id":panel_id,"reason":"必要"} for panel_id in ["R4","R9","R16","R17"]],
+}
+missing=""
+try:p.confirm_plan(plan)
+except p.PlannerError as error:missing=str(error)
+accepted=p.confirm_plan({**plan,"answers":{"business_goal":"購入件数の改善"}})
+print(json.dumps({"missing":missing,"status":accepted["status"],"answers":accepted["answers"]},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    missing: '確認事項business_goalの回答が空です。',
+    status: 'confirmed',
+    answers: { business_goal: '購入件数の改善' },
+  });
+});
