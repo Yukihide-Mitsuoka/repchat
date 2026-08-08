@@ -16,8 +16,8 @@ updated: 2026-08-09
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277) / [PR #278](https://github.com/Yukihide-Mitsuoka/repchat/pull/278) — AI推奨回答が画面だけに表示され内部では未回答となり、仕様確定buildを押せない不具合を修正。推奨の初期採用、編集同期、空欄時だけの停止、サーバー側確認を固定応答で実装し、CI確認中 |
-| デモ実行状態 | `http://127.0.0.1:8765/`の既存プロセスは修正前のコードで起動している可能性がある。#277のPR作成後に作業branchから再起動し、HTTP 200と画面表示を無料で確認する |
-| 直近完了 | PR #275はmerge済み。#277ではfailing-first testの後に実装し、`make format`、`make lint`、`make test-unit`、`make test`が成功した。実Vertex AI・BigQueryは未実行 |
+| デモ実行状態 | `http://127.0.0.1:8765/`を`fix/277-accept-recommended-plan`から再起動し、HTTP 200と修正版HTMLを無料で確認済み。実planner応答後の画面操作は有料のVertex AI相談を伴うため未実行 |
+| 直近完了 | PR #275はmerge済み。#277ではfailing-first testの後に実装し、`make format`、`make lint`、`make test-unit`、`make test`、`make build`、`make doctor`とPR CI 12/12が成功した。実Vertex AI・BigQueryは未実行 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | PR #275 merge後の最新mainからデモを再起動してHTTP表示を無料で確認する。実Vertex AI相談とBigQuery buildは別々に費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
