@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.0...v1.15.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **demo:** quote reserved Bitcoin hash identifiers ([#269](https://github.com/Yukihide-Mitsuoka/repchat/issues/269)) ([a0487f2](https://github.com/Yukihide-Mitsuoka/repchat/commit/a0487f21e48fd923b218041e8453af504d6c1a33))
+* **demo:** validate collapsed Sankey transitions ([#272](https://github.com/Yukihide-Mitsuoka/repchat/issues/272)) ([4e3f621](https://github.com/Yukihide-Mitsuoka/repchat/commit/4e3f6214e14a8990eef65a4585e10de8f2c36b56))
+
 ## [1.15.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.14.0...v1.15.0) (2026-08-08)
 
 
