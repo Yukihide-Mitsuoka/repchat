@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.14.0...v1.15.0) (2026-08-08)
+
+
+### Features
+
+* **demo:** show evidence-backed meeting report drafts ([#268](https://github.com/Yukihide-Mitsuoka/repchat/issues/268)) ([08c8050](https://github.com/Yukihide-Mitsuoka/repchat/commit/08c8050de98dfaa05b72c9cc9d5393a71cdc1d11))
+* **demo:** validate evidence-backed meeting commentary ([#266](https://github.com/Yukihide-Mitsuoka/repchat/issues/266)) ([ad3daf9](https://github.com/Yukihide-Mitsuoka/repchat/commit/ad3daf9b399801c91c23ac5c7900811f70a00c8e))
+
 ## [1.14.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.13.1...v1.14.0) (2026-08-08)
 
 
