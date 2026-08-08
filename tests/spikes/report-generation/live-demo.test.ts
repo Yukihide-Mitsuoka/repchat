@@ -879,6 +879,7 @@ shown=next(event["sql"] for event in events if event["type"]=="sql")
 quoted=chr(96)+"hash"+chr(96)
 protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
 protected_once=m.bitcoin.quote_reserved_hash_identifiers(protected)
+long_literal="SELECT '"+(chr(92)+"!")*2000+"hash'"
 print(json.dumps({
  "executed_quoted":("SELECT\\n        "+quoted+",") in executed[0],
  "display_quoted":quoted in shown,
@@ -886,6 +887,7 @@ print(json.dumps({
  "prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,
  "protected_unchanged":protected_once==protected,
  "idempotent":m.bitcoin.quote_reserved_hash_identifiers(executed[0])==executed[0],
+ "long_literal_unchanged":m.bitcoin.quote_reserved_hash_identifiers(long_literal)==long_literal,
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -896,6 +898,7 @@ print(json.dumps({
     prompt_guard: true,
     protected_unchanged: true,
     idempotent: true,
+    long_literal_unchanged: true,
   });
 });
 

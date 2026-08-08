@@ -180,20 +180,58 @@ def quote_reserved_hash_identifiers(sql: str) -> str:
     that a bare HASH token can only mean the transaction column, so quoting it is a
     semantics-preserving normalization before execution.
     """
-    protected = re.compile(
-        r"(`(?:``|[^`])*`|'(?:''|\\.|[^'])*'|\"(?:\"\"|\\.|[^\"])*\"|--[^\n]*|/\*.*?\*/)",
-        flags=re.DOTALL,
-    )
+    output: list[str] = []
+    index = 0
+    length = len(sql)
 
-    def normalize_code(code: str) -> str:
-        def replace(match: re.Match[str]) -> str:
-            prefix = code[: match.start()].rstrip()
-            return match.group(0) if prefix.endswith(".") else "`hash`"
+    def quoted_end(start: int, delimiter: str) -> int:
+        cursor = start + 1
+        while cursor < length:
+            if sql[cursor] == "\\" and cursor + 1 < length:
+                cursor += 2
+            elif sql[cursor] == delimiter:
+                if cursor + 1 < length and sql[cursor + 1] == delimiter:
+                    cursor += 2
+                else:
+                    return cursor + 1
+            else:
+                cursor += 1
+        return length
 
-        return re.sub(r"\bhash\b", replace, code, flags=re.IGNORECASE)
+    while index < length:
+        if sql.startswith("--", index):
+            end = sql.find("\n", index + 2)
+            end = length if end == -1 else end
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql.startswith("/*", index):
+            end = sql.find("*/", index + 2)
+            end = length if end == -1 else end + 2
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql[index] in {"'", '"', "`"}:
+            end = quoted_end(index, sql[index])
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql[index].isalpha() or sql[index] == "_":
+            end = index + 1
+            while end < length and (sql[end].isalnum() or sql[end] == "_"):
+                end += 1
+            token = sql[index:end]
+            previous = index - 1
+            while previous >= 0 and sql[previous].isspace():
+                previous -= 1
+            if token.casefold() == "hash" and (
+                previous < 0 or sql[previous] != "."
+            ):
+                token = "`hash`"
+            output.append(token)
+            index = end
+            continue
+        output.append(sql[index])
+        index += 1
 
-    parts = protected.split(sql)
-    return "".join(
-        part if index % 2 else normalize_code(part)
-        for index, part in enumerate(parts)
-    )
+    return "".join(output)
