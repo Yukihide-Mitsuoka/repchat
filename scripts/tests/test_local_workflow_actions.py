@@ -188,6 +188,23 @@ class LocalWorkflowActionsTest(unittest.TestCase):
         )
         self.assertIn("actions/attest-build-provenance@", release_gates)
 
+    def test_main_push_release_attaches_sbom_to_release_please_tag(self):
+        workflow = (
+            REPOSITORY_ROOT / ".github" / "workflows" / "release.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("name: Attach generated SBOM to GitHub Release", workflow)
+        self.assertIn(
+            "RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}", workflow
+        )
+        self.assertIn("SBOM_PATH: sbom.spdx.json", workflow)
+        self.assertIn('test -n "$RELEASE_TAG"', workflow)
+        self.assertIn('test -s "$SBOM_PATH"', workflow)
+        self.assertIn(
+            'gh release upload "$RELEASE_TAG" "$SBOM_ASSET" --clobber', workflow
+        )
+        self.assertNotIn("RELEASE_TAG: ${{ github.ref_name }}", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
