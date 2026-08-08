@@ -15,7 +15,7 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281) / `codex/281-demo-feedback` — PR #280はmerge済み。ダッシュボード進行色、SQLコピー、グラフ数値表示、会議報告ボタンの即時フィードバックを修正中 |
+| 作業 | [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281) / [PR #282](https://github.com/Yukihide-Mitsuoka/repchat/pull/282) — PR #280はmerge済み。ダッシュボード進行色、SQLコピー、グラフ数値表示、会議報告ボタンの即時フィードバックを修正中 |
 | デモ実行状態 | `http://127.0.0.1:8765/`の既存プロセスは最新ブランチへ未再起動。修正後に無料のDOM・ブラウザ確認を行い、実planner相談、BigQuery build、会議報告のVertex AIは再実行しない |
 | 直近完了 | #281のfailing-first回帰で、ダッシュボードだけ進行状態が無いこと、SQLコピーが無いこと、表示数値が未整形なこと、会議報告クリックに即時状態が無いことを再現。単一グラフの進行色は既存実装が正常 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
