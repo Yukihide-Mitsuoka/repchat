@@ -630,6 +630,30 @@ print(json.dumps(errors,ensure_ascii=False))
   ]);
 });
 
+test('dashboard navigation Sankey requires staged connected aggregated edges', () => {
+  const result = python(`
+section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
+cases=[
+ [("1. 入口: /", "3. /cart", 10)],
+ [("1. 入口: /", "2. /shop", 10), ("1. 入口: /", "2. /shop", 5)],
+ [("1. 入口: /", "2. /shop", 10), ("2. /cart", "3. /done", 5)],
+]
+errors=[]
+for rows in cases:
+ try:
+  m.dashboard_visualization(section,rows,["source","target","sessions"])
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps(errors,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の段階が1→2または2→3になっていないため描画しません。',
+    '回遊に未集約の重複edgeが含まれるため描画しません。',
+    '回遊の1段目と2段目が接続しないため描画しません。',
+  ]);
+});
+
 test('reference mismatch stops before a live result is rendered', () => {
   const result = python(`
 import threading
