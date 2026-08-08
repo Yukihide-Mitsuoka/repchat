@@ -284,7 +284,12 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
   class ElementStub {
     attributes: Record<string, string> = {};
     children: ElementStub[] = [];
+    className = '';
     textContent = '';
+    onblur?: () => void;
+    onfocus?: () => void;
+    onmouseenter?: () => void;
+    onmouseleave?: () => void;
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
@@ -392,6 +397,7 @@ print(m.visualization_for_result(
   ];
   const elements = descendants(chart.children[0]);
   const gradients = elements.filter((element) => element.tag === 'linearGradient');
+  const links = elements.filter((element) => element.tag === 'path');
   const nodeColors = new Set(
     elements.filter((element) => element.tag === 'rect').map((element) => element.attributes.fill),
   );
@@ -404,6 +410,48 @@ print(m.visualization_for_result(
     linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
     'each transition should reference its own source-to-target gradient',
   );
+  assert.deepEqual(
+    elements
+      .filter((element) => element.attributes.class === 'sankey-stage')
+      .map((element) => element.textContent),
+    ['入口', '2ページ目', '3ページ目'],
+  );
+  assert.ok(links.every((link) => link.attributes.tabindex === '0'));
+  assert.ok(
+    links.every((link) => link.attributes['aria-label']?.includes('セッション')),
+  );
+  assert.ok(
+    links.every((link) => link.children.some((child) => child.tag === 'title')),
+    'each transition should expose its value as an SVG tooltip',
+  );
+  const detail = chart.children.find((element) => element.className.includes('sankey-detail'));
+  assert.ok(detail);
+  links[0]?.onfocus?.();
+  assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
+  const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
+  assert.match(terminal?.textContent ?? '', /2ページ目で終了: 72セッション/);
+});
+
+test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
+  const result = python(`
+queries=[
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1, p2, p3 LIMIT 12",
+]
+out=[]
+for sql in queries:
+ try:
+  m.require_deterministic_navigation_order(sql)
+  out.append("accepted")
+ except m.LiveDemoError as error:
+  out.append(str(error))
+print(json.dumps(out,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+    'accepted',
+  ]);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
