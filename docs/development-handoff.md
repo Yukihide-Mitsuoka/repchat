@@ -16,8 +16,8 @@ updated: 2026-08-09
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281) / [PR #282](https://github.com/Yukihide-Mitsuoka/repchat/pull/282) — PR #280はmerge済み。ダッシュボード進行色、SQLコピー、グラフ数値表示、会議報告ボタンの即時フィードバックを修正中 |
-| デモ実行状態 | `http://127.0.0.1:8765/`の既存プロセスは最新ブランチへ未再起動。修正後に無料のDOM・ブラウザ確認を行い、実planner相談、BigQuery build、会議報告のVertex AIは再実行しない |
-| 直近完了 | #281のfailing-first回帰で、ダッシュボードだけ進行状態が無いこと、SQLコピーが無いこと、表示数値が未整形なこと、会議報告クリックに即時状態が無いことを再現。単一グラフの進行色は既存実装が正常 |
+| デモ実行状態 | `http://127.0.0.1:8765/`をPR #282の修正ブランチから起動中。HTTP 200、両モード、SQLコピー操作、費用確認dialog、ブラウザconsole error 0件を無料で確認した。実planner相談、BigQuery build、会議報告のVertex AIは再実行していない |
+| 直近完了 | #281のfailing-first回帰で4欠陥を再現し、ダッシュボード進行状態、SQLコピー、表示数値の有限桁、会議報告クリックの即時状態を修正。単一グラフの進行色は既存実装が正常。`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | PR #275 merge後の最新mainからデモを再起動してHTTP表示を無料で確認する。実Vertex AI相談とBigQuery buildは別々に費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
