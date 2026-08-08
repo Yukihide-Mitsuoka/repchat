@@ -608,6 +608,81 @@ print(json.dumps(errors,ensure_ascii=False))
   ]);
 });
 
+test('dashboard navigation Sankey rejects repeated pages as consecutive transitions', () => {
+  const result = python(`
+section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
+cases=[
+ [("1. 入口: /", "2. /", 38913)],
+ [("1. 入口: /", "2. /shop", 20), ("2. /shop", "3. /shop", 8)],
+]
+errors=[]
+for rows in cases:
+ try:
+  m.dashboard_visualization(section,rows,["source","target","sessions"])
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps(errors,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
+    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
+  ]);
+});
+
+test('dashboard navigation Sankey requires staged connected aggregated edges', () => {
+  const result = python(`
+section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
+cases=[
+ [("1. 入口: /", "3. /cart", 10)],
+ [("1. 入口: /", "2. /shop", 10), ("1. 入口: /", "2. /shop", 5)],
+ [("1. 入口: /", "2. /shop", 10), ("2. /cart", "3. /done", 5)],
+]
+errors=[]
+for rows in cases:
+ try:
+  m.dashboard_visualization(section,rows,["source","target","sessions"])
+ except m.LiveDemoError as error:
+  errors.append(str(error))
+print(json.dumps(errors,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の段階が1→2または2→3になっていないため描画しません。',
+    '回遊に未集約の重複edgeが含まれるため描画しません。',
+    '回遊の1段目と2段目が接続しないため描画しません。',
+  ]);
+});
+
+test('reference mismatch stops before a live result is rendered', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
+section={
+ "id":"R17","title":"回遊","text":"回遊","compare":"rows_ordered",
+ "component":"sankey","verification":"reference",
+ "gold_sql":"SELECT 'reference' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
+}
+generated_sql="SELECT 'generated' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+m.report.generate=lambda *_args,**_kwargs:({"sql":generated_sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+results=[([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),([("1. 入口: /","2. /cart",20)],["source","target","sessions"])]
+m.report.exec_bq=lambda *_args,**_kwargs:(results.pop(0),None)
+events=[]
+try:
+ e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
+except m.LiveDemoError as error:
+ print(json.dumps({"error":str(error),"types":[event["type"] for event in events]},ensure_ascii=False))
+else:
+ raise AssertionError("reference mismatch was rendered")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: '回遊の結果が登録済み参照値と一致しないため描画しません。',
+    types: ['stage', 'sql', 'stage'],
+  });
+});
+
 test('live query passes the requested period to SQL generation', () => {
   const result = python(`
 import threading

@@ -95,6 +95,11 @@ print(section["gold_sql"])
     result.stdout,
     /ROW_NUMBER\(\) OVER \(PARTITION BY session_id ORDER BY event_timestamp/,
   );
+  assert.match(
+    result.stdout,
+    /LAG\(page_path\) OVER \(PARTITION BY session_id ORDER BY event_timestamp/,
+  );
+  assert.match(result.stdout, /previous_page_path IS NULL OR page_path != previous_page_path/);
   assert.match(result.stdout, /step <= 3/);
   assert.match(result.stdout, /LIMIT 12/);
   assert.match(result.stdout, /'1\. 入口: '/);
@@ -110,6 +115,7 @@ print(module["generation_request"](section, spec["period"]))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /URLからホスト・クエリ・フラグメントを除いたパス/);
+  assert.match(result.stdout, /連続する同一page_pathは1回の滞在へ統合/);
   assert.match(result.stdout, /2ページ目が存在するセッションだけ/);
   assert.match(result.stdout, /上位12経路を確定してから/);
   assert.match(result.stdout, /離脱ノードは作らない/);

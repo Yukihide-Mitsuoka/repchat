@@ -221,6 +221,46 @@ def visualization_for_result(rows: list[tuple], columns: list[str]) -> str:
     ):
         return "bar"
     return "table"
+
+
+def validate_navigation_sankey(rows: list[tuple]) -> None:
+    """Reject edges that do not represent collapsed adjacent page transitions."""
+    patterns = {
+        1: re.compile(r"^1\. 入口: (.+)$"),
+        2: re.compile(r"^2\. (.+)$"),
+        3: re.compile(r"^3\. (.+)$"),
+    }
+    first_hop_targets: set[str] = set()
+    second_hop_sources: set[str] = set()
+    seen_edges: set[tuple[str, str]] = set()
+    for source, target, _sessions in rows:
+        source_match = patterns[1].fullmatch(source)
+        source_stage = 1
+        if source_match is None:
+            source_match = patterns[2].fullmatch(source)
+            source_stage = 2
+        target_match = patterns[source_stage + 1].fullmatch(target)
+        if source_match is None or target_match is None:
+            raise LiveDemoError(
+                "回遊の段階が1→2または2→3になっていないため描画しません。"
+            )
+        source_page, target_page = source_match.group(1), target_match.group(1)
+        if source_page == target_page:
+            raise LiveDemoError(
+                "回遊の連続する同一ページが遷移として含まれるため描画しません。"
+            )
+        edge = (source, target)
+        if edge in seen_edges:
+            raise LiveDemoError("回遊に未集約の重複edgeが含まれるため描画しません。")
+        seen_edges.add(edge)
+        if source_stage == 1:
+            first_hop_targets.add(target_page)
+        else:
+            second_hop_sources.add(source_page)
+    if not first_hop_targets or not second_hop_sources.issubset(first_hop_targets):
+        raise LiveDemoError("回遊の1段目と2段目が接続しないため描画しません。")
+
+
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
     """Validate a planned panel's result shape before choosing its renderer."""
     component = section["component"]
@@ -263,6 +303,8 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         raise LiveDemoError(
             f"{section['title']}の結果形状がダッシュボード仕様と一致しないため描画しません。"
         )
+    if component == "sankey" and section.get("transition_mode") == "page_navigation":
+        validate_navigation_sankey(rows)
     if component in {"kpi_pair", "funnel", "trend", "sankey"}:
         return component
     return visualization_for_result(rows, columns)
@@ -571,6 +613,16 @@ class LiveQueryEngine:
                 if matches
                 else f"参照値と不一致: {detail}"
             )
+            if not matches:
+                raise LiveDemoError(
+                    f"{section['title']}の結果が登録済み参照値と一致しないため描画しません。"
+                )
+        if not context and section.get("transition_mode") == "page_navigation":
+            if visualization_for_result(rows, columns) != "sankey":
+                raise LiveDemoError(
+                    f"{section['title']}の結果形状が回遊仕様と一致しないため描画しません。"
+                )
+            validate_navigation_sankey(rows)
         visualization = (
             dashboard_visualization(section, rows, columns)
             if context

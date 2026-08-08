@@ -16,6 +16,7 @@ updated: 2026-08-08
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) — 根拠検証契約のPR #266はmerge済み。このPRで、保存済み集計bundleから未承認の会議報告ドラフトを生成・表示するライブデモ接続を追加する |
+| 並行修正 | [Issue #271](https://github.com/Yukihide-Mitsuoka/repchat/issues/271)・[PR #272](https://github.com/Yukihide-Mitsuoka/repchat/pull/272) — 回遊Sankeyで連続する同一ページを統合し、段階遷移と参照値をfail closedで検証する。`make format && make lint && make test`成功。実Vertex AI・BigQueryは未実行 |
 | デモ準備 | `make demo-live PROJECT=<project>`は、ダッシュボード生成／単一グラフ生成を切り替える。ダッシュボードは6パネル、単一グラフは「グラフ」と「取得データ」を切り替えられる。起動表示と固定応答を確認済み。質問送信は費用を再提示して承認後だけ行う |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | オーナーが2026-08-02に優先したデモ／設計検証として、#255、組織コンテキストのメモリー要件、#188の非GA4公開nested dataset 1種類、#180と#181の明示的な未検証プロトタイプを小さいPRに分けて進める。実データ再実行は費用を再提示してオーナー承認後だけ行う |
