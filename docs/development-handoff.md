@@ -15,7 +15,7 @@ updated: 2026-08-08
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) — ダッシュボード相談でVertex AIが許可外の確認fieldを返し、後段検証がfail closedした。response schemaを未回答の許可fieldへ制約する回帰修正が最優先 |
+| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) — ダッシュボード相談でVertex AIが許可外の確認fieldを返し、後段検証がfail closedした。引き継ぎ更新の[PR #274](https://github.com/Yukihide-Mitsuoka/repchat/pull/274)はレビュー待ちで、コード修正PRは未作成 |
 | デモ実行状態 | `http://127.0.0.1:8765/`はHTTP 200だが、`fix/188-bitcoin-hash`のcommit `4967f27`から起動中で最新mainではない。PR #272のSankey修正確認には使わず、#273修正後に最新mainから再起動する |
 | 直近完了 | PR #269とPR #272はmerge済み。Release PR #270もmergeされ、`v1.15.1`とSPDX SBOMの公開まで確認済み。PR #272後の実Vertex AI・BigQueryとSankey参照値は未測定 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
