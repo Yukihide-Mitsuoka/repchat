@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-08
+updated: 2026-08-09
 ---
 
 # 開発引き継ぎ
@@ -15,9 +15,9 @@ updated: 2026-08-08
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) / [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275) — response schemaを未回答の許可fieldへ制約し、不正固定応答を実field付きでfail closedにする修正を提出済み。CIは全check成功し、merge待ち。引き継ぎ更新の[PR #274](https://github.com/Yukihide-Mitsuoka/repchat/pull/274)はマージ済み |
-| デモ実行状態 | `http://127.0.0.1:8765/`はHTTP 200だが、`fix/188-bitcoin-hash`のcommit `4967f27`から起動中で最新mainではない。PR #272のSankey修正確認には使わず、#273修正後に最新mainから再起動する |
-| 直近完了 | PR #275の固定応答回帰では初回・一部回答後・全回答後を検証し、`make format`、`make lint`、`make test-unit`、`make test`、`make build`が成功した。実Vertex AI・BigQueryは未実行。PR #269とPR #272、Release PR #270はmerge済み |
+| 作業 | [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277) — AI推奨回答が画面だけに表示され内部では未回答となり、仕様確定buildを押せない不具合を`fix/277-accept-recommended-plan`で修正中。推奨の初期採用、編集同期、空欄時だけの停止、サーバー側確認を固定応答で実装済み |
+| デモ実行状態 | `http://127.0.0.1:8765/`の既存プロセスは修正前のコードで起動している可能性がある。#277のPR作成後に作業branchから再起動し、HTTP 200と画面表示を無料で確認する |
+| 直近完了 | PR #275はmerge済み。#277ではfailing-first testの後に実装し、`make format`、`make lint`、`make test-unit`、`make test`が成功した。実Vertex AI・BigQueryは未実行 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | PR #275 merge後の最新mainからデモを再起動してHTTP表示を無料で確認する。実Vertex AI相談とBigQuery buildは別々に費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
@@ -51,8 +51,8 @@ updated: 2026-08-08
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ阻害 | [#273 planner確認field制約](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) / [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275)。固定応答のfailing-first testと修正は完了し、自動再試行は追加していない。CIは全check成功し、mergeを待つ | #273、`analysis_planner.py`、planner/live-demo tests |
-| #273 merge後 | 古い`fix/188-bitcoin-hash`サーバーを終了し、最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と画面commit表示の改善要否を無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
+| 現在のデモ阻害 | [#277 推奨分析計画をそのまま確定できない](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)。固定応答のfailing-first testと修正は完了し、PR作成とCI確認が残る | #277、`analysis_planner.py`、`live_demo.py`、planner/live-demo tests |
+| #277 merge後 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と推奨回答の採用表示を無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
 | デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
 | #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
@@ -66,10 +66,10 @@ updated: 2026-08-08
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-08）
+## 次にやる順序（2026-08-09）
 
-1. **現在:** [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275)はCI全check成功。review/mergeを待つ。plannerのresponse schemaと後段検証は固定応答で一致を確認済みで、Vertex AIの自動再試行は追加していない。
-2. **次:** PR #275 merge後の最新mainからデモを再起動し、HTTP 200、planner固定応答、PR #272のSankey意味検証を無料の回帰テストで確認する。
+1. **現在:** [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)のPRを作成し、CIを確認する。推奨回答の初期採用、編集同期、空欄時だけの停止、build時の再収集、サーバー側空回答拒否は固定応答で確認済み。
+2. **次:** #277 merge後の最新mainからデモを再起動し、HTTP 200、推奨回答の採用表示、buildボタンの有効化を無料で確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。

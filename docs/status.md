@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-08-08
+updated: 2026-08-09
 ---
 
 # 実装状況サマリー
@@ -30,11 +30,12 @@ updated: 2026-08-08
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) /
-[PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275)。2026-08-08の実Vertex AI相談で、
-plannerが許可外の確認fieldを返し、後段検証がfail closedした。BigQueryは未実行。PR #275は
-response schemaを未回答の許可fieldへ制約し、固定応答で初回・一部回答後・全回答後と実field付き
-fail-closedを検証し、CIは全check成功した。merge後に最新mainからデモを再起動する。費用を伴う再確認は、
+**現在の作業スレッド**: [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)。PR #275は
+merge済み。続く画面確認で、AIの推奨回答が入力済みに見えても内部では未回答のままになり、
+「この仕様を確定してbuild」を押せない不具合が判明した。#277では、非空の推奨回答を初期採用し、
+編集を即時同期し、空欄がある場合だけbuildを停止する。候補をAIに再提案させる操作は任意とする。
+サーバー側も表示した確認事項への空回答を拒否する。failing-first test、`make format`、`make lint`、
+`make test-unit`、`make test`は成功し、実Vertex AI・BigQueryは未実行。費用を伴う再確認は、
 Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが

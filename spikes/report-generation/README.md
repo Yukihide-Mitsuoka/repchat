@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-08-08
+updated: 2026-08-09
 ---
 
 # Spike: レポート生成
@@ -306,9 +306,11 @@ dry runはデータ取得を実行せず、クエリ料金も発生しません�
 未知・非公開相当2種類の反復評価を求めるIssue #188は閉じません。
 
 ダッシュボード生成は、まずVertex AIの分析plannerが1つの月次ECサイト分析目的を意思決定、仮説、
-確認事項、KPI・グラフ候補へ分解します。最大3件の確認へ回答して再提案し、読者、比較軸、4〜6件の
-パネルを編集した後に仕様revisionをfreezeします。相談中はBigQueryを呼ばず、確定後の別費用確認で
-初めてSQL生成とbuildへ進みます。仕様revisionと`demo-org-ec-v1`組織コンテキストrevisionは
+確認事項、KPI・グラフ候補へ分解します。最大3件の確認にはAIの推奨回答が採用済みで表示されるため、
+変更がなければそのまま仕様を確定できます。回答欄を編集すると即時に採用状態へ反映され、空欄がある
+場合だけbuildを停止します。「AIに再提案」は、回答を基に候補自体を見直したい場合の任意操作です。
+読者、比較軸、4〜6件のパネルを編集した後に仕様revisionをfreezeします。相談中はBigQueryを呼ばず、
+確定後の別費用確認で初めてSQL生成とbuildへ進みます。仕様revisionと`demo-org-ec-v1`組織コンテキストrevisionは
 生成ダッシュボードに表示します。生の会話をメモリーや認可判定には使用しません。
 plannerのresponse schemaは`audience`、`comparison`、`business_goal`のうち未回答fieldだけを許可し、
 全fieldが回答済みなら確認事項を0件へ制約します。schema制約に反する固定応答は後段でも拒否し、
