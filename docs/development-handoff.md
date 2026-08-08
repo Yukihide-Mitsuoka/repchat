@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-02
+updated: 2026-08-08
 ---
 
 # 開発引き継ぎ
@@ -15,7 +15,7 @@ updated: 2026-08-02
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #257](https://github.com/Yukihide-Mitsuoka/repchat/issues/257) — 組織コンテキストを分析レシピ・指標定義・個人設定と分離し、#180と#181が同じ承認済みrevisionを参照する要件を明文化する。SQLハイライトはPR #256でレビュー待ち |
+| 作業 | [Issue #181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) — 保存済み集計bundleだけを根拠に、数値主張をSQL・結果revisionへ結ぶ未承認の会議報告ドラフト契約を小さいPRで準備中。ライブデモへの接続は後続PR |
 | デモ準備 | `make demo-live PROJECT=<project>`は、ダッシュボード生成／単一グラフ生成を切り替える。ダッシュボードは6パネル、単一グラフは「グラフ」と「取得データ」を切り替えられる。起動表示と固定応答を確認済み。質問送信は費用を再提示して承認後だけ行う |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | オーナーが2026-08-02に優先したデモ／設計検証として、#255、組織コンテキストのメモリー要件、#188の非GA4公開nested dataset 1種類、#180と#181の明示的な未検証プロトタイプを小さいPRに分けて進める。実データ再実行は費用を再提示してオーナー承認後だけ行う |
@@ -56,7 +56,7 @@ positioningとroadmapを再評価します。
 2. **次:** 適応型分析メモリー要件で、承認済みの組織コンテキストを分析レシピと個人設定から明確に分離し、#180と#181が同じrevisionを参照する契約を明文化する。
 3. **レビュー待ち:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の最初の縦切りとして、非GA4のBitcoin公開nested/repeated datasetをライブデモへ追加した。基準SQLのdry runは約2.91GiB。実値照合・独立レビュー・2種類評価は未完了なのでIssueは閉じない。
 4. **レビュー待ち:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)のローカル未検証プロトタイプとして、目的→最大3確認→仮説・KPI・パネル提案→編集→revision freeze→別費用確認→buildを接続した。候補6件、fixture組織コンテキスト、同期buildの限界を維持する。
-5. **次:** [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)のrevisionを引き継いで[#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)のローカル未検証プロトタイプへ進む。
+5. **現在:** [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)のローカル未検証プロトタイプを、純粋な根拠検証契約→ライブ画面接続の順に分割して進める。製品受入条件は閉じない。
 5. **並行するオーナー作業:** 初期主要顧客の定義に合う日本の小規模代理店またはソフトウェアベンダーから参加者を選び、#160の5分デモ日程を決める。#160が`proceed`になるまで、上記プロトタイプを製品実装または検証済み能力とは表明しない。
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
