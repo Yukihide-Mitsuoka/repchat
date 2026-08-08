@@ -25,6 +25,7 @@ GitHub Appとartifact pipelineの製品実装はその結果を待ちます。
 | アーキテクチャとデータ境界を確認する | [システム設計](docs/system-design.md) |
 | 優先順位を確認する | [ロードマップ](docs/roadmap.md) |
 | 5分デモを実行・説明する | [デモ手順](docs/demo.md) |
+| ライブデモの停止理由を確認する | [トラブルシューティング](docs/troubleshooting/live-demo.md) |
 | 判断の根拠を確認する | [プロジェクトADR](docs/adr/)・[意思決定ログ](.ai/decision-log.md) |
 
 ## システム境界
@@ -52,6 +53,8 @@ make demo-live PROJECT=<gcp-project>
 
 `demo-live`は起動時に費用確認を行い、同意後にデモ用venvのpin済みPython依存を
 確認・導入します。実Vertex AIとBigQueryは、日本語の問い合わせを送信したときに使用します。
+通常の回遊Sankeyは連続する同一ページビューを1回の滞在へ統合し、段階遷移または参照値が
+分析仕様と一致しない場合はグラフ表示を停止します。
 
 基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
 からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、
