@@ -818,6 +818,39 @@ finally:s.shutdown();s.server_close();t.join()
   assert.match(bind.stderr, /host must remain localhost-only/);
 });
 
+test('dashboard HTTP boundary accepts a bounded confirmed plan larger than a simple query', () => {
+  const result = python(`
+import threading,urllib.error,urllib.request
+class E:
+ spec=json.loads((m.HERE/"report.json").read_text())
+ def dashboard(self,q,emit,plan=None):emit({"type":"dashboard_complete","accepted":plan is not None})
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+question="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
+def plan(reason):
+ return {"objective":question,"objective_summary":"購入課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question(question),"hypotheses":["購入導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":reason} for panel_id in ["R4","R9","R16","R17"]]}
+def request(analysis_plan):
+ data=json.dumps({"question":question,"profile":"ga4","analysis_plan":analysis_plan},ensure_ascii=False).encode()
+ req=urllib.request.Request(base+"/api/dashboard",data=data,headers={"content-type":"application/json","origin":base},method="POST")
+ return data,req
+try:
+ bounded,bounded_req=request(plan("理由"*250))
+ accepted=json.loads(urllib.request.urlopen(bounded_req).read().decode())["accepted"]
+ oversized,oversized_req=request(plan("理由"*1000))
+ oversized_status=0
+ try:urllib.request.urlopen(oversized_req)
+ except urllib.error.HTTPError as error:oversized_status=error.code
+ print(json.dumps({"bounded_bytes":len(bounded),"oversized_bytes":len(oversized),"accepted":accepted,"oversized_status":oversized_status}))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const observed = JSON.parse(result.stdout.split('\n').at(-2) ?? '');
+  assert.ok(observed.bounded_bytes > 4096, observed);
+  assert.ok(observed.bounded_bytes <= 16384, observed);
+  assert.ok(observed.oversized_bytes > 16384, observed);
+  assert.equal(observed.accepted, true);
+  assert.equal(observed.oversized_status, 400);
+});
+
 test('non-GA4 selector exposes the bounded Bitcoin nested-schema demonstration', () => {
   const result = python(`
 html=m.HTML
@@ -1026,6 +1059,7 @@ print(json.dumps({
  "captures_defaults":"currentAnswers[item.field]=input.value.trim()" in html,
  "syncs_edits":"input.oninput=syncClarificationAnswers" in html,
  "build_collects":'collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")' in html,
+ "minimal_panels":"map(panel=>({id:panel.id,reason:panel.reason}))" in html,
  "not_length_blocked":"plan.clarifications.length>0" not in html,
 }))
 `);
@@ -1035,6 +1069,7 @@ print(json.dumps({
     captures_defaults: true,
     syncs_edits: true,
     build_collects: true,
+    minimal_panels: true,
     not_length_blocked: true,
   });
 });
