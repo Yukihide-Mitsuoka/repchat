@@ -34,7 +34,7 @@ updated: 2026-08-08
 [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275)。2026-08-08の実Vertex AI相談で、
 plannerが許可外の確認fieldを返し、後段検証がfail closedした。BigQueryは未実行。PR #275は
 response schemaを未回答の許可fieldへ制約し、固定応答で初回・一部回答後・全回答後と実field付き
-fail-closedを検証する。CI成功とmerge後に最新mainからデモを再起動する。費用を伴う再確認は、
+fail-closedを検証し、CIは全check成功した。merge後に最新mainからデモを再起動する。費用を伴う再確認は、
 Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
