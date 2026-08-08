@@ -121,7 +121,7 @@ class LocalWorkflowActionsTest(unittest.TestCase):
                 "ossf/scorecard-action@"
                 "4eaacf0543bb3f2c246792bd56e8cdeffafb205a",
                 "github/codeql-action/upload-sarif@"
-                "4187e74d05793876e9989daffde9c3e66b4acd07",
+                "5595ccaf912efad79be6eef63a5619ff05969be3",
             ],
             action_uses,
         )
