@@ -26,6 +26,24 @@ BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認
 
 **Refs:** [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)
 
+## request body is empty or too large
+
+**Affects:** Issue #279修正前のライブデモ。
+
+**Cause:** 確定した分析計画は目的、仮説、確認回答、4〜6件のパネル理由を含む一方、
+`/api/dashboard`が単純問い合わせと同じ4,096 bytesの本文上限を使用していました。AIが正常に提案した
+計画でも上限を超えると、Vertex AI・BigQuery buildを始める前にHTTP 400で停止していました。
+
+**Fix:** PR #278では、確定計画だけを有限の16,384 bytes上限とし、他のPOST endpointは従来の
+4,096 bytesを維持します。ブラウザから返すパネル情報も、選択した`id`と編集可能な`reason`だけに
+限定します。16,384 bytesを超える計画は引き続き400で拒否します。
+
+**Prevention:** HTTP回帰テストで、4,096 bytes超かつ16,384 bytes以下の正常な計画を受理し、
+16,384 bytes超を拒否する両境界を検証します。
+
+**Refs:** [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279),
+[PR #278](https://github.com/Yukihide-Mitsuoka/repchat/pull/278)
+
 ## 分析計画の確認fieldが拒否される
 
 plannerの確認fieldは`audience`、`comparison`、`business_goal`だけです。response schemaは回答済みfieldを

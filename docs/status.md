@@ -30,12 +30,16 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)。PR #275は
+**現在の作業スレッド**: [Issue #277](https://github.com/Yukihide-Mitsuoka/repchat/issues/277)と
+[Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279)を扱う
+[PR #278](https://github.com/Yukihide-Mitsuoka/repchat/pull/278)。PR #275は
 merge済み。続く画面確認で、AIの推奨回答が入力済みに見えても内部では未回答のままになり、
 「この仕様を確定してbuild」を押せない不具合が判明した。#277では、非空の推奨回答を初期採用し、
 編集を即時同期し、空欄がある場合だけbuildを停止する。候補をAIに再提案させる操作は任意とする。
-サーバー側も表示した確認事項への空回答を拒否する。failing-first test、`make format`、`make lint`、
-`make test-unit`、`make test`は成功し、実Vertex AI・BigQueryは未実行。費用を伴う再確認は、
+サーバー側も表示した確認事項への空回答を拒否する。実相談後、確定計画が共通4 KiB本文上限を超えて
+HTTP 400となる#279が判明した。ダッシュボードだけ16 KiBの有限上限とし、ブラウザが返すパネルを
+`id`・`reason`へ縮小する。固定応答の境界テストは成功したが、全suiteとCIは未確認。buildは開始前に
+停止したためBigQueryは実行していない。費用を伴う再確認は、
 Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが

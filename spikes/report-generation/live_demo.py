@@ -24,7 +24,7 @@ import run_report as report
 from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
-MAX_BODY_BYTES, MAX_RESULT_ROWS = 4096, 100
+MAX_BODY_BYTES, MAX_DASHBOARD_BODY_BYTES, MAX_RESULT_ROWS = 4096, 16384, 100
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
 DASHBOARD_SECTION_IDS = report.SHOWCASE_IDS
@@ -79,7 +79,7 @@ function renderAnalysisPlan(event){const plan=event.plan;currentPlan=plan;$("pla
 const hypotheses=document.createElement("ul");plan.hypotheses.forEach(value=>hypotheses.appendChild(Object.assign(document.createElement("li"),{textContent:value})));$("plan-hypotheses").replaceChildren(hypotheses);const questions=[];plan.clarifications.forEach(item=>{const box=Object.assign(document.createElement("div"),{className:"clarification"}),label=document.createElement("label"),input=document.createElement("input"),status=document.createElement("small");label.textContent=item.question;input.value=item.recommended_answer;input.dataset.answerField=item.field;input.dataset.recommendedAnswer=item.recommended_answer;input.answerStatus=status;input.oninput=syncClarificationAnswers;currentAnswers[item.field]=input.value.trim();box.append(label,input,status);questions.push(box)});$("plan-clarifications").replaceChildren(...questions);syncClarificationAnswers();
 const choices=[];plan.panels.forEach(panel=>{const row=Object.assign(document.createElement("div"),{className:"plan-choice"}),input=Object.assign(document.createElement("input"),{type:"checkbox",checked:true}),label=document.createElement("label"),detail=document.createElement("small");input.dataset.panelId=panel.id;label.textContent=`${panel.title} — ${panel.chart}`;detail.textContent=`${panel.reason} 判断用途: ${panel.decision}`;label.append(detail);row.append(input,label);choices.push(row)});$("plan-panels").replaceChildren(...choices);$("plan-revise").className=plan.clarifications.length?"secondary":"hidden";$("dashboard-status").textContent="提案済み";$("dashboard-message").textContent=plan.clarifications.length?"推奨回答を採用済みです。そのままbuildするか、編集後に任意でAIへ再提案できます。":`分析仕様を確認し、必要なパネルを選んでbuildしてください。Vertex AI推定 ¥${event.cost_jpy}`}
 function collectAnswers(){syncClarificationAnswers();if($("plan-build").disabled)throw new Error("すべての確認事項へ回答してください。")}
-function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<4)throw new Error("ダッシュボードには4件以上のパネルを選択してください。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
+function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<4)throw new Error("ダッシュボードには4件以上のパネルを選択してください。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id)).map(panel=>({id:panel.id,reason:panel.reason}));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
 function citedItem(item,suffix=""){const row=document.createElement("p");row.appendChild(document.createTextNode(item.text+suffix));item.evidence_refs.forEach(ref=>row.appendChild(Object.assign(document.createElement("span"),{className:"citation",textContent:`根拠 ${ref.panel_id} / ${ref.result_revision} / SQL ${ref.sql_sha256}`})));return row}
 function renderMeetingReport(event){const report=event.report;$("report-output").className="panel";$("report-revision").textContent=report.report_revision;$("report-summary").textContent=report.executive_summary;const content=[];for(const [title,name,suffix]of[["観測","observations",""],["解釈","interpretations",""],["未検証の仮説","hypotheses",""],["推奨アクション","actions",""]]){const section=Object.assign(document.createElement("section"),{className:"report-section"}),heading=Object.assign(document.createElement("h3"),{textContent:title});section.append(heading);report[name].forEach(item=>{let detail=suffix;if(name==="interpretations")detail=`（不確実性: ${item.uncertainty}）`;if(name==="hypotheses")detail=`（検証: ${item.validation}）`;if(name==="actions")detail=`（期待効果: ${item.expected_impact} / 担当: ${item.owner} / 緊急度: ${item.urgency} / 次: ${item.next_step} / 成功指標: ${item.success_metric}）`;section.append(citedItem(item,detail))});content.push(section)}const limits=Object.assign(document.createElement("section"),{className:"report-section"}),limitTitle=Object.assign(document.createElement("h3"),{textContent:"限界・不足情報"}),list=document.createElement("ul");report.limitations.forEach(value=>list.appendChild(Object.assign(document.createElement("li"),{textContent:value})));limits.append(limitTitle,list);content.push(limits);$("report-sections").replaceChildren(...content);$("dashboard-message").textContent=`根拠付き会議報告案を生成しました。Vertex AI推定 ¥${event.cost_jpy}`}
 function sankey(svg,rows,w,h){
@@ -672,7 +672,12 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("content-length", "0"))
-            if length <= 0 or length > MAX_BODY_BYTES:
+            max_body_bytes = (
+                MAX_DASHBOARD_BODY_BYTES
+                if self.path == "/api/dashboard"
+                else MAX_BODY_BYTES
+            )
+            if length <= 0 or length > max_body_bytes:
                 raise ValueError("request body is empty or too large")
             body = json.loads(self.rfile.read(length))
             question = body.get("question") if isinstance(body, dict) else None
