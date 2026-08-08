@@ -15,7 +15,7 @@ updated: 2026-08-08
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) / [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275) — response schemaを未回答の許可fieldへ制約し、不正固定応答を実field付きでfail closedにする修正を提出済み。CIは全check成功し、merge待ち。引き継ぎ更新の[PR #274](https://github.com/Yukihide-Mitsuoka/repchat/pull/274)もレビュー待ち |
+| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) / [PR #275](https://github.com/Yukihide-Mitsuoka/repchat/pull/275) — response schemaを未回答の許可fieldへ制約し、不正固定応答を実field付きでfail closedにする修正を提出済み。CIは全check成功し、merge待ち。引き継ぎ更新の[PR #274](https://github.com/Yukihide-Mitsuoka/repchat/pull/274)はマージ済み |
 | デモ実行状態 | `http://127.0.0.1:8765/`はHTTP 200だが、`fix/188-bitcoin-hash`のcommit `4967f27`から起動中で最新mainではない。PR #272のSankey修正確認には使わず、#273修正後に最新mainから再起動する |
 | 直近完了 | PR #275の固定応答回帰では初回・一部回答後・全回答後を検証し、`make format`、`make lint`、`make test-unit`、`make test`、`make build`が成功した。実Vertex AI・BigQueryは未実行。PR #269とPR #272、Release PR #270はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
