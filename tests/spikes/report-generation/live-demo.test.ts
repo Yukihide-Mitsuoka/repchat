@@ -1106,9 +1106,9 @@ test('chart values use bounded Japanese number formatting without changing raw t
   );
   assert.deepEqual([...values], ['118,380', '895', '57,350.13', '14.57', '49.51', 'organic']);
   assert.ok(script.includes('textContent:chartValue(r.rows[0][0],r.columns[0],true)'));
-  assert.ok(script.includes('textContent:chartValue(r.rows[0][index],column)'));
+  assert.ok(script.includes('value.textContent=chartValue(r.rows[0][index],column)'));
   assert.ok(script.includes('textContent:chartValue(r.rows[0][index],column,true)'));
-  assert.ok(script.includes('textContent:chartValue(x[1],r.columns[1])'));
+  assert.ok(script.includes('textContent=chartValue(x[1],r.columns?.[1]??"")'));
   assert.ok(
     script.includes('replaceChildren(table(result.columns,result.rows))'),
     'the audit table must retain raw query values',
@@ -1120,13 +1120,48 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   const start = script.indexOf('function requestMeetingReport(');
-  const end = script.indexOf('async function runQuery(');
+  const end = script.indexOf('configureCopyButton($("sql-copy")');
   assert.ok(start >= 0 && end > start, 'meeting report request handler must be explicit');
   const source = script.slice(start, end);
   assert.ok(source.includes('費用確認待ち'));
   assert.ok(source.includes('会議報告案を生成できるbuild結果がありません。'));
   assert.ok(source.includes('費用確認ダイアログを開けませんでした。'));
   assert.ok(script.includes('$("report-submit").onclick=requestMeetingReport'));
+
+  function invoke(revision: string | null, showCost: () => void) {
+    const elements = {
+      'dashboard-message': { className: '', textContent: '' },
+      'dashboard-status': { textContent: '' },
+    };
+    vm.runInNewContext(
+      `let latestBuildRevision=${JSON.stringify(revision)};
+       const $=id=>elements[id];
+       ${source}
+       requestMeetingReport();`,
+      { elements, showCost },
+    );
+    return elements;
+  }
+
+  const missing = invoke(null, () => assert.fail('must not open the cost dialog'));
+  assert.equal(missing['dashboard-status'].textContent, 'エラー');
+  assert.equal(
+    missing['dashboard-message'].textContent,
+    '会議報告案を生成できるbuild結果がありません。',
+  );
+
+  let requestedMode = '';
+  const waiting = invoke('build-1', (mode?: string) => {
+    requestedMode = mode ?? '';
+  });
+  assert.equal(requestedMode, 'report');
+  assert.equal(waiting['dashboard-status'].textContent, '費用確認待ち');
+
+  const failed = invoke('build-1', () => {
+    throw new Error('dialog unavailable');
+  });
+  assert.equal(failed['dashboard-status'].textContent, 'エラー');
+  assert.equal(failed['dashboard-message'].textContent, '費用確認ダイアログを開けませんでした。');
 });
 
 test('dashboard UI accepts recommended clarification answers without forced re-proposal', () => {

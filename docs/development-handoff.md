@@ -15,9 +15,9 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279) / [PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280) — PR #278はmerge済み。AI推奨を直接確定した後、正常な確定計画が共通4 KiB本文上限で拒否される問題を修正。ダッシュボードだけ16 KiBの有限上限とし、送信パネルを`id`・`reason`へ縮小。CI 12/12成功、merge待ち |
-| デモ実行状態 | `http://127.0.0.1:8765/`を`fix/279-dashboard-body-limit`から再起動し、HTTP 200と最小パネルpayloadを含む修正版HTMLを無料で確認済み。実planner相談とBigQuery buildは再実行していない |
-| 直近完了 | #279のfailing-first HTTP回帰で、4 KiB超の正常な計画が400となることを再現した。修正後は4 KiB超・16 KiB以下を受理し、16 KiB超を拒否する。`make format`、`make lint`、`make test`、`make build`、単独`make doctor`、PR CI 12/12が成功 |
+| 作業 | [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281) / `codex/281-demo-feedback` — PR #280はmerge済み。ダッシュボード進行色、SQLコピー、グラフ数値表示、会議報告ボタンの即時フィードバックを修正中 |
+| デモ実行状態 | `http://127.0.0.1:8765/`の既存プロセスは最新ブランチへ未再起動。修正後に無料のDOM・ブラウザ確認を行い、実planner相談、BigQuery build、会議報告のVertex AIは再実行しない |
+| 直近完了 | #281のfailing-first回帰で、ダッシュボードだけ進行状態が無いこと、SQLコピーが無いこと、表示数値が未整形なこと、会議報告クリックに即時状態が無いことを再現。単一グラフの進行色は既存実装が正常 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | PR #275 merge後の最新mainからデモを再起動してHTTP表示を無料で確認する。実Vertex AI相談とBigQuery buildは別々に費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
@@ -51,7 +51,7 @@ updated: 2026-08-09
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ阻害 | [#279 確定計画が共通4 KiB本文上限で拒否される](https://github.com/Yukihide-Mitsuoka/repchat/issues/279) / [PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)。HTTP境界のfailing-first test、修正、CI、無料の再起動確認は完了し、mergeと有料の実build確認が残る | #279、`live_demo.py`、live-demo tests |
+| 現在のデモ改善 | [#281 進行表示・SQLコピー・数値表示・会議報告操作](https://github.com/Yukihide-Mitsuoka/repchat/issues/281)。固定応答テストと無料のブラウザ確認を完了してPR化する | #281、`live_demo.py`、live-demo tests |
 | #277 merge後 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と推奨回答の採用表示を無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
 | デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
@@ -68,8 +68,8 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-09）
 
-1. **現在:** CI 12/12成功の[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)をmergeする。
-2. **次:** 実相談・buildの再実行費用を提示し、承認後に#279の解消とダッシュボード描画を確認する。
+1. **現在:** [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281)の無料テストとブラウザ確認を完了し、PRを作成する。
+2. **次:** #281 merge後に最新mainからデモを再起動する。実相談・buildの再実行費用を提示し、承認後に#279の解消とダッシュボード描画を確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
