@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-08-02
+updated: 2026-08-08
 ---
 
 # Spike: レポート生成
@@ -310,6 +310,10 @@ dry runはデータ取得を実行せず、クエリ料金も発生しません�
 パネルを編集した後に仕様revisionをfreezeします。相談中はBigQueryを呼ばず、確定後の別費用確認で
 初めてSQL生成とbuildへ進みます。仕様revisionと`demo-org-ec-v1`組織コンテキストrevisionは
 生成ダッシュボードに表示します。生の会話をメモリーや認可判定には使用しません。
+plannerのresponse schemaは`audience`、`comparison`、`business_goal`のうち未回答fieldだけを許可し、
+全fieldが回答済みなら確認事項を0件へ制約します。schema制約に反する固定応答は後段でも拒否し、
+エラーには実際のfieldを含めます。同じ相談を自動再試行しないため、Vertex AI呼出しは1回の操作につき
+1回です。
 
 候補は`SHOWCASE_IDS`の6分析です。
 上段に購入成果・定着・エンゲージメントKPI、中段に購入ファネルと日次＋7日移動平均、下段に主要回遊

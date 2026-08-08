@@ -10,6 +10,16 @@ updated: 2026-08-08
 この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
 BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
 
+## 分析計画の確認fieldが拒否される
+
+plannerの確認fieldは`audience`、`comparison`、`business_goal`だけです。response schemaは回答済みfieldを
+候補から除外し、後段検証もschema制約に反する応答を拒否します。エラーに表示されたfieldが許可外または
+回答済みの場合、同じ有料相談を自動再試行しません。
+
+このエラーが固定応答テスト以外で発生した場合は、表示されたfieldと回答済みfieldを記録してIssueへ
+添付してください。モデル応答の全文、認証情報、環境変数は記録しないでください。再実行は、修正後に
+Vertex AI費用を改めて確認してから行います。分析計画中はBigQueryを実行しません。
+
 ## 回遊Sankeyが意味検証で停止する
 
 通常の回遊は`page_navigation`モードです。セッション内で連続する同一`page_path`を1回の滞在へ
