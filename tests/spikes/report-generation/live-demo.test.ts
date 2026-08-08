@@ -1018,6 +1018,27 @@ print(json.dumps({
   });
 });
 
+test('dashboard UI accepts recommended clarification answers without forced re-proposal', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "accepted_copy":all(value in html for value in ["推奨回答を採用済み（編集可）","AIに再提案（任意）"]),
+ "captures_defaults":"currentAnswers[item.field]=input.value.trim()" in html,
+ "syncs_edits":"input.oninput=syncClarificationAnswers" in html,
+ "build_collects":'collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")' in html,
+ "not_length_blocked":"plan.clarifications.length>0" not in html,
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    accepted_copy: true,
+    captures_defaults: true,
+    syncs_edits: true,
+    build_collects: true,
+    not_length_blocked: true,
+  });
+});
+
 test('confirmed dashboard freezes provenance and meeting report reuses it without BigQuery', () => {
   const result = python(`
 import threading
