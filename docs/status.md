@@ -30,14 +30,12 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279)。
-[PR #278](https://github.com/Yukihide-Mitsuoka/repchat/pull/278)はmerge済みで、AIの非空推奨回答を
-初期採用し、編集を即時同期し、空欄がある場合だけbuildを停止する#277を修正した。実相談後、
-確定計画が共通4 KiB本文上限を超えてHTTP 400となる#279が判明した。ダッシュボードだけ16 KiBの
-有限上限とし、ブラウザが返すパネルを
-`id`・`reason`へ縮小する。固定応答の境界テストは成功したが、全suiteとCIは未確認。buildは開始前に
-停止したためBigQueryは実行していない。費用を伴う再確認は、
-Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
+**現在の作業スレッド**: [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281)。
+[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)はmerge済みで、確定計画だけを有限の
+16 KiB本文上限とし、ブラウザが返すパネルを`id`・`reason`へ縮小した。続いて、ダッシュボードに
+進行状態の色が無い、SQLをコピーできない、可視化値の小数が長い、会議報告ボタンが無反応に見える
+UIフィードバック4点を#281で修正する。単一グラフの進行色は既存実装が正常。費用を伴う再確認は、
+Vertex AI相談、BigQuery build、会議報告を分けてオーナー承認を得る。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
 公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・

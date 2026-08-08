@@ -1051,6 +1051,119 @@ print(json.dumps({
   });
 });
 
+test('dashboard and single-graph progress both expose active and completed states', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "dashboard_steps":all(value in html for value in ['id="dashboard-step-plan"','id="dashboard-step-review"','id="dashboard-step-build"']),
+ "dashboard_styles":all(value in html for value in [".plan-item.active",".plan-item.done"]),
+ "dashboard_transitions":all(value in html for value in ['dashboardStage("plan")','dashboardStage("review")','dashboardStage("build")','dashboardStage("complete")']),
+ "graph_transitions":all(value in html for value in ["function stage(name)",".stages .active",".stages .done"]),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    dashboard_steps: true,
+    dashboard_styles: true,
+    dashboard_transitions: true,
+    graph_transitions: true,
+  });
+});
+
+test('single and dashboard SQL areas provide an accessible clipboard action', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "single":all(value in html for value in ['class="sql-shell"','id="sql-copy"','aria-label="SQLをコピー"']),
+ "dashboard":all(value in html for value in ["makeCopyButton(sql)","codeShell.append(copy,sql)"]),
+ "clipboard":all(value in html for value in ["navigator.clipboard.writeText(target.textContent)","SQLをコピーしました","SQLのコピーに失敗しました"]),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    single: true,
+    dashboard: true,
+    clipboard: true,
+  });
+});
+
+test('chart values use bounded Japanese number formatting without changing raw tables', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const start = script.indexOf('function chartValue(');
+  const end = script.indexOf('function renderSql(');
+  assert.ok(start >= 0 && end > start, 'chartValue must be defined before renderSql');
+  const values = vm.runInNewContext(
+    `${script.slice(start, end)};[
+      chartValue(118380.0,"sessions",true),
+      chartValue(895.0,"purchases"),
+      chartValue(57350.1256,"revenue"),
+      chartValue(14.5659,"repeat_user_rate"),
+      chartValue(49.509999,"average_engagement"),
+      chartValue("organic","medium"),
+    ]`,
+  );
+  assert.deepEqual([...values], ['118,380', '895', '57,350.13', '14.57', '49.51', 'organic']);
+  assert.ok(script.includes('textContent:chartValue(r.rows[0][0],r.columns[0],true)'));
+  assert.ok(script.includes('value.textContent=chartValue(r.rows[0][index],column)'));
+  assert.ok(script.includes('textContent:chartValue(r.rows[0][index],column,true)'));
+  assert.ok(script.includes('textContent=chartValue(x[1],r.columns?.[1]??"")'));
+  assert.ok(
+    script.includes('replaceChildren(table(result.columns,result.rows))'),
+    'the audit table must retain raw query values',
+  );
+});
+
+test('meeting report click gives immediate feedback and surfaces missing revision or dialog failure', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const start = script.indexOf('function requestMeetingReport(');
+  const end = script.indexOf('configureCopyButton($("sql-copy")');
+  assert.ok(start >= 0 && end > start, 'meeting report request handler must be explicit');
+  const source = script.slice(start, end);
+  assert.ok(source.includes('費用確認待ち'));
+  assert.ok(source.includes('会議報告案を生成できるbuild結果がありません。'));
+  assert.ok(source.includes('費用確認ダイアログを開けませんでした。'));
+  assert.ok(script.includes('$("report-submit").onclick=requestMeetingReport'));
+
+  function invoke(revision: string | null, showCost: () => void) {
+    const elements = {
+      'dashboard-message': { className: '', textContent: '' },
+      'dashboard-status': { textContent: '' },
+    };
+    vm.runInNewContext(
+      `let latestBuildRevision=${JSON.stringify(revision)};
+       const $=id=>elements[id];
+       ${source}
+       requestMeetingReport();`,
+      { elements, showCost },
+    );
+    return elements;
+  }
+
+  const missing = invoke(null, () => assert.fail('must not open the cost dialog'));
+  assert.equal(missing['dashboard-status'].textContent, 'エラー');
+  assert.equal(
+    missing['dashboard-message'].textContent,
+    '会議報告案を生成できるbuild結果がありません。',
+  );
+
+  let requestedMode = '';
+  const waiting = invoke('build-1', (mode?: string) => {
+    requestedMode = mode ?? '';
+  });
+  assert.equal(requestedMode, 'report');
+  assert.equal(waiting['dashboard-status'].textContent, '費用確認待ち');
+
+  const failed = invoke('build-1', () => {
+    throw new Error('dialog unavailable');
+  });
+  assert.equal(failed['dashboard-status'].textContent, 'エラー');
+  assert.equal(failed['dashboard-message'].textContent, '費用確認ダイアログを開けませんでした。');
+});
+
 test('dashboard UI accepts recommended clarification answers without forced re-proposal', () => {
   const result = python(`
 html=m.HTML
