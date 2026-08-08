@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.15.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.1...v1.15.2) (2026-08-08)
+
+
+### Bug Fixes
+
+* **demo:** accept bounded dashboard plan bodies ([#280](https://github.com/Yukihide-Mitsuoka/repchat/issues/280)) ([f052eef](https://github.com/Yukihide-Mitsuoka/repchat/commit/f052eef3022d6652511d5b31e0d2347d16135137))
+* **demo:** accept recommended analysis plan ([#278](https://github.com/Yukihide-Mitsuoka/repchat/issues/278)) ([4bd2a41](https://github.com/Yukihide-Mitsuoka/repchat/commit/4bd2a41ea696099b9e0ccda082ba8e1b70ca0278))
+* **demo:** constrain planner clarification fields ([#275](https://github.com/Yukihide-Mitsuoka/repchat/issues/275)) ([2ab8643](https://github.com/Yukihide-Mitsuoka/repchat/commit/2ab8643f3b1d8fb45e10aa212501fdf2bdc317c7))
+* **demo:** restore result interaction feedback ([#282](https://github.com/Yukihide-Mitsuoka/repchat/issues/282)) ([1a9e09c](https://github.com/Yukihide-Mitsuoka/repchat/commit/1a9e09cd38ce36f3054514b33623a1805ce36f02))
+
 ## [1.15.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.0...v1.15.1) (2026-08-08)
 
 
