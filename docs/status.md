@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-08-02
+updated: 2026-08-08
 ---
 
 # 実装状況サマリー
@@ -30,14 +30,20 @@ updated: 2026-08-02
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #253](https://github.com/Yukihide-Mitsuoka/repchat/issues/253)。
-単一グラフの取得データ表示（PR #245）と、1つの日本語依頼から6パネルを生成するダッシュボード
-（PR #239/#240）は実装・オーナー確認済みで、Issue #236はクローズした。ライブデモはダッシュボード／
-単一グラフの切替、起動表示、費用確認、固定応答のブラウザ確認を完了している。質問送信による実Vertex AI・
-BigQueryはこの確認では行っていない。v1.13.0のSBOM添付はPR #249で自動化済み。
-次は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)で、初期主要顧客に該当する
-参加者へ5分デモを行い、価値仮説を`proceed` / `revise` / `reject`に分類する。結果が出るまで製品実装を
-開始しない。条件付きの次タスク順と設計判断索引は[development-handoff](development-handoff.md)を参照する。
+**現在の作業スレッド**: [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273)。
+2026-08-08の実Vertex AI相談で、plannerが許可外の確認fieldを返し、後段検証がfail closedした。
+BigQueryは未実行。response schemaと後段の許可集合を一致させる固定応答の回帰修正後、最新mainから
+デモを再起動する。費用を伴う再確認は、Vertex AI相談とBigQuery buildを分けてオーナー承認を得る。
+
+PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
+公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・
+BigQueryおよび新しいR17参照値は未測定。現在`127.0.0.1:8765`で稼働するプロセスは古い
+`fix/188-bitcoin-hash` commit `4967f27`であり、最新mainの動作証拠にしない。
+
+デモ阻害の解消後は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)で、初期主要顧客に
+該当する参加者へ5分デモを行い、価値仮説を`proceed` / `revise` / `reject`に分類する。結果が出るまで
+製品実装を開始しない。条件付きの次タスク順と設計判断索引は
+[development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /
 [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)（2026-08-02 merge済み）で、ライブ画面の

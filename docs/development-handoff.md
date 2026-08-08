@@ -15,11 +15,11 @@ updated: 2026-08-08
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) — 根拠検証契約のPR #266はmerge済み。このPRで、保存済み集計bundleから未承認の会議報告ドラフトを生成・表示するライブデモ接続を追加する |
-| 並行修正 | [Issue #271](https://github.com/Yukihide-Mitsuoka/repchat/issues/271)・[PR #272](https://github.com/Yukihide-Mitsuoka/repchat/pull/272) — 回遊Sankeyで連続する同一ページを統合し、段階遷移と参照値をfail closedで検証する。`make format && make lint && make test`成功。実Vertex AI・BigQueryは未実行 |
-| デモ準備 | `make demo-live PROJECT=<project>`は、ダッシュボード生成／単一グラフ生成を切り替える。ダッシュボードは6パネル、単一グラフは「グラフ」と「取得データ」を切り替えられる。起動表示と固定応答を確認済み。質問送信は費用を再提示して承認後だけ行う |
+| 作業 | [Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273) — ダッシュボード相談でVertex AIが許可外の確認fieldを返し、後段検証がfail closedした。response schemaを未回答の許可fieldへ制約する回帰修正が最優先 |
+| デモ実行状態 | `http://127.0.0.1:8765/`はHTTP 200だが、`fix/188-bitcoin-hash`のcommit `4967f27`から起動中で最新mainではない。PR #272のSankey修正確認には使わず、#273修正後に最新mainから再起動する |
+| 直近完了 | PR #269とPR #272はmerge済み。Release PR #270もmergeされ、`v1.15.1`とSPDX SBOMの公開まで確認済み。PR #272後の実Vertex AI・BigQueryとSankey参照値は未測定 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | オーナーが2026-08-02に優先したデモ／設計検証として、#255、組織コンテキストのメモリー要件、#188の非GA4公開nested dataset 1種類、#180と#181の明示的な未検証プロトタイプを小さいPRに分けて進める。実データ再実行は費用を再提示してオーナー承認後だけ行う |
+| AIができること | #273を固定応答で修正し、最新mainの起動とHTTP表示を無料で確認する。実Vertex AI相談とBigQuery buildは別々に費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -35,11 +35,26 @@ updated: 2026-08-08
 5. デモを扱う場合だけ[デモ手順](demo.md)と
    [report-generation spike](../spikes/report-generation/README.md)を読む。
 
+## 直近の相談エラー
+
+2026-08-08に、既定の「2021年1月のECサイトで購入成果を改善する」依頼で
+「AIと分析計画を相談」を実行すると、Vertex AI呼出し後に
+「確認事項のfieldが許可範囲外または回答済みです。」で停止した。BigQueryは実行していない。
+
+原因と受入条件の正本は[Issue #273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273)。初回は
+回答済みfieldが存在しないため、モデルが`audience`、`comparison`、`business_goal`以外を返したと判断できる。
+`PLAN_SCHEMA`がfieldを任意のstringとして許可し、プロンプトと`normalize_plan`だけが許可集合を持つ
+不整合が原因である。実際に返ったfield値と失敗した相談の実績費用は表示・保存されないため未特定で、
+推測して記録しない。#273には構造化診断、費用表示、起動commit表示の改善候補も記録した。
+
 ## 次タスクの分岐
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。#253完了後はコード実装を増やさず、この検証結果を`proceed` / `revise` / `reject`に分類する | [demo](demo.md)、[roadmap](roadmap.md) |
+| 現在のデモ阻害 | [#273 planner確認field制約](https://github.com/Yukihide-Mitsuoka/repchat/issues/273)。固定応答のfailing-first testで直し、自動再試行を追加しない | #273、`analysis_planner.py`、planner/live-demo tests |
+| #273 merge後 | 古い`fix/188-bitcoin-hash`サーバーを終了し、最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と画面commit表示の改善要否を無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
+| 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
+| デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
 | #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
 | #179と#188が完了 | [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179の設計成果、ADR-0013/0015 |
 | #180でanalysis specification revision契約を確定 | Issue #160が`proceed`なら、適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |
@@ -51,14 +66,15 @@ updated: 2026-08-08
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-02）
+## 次にやる順序（2026-08-08）
 
-1. **現在:** [#255 SQLシンタックスハイライト](https://github.com/Yukihide-Mitsuoka/repchat/issues/255)を完了する。
-2. **次:** 適応型分析メモリー要件で、承認済みの組織コンテキストを分析レシピと個人設定から明確に分離し、#180と#181が同じrevisionを参照する契約を明文化する。
-3. **レビュー待ち:** [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の最初の縦切りとして、非GA4のBitcoin公開nested/repeated datasetをライブデモへ追加した。基準SQLのdry runは約2.91GiB。実値照合・独立レビュー・2種類評価は未完了なのでIssueは閉じない。
-4. **レビュー待ち:** [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)のローカル未検証プロトタイプとして、目的→最大3確認→仮説・KPI・パネル提案→編集→revision freeze→別費用確認→buildを接続した。候補6件、fixture組織コンテキスト、同期buildの限界を維持する。
-5. **現在:** [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)のローカル未検証プロトタイプを、純粋な根拠検証契約→ライブ画面接続の順に分割して進める。製品受入条件は閉じない。
-5. **並行するオーナー作業:** 初期主要顧客の定義に合う日本の小規模代理店またはソフトウェアベンダーから参加者を選び、#160の5分デモ日程を決める。#160が`proceed`になるまで、上記プロトタイプを製品実装または検証済み能力とは表明しない。
+1. **現在:** [#273](https://github.com/Yukihide-Mitsuoka/repchat/issues/273)でplannerのresponse schemaと後段検証を一致させる。固定応答で初回と回答反映後を検証し、Vertex AIを自動再試行しない。
+2. **次:** 最新mainからデモを再起動し、HTTP 200、planner固定応答、PR #272のSankey意味検証を無料の回帰テストで確認する。
+3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、取得データを確認する。
+4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
+5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
+6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
+
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
 ## 設計判断の索引
