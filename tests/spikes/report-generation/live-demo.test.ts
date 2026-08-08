@@ -838,6 +838,70 @@ print(json.dumps({
   });
 });
 
+test('Bitcoin query quotes the reserved hash column before BigQuery execution', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
+e.client=e.bq=object();e.lock=threading.Lock();executed=[]
+sql="""WITH tx_address_counts AS (
+    SELECT
+        t.hash,
+        COUNT(DISTINCT addr) AS unique_address_count
+    FROM \`bigquery-public-data.crypto_bitcoin.transactions\` AS t,
+        UNNEST(t.outputs) AS o,
+        UNNEST(o.addresses) AS addr
+    WHERE t.block_timestamp_month = DATE '2024-01-01'
+    GROUP BY t.hash
+),
+tx_bands AS (
+    SELECT
+        HASH,
+        CASE WHEN unique_address_count = 1 THEN '1件'
+             WHEN unique_address_count BETWEEN 2 AND 3 THEN '2〜3件'
+             WHEN unique_address_count BETWEEN 4 AND 9 THEN '4〜9件'
+             WHEN unique_address_count >= 10 THEN '10件以上'
+        END AS address_count_band
+    FROM tx_address_counts
+    WHERE unique_address_count > 0
+)
+SELECT address_count_band, COUNT(1) AS transaction_count
+FROM tx_bands
+GROUP BY address_count_band
+ORDER BY transaction_count DESC"""
+m.report.generate_request=lambda *_args:({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+def execute(_bq,source,**_kwargs):
+ executed.append(source)
+ return (([("1件",10)], ["address_count_band","transaction_count"]),None)
+m.report.exec_bq=execute;events=[]
+e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
+shown=next(event["sql"] for event in events if event["type"]=="sql")
+quoted=chr(96)+"hash"+chr(96)
+protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
+protected_once=m.bitcoin.quote_reserved_hash_identifiers(protected)
+long_literal="SELECT '"+(chr(92)+"!")*2000+"hash'"
+print(json.dumps({
+ "executed_quoted":("SELECT\\n        "+quoted+",") in executed[0],
+ "display_quoted":quoted in shown,
+ "qualified_unchanged":"t.hash" in executed[0],
+ "prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,
+ "protected_unchanged":protected_once==protected,
+ "idempotent":m.bitcoin.quote_reserved_hash_identifiers(executed[0])==executed[0],
+ "long_literal_unchanged":m.bitcoin.quote_reserved_hash_identifiers(long_literal)==long_literal,
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    executed_quoted: true,
+    display_quoted: true,
+    qualified_unchanged: true,
+    prompt_guard: true,
+    protected_unchanged: true,
+    idempotent: true,
+    long_literal_unchanged: true,
+  });
+});
+
 test('planning calls Vertex only and a confirmed plan narrows dashboard panels', () => {
   const result = python(`
 import threading

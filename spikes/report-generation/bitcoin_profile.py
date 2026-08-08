@@ -21,7 +21,7 @@ EXAMPLE_QUESTION = (
 )
 REFERENCE_SQL = f"""WITH per_transaction AS (
     SELECT
-        t.hash,
+        t.`hash`,
         COUNT(DISTINCT address) AS address_count
     FROM
         `{TABLE}` AS t
@@ -30,7 +30,7 @@ REFERENCE_SQL = f"""WITH per_transaction AS (
     WHERE
         t.block_timestamp_month = DATE '2024-01-01'
     GROUP BY
-        t.hash
+        t.`hash`
 )
 SELECT
     CASE
@@ -50,7 +50,7 @@ ORDER BY
 SCHEMA_DDL = f"""
 -- BigQuery public dataset; block_timestamp_month is the partition column.
 CREATE TABLE `{TABLE}` (
-  hash STRING NOT NULL,                 -- transaction identifier
+  `hash` STRING NOT NULL,               -- transaction identifier; HASH is reserved
   block_timestamp TIMESTAMP,
   block_timestamp_month DATE,
   input_count INT64,
@@ -90,6 +90,8 @@ def prompt_rules() -> str:
 - テーブル参照は必ず `{TABLE}` と完全修飾する。
 - スキャン量を抑えるため、block_timestamp_month = DATE '<month-start>' を必ず使う。
 - outputs と output.addresses はそれぞれ UNNEST する。
+- hash はGoogleSQLの予約語なので、元テーブルでは t.`hash` と修飾・引用する。
+  後続CTEへ渡す場合は transaction_hash という別名を使い、裸の hash は書かない。
 - SELECT * は使わず、必要な列だけを明示する。
 - 列の別名は ASCII snake_case にする。
 - SELECT 文のみ。DDL/DML は書かない。
@@ -168,3 +170,68 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         raise ValueError(
             f"生成SQLの対象期間が問い合わせの{period['label']}と一致しません。"
         )
+
+
+def quote_reserved_hash_identifiers(sql: str) -> str:
+    """Quote bare Bitcoin hash identifiers without touching paths or literals.
+
+    GoogleSQL permits the reserved HASH token after a path separator (``t.hash``)
+    but not as the first part of an identifier.  The bounded Bitcoin profile knows
+    that a bare HASH token can only mean the transaction column, so quoting it is a
+    semantics-preserving normalization before execution.
+    """
+    output: list[str] = []
+    index = 0
+    length = len(sql)
+
+    def quoted_end(start: int, delimiter: str) -> int:
+        cursor = start + 1
+        while cursor < length:
+            if sql[cursor] == "\\" and cursor + 1 < length:
+                cursor += 2
+            elif sql[cursor] == delimiter:
+                if cursor + 1 < length and sql[cursor + 1] == delimiter:
+                    cursor += 2
+                else:
+                    return cursor + 1
+            else:
+                cursor += 1
+        return length
+
+    while index < length:
+        if sql.startswith("--", index):
+            end = sql.find("\n", index + 2)
+            end = length if end == -1 else end
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql.startswith("/*", index):
+            end = sql.find("*/", index + 2)
+            end = length if end == -1 else end + 2
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql[index] in {"'", '"', "`"}:
+            end = quoted_end(index, sql[index])
+            output.append(sql[index:end])
+            index = end
+            continue
+        if sql[index].isalpha() or sql[index] == "_":
+            end = index + 1
+            while end < length and (sql[end].isalnum() or sql[end] == "_"):
+                end += 1
+            token = sql[index:end]
+            previous = index - 1
+            while previous >= 0 and sql[previous].isspace():
+                previous -= 1
+            if token.casefold() == "hash" and (
+                previous < 0 or sql[previous] != "."
+            ):
+                token = "`hash`"
+            output.append(token)
+            index = end
+            continue
+        output.append(sql[index])
+        index += 1
+
+    return "".join(output)
