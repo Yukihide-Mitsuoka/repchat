@@ -94,7 +94,7 @@ html=m.HTML
 print(json.dumps({
  "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
- "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():runQuery()']),
+ "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
  "dashboard":all(x in html for x in ["今回の相談 約¥0.2","BigQuery ¥0（仕様確定前は実行しません）","count*40","Math.ceil(count*38.2)"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
@@ -708,6 +708,7 @@ class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  def query(self,q,emit):emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
  def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
+ def meeting_report(self,revision,emit):emit({"type":"meeting_report","build_revision":revision})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
@@ -715,10 +716,14 @@ try:
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
  dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":"2021年1月のECサイト分析ダッシュボードを作って"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
+ report_req=urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"build-111111111111"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ report_revision=json.loads(urllib.request.urlopen(report_req).read().decode())["build_revision"]
+ try:urllib.request.urlopen(urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"bad"}).encode(),headers={"content-type":"application/json","origin":base},method="POST"))
+ except urllib.error.HTTPError as e:statuses.append(e.code)
  for ct,origin in [("text/plain",base),("application/json","https://attacker.example")]:
   try:urllib.request.urlopen(urllib.request.Request(base+"/api/query",data=b"{}",headers={"content-type":ct,"origin":origin},method="POST"))
   except urllib.error.HTTPError as e:statuses.append(e.code)
- print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"statuses":statuses}))
+ print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"report_revision":report_revision,"statuses":statuses}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -726,7 +731,8 @@ finally:s.shutdown();s.server_close();t.join()
     form: true,
     value: 118380,
     dashboard_count: 6,
-    statuses: [415, 403],
+    report_revision: 'build-111111111111',
+    statuses: [400, 415, 403],
   });
   const bind = spawnSync(
     'python3',
@@ -870,5 +876,64 @@ print(json.dumps({
     review: true,
     flow: true,
     memory: true,
+  });
+});
+
+test('confirmed dashboard freezes provenance and meeting report reuses it without BigQuery', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
+e.spec=json.loads((m.HERE/"report.json").read_text());e.metric_definitions=json.loads((m.HERE/"metrics.json").read_text())
+e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
+plan={"objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"購入成果の課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question("2021年1月"),"hypotheses":["導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":"必要"} for panel_id in ["R4","R9","R16","R17"]]}
+rows={"R4":[[895,123456.0]],"R9":[[100,50,20]],"R16":[["2021-01-31",118380,117000.5]],"R17":[["1. 入口: /","2. /shop",5]]}
+columns={"R4":["購入件数","購入金額"],"R9":["閲覧","カート","購入"],"R16":["日付","セッション数","7日移動平均"],"R17":["source","target","sessions"]}
+def run_section(section,period,emit,context=None,profile="ga4"):
+ emit({"type":"sql","sql":"SELECT value FROM source","sql_sha256":"1"*16,**context})
+ emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":"table",**context})
+ return .1
+e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
+raw={"executive_summary":"追加診断が必要です。","observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
+calls=[]
+m.meeting.generate=lambda _client,_model,current:(calls.append(current["build_revision"]) or (m.meeting.normalize_report(raw,current),{"input_tokens":10,"output_tokens":5}))
+report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)
+error=""
+try:e.meeting_report("build-000000000000",lambda _event:None)
+except m.LiveDemoError as caught:error=str(caught)
+print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["goal"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.dashboard_complete, output.build);
+  assert.match(output.build, /^build-[0-9a-f]{12}$/);
+  assert.match(output.plan, /^plan-[0-9a-f]{12}$/);
+  assert.equal(output.organization, '購入成果を伸ばし、訪問者の継続利用を改善する');
+  assert.equal(output.metric, true);
+  assert.match(output.result_revision, /^result-[0-9a-f]{12}$/);
+  assert.equal(output.sql, '1111111111111111');
+  assert.deepEqual(output.report_types, ['report_stage', 'meeting_report']);
+  assert.match(output.report_revision, /^report-[0-9a-f]{12}$/);
+  assert.equal(output.citation.result_revision, output.result_revision);
+  assert.deepEqual(output.calls, [output.build]);
+  assert.equal(output.error, '指定したbuild revisionの根拠bundleがありません。');
+});
+
+test('meeting report UI is explicit about cost, evidence, approval, and prototype limits', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "action":all(value in html for value in ["この結果から会議報告案を生成","/api/report","latestBuildRevision"]),
+ "cost":all(value in html for value in ["BigQueryは再実行しません","BigQuery ¥0（保存済み集計bundleだけを参照）","今回の報告案 最大約¥5","根拠bundle 48 KiB・出力4,096 tokens上限"]),
+ "evidence":all(value in html for value in ["result_revision","sql_sha256","期待効果"]),
+ "approval":all(value in html for value in ["AIが作成した未承認案","外部共有前に人間が根拠と表現を確認"]),
+ "safe":"innerHTML" not in html,
+},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    action: true,
+    cost: true,
+    evidence: true,
+    approval: true,
+    safe: true,
   });
 });

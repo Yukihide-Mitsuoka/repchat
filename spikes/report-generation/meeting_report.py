@@ -7,6 +7,8 @@ import json
 import re
 
 NUMBER = re.compile(r"(?<![A-Za-z])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
+MAX_BUNDLE_BYTES = 48 * 1024
+MAX_OUTPUT_TOKENS = 4096
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -113,6 +115,9 @@ def _text(value, label: str) -> str:
 
 def _evidence_index(bundle: dict) -> dict[str, dict]:
     """Validate immutable provenance before any generated claim is accepted."""
+    encoded = json.dumps(bundle, ensure_ascii=False, sort_keys=True).encode()
+    if len(encoded) > MAX_BUNDLE_BYTES:
+        raise ReportError("会議報告の根拠bundleが48 KiBを超えています。")
     required_revisions = {
         "plan_revision": r"plan-[0-9a-f]{12}",
         "build_revision": r"build-[0-9a-f]{12}",
@@ -265,6 +270,7 @@ def generate(client, model: str, bundle: dict):
             response_mime_type="application/json",
             response_schema=REPORT_SCHEMA,
             temperature=0,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
         ),
     )
     usage = response.usage_metadata

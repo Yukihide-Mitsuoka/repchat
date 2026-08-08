@@ -81,7 +81,8 @@ cases=[]
 bad_number={**base,"observations":[{"text":"購入件数は999件です。","panel_ids":["R4"]}]}
 unknown={**base,"observations":[{"text":"観測です。","panel_ids":["R99"]}]}
 bad_bundle={**bundle,"organization_context_revision":"other-v1"}
-for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle)]:
+oversized={**bundle,"metric_definitions":{"x":"a"*50000}}
+for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized)]:
  try:m.normalize_report(raw,current)
  except m.ReportError as error:cases.append(str(error))
 print(json.dumps(cases,ensure_ascii=False))`);
@@ -92,6 +93,7 @@ print(json.dumps(cases,ensure_ascii=False))`);
     '組織コンテキストrevisionが根拠bundleと一致しません。',
     '会議報告のlimitationsが配列ではありません。',
     '会議報告のlimitationsには根拠リンクのない数値を書けません。',
+    '会議報告の根拠bundleが48 KiBを超えています。',
   ]);
 });
 
