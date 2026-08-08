@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.14.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.13.1...v1.14.0) (2026-08-08)
+
+
+### Features
+
+* **demo:** add bounded Bitcoin nested schema profile ([#259](https://github.com/Yukihide-Mitsuoka/repchat/issues/259)) ([efe1f33](https://github.com/Yukihide-Mitsuoka/repchat/commit/efe1f3338eeb2e3b3f36140f368d91e71c21849c))
+* **demo:** confirm AI analysis plan before dashboard build ([#263](https://github.com/Yukihide-Mitsuoka/repchat/issues/263)) ([76332c6](https://github.com/Yukihide-Mitsuoka/repchat/commit/76332c630f21081e19e128fb5e3e237c723f9b0f))
+* **demo:** define reviewable analysis plan revisions ([#261](https://github.com/Yukihide-Mitsuoka/repchat/issues/261)) ([9976692](https://github.com/Yukihide-Mitsuoka/repchat/commit/9976692c6cadb3a618e29c595bbc45656d68114c))
+* **demo:** highlight SQL and record organization context ([#256](https://github.com/Yukihide-Mitsuoka/repchat/issues/256)) ([e1c1990](https://github.com/Yukihide-Mitsuoka/repchat/commit/e1c1990cc6f876970c6ad2c068d8bf57e21255ba))
+
 ## [1.13.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.13.0...v1.13.1) (2026-08-02)
 
 
