@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.15.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.2...v1.15.3) (2026-08-09)
+
+
+### Bug Fixes
+
+* **ci:** upgrade CodeQL Action to v4 ([#284](https://github.com/Yukihide-Mitsuoka/repchat/issues/284)) ([0a0dbe9](https://github.com/Yukihide-Mitsuoka/repchat/commit/0a0dbe928a0ab32b3de71b266a7de0d7782de415))
+* **demo:** make Sankey paths auditable ([#285](https://github.com/Yukihide-Mitsuoka/repchat/issues/285)) ([e64129c](https://github.com/Yukihide-Mitsuoka/repchat/commit/e64129c93714736a93265cbbc3c0116b541c7b73)), closes [#283](https://github.com/Yukihide-Mitsuoka/repchat/issues/283)
+* **inheritance:** classify RepChat sync contracts ([#288](https://github.com/Yukihide-Mitsuoka/repchat/issues/288)) ([03d5081](https://github.com/Yukihide-Mitsuoka/repchat/commit/03d50811d6188b1f61be52c4a55db95b7546e2f9))
+
 ## [1.15.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.1...v1.15.2) (2026-08-08)
 
 
