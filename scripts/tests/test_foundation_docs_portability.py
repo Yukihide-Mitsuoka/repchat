@@ -36,6 +36,13 @@ class FoundationDocsPortabilityTest(unittest.TestCase):
             script,
         )
 
+    def test_child_doctor_rejects_unresolved_makefile_profiles(self):
+        script = TEMPLATE_CHECK.read_text(encoding="utf-8")
+
+        self.assertIn("python3 scripts/makefile_profile.py", script)
+        self.assertIn("--allow-template-placeholders", script)
+        self.assertIn("repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation", script)
+
     def test_optional_example_module_is_not_a_required_local_link(self):
         guide = AI_GUIDE.read_text(encoding="utf-8")
 

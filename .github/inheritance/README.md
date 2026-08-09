@@ -99,6 +99,10 @@ Exit `0` prints deterministic JSON; exit `2` reports invalid input on stderr. Th
 performs no network request, file write, deletion, Git operation, or GitHub API call.
 `make doctor` runs this validation automatically when the repository contains a child
 manifest; the foundation root has no manifest and skips only this child-specific check.
+It also rejects the exact template `not wired yet` implementation for required Make
+targets outside the canonical Foundation repository. A target that does not apply must
+use an explicit repository-owned `not applicable` implementation; silent template
+no-ops are not valid downstream checks.
 
 ## Propagate a parent change
 
@@ -111,6 +115,13 @@ multiple inheritance hops: a grandchild run at the same time still sees the prev
 merged intermediate parent. After the intermediate template PR merges, either start its
 children manually or wait for their next daily schedule. Every resulting PR remains a
 separate review and must not auto-merge.
+
+Each repository runs Template Sync as a single-flight operation. Scheduled and manual
+runs never overlap. If exactly one `chore/template_sync_*` PR is already open, the run
+ends successfully and identifies that PR in the job summary instead of creating another
+review. More than one open synchronization PR fails closed for human reconciliation.
+No run force-pushes, closes, or merges an existing PR. Parent changes that arrive while
+one PR is open are collected by the next daily or manual run after it merges.
 
 | Step | Required evidence |
 |------|-------------------|

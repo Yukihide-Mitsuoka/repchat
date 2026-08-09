@@ -125,6 +125,10 @@ agent profileとproject overlayを保護対象にしてください。
 cp profiles/python-uv/Makefile ./Makefile      # または typescript-node / terraform-gcp
 ```
 正準ターゲット契約は [profiles/README.md](../../../profiles/README.md) を参照。
+インスタンス化後は、必須ターゲットにテンプレートの `not wired yet` 実装が残っていると
+`make doctor` が失敗します。対象外のターゲットは、たとえば
+`[project] build: not applicable — no deployable artifact` のように、利用先が所有する
+明示的な対象外結果へ置き換えてください。テンプレートのプレースホルダーは残しません。
 
 ### 7. GitHub ガバナンスを点検
 
