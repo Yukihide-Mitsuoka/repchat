@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+  "branch": "main",
+  "inherited_paths": [
+    ".ai/README.md", ".ai/guardrails.md", ".ai/contracts/foundation/", ".ai/documentation.md",
+    ".ai/project-document-maintenance.md", ".ai/release.md", ".ai/security.md", ".ai/testing.md",
+    ".claude/README.md", ".claude/agents/", ".claude/hooks/post-edit-quality.sh", ".claude/skills/",
+    ".editorconfig", ".gitattributes", ".github/ISSUE_TEMPLATE/", ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/dependabot.yml", ".github/discussion-categories.md", ".github/governance/README.md", ".github/governance/foundation.json",
+    ".github/inheritance/README.md", ".github/labels.yml", ".mdformat.toml", ".pre-commit-config.yaml",
+    ".skills/README.md", ".skills/bugfix.skill.md", ".skills/requirements.skill.md", "AGENTS.md",
+    "CONTRIBUTING.md", "LICENSE", "SECURITY.md", "renovate.json",
+    "scripts/", "docs/foundation/"
+  ],
+  "protected_paths": [
+    ".ai/architecture.md", ".ai/coding-rules.md", ".ai/decision-log.md", ".ai/mission.md",
+    ".ai/project/", ".ai/review-checklist.md", ".ai/workflow.md", ".claude/hooks/guard-bash.sh",
+    ".claude/hooks/tests/", ".claude/settings.json", ".devcontainer/", ".env.example",
+    ".github/CODEOWNERS", ".github/governance/profiles/", ".github/governance/repository.json", ".github/inheritance/lock.json",
+    ".github/inheritance/manifest.json", ".github/inheritance/agent-profile.json", ".github/workflows/", ".gitignore",
+    ".skills/architecture.skill.md", ".skills/documentation.skill.md", ".skills/feature.skill.md", ".skills/refactor.skill.md",
+    ".skills/release.skill.md", ".skills/review.skill.md", ".skills/security.skill.md", ".skills/test.skill.md",
+    ".templatesyncignore", "CHANGELOG.md", "CLAUDE.md", "Makefile",
+    "README.md", "profiles/", "src/", "tests/",
+    "docs/README.md", "docs/adr/", "docs/handoff.md", "docs/inheritance/readmes/"
+  ],
+  "agent_inputs": [{
+    "layer": "foundation",
+    "repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+    "path": ".ai/contracts/foundation/agent-entry.md"
+  }]
+}
