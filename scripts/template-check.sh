@@ -13,7 +13,8 @@
 #      Template Sync protection contract.
 #   5. Foundation-owned project-documentation guides do not occupy project-owned paths.
 #   6. Declared AI context routes remain bounded without omitting mandatory authorities.
-#   7. Root README ownership is valid when marked; legacy missing markers remain warnings.
+#   7. Downstream required Make targets do not retain template no-op implementations.
+#   8. Root README ownership is valid when marked; legacy missing markers remain warnings.
 
 set -u
 cd "$(dirname "$0")/.." || exit 9
@@ -95,7 +96,19 @@ if [ "$is_foundation_root" = true ]; then
   fi
 fi
 
-# 6. ADR-0012: route shape is enforced everywhere. Byte and word ceilings fail in the
+# 6. The canonical Foundation repository intentionally retains its stack-neutral
+# template Makefile. An unpacked Foundation copy without an origin is identified by its
+# immutable README owner marker. Downstream repositories must replace required
+# placeholders; a repository-owned explicit "not applicable" implementation is allowed.
+makefile_profile_args=(--root .)
+if [ "$is_foundation_root" = true ] || \
+  grep -qx '<!-- repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation -->' README.md 2>/dev/null; then
+  makefile_profile_args+=(--allow-template-placeholders)
+fi
+python3 scripts/makefile_profile.py "${makefile_profile_args[@]}" || \
+  err "Required Make targets retain unresolved template placeholders"
+
+# 7. ADR-0012: route shape is enforced everywhere. Byte and word ceilings fail in the
 # canonical foundation; descendants receive measurements and compatibility warnings
 # because their protected entry documents can legitimately differ.
 context_budget_args=(validate --root .)
@@ -105,7 +118,7 @@ fi
 python3 scripts/context_budget.py "${context_budget_args[@]}" || \
   err "AI context routes or budgets are invalid (ADR-0012)"
 
-# 7. ADR-0011: detect ownership mismatches without moving or rewriting files. Existing
+# 8. ADR-0011: detect ownership mismatches without moving or rewriting files. Existing
 # repositories without a marker receive a warning so rule propagation does not force a
 # fleet-wide migration. An unpacked repository without an origin also remains auditable
 # by the other doctor checks.
