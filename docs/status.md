@@ -38,6 +38,9 @@ BigQueryは再実行されていない。会議報告schemaに配列件数と文
 #292では観測3件、解釈2件、仮説2件、アクション2件、限界3件までに制限し、本文・詳細にも文字数上限を
 設ける。生成schemaと受理時検証の双方で制限し、`MAX_TOKENS`と不完全JSONを安定した日本語エラーへ変換する。
 追加費用を伴う自動再実行はしない。修正後の実Vertex AI再生成は未実施。
+`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功し、修正ブランチのデモを
+再起動してHTTP 200を確認した。再起動で直近dashboard bundleは破棄されたため、実会議報告を再確認するには
+相談・buildの費用から改めて承認が必要。
 
 #283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
 リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。

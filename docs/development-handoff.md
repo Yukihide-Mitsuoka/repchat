@@ -16,8 +16,8 @@ updated: 2026-08-09
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292) — 会議報告の項目数・文字数を制限し、出力上限または不完全JSONを安定した日本語エラーとして判定する修正 |
-| デモ実行状態 | #292の作業開始時に旧プロセスを停止した。修正PR作成前に現在ブランチから`http://127.0.0.1:8765/`を再起動する。今回の実会議報告生成は再実行していない |
-| 直近完了 | [PR #290](https://github.com/Yukihide-Mitsuoka/repchat/pull/290)はmerge済み。#292では実際と同じ不完全JSONをfailing-first testで再現し、生成schemaと受理時検証の上限、`MAX_TOKENS`判定、不完全JSONの日本語エラーを実装した |
+| デモ実行状態 | #292修正ブランチから`http://127.0.0.1:8765/`を起動し、HTTP 200を確認した。再起動で直近dashboard bundleは破棄されたため、会議報告の再確認には有料の相談・buildからやり直す必要がある。今回の実生成は再実行していない |
+| 直近完了 | [PR #290](https://github.com/Yukihide-Mitsuoka/repchat/pull/290)はmerge済み。#292では実際と同じ不完全JSONをfailing-first testで再現し、生成schemaと受理時検証の上限、`MAX_TOKENS`判定、不完全JSONの日本語エラーを実装した。`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #292の固定応答テストを無料で検証しPR化する。実Vertex AI相談、BigQuery build、会議報告生成はそれぞれ費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
