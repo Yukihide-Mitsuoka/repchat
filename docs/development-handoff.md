@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310) — 会議報告を`LOW` thinking・8,192 output tokensで完了させ、thought tokensを費用へ含める。固定応答で検証し、実Vertex AI・BigQueryは自動再実行しない |
+| 作業 | [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)／[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312) — 会議報告を`LOW` thinking・8,192 output tokensで完了させ、thought tokensを費用へ含める。固定応答で検証し、実Vertex AI・BigQueryは自動再実行しない |
 | デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
 | 直近完了 | [PR #309](https://github.com/Yukihide-Mitsuoka/repchat/pull/309)はmerge済みで、版管理panelから派生dashboardを合成するADR-0022をproposedとして追加した。実装・実BigQueryは行っていない。[PR #307](https://github.com/Yukihide-Mitsuoka/repchat/pull/307)のADR-0021もmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在の会議報告エラー | [#310 meeting report output budget](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)。`LOW` thinking、8,192 output tokens、thought token課金を固定応答で検証する。実再生成は修正版merge・再起動・費用再承認後だけ | [demo](demo.md)、[troubleshooting](troubleshooting/live-demo.md)、Issue #181 |
+| 現在の会議報告エラー | [#310 meeting report output budget](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)／[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)。`LOW` thinking、8,192 output tokens、thought token課金を固定応答で検証する。実再生成は修正版merge・再起動・費用再承認後だけ | [demo](demo.md)、[troubleshooting](troubleshooting/live-demo.md)、Issue #181 |
 | Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
 | 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
