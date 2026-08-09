@@ -67,6 +67,42 @@ print(json.dumps({
   assert.match(JSON.parse(result.stdout).revision, /^report-[0-9a-f]{12}$/);
 });
 
+test('accepts evidence-linked numbers in the executive summary and rejects unsupported ones', () => {
+  const result = python(`
+base={
+ "executive_summary":{"text":"2021年1月の購入件数は895件でした。","panel_ids":["R4"]},
+ "observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],
+ "interpretations":[{"text":"追加診断が必要です。","uncertainty":"施策履歴がありません。","panel_ids":["R4"]}],
+ "hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R4"]}],
+ "actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],
+ "limitations":["目標値と施策履歴が未登録です。"],
+}
+accepted=m.normalize_report(base,bundle)
+errors=[]
+for summary in [
+ {"text":"購入件数は999件でした。","panel_ids":["R4"]},
+ {"text":"購入件数は895件でした。","panel_ids":["R99"]},
+]:
+ try:m.normalize_report({**base,"executive_summary":summary},bundle)
+ except m.ReportError as error:errors.append(str(error))
+print(json.dumps({"text":accepted["executive_summary"]["text"],"refs":accepted["executive_summary"]["evidence_refs"],"errors":errors},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    text: '2021年1月の購入件数は895件でした。',
+    refs: [
+      {
+        panel_id: 'R4',
+        sql_sha256: '1111111111111111',
+        result_revision: 'result-222222222222',
+      },
+    ],
+    errors: [
+      '会議報告に根拠パネルへ存在しない数値があります: 999',
+      '会議報告の根拠パネルが未登録または空です。',
+    ],
+  });
+});
+
 test('rejects unsupported numbers, unknown evidence, and revision mismatches', () => {
   const result = python(`
 base={

@@ -1289,6 +1289,7 @@ print(json.dumps({
  "action":all(value in html for value in ["この結果から会議報告案を生成","/api/report","latestBuildRevision"]),
  "cost":all(value in html for value in ["BigQueryは再実行しません","BigQuery ¥0（保存済み集計bundleだけを参照）","今回の報告案 最大約¥5","根拠bundle 48 KiB・出力4,096 tokens上限"]),
  "evidence":all(value in html for value in ["result_revision","sql_sha256","期待効果"]),
+ "summary_citation":'$("report-summary").replaceChildren(citedItem(report.executive_summary))' in html,
  "approval":all(value in html for value in ["AIが作成した未承認案","外部共有前に人間が根拠と表現を確認"]),
  "safe":"innerHTML" not in html,
 },ensure_ascii=False))`);
@@ -1297,6 +1298,7 @@ print(json.dumps({
     action: true,
     cost: true,
     evidence: true,
+    summary_citation: true,
     approval: true,
     safe: true,
   });
