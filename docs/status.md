@@ -37,6 +37,9 @@ updated: 2026-08-10
 実Vertex AI・BigQueryは呼ばず、固定応答と無料の品質gateで検証する。3.5 Flashの既存実測は歴史記録として保持し、
 3.6 Flashの品質・実費は未検証である。
 
+`make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
+同じ作業中の先行doctorは成功していたが、再実行で成功扱いにせず、[Issue #315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)へ分離した。
+
 #283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
 リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。
 これは無料の描画確認であり、R17の実Vertex AI・BigQuery値照合は未実施。
