@@ -48,9 +48,10 @@ result revisionとSQL hashも表示します。
 
 **Affects:** Issue #292修正前の会議報告アシスト。
 
-**Cause:** 会議報告の配列件数と文章量が生成schemaで制限されず、4,096 output tokensに達してJSONが
-閉じない場合もfinish reasonを確認せず`json.loads`へ渡していました。そのためJSON decoderの英語例外が
-そのまま画面に表示されました。呼出し済みのVertex AIは課金対象ですが、BigQueryは再実行していません。
+**Cause:** 会議報告の配列件数と文章量が生成schemaで制限されず、不完全なJSONもfinish reasonを確認せず
+`json.loads`へ渡していました。そのためJSON decoderの英語例外がそのまま画面に表示されました。
+実応答のfinish reasonは保存されていないため、4,096 output tokens到達だったか、別要因だったかは未特定です。
+呼出し済みのVertex AIは課金対象ですが、BigQueryは再実行していません。
 
 **Fix:** 観測3件、解釈2件、仮説2件、推奨アクション2件、限界3件を上限とし、本文・詳細にも文字数上限を
 設けます。生成schemaと受理時検証の両方で制限し、`MAX_TOKENS`または不完全JSONは安定した日本語の

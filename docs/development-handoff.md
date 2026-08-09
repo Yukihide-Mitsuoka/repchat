@@ -41,7 +41,8 @@ updated: 2026-08-09
 `Unterminated string starting at: line 1 column 30 (char 29)`で停止した。`/api/report`はHTTP 200で、
 BigQueryは再実行していない。原因と受入条件の正本は
 [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292)。報告schemaに配列件数・文字数の
-上限がなく、4,096 output tokensで完了しない応答をfinish reason確認なしで`json.loads`へ渡していた。
+上限がなく、不完全な応答をfinish reason確認なしで`json.loads`へ渡していた。実応答のfinish reasonは
+保存されていないため、4,096 output tokens到達だったか、別要因の不完全JSONだったかは断定しない。
 修正後も自動再実行はせず、今回の実生成が成功するかは費用を再承認した後だけ確認する。
 
 ## 次タスクの分岐

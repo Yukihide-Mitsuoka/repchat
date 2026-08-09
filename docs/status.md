@@ -33,8 +33,9 @@ updated: 2026-08-09
 **現在の作業スレッド**: [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292)。
 [PR #290](https://github.com/Yukihide-Mitsuoka/repchat/pull/290)はmerge済み。修正後の実会議報告生成で
 `Unterminated string starting at: line 1 column 30 (char 29)`が発生した。`/api/report`はHTTP 200で、
-BigQueryは再実行されていない。会議報告schemaに配列件数と文字数の上限がなく、4,096 output tokensで
-完了しない応答をfinish reason確認なしで`json.loads`へ渡す経路をfailing-first testで再現した。
+BigQueryは再実行されていない。会議報告schemaに配列件数と文字数の上限がなく、不完全な応答を
+finish reason確認なしで`json.loads`へ渡す経路をfailing-first testで再現した。実応答のfinish reasonは
+保存されていないため、4,096 output tokens到達だったか、別要因だったかは未特定。
 #292では観測3件、解釈2件、仮説2件、アクション2件、限界3件までに制限し、本文・詳細にも文字数上限を
 設ける。生成schemaと受理時検証の双方で制限し、`MAX_TOKENS`と不完全JSONを安定した日本語エラーへ変換する。
 追加費用を伴う自動再実行はしない。修正後の実Vertex AI再生成は未実施。
