@@ -419,7 +419,7 @@ print(m.visualization_for_result(
   assert.equal(gradients.length, 2, 'each transition should have a color gradient');
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
-    linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
+    linkStrokes.every((stroke) => /^url\(#sankey-\d+-link-\d+\)$/.test(stroke ?? '')),
     'each transition should reference its own source-to-target gradient',
   );
   const sankeySvgs = [chart.children[0], secondChart.children[0]];

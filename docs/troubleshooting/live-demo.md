@@ -160,6 +160,23 @@ Vertex AI費用を改めて確認してから行います。分析計画中はBi
 `ROW_NUMBER`を付けているか確認します。同じ有料問い合わせを再実行しても、生成SQLが同じなら結果は
 変わりません。修正後に再実行する場合は、画面の費用確認を改めて承認してください。
 
+## 回遊Sankeyのノードだけが表示され、遷移線が見えない
+
+**Affects:** Issue #319修正前のライブデモで、ダッシュボードと単一グラフのSankeyを同じページ内に
+描画した場合。
+
+**Cause:** 複数のSankey SVGが同一のpaint-server IDを使用していました。非表示のworkspaceもDOMには
+残るため、リンクの`url(#...)`が別SVGのgradientへ解決されると、ノードと取得データは表示されても
+遷移線だけが描画されません。SQLやBigQuery応答の不具合ではありません。
+
+**Fix:** Sankeyインスタンスごとの名前空間をgradient IDへ付け、各リンクが同じSVG内のgradientだけを
+参照するようにします。既存のページ種別色、リンク幅、ツールチップ、2ページ目終了数は変更しません。
+
+**Prevention:** 固定データで二つのSankeyを同じdocumentへ描画し、全paint-server IDの一意性と
+same-SVG参照を回帰テストします。実Vertex AI・BigQueryの再実行は不要です。
+
+**Refs:** [Issue #319](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)
+
 ## 同一ページの反復を分析したい
 
 再読み込み、フォームエラー、SPA内の状態変化は通常のページ回遊とは異なる分析契約が必要です。
