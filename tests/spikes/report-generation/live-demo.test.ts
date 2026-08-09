@@ -92,10 +92,10 @@ test('live prompt uses an accessible in-page cost dialog before sending the requ
   const result = python(`
 html=m.HTML
 print(json.dumps({
- "copy":all(x in html for x in ["Vertex AI 約¥0.2","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
+ "copy":all(x in html for x in ["Vertex AI 約¥1","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
- "dashboard":all(x in html for x in ["今回の相談 約¥0.2","BigQuery ¥0（仕様確定前は実行しません）","count*40","Math.ceil(count*38.2)"]),
+ "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*40","count*39"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -921,7 +921,7 @@ for question in ["2023年12月の受取アドレス別の取引数", "2024年1�
   errors.append(str(error))
 print(json.dumps({
  "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"','Bitcoin受取先の複雑度']),
- "cost":all(value in html for value in ["BigQuery dry run 約2.91 GiB","上限20 GiB","参照値照合なし","通常約¥4・最大約¥20"]),
+ "cost":all(value in html for value in ["BigQuery dry run 約2.91 GiB","上限20 GiB","参照値照合なし","通常約¥5・最大約¥20"]),
  "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
  "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
  "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
@@ -1289,7 +1289,7 @@ test('meeting report UI is explicit about cost, evidence, approval, and prototyp
 html=m.HTML
 print(json.dumps({
  "action":all(value in html for value in ["この結果から会議報告案を生成","/api/report","latestBuildRevision"]),
- "cost":all(value in html for value in ["BigQueryは再実行しません","BigQuery ¥0（保存済み集計bundleだけを参照）","今回の報告案 最大約¥5","根拠bundle 48 KiB・出力8,192 tokens上限・思考tokensを含む"]),
+ "cost":all(value in html for value in ["BigQueryは再実行しません","BigQuery ¥0（保存済み集計bundleだけを参照）","今回の報告案 最大約¥25","根拠bundle 48 KiB・出力8,192 tokens上限・思考tokensを含む"]),
  "evidence":all(value in html for value in ["result_revision","sql_sha256","期待効果"]),
  "summary_citation":'$("report-summary").replaceChildren(citedItem(report.executive_summary))' in html,
  "approval":all(value in html for value in ["AIが作成した未承認案","外部共有前に人間が根拠と表現を確認"]),

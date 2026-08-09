@@ -119,6 +119,7 @@ class Models:
    "enum":clarifications["items"]["properties"]["field"].get("enum"),
    "min_items":clarifications.get("minItems"),
    "max_items":clarifications.get("maxItems"),
+   "has_temperature":hasattr(kwargs["config"],"temperature"),
   })
   return types.SimpleNamespace(
    text=json.dumps(response,ensure_ascii=False),
@@ -145,16 +146,19 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
         enum: ['audience', 'comparison', 'business_goal'],
         min_items: 1,
         max_items: 3,
+        has_temperature: false,
       },
       {
         enum: ['comparison', 'business_goal'],
         min_items: null,
         max_items: 2,
+        has_temperature: false,
       },
       {
         enum: null,
         min_items: null,
         max_items: 0,
+        has_temperature: false,
       },
     ],
     errors: [

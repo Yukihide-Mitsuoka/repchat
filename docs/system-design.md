@@ -34,7 +34,7 @@ flowchart LR
 
   subgraph Core["コア層（オンデマンド）"]
     MCP["MCPゲートウェイ<br/>ロール認可(原則E②)・AST注入・監査"]
-    NL["NL→SQL<br/>Vertex AI Gemini 3.5 Flash<br/>（Opusは最後の手段）"]
+    NL["NL→SQL<br/>Vertex AI Gemini 3.6 Flash<br/>（Opusは最後の手段）"]
     PUB["Artifact pipeline<br/>検証・publish・成功版有効化"]
     BUILD["Evidenceビルド<br/>シェル生成（テナント非依存）"]
   end
@@ -556,5 +556,5 @@ key = "v1:" + tenant_id + ":" + scope_hash + ":" + query_id + ":"
 | role→権限のSoRはPostgres（配信は③キャッシュ） | ADR §9.1・LOG-0029 |
 | version token失効（パージレス） | ADR §5 |
 | epoch+デニーリストのハイブリッド剥奪 | ADR §3③・requirements |
-| NL→SQLはGemini 3.5 Flash既定・Opusは最後の手段 | LOG-0022 |
+| NL→SQLはGemini 3.6 Flash既定・Opusは最後の手段 | Issue #314 |
 | テナントスコープ付きport・固定権限語彙・境界検証・安全なエラー変換 | ADR-0009 |
