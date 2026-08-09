@@ -12,7 +12,14 @@ MAX_OUTPUT_TOKENS = 4096
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
-        "executive_summary": {"type": "string"},
+        "executive_summary": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string"},
+                "panel_ids": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["text", "panel_ids"],
+        },
         "observations": {
             "type": "array",
             "items": {
@@ -104,7 +111,7 @@ build revision: {bundle['build_revision']}
 - 目標値、事業事情、サンプルサイズを推測しない。不足はlimitationsへ書く。
 - limitationsへ根拠リンクのない数値を書かない。
 - 読み手は日本語の月次マーケティング会議参加者。SQL用語は使わない。
-- executive_summaryには数値を書かず、数値を伴う詳細は根拠付き観測へ置く。
+- executive_summaryにもtextとpanel_idsを付ける。数値は参照した根拠パネルに存在する値だけを書く。
 """
 
 def _text(value, label: str) -> str:
@@ -197,34 +204,37 @@ def normalize_report(raw: dict, bundle: dict) -> dict:
     indexed = _evidence_index(bundle)
     known = set(indexed)
 
+    def cited(item: dict, label: str, extra: tuple[str, ...] = ()) -> dict:
+        ids = _panel_ids(item, known)
+        text = _text(item.get("text"), label)
+        _validate_numbers(text, indexed, ids)
+        details = {field: _text(item.get(field), field) for field in extra}
+        for value in details.values():
+            _validate_numbers(value, indexed, ids)
+        evidence_refs = [
+            {
+                "panel_id": panel_id,
+                "sql_sha256": indexed[panel_id]["sql_sha256"],
+                "result_revision": indexed[panel_id]["result_revision"],
+            }
+            for panel_id in ids
+        ]
+        return {"text": text, **details, "panel_ids": ids, "evidence_refs": evidence_refs}
+
     def items(name: str, extra: tuple[str, ...] = ()) -> list[dict]:
         source = raw.get(name)
         if not isinstance(source, list) or not source:
             raise ReportError(f"会議報告の{name}がありません。")
-        normalized = []
-        for item in source:
-            ids = _panel_ids(item, known)
-            text = _text(item.get("text"), name)
-            _validate_numbers(text, indexed, ids)
-            details = {field: _text(item.get(field), field) for field in extra}
-            for value in details.values():
-                _validate_numbers(value, indexed, ids)
-            evidence_refs = [
-                {
-                    "panel_id": panel_id,
-                    "sql_sha256": indexed[panel_id]["sql_sha256"],
-                    "result_revision": indexed[panel_id]["result_revision"],
-                }
-                for panel_id in ids
-            ]
-            normalized.append(
-                {"text": text, **details, "panel_ids": ids, "evidence_refs": evidence_refs}
-            )
-        return normalized
+        return [cited(item, name, extra) for item in source]
 
-    summary = _text(raw.get("executive_summary"), "要約")
-    if re.search(r"\d", summary):
-        raise ReportError("会議報告の要約には根拠リンクのない数値を書けません。")
+    summary_source = raw.get("executive_summary")
+    if isinstance(summary_source, str):
+        summary_text = _text(summary_source, "要約")
+        if re.search(r"\d", summary_text):
+            raise ReportError("会議報告の要約には根拠リンクのない数値を書けません。")
+        summary = {"text": summary_text, "panel_ids": [], "evidence_refs": []}
+    else:
+        summary = cited(summary_source, "要約")
     limitations = raw.get("limitations")
     if not isinstance(limitations, list):
         raise ReportError("会議報告のlimitationsが配列ではありません。")

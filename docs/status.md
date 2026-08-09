@@ -30,16 +30,20 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #283](https://github.com/Yukihide-Mitsuoka/repchat/issues/283)。
-[PR #276](https://github.com/Yukihide-Mitsuoka/repchat/pull/276)（release 1.15.2）はmerge済みで、
-PR #275/#278/#280/#282までを含む。#283では連続する同一ページを統合する契約を維持しながら、
-R17の上位12経路をセッション数降順・同数時は入口／2／3ページ目昇順に固定し、段階見出し、
-リンク値のhover/keyboard確認、2ページ目終了セッションの注記を追加する。費用を伴う再確認は、
-Vertex AI相談、BigQuery build、会議報告を分けてオーナー承認を得る。
+**現在の作業スレッド**: [Issue #289](https://github.com/Yukihide-Mitsuoka/repchat/issues/289)。
+[PR #284](https://github.com/Yukihide-Mitsuoka/repchat/pull/284)と
+[PR #285](https://github.com/Yukihide-Mitsuoka/repchat/pull/285)はmerge済み。会議報告の
+`executive_summary`だけが文字列で根拠パネルIDを持てず、期間やKPIの数値を含むと
+「会議報告の要約には根拠リンクのない数値を書けません。」で報告全体が停止する不整合を確認した。
+#289では要約を`text`と`panel_ids`へ構造化し、観察・解釈等と同じく引用パネル内の数値だけを許可する。
+旧形式の数値を含まない要約は互換入力として受け付けるが、根拠なし数値は引き続きfail closedとする。
+固定応答ブラウザでは要約本文の直下にpanel ID、result revision、SQL revisionが表示されることを確認した。
+`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功。実Vertex AIでの会議報告再生成は
+費用承認前のため未実施。
 
-#283は固定応答ブラウザで段階見出し3件、リンク5本、2ページ目終了215セッション、keyboard focus時の
-詳細更新、console error/warning 0を確認した。`make format`、`make lint`、`make test`、`make build`、
-`make doctor`は成功した。これは無料の描画確認であり、R17の実Vertex AI・BigQuery値照合は未実施。
+#283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
+リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。
+これは無料の描画確認であり、R17の実Vertex AI・BigQuery値照合は未実施。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
 公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・

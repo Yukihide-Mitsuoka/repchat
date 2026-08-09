@@ -27,6 +27,23 @@ BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認
 
 **Refs:** [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281)
 
+## 「会議報告の要約には根拠リンクのない数値を書けません」で停止する
+
+**Affects:** Issue #289修正前の会議報告アシスト。
+
+**Cause:** `executive_summary`だけが根拠panelを指定できない文字列で、数字を1文字でも含むと拒否する
+契約でした。生成AIが対象期間の「2021年1月」や実測値を要約へ再掲すると、値が正しくても報告全体が
+停止しました。文章プロンプトだけでは数字を必ず除外できません。
+
+**Fix:** 要約も`text`と`panel_ids`を持つ根拠付き項目にし、観測と同じ実値照合を行います。引用panelに
+存在する期間・数値だけを許可し、未登録panelや根拠に無い数値は引き続き拒否します。画面には要約の
+result revisionとSQL hashも表示します。
+
+**Prevention:** 固定応答テストで、根拠付きの対象月・実測値、未登録panel、根拠に無い数値、旧形式の
+数字なし要約を検証します。同じ有料生成を再試行する前に、Issue #289以降の版へ更新してください。
+
+**Refs:** [Issue #289](https://github.com/Yukihide-Mitsuoka/repchat/issues/289)
+
 ## AIの推奨回答を変更していないのに「この仕様を確定してbuild」を押せない
 
 **Affects:** PR #278より前のライブデモ。
