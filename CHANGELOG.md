@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.4](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.3...v1.15.4) (2026-08-09)
+
+
+### Bug Fixes
+
+* **demo:** bound meeting report JSON output ([#294](https://github.com/Yukihide-Mitsuoka/repchat/issues/294)) ([c32ebe6](https://github.com/Yukihide-Mitsuoka/repchat/commit/c32ebe60aad9922a817bc2a70e929e430716b917))
+* **demo:** link report summaries to evidence ([#290](https://github.com/Yukihide-Mitsuoka/repchat/issues/290)) ([00768f5](https://github.com/Yukihide-Mitsuoka/repchat/commit/00768f5a7edda65483805e878645289b1d6f595e)), closes [#289](https://github.com/Yukihide-Mitsuoka/repchat/issues/289)
+
 ## [1.15.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.2...v1.15.3) (2026-08-09)
 
 
