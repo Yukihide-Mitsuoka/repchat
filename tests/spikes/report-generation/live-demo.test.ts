@@ -1254,7 +1254,7 @@ rows={"R4":[[895,123456.0]],"R9":[[100,50,20]],"R16":[["2021-01-31",118380,11700
 columns={"R4":["購入件数","購入金額"],"R9":["閲覧","カート","購入"],"R16":["日付","セッション数","7日移動平均"],"R17":["source","target","sessions"]}
 def run_section(section,period,emit,context=None,profile="ga4"):
  emit({"type":"sql","sql":"SELECT value FROM source","sql_sha256":"1"*16,**context})
- emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":"table",**context})
+ emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":section["component"],**context})
  return .1
 e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
 raw={"executive_summary":"追加診断が必要です。","observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
@@ -1264,7 +1264,8 @@ report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)
 error=""
 try:e.meeting_report("build-000000000000",lambda _event:None)
 except m.LiveDemoError as caught:error=str(caught)
-print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["goal"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
+funnel=next(panel for panel in bundle["panels"] if panel["id"]=="R9")
+print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["goal"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"funnel_rate":funnel["derived_metrics"][0]["value"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -1275,6 +1276,7 @@ print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bund
   assert.equal(output.metric, true);
   assert.match(output.result_revision, /^result-[0-9a-f]{12}$/);
   assert.equal(output.sql, '1111111111111111');
+  assert.equal(output.funnel_rate, 50);
   assert.deepEqual(output.report_types, ['report_stage', 'meeting_report']);
   assert.match(output.report_revision, /^report-[0-9a-f]{12}$/);
   assert.equal(output.citation.result_revision, output.result_revision);
