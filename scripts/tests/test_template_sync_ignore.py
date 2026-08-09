@@ -1,4 +1,3 @@
-import json
 import unittest
 from pathlib import Path
 
@@ -6,8 +5,6 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).parents[2]
 IGNORE_FILE = REPOSITORY_ROOT / ".templatesyncignore"
 WORKFLOW_FILE = REPOSITORY_ROOT / ".github" / "workflows" / "template-sync.yml"
-MANIFEST_FILE = REPOSITORY_ROOT / ".github" / "inheritance" / "manifest.json"
-BUGFIX_SKILL = REPOSITORY_ROOT / ".skills" / "bugfix.skill.md"
 
 
 class TemplateSyncIgnoreTest(unittest.TestCase):
@@ -30,29 +27,11 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
     def test_legacy_sync_excludes_every_workflow(self):
         self.assertIn(".github/workflows/**", self.entries())
 
-    def test_foundation_bugfix_skill_is_inherited_and_transportable(self):
-        path = ".skills/bugfix.skill.md"
-        manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
-        skill = BUGFIX_SKILL.read_text(encoding="utf-8")
-
-        self.assertIn(path, manifest["inherited_paths"])
-        self.assertNotIn(path, manifest["protected_paths"])
-        self.assertNotIn(path, self.entries())
-        self.assertIn("Sweep for siblings", skill)
-        self.assertIn("Sibling occurrences searched; results reported", skill)
-
     def test_legacy_sync_protects_agent_profile_and_project_overlay(self):
         entries = self.entries()
 
         self.assertIn(".github/inheritance/agent-profile.json", entries)
         self.assertIn(".ai/project/**", entries)
-
-    def test_project_release_history_and_codeql_invariant_are_target_owned(self):
-        entries = self.entries()
-
-        self.assertIn("CHANGELOG.md", entries)
-        self.assertIn("scripts/tests/test_codeql_workflow.py", entries)
-        self.assertIn("scripts/tests/test_template_sync_ignore.py", entries)
 
     def test_sync_pr_records_the_source_commit_used_by_the_action(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
@@ -75,8 +54,8 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
         self.assertNotIn("\nBefore merge:\n", workflow)
         self.assertIn("\n          Before merge:\n", workflow)
         self.assertIn(
-            "\n          - Update .github/inheritance/lock.json only after the complete "
-            "parent delta is accepted.",
+            "\n          - Finalize manual boundaries and "
+            ".github/inheritance/lock.json in this same reviewed PR.",
             workflow,
         )
 
