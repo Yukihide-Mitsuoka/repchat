@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-02
-last_reviewed: 2026-08-02
+updated: 2026-08-09
+last_reviewed: 2026-08-09
 ---
 
 # プロジェクトロードマップ
@@ -60,6 +60,9 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 ## 次：デザインパートナー1社でのPhase 1本番運用
 
 - マルチテナント認証、固定2〜3段ロール、監査ログを含む最小構成を完成させる。
+- 実顧客dataをinternet公開環境で扱う直前に、Cloudflare WAFを利用者向け入口、External Application Load
+  Balancer＋Cloud ArmorをCloud Run originの迂回防止境界として構築する（Issue #302、ADR-0020 proposed）。
+  local・owner-only・顧客dataなしdemoには追加せず、ADR承認と費用確認前にinfraを作らない。
 - NL→SQL、検証、描画、問い返しを実データで接続し、精度と運用原価を測定する。
 - 公開GA4での成功を一般化せず、未知の独自nested/repeated schemaでNL→SQL品質と確認・拒否境界を
   検証する（Issue #188）。合格までは任意schema対応を製品能力として扱わない。

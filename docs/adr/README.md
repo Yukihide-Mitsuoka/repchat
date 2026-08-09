@@ -40,5 +40,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0017](0017-use-slack-as-an-authorized-analysis-interface.md) | Slackを認可付き分析インターフェースとして使う | proposed | 2026-07-30 |
 | [0018](0018-govern-adaptive-analysis-memory.md) | 適応型分析メモリーを版管理された方針として統制する | accepted | 2026-08-02 |
 | [0019](0019-separate-datasource-knowledge-from-scoped-analysis-context.md) | データソース知識と分析文脈を分離し、用途別にコンパイルする | proposed | 2026-08-09 |
+| [0020](0020-protect-production-edge-and-cloud-run-origins.md) | 本番の公開入口とCloud Run originを二層で保護する | proposed | 2026-08-09 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
