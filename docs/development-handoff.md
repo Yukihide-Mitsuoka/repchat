@@ -104,4 +104,9 @@ positioningとroadmapを再評価します。
 - `make demo`は実Vertex AIとBigQueryを使う。実行前に費用を明示し、オーナーの同意を得る。
 - 測っていない結果、独自schema品質、更新SLO、製品統合状態を実証済みと書かない。
 
+## レビュー中の文書PR
+
+- [PR #305](https://github.com/Yukihide-Mitsuoka/repchat/pull/305): ライブデモ手順を起動、生成モード、
+  費用確認、制約、会議報告、回帰確認ごとに再構成する。挙動と費用条件は変更しない。
+
 この文書は、現在のIssue、停止条件、次タスクの分岐、または設計判断の正本が変わったときに更新します。
