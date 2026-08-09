@@ -284,7 +284,12 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
   class ElementStub {
     attributes: Record<string, string> = {};
     children: ElementStub[] = [];
+    className = '';
     textContent = '';
+    onblur?: () => void;
+    onfocus?: () => void;
+    onmouseenter?: () => void;
+    onmouseleave?: () => void;
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
@@ -346,7 +351,12 @@ print(m.visualization_for_result(
   class ElementStub {
     attributes: Record<string, string> = {};
     children: ElementStub[] = [];
+    className = '';
     textContent = '';
+    onblur?: () => void;
+    onfocus?: () => void;
+    onmouseenter?: () => void;
+    onmouseleave?: () => void;
     tag: string;
     constructor(tag: string) {
       this.tag = tag;
@@ -392,6 +402,7 @@ print(m.visualization_for_result(
   ];
   const elements = descendants(chart.children[0]);
   const gradients = elements.filter((element) => element.tag === 'linearGradient');
+  const links = elements.filter((element) => element.tag === 'path');
   const nodeColors = new Set(
     elements.filter((element) => element.tag === 'rect').map((element) => element.attributes.fill),
   );
@@ -404,6 +415,50 @@ print(m.visualization_for_result(
     linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
     'each transition should reference its own source-to-target gradient',
   );
+  assert.deepEqual(
+    elements
+      .filter((element) => element.attributes.class === 'sankey-stage')
+      .map((element) => element.textContent),
+    ['入口', '2ページ目', '3ページ目'],
+  );
+  assert.ok(links.every((link) => link.attributes.tabindex === '0'));
+  assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
+  assert.ok(
+    links.every((link) => link.children.some((child) => child.tag === 'title')),
+    'each transition should expose its value as an SVG tooltip',
+  );
+  const detail = chart.children.find((element) => element.className.includes('sankey-detail'));
+  assert.ok(detail);
+  links[0]?.onfocus?.();
+  assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
+  const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
+  assert.match(terminal?.textContent ?? '', /2ページ目で終了: 72セッション/);
+});
+
+test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
+  const result = python(`
+queries=[
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY IF(path_sessions > 0, path_sessions, 0) DESC, p1 LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1 DESC, p2 DESC, p3 DESC LIMIT 12",
+ "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1, p2, p3 LIMIT 12",
+]
+out=[]
+for sql in queries:
+ try:
+  m.require_deterministic_navigation_order(sql)
+  out.append("accepted")
+ except m.LiveDemoError as error:
+  out.append(str(error))
+print(json.dumps(out,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+    'accepted',
+  ]);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
@@ -554,7 +609,8 @@ results={
 }
 def generate(_client,_model,section,period,_rules):
  generated.append([section["id"],period["label"]])
- sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' LIMIT 1 /* {section['id']} */"
+ order="ORDER BY value DESC, value, value, value LIMIT 12" if section["id"]=="R17" else "LIMIT 1"
+ sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' {order} /* {section['id']} */"
  return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 def execute(_bq,sql,**_kwargs):
  section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)

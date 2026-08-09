@@ -49,6 +49,7 @@ HTML = r"""<!doctype html>
 label{font-size:14px;font-weight:700;display:block;margin-bottom:9px}select{border:1px solid #98a2b3;border-radius:4px;background:#fff;padding:9px 12px;font:inherit;margin-bottom:14px}textarea{width:100%;min-height:96px;resize:vertical;border:1px solid #98a2b3;border-radius:4px;padding:13px 14px;font:inherit;line-height:1.6;background:#fff}textarea:focus,select:focus{border-color:var(--color-primary);outline:3px solid #1f4e791a}button{border:1px solid var(--color-primary);border-radius:4px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--color-primary);color:#fff}button:hover{background:var(--color-primary-hover)}button:disabled{cursor:wait;opacity:.55}.secondary{background:#fff;color:var(--color-primary)}.secondary:hover,.examples button:hover{background:#eef4f9}
 .actions,.examples{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}.examples button{background:#fff;color:#344054;border-color:var(--color-border);padding:6px 9px;font-size:12px}.cost{color:#8a4b08;font-size:12px}.progress-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.status-pill{padding:4px 9px;border:1px solid var(--color-border);border-radius:999px;background:var(--color-subtle);color:var(--color-muted);font-size:12px;font-weight:700}.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:0;list-style:none;margin:16px 0;padding:0;border:1px solid var(--color-border);border-radius:4px;overflow:hidden}.stages li{min-height:64px;padding:10px 12px;border-right:1px solid var(--color-border);background:#fff;color:var(--color-muted)}.stages li:last-child{border-right:0}.stages strong,.stages span{display:block}.stages strong{font-size:13px}.stages span{font-size:11px;margin-top:5px}.stages .active{box-shadow:inset 0 -3px #d39b2a;background:#fffbeb;color:#694100}.stages .done{box-shadow:inset 0 -3px #2f855a;background:#f3faf6;color:#166534}#plan-review h3{font-size:14px;margin:20px 0 10px}.clarification{border-left:3px solid #d39b2a;background:#fffbeb;padding:12px;margin:10px 0}.clarification.accepted{border-left-color:#2f855a;background:#f3faf6}.clarification input,.plan-item input{width:100%;margin-top:8px;padding:9px;border:1px solid #98a2b3}.clarification small{display:block;color:var(--color-muted);margin-top:7px}.plan-choice{display:grid;grid-template-columns:auto 1fr;gap:10px;border-bottom:1px solid var(--color-border);padding:12px 0}.plan-choice input{margin-top:4px}.plan-choice label{margin:0}.plan-choice small{display:block;color:var(--color-muted);font-weight:400;line-height:1.5;margin-top:4px}
 .hidden{display:none}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}.mode-switch{display:flex;gap:0;margin:22px 0 4px;border-bottom:1px solid var(--color-border)}.mode-switch button{border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--color-muted);padding:10px 16px}.mode-switch button:hover{background:var(--color-subtle)}.mode-switch .selected{border-bottom-color:var(--color-primary);color:var(--color-primary)}.result-tabs{display:flex;gap:0;margin:14px 0;border-bottom:1px solid var(--color-border)}.result-tab{border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--color-muted);padding:9px 14px}.result-tab:hover{background:var(--color-subtle)}.result-tab.selected{border-bottom-color:var(--color-primary);color:var(--color-primary)}.table-scroll{max-height:520px;overflow:auto}.sql-shell{position:relative}.sql{white-space:pre;overflow:auto;background:#f6f8fa;color:#24292f;border:1px solid #d0d7de;padding:16px 48px 16px 16px;border-radius:4px;max-height:430px;font:13px/1.6 ui-monospace,SFMono-Regular,monospace;tab-size:4}.copy-code{position:absolute;z-index:1;top:8px;right:8px;width:32px;height:32px;padding:0;border:1px solid #d0d7de;border-radius:6px;background:#fff;color:#57606a;font-size:17px;line-height:1}.copy-code:hover{background:#f3f4f6;color:#24292f}.sql-keyword{color:#cf222e}.sql-string,.sql-identifier{color:#0a3069}.sql-number{color:#0550ae}.sql-comment{color:#6e7781}.sql-function{color:#8250df}.notice{padding:10px 12px;border-left:3px solid #4b84b4;background:#eef4f9;color:#234e70;line-height:1.5}.warning{border-left-color:#d39b2a;background:#fffbeb;color:#854d0e}.error{border-left-color:#c24141;background:#fff1f1;color:#991b1b}.metric{font-size:46px;font-weight:750;padding:26px 8px}.chart{overflow-x:auto}.chart svg{min-width:760px;width:100%;height:auto}.chart text{font-size:11px;fill:#475467}.chart-caption{margin:8px 0 0;color:var(--color-muted);font-size:12px}.dashboard-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.dashboard-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:16px}.dashboard-card{grid-column:span 4;background:#fff;border:1px solid var(--color-border);border-radius:6px;padding:18px;min-width:0}.dashboard-card.wide{grid-column:span 6}.dashboard-card.full{grid-column:1/-1}.dashboard-card h3{font-size:16px;margin:0}.dashboard-card .purpose{color:var(--color-muted);font-size:12px;line-height:1.55;min-height:38px}.dashboard-card .chart svg{min-width:0}.dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:680px}.panel-state{font-size:11px;font-weight:700;color:var(--color-muted)}.kpi-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi-pair div{background:var(--color-subtle);padding:15px}.kpi-pair strong{display:block;font-size:26px}.kpi-pair span{font-size:11px;color:var(--color-muted)}.funnel{display:grid;gap:8px;padding:10px 0}.funnel-step{background:#dbeafe;border-left:4px solid var(--color-primary);padding:10px 12px}.funnel-step strong{float:right}.dashboard-card details{border-top:1px solid var(--color-border);margin-top:14px;padding-top:12px}.dashboard-card summary{cursor:pointer;color:var(--color-primary);font-size:12px;font-weight:700}.dashboard-card details p{font-size:12px;line-height:1.55}.dashboard-card details .sql{max-height:300px;font-size:11px}.dashboard-card table{margin-top:10px}.plan-list{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 0}.plan-item{background:var(--color-subtle);border-left:3px solid #4b84b4;padding:10px 12px}.plan-item.active{background:#fffbeb;border-left-color:#d39b2a;color:#694100}.plan-item.done{background:#f3faf6;border-left-color:#2f855a;color:#166534}.plan-item strong,.plan-item span{display:block}.plan-item span{color:var(--color-muted);font-size:11px;margin-top:4px}.report-section{border-top:1px solid var(--color-border);padding-top:14px;margin-top:14px}.citation{display:inline-block;border:1px solid var(--color-border);border-radius:999px;padding:2px 7px;margin-left:6px;color:var(--color-primary);font-size:11px}.approval{border:1px solid #d39b2a;background:#fffbeb;padding:14px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid var(--color-border);padding:9px;text-align:left;font-size:13px}th{background:var(--color-subtle);color:#344054}dialog{width:min(560px,calc(100% - 32px));border:1px solid var(--color-border);border-radius:6px;padding:0;box-shadow:0 20px 50px #10182833}dialog::backdrop{background:#10182880}.dialog-body{padding:24px}.cost-list{padding-left:22px;line-height:1.8}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.local-note{font-size:12px;border-top:1px solid var(--color-border);padding-top:16px;margin-top:24px}@media(max-width:760px){.grid,.stages,.plan-list{grid-template-columns:1fr}.stages li{border-right:0;border-bottom:1px solid var(--color-border)}.dashboard-card,.dashboard-card.wide{grid-column:1/-1}.progress-head,.dashboard-head{align-items:flex-start}.kpi-pair{grid-template-columns:1fr}.mode-switch button{padding:9px 10px}h1{font-size:24px}.workspace{padding:24px 16px 56px}}
+.chart .sankey-stage{font-size:12px;font-weight:700;fill:#344054}.chart .sankey-link{outline:none}.chart .sankey-link:hover,.chart .sankey-link:focus{stroke-opacity:.9}.sankey-detail{min-height:18px;color:#344054}.sankey-terminal{border-left:3px solid #4b84b4;padding-left:9px}
 </style></head><body data-theme="evidence"><header class="app-header"><span class="brand">RepChat</span><span>Live analysis demo</span></header><main class="workspace"><div class="page-heading"><p class="eyebrow">Natural language analytics</p><h1 id="page-title">日本語からダッシュボードを生成</h1>
 <p id="page-lead" class="lead">分析目的をAIと確認し、KPI・グラフ候補を編集してから、確定した仕様だけをbuildします。</p></div>
 <nav class="mode-switch" aria-label="デモ種別"><button id="mode-dashboard" class="selected" aria-pressed="true">ダッシュボード生成</button><button id="mode-graph" aria-pressed="false">単一グラフ生成</button></nav>
@@ -86,7 +87,7 @@ function collectAnswers(){syncClarificationAnswers();if($("plan-build").disabled
 function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<4)throw new Error("ダッシュボードには4件以上のパネルを選択してください。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id)).map(panel=>({id:panel.id,reason:panel.reason}));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
 function citedItem(item,suffix=""){const row=document.createElement("p");row.appendChild(document.createTextNode(item.text+suffix));item.evidence_refs.forEach(ref=>row.appendChild(Object.assign(document.createElement("span"),{className:"citation",textContent:`根拠 ${ref.panel_id} / ${ref.result_revision} / SQL ${ref.sql_sha256}`})));return row}
 function renderMeetingReport(event){const report=event.report;$("report-output").className="panel";$("report-revision").textContent=report.report_revision;$("report-summary").textContent=report.executive_summary;const content=[];for(const [title,name,suffix]of[["観測","observations",""],["解釈","interpretations",""],["未検証の仮説","hypotheses",""],["推奨アクション","actions",""]]){const section=Object.assign(document.createElement("section"),{className:"report-section"}),heading=Object.assign(document.createElement("h3"),{textContent:title});section.append(heading);report[name].forEach(item=>{let detail=suffix;if(name==="interpretations")detail=`（不確実性: ${item.uncertainty}）`;if(name==="hypotheses")detail=`（検証: ${item.validation}）`;if(name==="actions")detail=`（期待効果: ${item.expected_impact} / 担当: ${item.owner} / 緊急度: ${item.urgency} / 次: ${item.next_step} / 成功指標: ${item.success_metric}）`;section.append(citedItem(item,detail))});content.push(section)}const limits=Object.assign(document.createElement("section"),{className:"report-section"}),limitTitle=Object.assign(document.createElement("h3"),{textContent:"限界・不足情報"}),list=document.createElement("ul");report.limitations.forEach(value=>list.appendChild(Object.assign(document.createElement("li"),{textContent:value})));limits.append(limitTitle,list);content.push(limits);$("report-sections").replaceChildren(...content);$("dashboard-message").textContent=`根拠付き会議報告案を生成しました。Vertex AI推定 ¥${event.cost_jpy}`}
-function sankey(svg,rows,w,h){
+function sankey(svg,rows,w,h,detail){
 const palette=["#4e79a7","#f28e2b","#59a14f","#e15759","#b07aa1","#76b7b2","#edc948","#ff9da7","#9c755f","#bab0ab"],canonical=name=>name.replace(/^\d+\.\s*(入口:\s*)?/,""),links=rows.map(row=>({source:String(row[0]),target:String(row[1]),value:Math.max(0,Number(row[2]))})).filter(link=>Number.isFinite(link.value)&&link.value>0),incoming=new Map(),outgoing=new Map(),values=new Map(),levels=new Map(),colors=new Map();
 for(const link of links){outgoing.set(link.source,(outgoing.get(link.source)||0)+link.value);incoming.set(link.target,(incoming.get(link.target)||0)+link.value);for(const [name,fallback]of[[link.source,1],[link.target,2]]){const match=name.match(/^(\d+)\./);levels.set(name,match?Number(match[1]):fallback);const category=canonical(name);if(!colors.has(category))colors.set(category,palette[colors.size%palette.length])}}
 for(const name of levels.keys())values.set(name,Math.max(incoming.get(name)||0,outgoing.get(name)||0));
@@ -96,8 +97,11 @@ for(const names of groups.values())names.sort();
 const largest=Math.max(...stageNumbers.map(stage=>groups.get(stage).reduce((sum,name)=>sum+values.get(name),0)),1),maxGaps=Math.max(...stageNumbers.map(stage=>Math.max(0,groups.get(stage).length-1)),0),gap=14,scale=Math.min(1.15,(h-54-gap*maxGaps)/largest),positions=new Map();
 stageNumbers.forEach((stage,index)=>{const names=groups.get(stage),height=names.reduce((sum,name)=>sum+Math.max(10,values.get(name)*scale),0)+gap*Math.max(0,names.length-1),x=30+index*(w-150)/Math.max(stageNumbers.length-1,1);let y=(h-height)/2;for(const name of names){const nodeHeight=Math.max(10,values.get(name)*scale);positions.set(name,{x,y,height:nodeHeight,out:0,into:0});y+=nodeHeight+gap}});
 const defs=node("defs");svg.append(defs);svg.appendChild(node("title")).textContent="入口から3ページ目までの主要回遊";
-links.forEach((link,index)=>{const source=positions.get(link.source),target=positions.get(link.target),width=Math.max(2,link.value*scale),y1=source.y+source.out+width/2,y2=target.y+target.into+width/2,x1=source.x+12,x2=target.x,gradientId="sankey-link-"+index,gradient=node("linearGradient",{id:gradientId,gradientUnits:"userSpaceOnUse",x1,y1,x2,y2});gradient.append(node("stop",{offset:"0%","stop-color":color(link.source)}),node("stop",{offset:"100%","stop-color":color(link.target)}));defs.append(gradient);source.out+=width;target.into+=width;svg.append(node("path",{d:"M "+x1+" "+y1+" C "+((x1+x2)/2)+" "+y1+", "+((x1+x2)/2)+" "+y2+", "+x2+" "+y2,fill:"none",stroke:"url(#"+gradientId+")","stroke-opacity":.58,"stroke-width":width}))});
+const stageLabels={1:"入口",2:"2ページ目",3:"3ページ目"};stageNumbers.forEach((stage,index)=>{const heading=svg.appendChild(node("text",{x:30+index*(w-150)/Math.max(stageNumbers.length-1,1),y:18,class:"sankey-stage"}));heading.textContent=stageLabels[stage]||`${stage}ページ目`});
+const defaultDetail="線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・セッション数を確認できます。";
+links.forEach((link,index)=>{const source=positions.get(link.source),target=positions.get(link.target),width=Math.max(2,link.value*scale),y1=source.y+source.out+width/2,y2=target.y+target.into+width/2,x1=source.x+12,x2=target.x,gradientId="sankey-link-"+index,gradient=node("linearGradient",{id:gradientId,gradientUnits:"userSpaceOnUse",x1,y1,x2,y2});gradient.append(node("stop",{offset:"0%","stop-color":color(link.source)}),node("stop",{offset:"100%","stop-color":color(link.target)}));defs.append(gradient);source.out+=width;target.into+=width;const description=`${canonical(link.source)} → ${canonical(link.target)}: ${chartValue(link.value,"sessions",true)}セッション`,path=node("path",{class:"sankey-link",d:"M "+x1+" "+y1+" C "+((x1+x2)/2)+" "+y1+", "+((x1+x2)/2)+" "+y2+", "+x2+" "+y2,fill:"none",stroke:"url(#"+gradientId+")","stroke-opacity":.58,"stroke-width":width,tabindex:0,"aria-label":description});path.appendChild(node("title")).textContent=description;path.onmouseenter=path.onfocus=()=>detail.textContent=description;path.onmouseleave=path.onblur=()=>detail.textContent=defaultDetail;svg.append(path)});
 for(const [name,pos]of positions){svg.append(node("rect",{x:pos.x,y:pos.y,width:12,height:pos.height,rx:2,fill:color(name)}));const label=svg.appendChild(node("text",{x:pos.x+18,y:pos.y+Math.min(16,pos.height/2+4)}));label.textContent=canonical(name).slice(0,32)}
+return {terminalSessions:[...(groups.get(2)||[])].reduce((sum,name)=>sum+Math.max(0,(incoming.get(name)||0)-(outgoing.get(name)||0)),0)}
 }
 function graph(r,box=$("chart")){
 box.replaceChildren();
@@ -110,7 +114,7 @@ const w=820,h=360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`}),series=[{index:1,col
 box.append(svg);
 series.forEach(s=>{const pts=r.rows.map((x,i)=>[45+i*(w-80)/Math.max(r.rows.length-1,1),25+(max-Number(x[s.index]))*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:s.color,"stroke-width":3}));pts.forEach(p=>{svg.append(node("circle",{cx:p[0],cy:p[1],r:3,fill:s.color}))})});
 r.columns.slice(1,3).forEach((column,index)=>{svg.append(node("rect",{x:55+index*170,y:h-30,width:14,height:4,fill:series[index].color}));svg.appendChild(node("text",{x:75+index*170,y:h-24})).textContent=column});return}
-if(r.visualization==="sankey"){const svg=node("svg",{viewBox:"0 0 980 460",role:"img","aria-label":"入口から3ページ目までの主要回遊"});box.appendChild(svg);sankey(svg,r.rows,980,460);box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption",textContent:"色はページ種別を示します。同じページは各段階で同色、リンクは遷移元から遷移先の色へ変化します。"}));return}
+if(r.visualization==="sankey"){const svg=node("svg",{viewBox:"0 0 980 460",role:"img","aria-label":"入口から3ページ目までの主要回遊"}),detail=Object.assign(document.createElement("p"),{className:"chart-caption sankey-detail",textContent:"線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・セッション数を確認できます。"});box.append(svg,detail);const summary=sankey(svg,r.rows,980,460,detail),terminalText=summary.terminalSessions?`2ページ目で終了: ${chartValue(summary.terminalSessions,"sessions",true)}セッション（上位12経路内。離脱ノードは描画していません）`:"上位12経路はすべて3ページ目まで到達しています。";box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption sankey-terminal",textContent:terminalText}));box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption",textContent:"連続する同一ページビューは1回の滞在として統合しています。色はページ種別を示し、リンクは遷移元から遷移先の色へ変化します。"}));return}
 if(!["bar","line"].includes(r.visualization)){box.appendChild(table(r.columns,r.rows));return}
 const rows=r.rows,w=820,h=r.visualization==="bar"?Math.max(260,rows.length*38+45):360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`});box.appendChild(svg);if(r.visualization==="bar"){const vals=rows.map(x=>Number(x[1])),max=Math.max(...vals,1);rows.forEach((x,i)=>{const y=20+i*38,bw=(w-260)*vals[i]/max;svg.appendChild(node("text",{x:4,y:y+16})).textContent=String(x[0]).slice(0,28);svg.append(node("rect",{x:205,y,width:bw,height:24,rx:4,fill:"#3973c6"}));svg.appendChild(node("text",{x:215+bw,y:y+16})).textContent=chartValue(x[1],r.columns?.[1]??"")})}else{const vals=rows.map(x=>Number(x[1])),min=Math.min(...vals),max=Math.max(...vals),span=max-min||1,pts=vals.map((v,i)=>[45+i*(w-80)/Math.max(rows.length-1,1),25+(max-v)*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:"#3973c6","stroke-width":3}));pts.forEach(p=>svg.append(node("circle",{cx:p[0],cy:p[1],r:4,fill:"#185adb"})))}}
 function finish(status){$("run-status").textContent=status;stages.forEach(s=>$("s-"+s).removeAttribute("aria-current"))}
@@ -194,6 +198,58 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         raise LiveDemoError(
             f"生成SQLの対象期間が問い合わせの{period['label']}と一致しません。"
         )
+
+
+def require_deterministic_navigation_order(sql: str) -> None:
+    """Require a stable top-12 journey order before executing navigation SQL."""
+
+    def order_terms(clause: str) -> list[str]:
+        terms: list[str] = []
+        start = depth = 0
+        quote: str | None = None
+        index = 0
+        while index < len(clause):
+            char = clause[index]
+            if quote:
+                if char == quote:
+                    if index + 1 < len(clause) and clause[index + 1] == quote:
+                        index += 1
+                    else:
+                        quote = None
+            elif char in "'\"`":
+                quote = char
+            elif char == "(":
+                depth += 1
+            elif char == ")":
+                depth = max(0, depth - 1)
+            elif char == "," and depth == 0:
+                terms.append(clause[start:index].strip())
+                start = index + 1
+            index += 1
+        terms.append(clause[start:].strip())
+        return [term for term in terms if term]
+
+    for limit in re.finditer(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE):
+        prefix = sql[: limit.start()]
+        order_matches = list(
+            re.finditer(r"\bORDER\s+BY\b", prefix, flags=re.IGNORECASE)
+        )
+        if not order_matches:
+            continue
+        clause = prefix[order_matches[-1].end() :]
+        terms = order_terms(clause)
+        tie_terms_are_ascending = not any(
+            re.search(r"\bDESC\b", term, re.IGNORECASE) for term in terms[1:4]
+        )
+        if (
+            len(terms) >= 4
+            and re.search(r"\bDESC\b", terms[0], re.IGNORECASE)
+            and tie_terms_are_ascending
+        ):
+            return
+    raise LiveDemoError(
+        "回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。"
+    )
 
 
 def json_value(value):
@@ -574,6 +630,8 @@ class LiveQueryEngine:
                 bitcoin.require_sql_period(normalized, period)
             else:
                 require_sql_period(normalized, period)
+                if section.get("transition_mode") == "page_navigation":
+                    require_deterministic_navigation_order(normalized)
         except ValueError as error:
             raise LiveDemoError(str(error)) from error
         send(

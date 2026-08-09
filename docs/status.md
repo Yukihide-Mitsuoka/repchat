@@ -30,17 +30,21 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #281](https://github.com/Yukihide-Mitsuoka/repchat/issues/281)。
-[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)はmerge済みで、確定計画だけを有限の
-16 KiB本文上限とし、ブラウザが返すパネルを`id`・`reason`へ縮小した。続いて、ダッシュボードに
-進行状態の色が無い、SQLをコピーできない、可視化値の小数が長い、会議報告ボタンが無反応に見える
-UIフィードバック4点を#281で修正する。単一グラフの進行色は既存実装が正常。費用を伴う再確認は、
+**現在の作業スレッド**: [Issue #283](https://github.com/Yukihide-Mitsuoka/repchat/issues/283)。
+[PR #276](https://github.com/Yukihide-Mitsuoka/repchat/pull/276)（release 1.15.2）はmerge済みで、
+PR #275/#278/#280/#282までを含む。#283では連続する同一ページを統合する契約を維持しながら、
+R17の上位12経路をセッション数降順・同数時は入口／2／3ページ目昇順に固定し、段階見出し、
+リンク値のhover/keyboard確認、2ページ目終了セッションの注記を追加する。費用を伴う再確認は、
 Vertex AI相談、BigQuery build、会議報告を分けてオーナー承認を得る。
+
+#283は固定応答ブラウザで段階見出し3件、リンク5本、2ページ目終了215セッション、keyboard focus時の
+詳細更新、console error/warning 0を確認した。`make format`、`make lint`、`make test`、`make build`、
+`make doctor`は成功した。これは無料の描画確認であり、R17の実Vertex AI・BigQuery値照合は未実施。
 
 PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
 公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・
-BigQueryおよび新しいR17参照値は未測定。現在`127.0.0.1:8765`で稼働するプロセスは古い
-`fix/188-bitcoin-hash` commit `4967f27`であり、最新mainの動作証拠にしない。
+BigQueryおよび新しいR17参照値は未測定。#283の固定応答テストと無料のローカル描画は、実データ照合の
+代替にはしない。
 
 デモ阻害の解消後は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)で、初期主要顧客に
 該当する参加者へ5分デモを行い、価値仮説を`proceed` / `revise` / `reject`に分類する。結果が出るまで
