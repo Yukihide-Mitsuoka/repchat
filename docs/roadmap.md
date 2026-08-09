@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-09
-last_reviewed: 2026-08-09
+updated: 2026-08-10
+last_reviewed: 2026-08-10
 ---
 
 # プロジェクトロードマップ
@@ -86,7 +86,9 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
   forkし、AI生成原本を変更せず派生dashboardへ合成する（Issue #308、ADR-0022 proposed）。利用者SQLは
   untrusted inputとして検証し、design partnerの調整頻度が確認できるまで任意codeや自由layoutへ広げない。
 - 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
-- 基本の生成・統制・配信が安定した後、根拠付きの経営報告と推奨アクションを生成する（Issue #181）。
+- 基本の生成・統制・配信が安定した後、根拠付き報告を最大3件の意思決定、担当付きアクション、次回の
+  効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。
+  最初は会議パック、決定・アクション永続化は適応型分析メモリーPhase 1と本番role・認証の後に行う。
 - 実顧客で同種修正の反復が観測された場合に、適応型分析メモリーの候補抽出、scope確認、再確認・昇格提案を
   段階導入する。自動昇格は行わず、類似検索や外部Memory Bankはpolicy量またはlookup遅延が測定上の
   bottleneckになった場合だけ派生indexとして評価する（[要件](requirements/adaptive-analysis-memory.md)）。

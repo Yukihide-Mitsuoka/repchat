@@ -15,11 +15,11 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)／[PR #316](https://github.com/Yukihide-Mitsuoka/repchat/pull/316) — ライブデモの既定モデルをGemini 3.6 Flashへ切り替え、公式価格と非対応`temperature`設定を更新する。固定応答で検証し、実Vertex AI・BigQueryは呼ばない |
-| デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
-| 直近完了 | [PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)はmerge済みで、会議報告を`LOW` thinking・8,192 output tokensにし、thought tokensを費用へ含めた。実Vertex AI・BigQueryは再実行していない |
+| 作業 | [Issue #317](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318) — 会議報告を意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。実装は行わない |
+| デモ実行状態 | 2026-08-10にPR #316 merge後の`main`から`kotonoha-bi-dev`向けローカルデモを再起動し、`http://127.0.0.1:8765/`のHTTP 200とブラウザerror/warning 0を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
+| 直近完了 | [PR #316](https://github.com/Yukihide-Mitsuoka/repchat/pull/316)はmerge済みで、既定モデルをGemini 3.6 Flashへ切り替え、公式価格と非対応`temperature`設定を更新した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #314のfixed-response回帰、Gemini 3.6 Flashのモデル・価格・request config、表示文書を修正し、無料の品質gateを実行する。実Vertex AI、実BigQuery、有料契約はオーナー承認なしに行わない |
+| AIができること | Issue #317の要件、正本リンク、将来の実施順を文書化し、無料の品質gateを実行する。実装、実Vertex AI、実BigQuery、有料契約は今回行わない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のモデル切替 | [#314 Gemini 3.6 Flash](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)／[PR #316](https://github.com/Yukihide-Mitsuoka/repchat/pull/316)。既定ID、公式価格、Gemini 3.6で非対応の`temperature`を固定応答で検証する。3.6 Flashの実品質・実費はmerge・再起動・費用承認後だけ確認する | [demo](demo.md)、[requirements](requirements.md)、[system design](system-design.md) |
+| 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
 | Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | doctorの基盤テストtimeout | [#315 setup-github wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`make doctor`の`setup-github.sh` wrapper testが5秒timeoutした。再実行で成功扱いにせず、Gemini切替とは別に原因を調査する | `scripts/setup-github.sh`、`scripts/tests/test_setup_github_wrapper.py` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
@@ -73,12 +73,12 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-10）
 
-1. **現在:** [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)のGemini 3.6 Flash切替をreviewする。merge後にデモを再起動し、実会議報告はVertex AI費用を再提示して承認された場合だけ1回確認する。BigQueryは再実行しない。
+1. **現在:** [Issue #317](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)で会議意思決定ループの将来要件、正本リンク、実装開始条件を文書化する。実装、実Vertex AI、実BigQueryは行わない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
-6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
+6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
 
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
