@@ -101,6 +101,10 @@ print(section["gold_sql"])
   );
   assert.match(result.stdout, /previous_page_path IS NULL OR page_path != previous_page_path/);
   assert.match(result.stdout, /step <= 3/);
+  assert.match(
+    result.stdout,
+    /ORDER BY sessions DESC, entry_page, second_page, third_page LIMIT 12/,
+  );
   assert.match(result.stdout, /LIMIT 12/);
   assert.match(result.stdout, /'1\. 入口: '/);
   assert.match(result.stdout, /'2\. '/);
@@ -118,6 +122,7 @@ print(module["generation_request"](section, spec["period"]))
   assert.match(result.stdout, /連続する同一page_pathは1回の滞在へ統合/);
   assert.match(result.stdout, /2ページ目が存在するセッションだけ/);
   assert.match(result.stdout, /上位12経路を確定してから/);
+  assert.match(result.stdout, /同数なら入口・2ページ目・3ページ目昇順/);
   assert.match(result.stdout, /離脱ノードは作らない/);
   assert.match(result.stdout, /`1\. 入口: `、`2\. `、`3\. `/);
 });
