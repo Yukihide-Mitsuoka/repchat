@@ -279,6 +279,7 @@ thinking=getattr(config,"thinking_config",None)
 print(json.dumps({
  "max_output_tokens":config.max_output_tokens,
  "thinking_level":getattr(thinking,"thinking_level",None),
+ "has_temperature":hasattr(config,"temperature"),
  "input_tokens":tokens["input_tokens"],
  "output_tokens":tokens["output_tokens"],
  "status":report["status"],
@@ -287,6 +288,7 @@ print(json.dumps({
   assert.deepEqual(JSON.parse(result.stdout), {
     max_output_tokens: 8192,
     thinking_level: 'LOW',
+    has_temperature: false,
     input_tokens: 100,
     output_tokens: 900,
     status: 'draft_requires_human_approval',

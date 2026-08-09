@@ -142,6 +142,48 @@ else:
   }
 });
 
+test('live SQL generation defaults to Gemini 3.6 Flash without unsupported temperature', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+google = types.ModuleType("google")
+genai = types.ModuleType("google.genai")
+class Config:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+genai.types = types.SimpleNamespace(GenerateContentConfig=Config)
+google.genai = genai
+sys.modules["google"] = google
+sys.modules["google.genai"] = genai
+captured = {}
+class Models:
+    def generate_content(self, **kwargs):
+        captured.update(kwargs)
+        return types.SimpleNamespace(
+            text='{"sql":"SELECT 1 AS value","reason":"確認","undefined_terms":[]}',
+            usage_metadata=types.SimpleNamespace(prompt_token_count=10, candidates_token_count=5),
+        )
+answer, usage = module["generate_request"](
+    types.SimpleNamespace(models=Models()), module["DEFAULT_MODEL"], "質問", "規則"
+)
+print(json.dumps({
+    "model": captured["model"],
+    "pricing": module["PRICING"][captured["model"]],
+    "has_temperature": hasattr(captured["config"], "temperature"),
+    "answer": answer,
+    "usage": usage,
+}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    model: 'gemini-3.6-flash',
+    pricing: [1.5, 7.5],
+    has_temperature: false,
+    answer: { sql: 'SELECT 1 AS value', reason: '確認', undefined_terms: [] },
+    usage: { input_tokens: 10, output_tokens: 5 },
+  });
+});
+
 test('warehouse SQL is formatted for display without changing its source text', () => {
   const result = loadRunReport(`
 raw = "SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY users DESC"
