@@ -2,13 +2,34 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-09
+updated: 2026-08-10
 ---
 
 # ライブデモのトラブルシューティング
 
 この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
 BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
+
+## 会議報告が出力上限までに完了しない
+
+**Affects:** Issue #310修正前の会議報告アシスト。
+
+**Cause:** 会議報告は出力を4,096 tokensに制限していましたが、Gemini 3.5 Flashのthinking levelを
+指定せず、既定の`MEDIUM`を使用していました。件数・文字数を制限したJSON本文に加えて思考tokensも
+生成されるため、正常なJSONを閉じる前に`MAX_TOKENS`へ到達しました。成功時の費用計算もcandidate
+tokensだけを数え、課金対象のthought tokensを含めていませんでした。
+
+**Fix:** 会議報告だけthinking levelを`LOW`へ固定し、出力上限を8,192 tokensへ増やします。費用計算は
+candidate tokensとthought tokensを合算します。bounded schema、受理時検証、`MAX_TOKENS`と不完全JSONの
+fail-closed、自動再実行禁止は維持します。
+
+**Prevention:** 固定応答回帰テストでthinking level、出力上限、thought token課金、`MAX_TOKENS`の日本語
+エラーを検証します。修正版をマージしてデモを再起動した後も、実Vertex AI再確認は画面の費用を改めて
+承認した場合だけ行います。BigQueryの再実行は不要です。
+
+**Refs:** [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)、
+[Google Cloud thinking](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/thinking)、
+[GenerateContentResponse](https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/GenerateContentResponse)
 
 ## 会議報告に根拠パネルへ存在しない数値があります: 14.56、19.6、49.51
 

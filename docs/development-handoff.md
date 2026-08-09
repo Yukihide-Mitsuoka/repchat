@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-09
+updated: 2026-08-10
 ---
 
 # 開発引き継ぎ
@@ -15,11 +15,11 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)／[PR #309](https://github.com/Yukihide-Mitsuoka/repchat/pull/309) — AI生成dashboardを不変原本とし、版管理panelを派生dashboardへ合成するproposed ADR-0022をreviewする。SQL workspace、dashboard editor、API、DBは実装しない |
+| 作業 | [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)／[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312) — 会議報告を`LOW` thinking・8,192 output tokensで完了させ、thought tokensを費用へ含める。固定応答で検証し、実Vertex AI・BigQueryは自動再実行しない |
 | デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
-| 直近完了 | [PR #307](https://github.com/Yukihide-Mitsuoka/repchat/pull/307)はmerge済みで、共有中間結果を実測費用で限定するADR-0021をproposedとして追加した。実装・実BigQueryは行っていない。[PR #305](https://github.com/Yukihide-Mitsuoka/repchat/pull/305)のデモ手順再構成もmerge済み |
+| 直近完了 | [PR #309](https://github.com/Yukihide-Mitsuoka/repchat/pull/309)はmerge済みで、版管理panelから派生dashboardを合成するADR-0022をproposedとして追加した。実装・実BigQueryは行っていない。[PR #307](https://github.com/Yukihide-Mitsuoka/repchat/pull/307)のADR-0021もmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #308のproposed ADRでpanel/dashboard revision、参照とfork、利用者SQL、認可、ArtifactBundleの境界をレビュー可能にし、無料の文書品質gateを実行する。実装、実BigQuery、infra作成、有料契約はオーナー承認前に行わない |
+| AIができること | Issue #310のfixed-response回帰、thinking/output設定、token費用計算、表示文書を修正し、無料の品質gateを実行する。実Vertex AI、実BigQuery、有料契約はオーナー承認なしに行わない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -50,6 +50,8 @@ updated: 2026-08-09
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
+| 現在の会議報告エラー | [#310 meeting report output budget](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)／[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)。`LOW` thinking、8,192 output tokens、thought token課金を固定応答で検証する。実再生成は修正版merge・再起動・費用再承認後だけ | [demo](demo.md)、[troubleshooting](troubleshooting/live-demo.md)、Issue #181 |
+| Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
 | 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
 | 現在の本番security設計 | [#302 production edge and origin protection](https://github.com/Yukihide-Mitsuoka/repchat/issues/302)。Cloudflare WAFとCloud Armorの責任境界、Cloud Run direct URL遮断、費用、rolloutをproposed ADRとしてレビューする | ADR-0005/0006/0010/0012、ADR-0020 |
@@ -68,9 +70,9 @@ updated: 2026-08-09
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-09）
+## 次にやる順序（2026-08-10）
 
-1. **現在:** [Issue #308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)のADR-0022案をレビューし、repository ownerが承認・修正・却下を判断する。AI生成dashboardは不変原本、利用者編集は版管理panelを持つ派生dashboardとし、実装と実BigQueryは行わない。
+1. **現在:** [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)の回帰テストと修正をreviewする。merge後にデモを再起動し、実会議報告はVertex AI費用を再提示して承認された場合だけ1回確認する。BigQueryは再実行しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（画面上限目安約¥5）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。

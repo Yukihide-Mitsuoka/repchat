@@ -2,7 +2,7 @@
 id: report-demo
 title: RepChatデモ — 5分説明
 status: active
-updated: 2026-08-09
+updated: 2026-08-10
 ---
 
 # RepChatデモ — 5分説明
@@ -183,7 +183,8 @@ Bitcoinプロファイルは`bigquery-public-data.crypto_bitcoin.transactions`�
 確定済みダッシュボードの下にある「この結果から会議報告案を生成」は、追加の費用確認後に、保存済みの
 集計bundleだけをVertex AIへ渡します。BigQueryは再実行しません。
 
-48 KiBのbundleと4,096 output tokensで制限した上限目安は、Vertex AI約¥5、BigQuery 0円です。
+48 KiBのbundle、8,192 output tokens、Gemini 3.5 Flashの`LOW` thinkingで制限した上限目安は、
+Vertex AI約¥5、BigQuery 0円です。表示費用は回答本文に加えて課金対象の思考tokensも含めます。
 出力は観測、解釈、未検証の仮説、推奨アクション、限界を分離し、数値主張へpanel ID、実行SQL hash、
 result revisionを付けます。
 
@@ -205,7 +206,7 @@ result revisionを付けます。
 | 推奨アクション | 2件 |
 | 限界 | 3件 |
 
-4,096 tokensまでにJSONが完了しない場合は日本語のエラーで停止し、追加費用を伴う自動再実行は
+8,192 tokensまでにJSONが完了しない場合は日本語のエラーで停止し、追加費用を伴う自動再実行は
 行いません。
 
 会議報告は常に「未承認案」で、外部共有前の人間確認が必要です。ローカルプロセスは直近1件の

@@ -201,7 +201,11 @@ test('bounds report output and translates incomplete JSON into stable report err
   const result = python(`
 import sys,types
 google=types.ModuleType("google");genai=types.ModuleType("google.genai")
-genai.types=types.SimpleNamespace(GenerateContentConfig=lambda **kwargs:kwargs)
+genai.types=types.SimpleNamespace(
+ GenerateContentConfig=lambda **kwargs:kwargs,
+ ThinkingConfig=lambda **kwargs:kwargs,
+ ThinkingLevel=types.SimpleNamespace(LOW="LOW"),
+)
 google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
 usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=4096)
 responses=[
@@ -239,5 +243,52 @@ print(json.dumps({
     summary_length: 160,
     claim_length: 120,
     brief: true,
+  });
+});
+
+test('reserves report output budget and accounts for billed thinking tokens', () => {
+  const result = python(`
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class Config:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(
+ GenerateContentConfig=Config,
+ ThinkingConfig=Config,
+ ThinkingLevel=types.SimpleNamespace(LOW="LOW"),
+)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+raw={
+ "executive_summary":"追加診断が必要です。",
+ "observations":[{"text":"購入成果を確認しました。","panel_ids":["R4"]}],
+ "interpretations":[{"text":"追加分析が必要です。","uncertainty":"施策履歴がありません。","panel_ids":["R4"]}],
+ "hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に確認します。","panel_ids":["R4"]}],
+ "actions":[{"text":"購入導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],
+ "limitations":["目標値と施策履歴が未登録です。"],
+}
+usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=600,thoughts_token_count=300)
+response=types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=usage)
+captured={}
+class Models:
+ def generate_content(self,**kwargs):
+  captured["config"]=kwargs["config"]
+  return response
+report,tokens=m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+config=captured["config"]
+thinking=getattr(config,"thinking_config",None)
+print(json.dumps({
+ "max_output_tokens":config.max_output_tokens,
+ "thinking_level":getattr(thinking,"thinking_level",None),
+ "input_tokens":tokens["input_tokens"],
+ "output_tokens":tokens["output_tokens"],
+ "status":report["status"],
+},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    max_output_tokens: 8192,
+    thinking_level: 'LOW',
+    input_tokens: 100,
+    output_tokens: 900,
+    status: 'draft_requires_human_approval',
   });
 });
