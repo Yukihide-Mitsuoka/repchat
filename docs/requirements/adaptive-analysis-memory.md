@@ -2,7 +2,7 @@
 id: adaptive-analysis-memory-requirements
 title: 適応型分析メモリー要件
 status: draft
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # 適応型分析メモリー要件
@@ -10,7 +10,8 @@ updated: 2026-08-02
 この文書は、顧客組織の事業前提と、dashboard作成・読解・報告で得た顧客固有の修正を安全に再利用するための要件を定義する。
 
 関連Issue: [#220](https://github.com/Yukihide-Mitsuoka/repchat/issues/220)、
-[#257](https://github.com/Yukihide-Mitsuoka/repchat/issues/257)
+[#257](https://github.com/Yukihide-Mitsuoka/repchat/issues/257)、
+[#300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)
 
 ## 1. 用語
 
@@ -24,6 +25,10 @@ updated: 2026-08-02
 | 実行時パラメータ | 期間、キャンペーン、店舗、地域など、同じ分析方針の中で都度変わる値 |
 | 再利用判定 | `exact`は実行時パラメータだけ確認、`compatible`は差分確認、`new`は分析目的から確認し直す状態 |
 | 有効revision | 権限確認と必要な承認を経て、現在の分析に適用できる不変の版 |
+| データソース契約 | custom dimension、nested path、型、grain、join、partition、nullの意味、安全な抽出方法をschema版と結び付けた、SQL生成用の承認済み知識。生成SQLそのものではない |
+| 組織単位 | tenantまたは分析対象組織の中で、部門固有の文脈を所有・承認する任意の一階層。すべての顧客に作成を要求しない |
+| コンテキストコンパイラー | 認証済みscope、有効revision、用途、schema版から、AI呼出しへ渡す必要最小限の構造化文脈と適用manifestを決定するserver-side component |
+| コンテキストmanifest | AI呼出しへ適用したrevision ID、scope、schema版、選定理由、除外理由、token数を記録した監査用の構造データ |
 
 ## 2. 前提と制約
 
@@ -38,6 +43,10 @@ updated: 2026-08-02
 | C-4 | 制約 | tenant、workspace、userの識別子は認証済みserver contextからだけ解決する | client入力をscopeまたは認可根拠に使わない |
 | C-5 | 制約 | 生の対話本文とresponse bodyを既定で長期保存しない | 候補抽出に必要な最小イベントだけを保持する |
 | C-6 | 制約 | 2026-08-02のオーナー判断により、#160と並行して要件具体化とローカルの未検証プロトタイプは進めるが、永続メモリーの製品実装開始条件はC-1を維持する | プロトタイプの結果を本番統合済みまたは検証済み能力と表明しない |
+| C-7 | 制約 | custom dimension等の物理schema知識はデータソース契約、指標の意味はADR-0013、分析・報告方法は分析方針として別々の正本を持つ | raw SQLや一つの汎用メモリーへ混在させない |
+| C-8 | 制約 | 永続scopeは`tenant → analysis subject → optional org unit → user`とし、sessionは永続revisionを変更しない一時overrideに限る | analysis subjectを省略して代理店配下の別顧客へ誤適用しない |
+| C-9 | 制約 | Phase 1の組織単位は任意の一階層までとし、任意深度の組織treeを作らない | 所有者、継承、承認の曖昧さと初期実装量を抑える |
+| C-10 | 制約 | security、データソース契約、指標定義など正確性に必須の文脈は自動適用し、利用者の読み込み操作へ依存させない | ボタンの押し忘れで安全性またはSQLの正しさを変えない |
 
 ## 3. 目的と範囲
 
@@ -57,8 +66,8 @@ updated: 2026-08-02
   | exact reuse時の確認質問 | 初回より減少 | 同一fingerprintの初回と再利用時を比較 |
   | 修正の再発率 | pilot基準値から低下 | 同種feedback eventの再発を追跡 |
 
-- **対象:** 組織コンテキストを含む分析方針の候補化、scope確認、承認、版管理、検索、適用理由表示、取消、期限切れ、監査。
-- **対象外:** fine-tuning、生の全会話RAG、顧客間の暗黙学習、結果値・SQLの記憶、Issue #160判定前の実装。
+- **対象:** データソース契約、組織コンテキスト、分析・報告方針の候補化、scope確認、承認、版管理、検索、用途別適用、理由表示、取消、期限切れ、監査。
+- **対象外:** fine-tuning、生の全会話RAG、顧客間の暗黙学習、結果値・生成SQLの記憶、任意深度の組織tree、Issue #160判定前の実装。
 - **関係者:** 閲覧者は今回限りのoverrideと個人嗜好、編集者は許可された分析対象・レシピ、tenant管理者は
   組織コンテキスト・保持・削除を管理する。RepChat運用者は障害対応と監査を担うが、顧客データの意味を変更しない。
   repository ownerは製品方針と実装時期を決定する。
@@ -84,6 +93,13 @@ updated: 2026-08-02
 | FR-015 | 組織コンテキストを指標定義、分析レシピ、user表示嗜好から分離し、tenant組織または分析対象組織のscopeで保存する | 誤適用0件 | Must | 事業前提をchart選択や個人嗜好と混ぜない |
 | FR-016 | 組織コンテキストrevisionにowner、source、根拠、適用開始日、見直し日、作成者、承認者、状態を記録する | 由来と鮮度100% | Must | 古い事業目標の黙示適用を防ぐ |
 | FR-017 | Issue #180はKPI提案前、Issue #181は所見生成前に、同じ有効な組織コンテキストrevisionを読み、そのIDまたはhashを分析仕様とartifact manifestへ記録する | 一貫性、再現性 | Must | 提案時と報告時の事業前提を固定する |
+| FR-018 | custom dimension、nested/repeated path、型、grain、join、partition、null semantics、安全な抽出templateを、schema fingerprint付きのデータソース契約revisionとして保存する | SQL生成品質 | Must | 顧客固有schemaをraw SQLまたは会話から推測し直さない |
+| FR-019 | AIがデータソース契約候補を作成しても、schema・型検査、dry runまたは参照値検証、権限者の承認を通るまで有効化しない | 誤SQL防止 | Must | 推測した抽出方法の自己学習を防ぐ |
+| FR-020 | scopeはtenant、analysis subject、任意のorg unit、user、sessionを表現し、org unit未使用の顧客はtenant・analysis subject・userだけで利用できる | 運用適合性 | Must | 小規模顧客へ不要な部門管理を強制しない |
+| FR-021 | 継承と上書きを情報種別・field単位で定義し、security・データソース契約・指標定義はuser/sessionから上書き不可、組織コンテキストの矛盾は新revision承認、許可済みrecipe・嗜好だけ下位scopeを優先する | 誤適用0件 | Must | 一つのnearest-wins規則を避ける |
+| FR-022 | コンテキストコンパイラーはSQL生成、分析計画、会議報告ごとに必要なrevisionだけを選び、hard token budgetと選定理由を持つmanifestを生成する | token・遅延抑制 | Must | 全履歴・全方針を毎回promptへ入れない |
+| FR-023 | UIは「今回適用するコンテキスト」をscope・revision・理由付きで表示する。正確性に必須の文脈は自動適用し、recipeと個人嗜好だけを方針で許された場合に限り「今回は使わない」にできる | 透明性・安全性 | Must | 文脈読み込みを利用者の記憶へ依存させない |
+| FR-024 | 利用者の修正は既定でsession-onlyとし、永続化時は自分、org unit、analysis subject、tenant標準の候補scopeと影響を提示する。広いscopeほど権限者承認を要求する | 無断学習防止 | Must | 修正を安全に次回へ反映する |
 
 ### 4.1 ユースケース
 
@@ -95,7 +111,6 @@ updated: 2026-08-02
 6. AI所見に対する「この顧客では前年差より計画差を優先して報告して」という修正も同じ候補workflowへ送る。
 7. tenant管理者または顧客編集者は、事業モデル、収益構造、会計年度、戦略目標、目標階層、意思決定周期、事業制約、組織固有用語、禁止する解釈を組織コンテキスト候補として確認し、有効化前に承認する。
 8. #180は承認済みの目標と意思決定周期をKPI・比較軸の提案根拠に使い、#181は同じrevisionの目標に対して実績を解釈する。見直し日を過ぎた場合は黙って適用せず、再確認を求める。
-
 ### 4.2 業務ルール
 
 #### メモリー区分
@@ -108,11 +123,25 @@ updated: 2026-08-02
 | 分析レシピ | 目的、KPI、比較軸、読順、グラフ理由 | 編集者 | compatible差分として確認 |
 | user表示嗜好 | 表示単位、説明の詳しさ、既定chart表現 | 本人 | sessionが優先 |
 | session-only override | 今回だけ除外、今回だけ別期間 | 本人 | 永続化しない |
+| データソース契約 | custom dimension、nested path、型、grain、join、安全な抽出方法 | data stewardまたはtenant管理者 | user・sessionから不可 |
+| 報告方針 | 意思決定者、報告順、許容する丸め、推奨actionの表現 | 編集者または管理者 | 許可fieldだけuser/sessionで具体化 |
 
 指標の意味はADR-0013の定義層で管理する。指標への修正は個人嗜好ではなく、指標定義変更の候補へ送る。
 system・security方針、組織コンテキスト、指標定義はuserまたはsessionから上書きできない。分析対象scopeの
 承認済み組織コンテキストはtenant scopeを具体化できるが、矛盾する場合は新revisionの承認を要求する。表示嗜好だけは
-`session > user > analysis recipe > tenant default`の優先順を使う。
+`session > user > optional org unit > analysis subject > tenant default`の優先順を使う。ただしこの順序は、各方針が
+`overridable`と宣言したfieldにだけ適用する。security、データソース契約、指標定義、承認済み組織コンテキストへ
+汎用のnearest-wins規則を適用しない。
+
+#### 用途別のコンテキスト構成
+
+| AI呼出し | 必須の文脈 | 既定で渡さない文脈 |
+|----------|------------|--------------------|
+| SQL生成 | 対象schemaのデータソース契約、関連する指標定義、確定済み分析仕様の制約 | 全会話、報告文体、無関係な事業目標 |
+| 分析計画 | 組織コンテキスト、利用可能な指標catalog、関連する分析recipe | 物理schemaの全field、過去のquery result |
+| 会議報告 | 凍結した組織コンテキスト、報告方針、検証済みevidence bundle | custom dimension抽出方法、生成SQL全文、無関係なrecipe |
+
+認証済みscopeの完全一致後にrevisionを決定的に選ぶ。embeddingはscope・認可・必須revisionの選択に使わない。
 
 #### 分析文脈fingerprint
 
@@ -141,13 +170,15 @@ embedding類似度をidentityまたはauthorizationに使わない。
 
 - scopeを一意に決められない場合は今回限り、承認者を特定できない場合は候補を保留する。
 - retrieval障害時はメモリーなしで確認質問を増やし、組織コンテキストに依存するKPI提案または所見は根拠不足として停止する。
+- 対応するデータソース契約が無い、期限切れ、schema非互換の場合はSQLを推測せず、管理者またはanalystへ登録・再検証を求める。
+- 指標定義が無い場合はADR-0013どおり確認または拒否する。組織コンテキスト不足時は汎用提案であることを明示し、事業目標に依存する所見は停止する。個人嗜好が無い場合だけ安全なdefaultで続行する。
 - write障害時は有効revisionを維持して保存成功を装わず、期限切れ・非互換の方針を黙って適用しない。
 
 ## 5. 非機能要件
 
 | ID | 特性 | 要件 | 目標 | 測定方法 | 優先度 |
 |----|------|------|------|----------|--------|
-| NFR-001 | 性能効率 | 適用方針の決定が対話開始を大きく遅らせない | pilot後にp95基準値を定める。Phase 1は単一tenant内のindexed lookup | tracingと負荷試験 | Should |
+| NFR-001 | 性能効率 | 適用方針の決定が対話開始を大きく遅らせない | 5,000 active revisions/tenantのPhase 1 load testでretrieval・compileのp95を200ms以下 | tracingと負荷試験 | Should |
 | NFR-002 | 信頼性 | retrieval障害が既存dashboard閲覧を止めない | last-known-good artifactは継続配信 | 障害注入試験 | Must |
 | NFR-003 | セキュリティ | cross-tenant・cross-subject・cross-userの誤読取と誤書込を防ぐ | 0件 | RLS、authorization、負のE2E | Must |
 | NFR-004 | 保守性 | 方針区分、scope、状態遷移をvendor非依存のdomain modelに置く | vendor adapterなしでunit test可能 | architecture test | Must |
@@ -155,12 +186,14 @@ embedding類似度をidentityまたはauthorizationに使わない。
 | NFR-006 | 観測性 | 適用・候補化・承認・失効・rollbackを追跡する | 監査イベント欠落0件 | audit reconciliation | Must |
 | NFR-007 | 移植性 | 外部Memoryサービスを正本にしない | PostgresだけでPhase 1を動作 | integration test | Must |
 | NFR-008 | data protection | 生の対話本文・結果bodyを既定で保持しない | 正本tableに保存0件 | schema review、log scan | Must |
+| NFR-009 | token効率 | AI呼出しごとに選択するschema・policy文脈を用途別に制限する | context部分は合計4,000 model tokens以下。必須事実が収まらない場合は黙って切らず、対象を狭めるか停止 | token accounting、境界test | Must |
+| NFR-010 | 説明可能性 | AI出力から適用した文脈を再現できる | AI呼出しの100%にcontext manifest ID/hashを記録 | audit reconciliation | Must |
 
 ## 6. データ要件
 
 | 観点 | 仕様 |
 |------|------|
-| データモデル | `analysis_policies`、`policy_revisions`、`memory_candidates`、`feedback_events`、`analysis_spec_revisions`。`analysis_policies.policy_type`で組織コンテキストを区別し、有効版は不変revisionへの参照で表す |
+| データモデル | `analysis_policies`、`policy_revisions`、`memory_candidates`、`feedback_events`、`analysis_spec_revisions`に加え、`datasource_contracts`、`datasource_contract_revisions`、任意の`org_units`、scope binding、`context_manifests`を持つ。有効版は不変revisionへの参照で表す |
 | 想定量 | 初期3〜5社ではtenantごとに数百〜数千revisionを想定し、実測後に更新する |
 | 保持 | 有効方針は置換・削除まで、未承認候補30日、構造化feedback 90日、旧revision・承認・取消監査365日、解約後30日で完全削除。raw conversation・query-result bodyは既定0日。design partnerの要望を確認しtenant契約単位で変更できる |
 | 個人情報 | user ID、修正理由、表示嗜好は顧客データとしてtenant境界内で扱う。秘密情報は保存しない |
@@ -177,14 +210,17 @@ embedding類似度をidentityまたはauthorizationに使わない。
 | ADR-0015 ArtifactBundle | 出力 | policy revision ID/hashをmanifestへ記録 | build SLAに従う | 失敗版を有効化しない |
 | Issue #181 AI所見 | 読取 | #180と同じ組織コンテキストrevision、business goal、許可済み表現方針 | 未定 | 根拠のない所見を生成しない |
 | 認証・role | 読取 | server-side tenant/user/role context | Issue #194に依存 | fail closed |
+| データソースcatalog・schema profiler | 読取・検証 | datasource ID、schema fingerprint、field path、型、grain、partition、検証証拠 | #188に依存 | 契約を有効化せずSQL生成を停止 |
 
 ## 8. infrastructureと費用
 
-- **Phase 1:** 既存Postgres control planeとRLSを正本にし、新しいmanaged memoryサービスを追加しない。
+- **Phase 1:** 既存Postgres control planeとRLSを正本にし、新しいmanaged memory serviceやin-memory DBを追加しない。複合indexによる決定的lookupを使う。
 - **Phase 2〜3:** 既存の生成AI経路を使い、候補数、token、承認率を測る。費用は実装Issueで前提とともに見積もる。
 - **Phase 4:** 実測上のbottleneckが出た場合だけpgvectorまたはMemory Bankを派生indexとして評価する。
 
 Memory BankをPhase 1の正本にしない。必要なscope、承認、削除、監査は製品側に残り、初期規模では二重化の便益が未実証だからである。
+主な増分費用はprompt tokenであり、compilerのbudgetで制御する。cacheはp95またはDB負荷が目標を外れた場合だけ、
+scope、revision set hash、schema版をkeyにした再構築可能な派生indexとして追加する。
 
 ## 9. 運用要件
 
@@ -209,6 +245,11 @@ Memory BankをPhase 1の正本にしない。必要なscope、承認、削除、
 | AC-8 | artifactから利用したpolicy revisionを追跡でき、SQL・結果値・raw personal memoryはpolicy正本にない | FR-012、FR-014、NFR-008 | manifest・schema review |
 | AC-9 | 組織コンテキストが分析レシピ・指標定義・個人設定と別区分で表示され、由来・owner・適用日・見直し日・revisionを確認できる | FR-015、FR-016 | domain・UI・API test |
 | AC-10 | #180の分析仕様と#181の所見から同じ組織コンテキストrevisionを追跡でき、期限切れまたは不明な事業前提では生成を停止する | FR-017 | scenario・manifest test |
+| AC-11 | org unitを無効にしたtenantと有効にしたtenantの両方で、analysis subjectを越えず正しいscope chainを解決できる | FR-020、FR-021 | scope matrix test |
+| AC-12 | user/sessionからsecurity、データソース契約、指標定義を上書きできず、許可済みrecipe・嗜好fieldだけを一時overrideできる | FR-021、FR-023 | authorization・merge test |
+| AC-13 | custom dimension候補はschema・型検査、dry runまたは参照値検証、承認がそろうまでSQL生成へ適用されない | FR-018、FR-019 | state transition・integration test |
+| AC-14 | SQL生成、分析計画、会議報告で異なる最小文脈が選ばれ、4,000 tokenを越えず、manifestからrevisionと理由を再現できる | FR-022、NFR-009、NFR-010 | fixture・token budget test |
+| AC-15 | 「文脈を読み取る」を押さなくても必須文脈が適用され、任意文脈だけを今回外せる | FR-023 | UI・E2E test |
 
 ## 11. リスク
 
@@ -221,13 +262,16 @@ Memory BankをPhase 1の正本にしない。必要なscope、承認、削除、
 | R-5 | 類似検索が別顧客の方針を混ぜる | 低 | 高 | 認証済み完全一致scopeで候補集合を限定し、類似度を認可に使わない |
 | R-6 | AIの自己改善が説明不能になる | 中 | 高 | model学習ではなく、候補と不変policy revisionとして可視化 |
 | R-7 | 過去の事業目標や収益構造が変更後もKPI提案・所見に使われる | 中 | 高 | owner、source、適用日、見直し日、revision、期限切れ時の停止 |
+| R-8 | 部門階層が実組織とずれ、誰の方針か曖昧になる | 中 | 高 | org unitは任意・一階層、ownerと承認者を必須化、未設定時はanalysis subjectへ戻す |
+| R-9 | custom dimensionの誤った抽出方法を学習し、以後のSQLへ再利用する | 中 | 高 | raw SQLを記憶せず、schema fingerprint、検証証拠、承認、非互換時停止 |
+| R-10 | 全文脈をpromptへ入れてtoken費用と応答遅延が増える | 高 | 中 | 用途別compiler、hard budget、manifest、p95計測、実測後だけcache/index追加 |
 
 ## 12. milestoneと実装時期
 
 | milestone | scope | 開始条件 |
 |-----------|-------|----------|
-| Phase 0 — 要件と設計判断 | 本文書、ADR-0018、索引、将来Issueの境界 | 今回。実装なし |
-| Phase 1 — 手動で統制された方針 | FR-001、004〜008、010、012〜017。組織コンテキストを含むscope、revision、表示、手動作成・承認・取消。embeddingと自動昇格なし | Issue #160=`proceed`、#179/#188完了、#180でanalysis specification revision契約を確定、ADR-0018 accepted |
+| Phase 0 — 要件と設計判断 | 本文書、ADR-0018、ADR-0019案、索引、将来Issueの境界 | 今回。実装なし |
+| Phase 1 — 手動で統制された方針と契約 | FR-001、004〜008、010、012〜024。データソース契約、組織コンテキスト、任意org unit、用途別compiler、表示、手動作成・承認・取消。embeddingと自動昇格なし | Issue #160=`proceed`、#179/#188完了、#180でanalysis specification revision契約を確定、ADR-0018 accepted、ADR-0019 accepted |
 | Phase 2 — 修正から候補を作る | FR-002、003、009。明示修正→候補抽出→scope確認→承認・通知 | Phase 1の境界テストとpilot運用が安定 |
 | Phase 3 — 反復から改善を提案 | FR-011。再発検知、期限、再確認、昇格提案。自動昇格はしない | 実顧客で反復修正が観測され、精度・承認率を測れる |
 | Phase 4 — 派生retrieval index | pgvectorまたはMemory Bankの比較、同期、再構築、削除整合 | policy量またはlookup遅延が測定上のbottleneck |

@@ -15,11 +15,11 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [PR #297](https://github.com/Yukihide-Mitsuoka/repchat/pull/297)（[Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)）— 会議報告で生値の報告用丸めと記録済みファネル転換率を正当な根拠値として検証する修正。レビュー・CI待ち |
-| デモ実行状態 | マージ済みの#292修正後に会議報告を実生成すると、`14.56`、`19.6`、`49.51`が根拠に無いとして停止した。#295ブランチでは固定応答だけを検証し、デモの再起動と有料の実生成は行っていない |
-| 直近完了 | [PR #294](https://github.com/Yukihide-Mitsuoka/repchat/pull/294)とrelease [v1.15.4](https://github.com/Yukihide-Mitsuoka/repchat/releases/tag/v1.15.4)はmerge・公開済み。PR #297では同じ数値をfailing-first testで再現し、生値の報告用丸めと明示的なファネル派生指標を実装した。`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功 |
+| 作業 | [Issue #300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300) — custom dimension等のデータソース知識と分析・報告用の組織文脈を分離し、任意org unitと用途別context compilerを定義するPhase 0文書化。ADR-0019はproposedで、実装前にrepository ownerの承認が必要 |
+| デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
+| 直近完了 | [PR #297](https://github.com/Yukihide-Mitsuoka/repchat/pull/297)とrelease [v1.15.5](https://github.com/Yukihide-Mitsuoka/repchat/releases/tag/v1.15.5)はmerge・公開済み。会議報告の固定応答テストでは、生値の報告用丸めと明示的なファネル派生指標だけを根拠値として受理する。実Vertex AIによる再生成は未確認 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #295の固定応答テストを無料で検証しPR化する。実Vertex AI相談、BigQuery build、会議報告生成はそれぞれ費用を提示し、オーナー承認後だけ実行する |
+| AIができること | Issue #300の要件とproposed ADRをレビュー可能にし、無料の文書品質gateを実行する。実Vertex AI相談、BigQuery build、会議報告生成はそれぞれ費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -35,7 +35,7 @@ updated: 2026-08-09
 5. デモを扱う場合だけ[デモ手順](demo.md)と
    [report-generation spike](../spikes/report-generation/README.md)を読む。
 
-## 直近の生成エラー
+## 直近の生成エラーと修正状態
 
 2026-08-09に、確定済みダッシュボードから会議報告案を生成すると、Vertex AI呼出し後に
 `会議報告に根拠パネルへ存在しない数値があります: 14.56、19.6、49.51`で停止した。BigQueryは
@@ -43,14 +43,15 @@ updated: 2026-08-09
 [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)。`14.56`と`49.51`はパネル生値の
 報告用丸め、`19.6`はファネルの`4,537 ÷ 23,105 × 100`を丸めた値だが、従来の検証器は生値との
 文字列一致だけを許可していた。#295では任意計算を許可せず、報告用丸め値とサーバーが式・精度とともに
-記録したファネル転換率だけを受理する。修正後も自動再実行せず、実生成は費用を再承認した後だけ行う。
+記録したファネル転換率だけを受理する。この修正はPR #297でmerge済みだが、自動で実生成を再実行していない。
+実生成は費用を再承認した後だけ行う。
 
 ## 次タスクの分岐
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ改善 | [#295 会議報告の丸め値・派生値検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)。再現可能な値だけをpanel単位で受理する | #295、`meeting_report.py`、meeting-report/live-demo tests |
-| #295 merge後 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。まずHTTP 200と固定応答テストを無料で確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
+| 現在のPhase 0設計 | [#300 scoped context memory](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)。データソース契約、任意org unit、用途別context compiler、UIの必須／任意文脈をproposed ADRとしてレビューする | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018、ADR-0019 |
+| #297 merge後のデモ確認 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。HTTP 200と固定応答テストは無料で確認できる。実会議報告生成は別途費用確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
 | デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
 | #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
@@ -66,8 +67,8 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-09）
 
-1. **現在:** [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の無料テストと品質ゲートを完了し、PRを作成する。
-2. **次:** #295 merge後に最新mainからデモを再起動する。会議報告の実再生成はVertex AI費用（画面上限目安約¥5）を再提示し、承認後に1回だけ確認する。
+1. **現在:** [Issue #300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)の要件更新とADR-0019案をレビューし、repository ownerが承認・修正・却下を判断する。これはPhase 0文書化で、製品実装は開始しない。
+2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（画面上限目安約¥5）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
@@ -86,6 +87,7 @@ positioningとroadmapを再評価します。
 | Git配送と閲覧 | accepted。Gitはbuild時だけ使用し、閲覧経路へ入れない。GitHub/managedは同じpipelineの保存先adapter | [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md) |
 | Slack | proposed。Webを正本UIとする認可付きadapter案。オーナー承認前は実装禁止 | [ADR-0017](adr/0017-use-slack-as-an-authorized-analysis-interface.md) |
 | 適応型分析メモリー | accepted。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresの正本で管理し、AIは候補を作るが自動昇格しない | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md) |
+| データソース知識とscope継承 | proposed。custom dimension等をschema検証済みデータソース契約として分離し、任意org unitと用途別context compilerを使う。オーナー承認前は実装禁止 | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0019](adr/0019-separate-datasource-knowledge-from-scoped-analysis-context.md)、[#300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300) |
 | 接続先・テーブル選択 | 将来設計。ユーザーに任意のdataset/tableを列挙させず、管理者が承認したデータソース・分析領域・テーブルカタログからサーバー側で解決する | [ADR-0005](adr/0005-cache-and-authorization-architecture.md)、[ADR-0010](adr/0010-connection-identity-is-never-a-person.md)、#180 |
 | 課金区分・エンドユーザー認証 | 未決。AIは推測しない | [Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) |
 
