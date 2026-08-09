@@ -15,9 +15,9 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295) — 会議報告で生値の報告用丸めと記録済みファネル転換率を正当な根拠値として検証する修正 |
+| 作業 | [PR #297](https://github.com/Yukihide-Mitsuoka/repchat/pull/297)（[Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)）— 会議報告で生値の報告用丸めと記録済みファネル転換率を正当な根拠値として検証する修正。レビュー・CI待ち |
 | デモ実行状態 | マージ済みの#292修正後に会議報告を実生成すると、`14.56`、`19.6`、`49.51`が根拠に無いとして停止した。#295ブランチでは固定応答だけを検証し、デモの再起動と有料の実生成は行っていない |
-| 直近完了 | [PR #294](https://github.com/Yukihide-Mitsuoka/repchat/pull/294)とrelease [v1.15.4](https://github.com/Yukihide-Mitsuoka/repchat/releases/tag/v1.15.4)はmerge・公開済み。#295では同じ数値をfailing-first testで再現し、生値の報告用丸めと明示的なファネル派生指標の検証を実装中 |
+| 直近完了 | [PR #294](https://github.com/Yukihide-Mitsuoka/repchat/pull/294)とrelease [v1.15.4](https://github.com/Yukihide-Mitsuoka/repchat/releases/tag/v1.15.4)はmerge・公開済み。PR #297では同じ数値をfailing-first testで再現し、生値の報告用丸めと明示的なファネル派生指標を実装した。`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #295の固定応答テストを無料で検証しPR化する。実Vertex AI相談、BigQuery build、会議報告生成はそれぞれ費用を提示し、オーナー承認後だけ実行する |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
