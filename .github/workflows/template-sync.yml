@@ -36,8 +36,8 @@ jobs:
           pr_title: "build: sync with ai-dev-foundation template"
           pr_body: >-
             Direct-parent source commit will be recorded after synchronization. Before
-            merge, review the accepted lock-to-source range and update
-            .github/inheritance/lock.json in this PR.
+            merge, review the accepted lock-to-source range, then finalize manual
+            boundaries and .github/inheritance/lock.json in this same PR.
           pr_labels: "type:ci,type:dependencies"
           pr_commit_msg: "build: sync with ai-dev-foundation template"
       - name: Record exact direct-parent source commit
@@ -74,6 +74,5 @@ jobs:
 
           Before merge:
           - Review the accepted lock-to-source commit range.
-          - Port direct-parent workflow changes in a separate reviewed PR.
-          - Update .github/inheritance/lock.json only after the complete parent delta is accepted."
+          - Finalize manual boundaries and .github/inheritance/lock.json in this same reviewed PR."
           gh pr edit "$PR_NUMBER" --body "$body"

@@ -22,8 +22,8 @@ class TemplateSyncWorkflowTest(unittest.TestCase):
         self.assertNotIn("\nBefore merge:\n", workflow)
         self.assertIn("\n          Before merge:\n", workflow)
         self.assertIn(
-            "\n          - Update .github/inheritance/lock.json only after the complete "
-            "parent delta is accepted.",
+            "\n          - Finalize manual boundaries and "
+            ".github/inheritance/lock.json in this same reviewed PR.",
             workflow,
         )
 
