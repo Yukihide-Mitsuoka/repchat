@@ -118,7 +118,9 @@ bad_number={**base,"observations":[{"text":"購入件数は999件です。","pan
 unknown={**base,"observations":[{"text":"観測です。","panel_ids":["R99"]}]}
 bad_bundle={**bundle,"organization_context_revision":"other-v1"}
 oversized={**bundle,"metric_definitions":{"x":"a"*50000}}
-for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized)]:
+long_summary={**base,"executive_summary":{"text":"あ"*161,"panel_ids":["R4"]}}
+too_many_observations={**base,"observations":base["observations"]*4}
+for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized),(long_summary,bundle),(too_many_observations,bundle)]:
  try:m.normalize_report(raw,current)
  except m.ReportError as error:cases.append(str(error))
 print(json.dumps(cases,ensure_ascii=False))`);
@@ -130,6 +132,8 @@ print(json.dumps(cases,ensure_ascii=False))`);
     '会議報告のlimitationsが配列ではありません。',
     '会議報告のlimitationsには根拠リンクのない数値を書けません。',
     '会議報告の根拠bundleが48 KiBを超えています。',
+    '会議報告の要約は160文字以内にしてください。',
+    '会議報告のobservationsは3件以内にしてください。',
   ]);
 });
 
