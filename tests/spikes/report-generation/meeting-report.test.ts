@@ -103,6 +103,43 @@ print(json.dumps({"text":accepted["executive_summary"]["text"],"refs":accepted["
   });
 });
 
+test('accepts rounded direct metrics and recorded funnel conversion rates only from cited panels', () => {
+  const result = python(`
+panels=[
+ {"id":"R11","title":"リピートユーザー率","period":"2021年1月","sql_sha256":"5555555555555555","result_revision":"result-666666666666","columns":["リピートユーザー率"],"rows":[[14.559999]],"verification":"matched"},
+ {"id":"R12","title":"平均エンゲージメント時間","period":"2021年1月","sql_sha256":"7777777777777777","result_revision":"result-888888888888","columns":["平均エンゲージメント時間"],"rows":[[49.509999]],"verification":"matched"},
+ {"id":"R9","title":"購入までのファネル","period":"2021年1月","sql_sha256":"9999999999999999","result_revision":"result-aaaaaaaaaaaa","columns":["商品を見たセッション数","カートに入れたセッション数","購入したセッション数"],"rows":[[23105,4537,1115]],"visualization":"funnel","verification":"matched","derived_metrics":m.funnel_conversion_metrics(["商品を見たセッション数","カートに入れたセッション数","購入したセッション数"],[[23105,4537,1115]])},
+]
+current={**bundle,"panels":panels}
+raw={
+ "executive_summary":{"text":"リピートユーザー率は14.56%、平均エンゲージメント時間は49.51秒です。","panel_ids":["R11","R12"]},
+ "observations":[{"text":"商品閲覧からカート追加への転換率は19.6%です。","panel_ids":["R9"]}],
+ "interpretations":[{"text":"ファネルに減少があります。","uncertainty":"施策履歴がありません。","panel_ids":["R9"]}],
+ "hypotheses":[{"text":"商品詳細に改善余地がある可能性があります。","validation":"導線別に検証します。","panel_ids":["R9"]}],
+ "actions":[{"text":"商品詳細を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"導線別に比較します。","success_metric":"カート追加率","panel_ids":["R9"]}],
+ "limitations":["目標値と施策履歴が未登録です。"],
+}
+accepted=m.normalize_report(raw,current)
+bad={**raw,"observations":[{"text":"商品閲覧からカート追加への転換率は18.4%です。","panel_ids":["R9"]}]}
+wrong_panel={**raw,"observations":[{"text":"商品閲覧からカート追加への転換率は19.6%です。","panel_ids":["R11"]}]}
+tampered_panels=[{**panel,"derived_metrics":[{**panel["derived_metrics"][0],"value":18.4}]} if panel["id"]=="R9" else panel for panel in panels]
+errors=[]
+for candidate,evidence in [(bad,current),(wrong_panel,current),(raw,{**current,"panels":tampered_panels})]:
+ try:m.normalize_report(candidate,evidence)
+ except m.ReportError as error:errors.append(str(error))
+print(json.dumps({"summary":accepted["executive_summary"]["text"],"observation":accepted["observations"][0]["text"],"errors":errors},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: 'リピートユーザー率は14.56%、平均エンゲージメント時間は49.51秒です。',
+    observation: '商品閲覧からカート追加への転換率は19.6%です。',
+    errors: [
+      '会議報告に根拠パネルへ存在しない数値があります: 18.4',
+      '会議報告に根拠パネルへ存在しない数値があります: 19.6',
+      '根拠パネルR9の派生指標が不正です。',
+    ],
+  });
+});
+
 test('rejects unsupported numbers, unknown evidence, and revision mismatches', () => {
   const result = python(`
 base={
