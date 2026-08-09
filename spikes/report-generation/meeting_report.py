@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 NUMBER = re.compile(r"(?<![A-Za-z])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 MAX_BUNDLE_BYTES = 48 * 1024
-MAX_OUTPUT_TOKENS = 4096
+MAX_OUTPUT_TOKENS = 8192
 SUMMARY_MAX_CHARS = 160
 CLAIM_MAX_CHARS = 120
 DETAIL_MAX_CHARS = 80
@@ -435,6 +435,9 @@ def generate(client, model: str, bundle: dict):
             response_mime_type="application/json",
             response_schema=REPORT_SCHEMA,
             temperature=0,
+            thinking_config=types.ThinkingConfig(
+                thinking_level=types.ThinkingLevel.LOW
+            ),
             max_output_tokens=MAX_OUTPUT_TOKENS,
         ),
     )
@@ -456,5 +459,6 @@ def generate(client, model: str, bundle: dict):
     usage = response.usage_metadata
     return normalize_report(raw, bundle), {
         "input_tokens": usage.prompt_token_count or 0,
-        "output_tokens": usage.candidates_token_count or 0,
+        "output_tokens": (usage.candidates_token_count or 0)
+        + (getattr(usage, "thoughts_token_count", 0) or 0),
     }

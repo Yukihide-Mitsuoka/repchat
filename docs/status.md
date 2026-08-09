@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-08-09
+updated: 2026-08-10
 ---
 
 # 実装状況サマリー
@@ -30,18 +30,13 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292)。
-[PR #290](https://github.com/Yukihide-Mitsuoka/repchat/pull/290)はmerge済み。修正後の実会議報告生成で
-`Unterminated string starting at: line 1 column 30 (char 29)`が発生した。`/api/report`はHTTP 200で、
-BigQueryは再実行されていない。会議報告schemaに配列件数と文字数の上限がなく、不完全な応答を
-finish reason確認なしで`json.loads`へ渡す経路をfailing-first testで再現した。実応答のfinish reasonは
-保存されていないため、4,096 output tokens到達だったか、別要因だったかは未特定。
-#292では観測3件、解釈2件、仮説2件、アクション2件、限界3件までに制限し、本文・詳細にも文字数上限を
-設ける。生成schemaと受理時検証の双方で制限し、`MAX_TOKENS`と不完全JSONを安定した日本語エラーへ変換する。
-追加費用を伴う自動再実行はしない。修正後の実Vertex AI再生成は未実施。
-`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功し、修正ブランチのデモを
-再起動してHTTP 200を確認した。再起動で直近dashboard bundleは破棄されたため、実会議報告を再確認するには
-相談・buildの費用から改めて承認が必要。
+**現在の作業スレッド**: [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)。
+実会議報告生成が`MAX_TOKENS`で停止した。fail-closedと自動再実行禁止は意図どおりで、BigQueryは
+再実行されていない。原因は、bounded JSONへ4,096 output tokensしか確保せず、Gemini 3.5 Flashのthinking
+levelを未指定の既定`MEDIUM`にしていたことである。固定応答回帰テストは修正前の4,096、thinking未指定、
+thought tokens未計上を再現した。修正では会議報告だけ`LOW` thinking、8,192 output tokensとし、candidate
+tokensと課金対象のthought tokensを費用へ合算する。実Vertex AIは自動再実行せず、固定応答と無料の品質gateを
+先に完了する。
 
 #283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
 リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。
