@@ -21,6 +21,8 @@ RepChat固有のユビキタス言語を定義します。コード識別子、�
 | データソース契約 | custom dimension、nested path、型、grain、join、partition、nullの意味、安全な抽出方法をschema fingerprintと検証証拠へ結び付けたversioned SQL生成知識 | SQL生成、schema適応 | SQLメモリー、過去SQL | 指標定義、生成SQL、組織コンテキスト |
 | 組織単位 | tenantまたは分析対象組織内で、部門固有の文脈を所有・承認する任意の一階層 | scope、分析メモリー | 必須の部署階層 | tenant、analysis subject、user、session |
 | コンテキストコンパイラー | 認証済みscope、有効revision、用途、schema版から、AIへ渡す最小の構造化文脈と適用manifestを決定するserver-side component | AI生成、分析メモリー | 全履歴RAG | 正本policy、vector index、prompt template |
+| パネルrevision | SQL、chart設定、metric・schema・scope・検証状態を固定した再利用可能な不変成果物 | dashboard生成、SQL workspace | グラフのコピー、最新パネル | result revision、dashboard revision |
+| 派生ダッシュボード | AI生成または既存dashboardを親に持ち、固定したpanel revisionとlayoutを合成する利用者編集可能な新しいdashboard revision | dashboard編集、公開 | AI生成dashboardの上書き | AI生成原本、空dashboard、panel revision |
 
 ## 解決済みの曖昧さ
 
