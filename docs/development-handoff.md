@@ -15,7 +15,7 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308) — AI生成dashboardを不変原本とし、版管理panelを派生dashboardへ合成するproposed ADR-0022を文書化する。SQL workspace、dashboard editor、API、DBは実装しない |
+| 作業 | [Issue #308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)／[PR #309](https://github.com/Yukihide-Mitsuoka/repchat/pull/309) — AI生成dashboardを不変原本とし、版管理panelを派生dashboardへ合成するproposed ADR-0022をreviewする。SQL workspace、dashboard editor、API、DBは実装しない |
 | デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
 | 直近完了 | [PR #307](https://github.com/Yukihide-Mitsuoka/repchat/pull/307)はmerge済みで、共有中間結果を実測費用で限定するADR-0021をproposedとして追加した。実装・実BigQueryは行っていない。[PR #305](https://github.com/Yukihide-Mitsuoka/repchat/pull/305)のデモ手順再構成もmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
