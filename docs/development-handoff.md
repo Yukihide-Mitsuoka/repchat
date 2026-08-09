@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314) — ライブデモの既定モデルをGemini 3.6 Flashへ切り替え、公式価格と非対応`temperature`設定を更新する。固定応答で検証し、実Vertex AI・BigQueryは呼ばない |
+| 作業 | [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)／[PR #316](https://github.com/Yukihide-Mitsuoka/repchat/pull/316) — ライブデモの既定モデルをGemini 3.6 Flashへ切り替え、公式価格と非対応`temperature`設定を更新する。固定応答で検証し、実Vertex AI・BigQueryは呼ばない |
 | デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
 | 直近完了 | [PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)はmerge済みで、会議報告を`LOW` thinking・8,192 output tokensにし、thought tokensを費用へ含めた。実Vertex AI・BigQueryは再実行していない |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のモデル切替 | [#314 Gemini 3.6 Flash](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)。既定ID、公式価格、Gemini 3.6で非対応の`temperature`を固定応答で検証する。3.6 Flashの実品質・実費はmerge・再起動・費用承認後だけ確認する | [demo](demo.md)、[requirements](requirements.md)、[system design](system-design.md) |
+| 現在のモデル切替 | [#314 Gemini 3.6 Flash](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)／[PR #316](https://github.com/Yukihide-Mitsuoka/repchat/pull/316)。既定ID、公式価格、Gemini 3.6で非対応の`temperature`を固定応答で検証する。3.6 Flashの実品質・実費はmerge・再起動・費用承認後だけ確認する | [demo](demo.md)、[requirements](requirements.md)、[system design](system-design.md) |
 | Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | doctorの基盤テストtimeout | [#315 setup-github wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`make doctor`の`setup-github.sh` wrapper testが5秒timeoutした。再実行で成功扱いにせず、Gemini切替とは別に原因を調査する | `scripts/setup-github.sh`、`scripts/tests/test_setup_github_wrapper.py` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
