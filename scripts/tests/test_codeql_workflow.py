@@ -5,6 +5,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SKIP_DIRS = {".venv", "venv", "node_modules", ".git", "build", "dist"}
+CODEQL_ACTION = re.compile(
+    r"github/codeql-action/(?P<action>[^@\s]+)@"
+    r"(?P<sha>[0-9a-f]{40})\s+#\s+(?P<version>v\S+)"
+)
+SUPPORTED_CODEQL_SHA = "5595ccaf912efad79be6eef63a5619ff05969be3"
+SUPPORTED_CODEQL_VERSION = "v4.37.6"
 
 
 def _has(pattern: str, *roots: str) -> bool:
@@ -19,6 +25,27 @@ def _has(pattern: str, *roots: str) -> bool:
 
 
 class CodeQLWorkflowTest(unittest.TestCase):
+    def test_codeql_actions_use_supported_v4_digest(self) -> None:
+        expected = {
+            ".github/workflows/codeql.yml": {"init", "autobuild", "analyze"},
+            ".github/workflows/scorecard.yml": {"upload-sarif"},
+        }
+
+        for path, expected_actions in expected.items():
+            with self.subTest(path=path):
+                workflow = (ROOT / path).read_text(encoding="utf-8")
+                references = {
+                    (match["action"], match["sha"], match["version"])
+                    for match in CODEQL_ACTION.finditer(workflow)
+                }
+                self.assertEqual(
+                    {
+                        (action, SUPPORTED_CODEQL_SHA, SUPPORTED_CODEQL_VERSION)
+                        for action in expected_actions
+                    },
+                    references,
+                )
+
     def test_all_executable_source_languages_are_analyzed(self) -> None:
         """Every language the repo actually ships source for must be scanned.
 
