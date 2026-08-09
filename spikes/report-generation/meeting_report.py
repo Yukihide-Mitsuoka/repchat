@@ -9,64 +9,99 @@ import re
 NUMBER = re.compile(r"(?<![A-Za-z])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 MAX_BUNDLE_BYTES = 48 * 1024
 MAX_OUTPUT_TOKENS = 4096
+SUMMARY_MAX_CHARS = 160
+CLAIM_MAX_CHARS = 120
+DETAIL_MAX_CHARS = 80
+SHORT_DETAIL_MAX_CHARS = 40
+MAX_PANEL_REFS = 6
+REPORT_ITEM_LIMITS = {
+    "observations": 3,
+    "interpretations": 2,
+    "hypotheses": 2,
+    "actions": 2,
+    "limitations": 3,
+}
+
+
+def _bounded_string(max_length: int) -> dict:
+    return {"type": "string", "maxLength": max_length}
+
+
+def _panel_ids_schema() -> dict:
+    return {
+        "type": "array",
+        "items": {"type": "string"},
+        "minItems": 1,
+        "maxItems": MAX_PANEL_REFS,
+    }
+
+
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
         "executive_summary": {
             "type": "object",
             "properties": {
-                "text": {"type": "string"},
-                "panel_ids": {"type": "array", "items": {"type": "string"}},
+                "text": _bounded_string(SUMMARY_MAX_CHARS),
+                "panel_ids": _panel_ids_schema(),
             },
             "required": ["text", "panel_ids"],
         },
         "observations": {
             "type": "array",
+            "minItems": 1,
+            "maxItems": REPORT_ITEM_LIMITS["observations"],
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
-                    "panel_ids": {"type": "array", "items": {"type": "string"}},
+                    "text": _bounded_string(CLAIM_MAX_CHARS),
+                    "panel_ids": _panel_ids_schema(),
                 },
                 "required": ["text", "panel_ids"],
             },
         },
         "interpretations": {
             "type": "array",
+            "minItems": 1,
+            "maxItems": REPORT_ITEM_LIMITS["interpretations"],
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
-                    "uncertainty": {"type": "string"},
-                    "panel_ids": {"type": "array", "items": {"type": "string"}},
+                    "text": _bounded_string(CLAIM_MAX_CHARS),
+                    "uncertainty": _bounded_string(DETAIL_MAX_CHARS),
+                    "panel_ids": _panel_ids_schema(),
                 },
                 "required": ["text", "uncertainty", "panel_ids"],
             },
         },
         "hypotheses": {
             "type": "array",
+            "minItems": 1,
+            "maxItems": REPORT_ITEM_LIMITS["hypotheses"],
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
-                    "validation": {"type": "string"},
-                    "panel_ids": {"type": "array", "items": {"type": "string"}},
+                    "text": _bounded_string(CLAIM_MAX_CHARS),
+                    "validation": _bounded_string(DETAIL_MAX_CHARS),
+                    "panel_ids": _panel_ids_schema(),
                 },
                 "required": ["text", "validation", "panel_ids"],
             },
         },
         "actions": {
             "type": "array",
+            "minItems": 1,
+            "maxItems": REPORT_ITEM_LIMITS["actions"],
             "items": {
                 "type": "object",
                 "properties": {
-                    "text": {"type": "string"},
-                    "owner": {"type": "string"},
-                    "urgency": {"type": "string"},
-                    "expected_impact": {"type": "string"},
-                    "next_step": {"type": "string"},
-                    "success_metric": {"type": "string"},
-                    "panel_ids": {"type": "array", "items": {"type": "string"}},
+                    "text": _bounded_string(CLAIM_MAX_CHARS),
+                    "owner": _bounded_string(SHORT_DETAIL_MAX_CHARS),
+                    "urgency": _bounded_string(SHORT_DETAIL_MAX_CHARS),
+                    "expected_impact": _bounded_string(DETAIL_MAX_CHARS),
+                    "next_step": _bounded_string(DETAIL_MAX_CHARS),
+                    "success_metric": _bounded_string(SHORT_DETAIL_MAX_CHARS),
+                    "panel_ids": _panel_ids_schema(),
                 },
                 "required": [
                     "text",
@@ -79,7 +114,12 @@ REPORT_SCHEMA = {
                 ],
             },
         },
-        "limitations": {"type": "array", "items": {"type": "string"}},
+        "limitations": {
+            "type": "array",
+            "items": _bounded_string(CLAIM_MAX_CHARS),
+            "minItems": 1,
+            "maxItems": REPORT_ITEM_LIMITS["limitations"],
+        },
     },
     "required": [
         "executive_summary", "observations", "interpretations",
@@ -112,12 +152,17 @@ build revision: {bundle['build_revision']}
 - limitationsへ根拠リンクのない数値を書かない。
 - 読み手は日本語の月次マーケティング会議参加者。SQL用語は使わない。
 - executive_summaryにもtextとpanel_idsを付ける。数値は参照した根拠パネルに存在する値だけを書く。
+- executive_summaryは{SUMMARY_MAX_CHARS}文字以内、各本文は{CLAIM_MAX_CHARS}文字以内の一文にする。
+- 観測は最大{REPORT_ITEM_LIMITS['observations']}件、解釈は最大{REPORT_ITEM_LIMITS['interpretations']}件、未検証の仮説は最大{REPORT_ITEM_LIMITS['hypotheses']}件、推奨アクションは最大{REPORT_ITEM_LIMITS['actions']}件、limitationsは最大{REPORT_ITEM_LIMITS['limitations']}件に絞る。
+- 不確実性、検証方法、期待効果、次の一歩は各{DETAIL_MAX_CHARS}文字以内、担当、緊急度、成功指標は各{SHORT_DETAIL_MAX_CHARS}文字以内にする。
 """
 
-def _text(value, label: str) -> str:
+def _text(value, label: str, max_length: int | None = None) -> str:
     normalized = str(value or "").strip()
     if not normalized:
         raise ReportError(f"会議報告の{label}が空です。")
+    if max_length is not None and len(normalized) > max_length:
+        raise ReportError(f"会議報告の{label}は{max_length}文字以内にしてください。")
     return normalized
 
 def _evidence_index(bundle: dict) -> dict[str, dict]:
@@ -169,6 +214,8 @@ def _panel_ids(item: dict, known: set[str]) -> list[str]:
     ids = item.get("panel_ids") if isinstance(item, dict) else None
     if not isinstance(ids, list) or not ids or any(panel_id not in known for panel_id in ids):
         raise ReportError("会議報告の根拠パネルが未登録または空です。")
+    if len(ids) > MAX_PANEL_REFS:
+        raise ReportError(f"会議報告の根拠パネルは{MAX_PANEL_REFS}件以内にしてください。")
     return list(dict.fromkeys(ids))
 
 def _number_tokens(value) -> set[str]:
@@ -204,11 +251,19 @@ def normalize_report(raw: dict, bundle: dict) -> dict:
     indexed = _evidence_index(bundle)
     known = set(indexed)
 
-    def cited(item: dict, label: str, extra: tuple[str, ...] = ()) -> dict:
+    def cited(
+        item: dict,
+        label: str,
+        extra: dict[str, int] | None = None,
+        text_limit: int = CLAIM_MAX_CHARS,
+    ) -> dict:
         ids = _panel_ids(item, known)
-        text = _text(item.get("text"), label)
+        text = _text(item.get("text"), label, text_limit)
         _validate_numbers(text, indexed, ids)
-        details = {field: _text(item.get(field), field) for field in extra}
+        details = {
+            field: _text(item.get(field), field, limit)
+            for field, limit in (extra or {}).items()
+        }
         for value in details.values():
             _validate_numbers(value, indexed, ids)
         evidence_refs = [
@@ -221,46 +276,63 @@ def normalize_report(raw: dict, bundle: dict) -> dict:
         ]
         return {"text": text, **details, "panel_ids": ids, "evidence_refs": evidence_refs}
 
-    def items(name: str, extra: tuple[str, ...] = ()) -> list[dict]:
+    def items(name: str, limit: int, extra: dict[str, int] | None = None) -> list[dict]:
         source = raw.get(name)
         if not isinstance(source, list) or not source:
             raise ReportError(f"会議報告の{name}がありません。")
+        if len(source) > limit:
+            raise ReportError(f"会議報告の{name}は{limit}件以内にしてください。")
         return [cited(item, name, extra) for item in source]
 
     summary_source = raw.get("executive_summary")
     if isinstance(summary_source, str):
-        summary_text = _text(summary_source, "要約")
+        summary_text = _text(summary_source, "要約", SUMMARY_MAX_CHARS)
         if re.search(r"\d", summary_text):
             raise ReportError("会議報告の要約には根拠リンクのない数値を書けません。")
         summary = {"text": summary_text, "panel_ids": [], "evidence_refs": []}
     else:
-        summary = cited(summary_source, "要約")
+        summary = cited(summary_source, "要約", text_limit=SUMMARY_MAX_CHARS)
     limitations = raw.get("limitations")
     if not isinstance(limitations, list):
         raise ReportError("会議報告のlimitationsが配列ではありません。")
     report = {
         "status": "draft_requires_human_approval",
         "executive_summary": summary,
-        "observations": items("observations"),
-        "interpretations": items("interpretations", ("uncertainty",)),
-        "hypotheses": items("hypotheses", ("validation",)),
+        "observations": items("observations", REPORT_ITEM_LIMITS["observations"]),
+        "interpretations": items(
+            "interpretations",
+            REPORT_ITEM_LIMITS["interpretations"],
+            {"uncertainty": DETAIL_MAX_CHARS},
+        ),
+        "hypotheses": items(
+            "hypotheses",
+            REPORT_ITEM_LIMITS["hypotheses"],
+            {"validation": DETAIL_MAX_CHARS},
+        ),
         "actions": items(
             "actions",
-            (
-                "owner",
-                "urgency",
-                "expected_impact",
-                "next_step",
-                "success_metric",
-            ),
+            REPORT_ITEM_LIMITS["actions"],
+            {
+                "owner": SHORT_DETAIL_MAX_CHARS,
+                "urgency": SHORT_DETAIL_MAX_CHARS,
+                "expected_impact": DETAIL_MAX_CHARS,
+                "next_step": DETAIL_MAX_CHARS,
+                "success_metric": SHORT_DETAIL_MAX_CHARS,
+            },
         ),
-        "limitations": [_text(value, "限界") for value in limitations],
+        "limitations": [
+            _text(value, "限界", CLAIM_MAX_CHARS) for value in limitations
+        ],
         "plan_revision": bundle["plan_revision"],
         "build_revision": bundle["build_revision"],
         "organization_context_revision": bundle["organization_context_revision"],
     }
     if not report["limitations"]:
         raise ReportError("会議報告には少なくとも1件の限界を明示してください。")
+    if len(report["limitations"]) > REPORT_ITEM_LIMITS["limitations"]:
+        raise ReportError(
+            f"会議報告のlimitationsは{REPORT_ITEM_LIMITS['limitations']}件以内にしてください。"
+        )
     if any(NUMBER.search(value) for value in report["limitations"]):
         raise ReportError("会議報告のlimitationsには根拠リンクのない数値を書けません。")
     canonical = json.dumps(report, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -283,8 +355,23 @@ def generate(client, model: str, bundle: dict):
             max_output_tokens=MAX_OUTPUT_TOKENS,
         ),
     )
+    candidates = getattr(response, "candidates", None) or []
+    reason = getattr(candidates[0], "finish_reason", None) if candidates else None
+    finish_reason = getattr(reason, "value", reason)
+    if finish_reason == "MAX_TOKENS":
+        raise ReportError(
+            "会議報告が出力上限までに完了しませんでした。"
+            "今回のVertex AI呼出しは課金対象で、自動再実行していません。"
+        )
+    try:
+        raw = json.loads(response.text)
+    except (json.JSONDecodeError, TypeError) as error:
+        raise ReportError(
+            "会議報告のJSONが不完全です。"
+            "今回のVertex AI呼出しは課金対象で、自動再実行していません。"
+        ) from error
     usage = response.usage_metadata
-    return normalize_report(json.loads(response.text), bundle), {
+    return normalize_report(raw, bundle), {
         "input_tokens": usage.prompt_token_count or 0,
         "output_tokens": usage.candidates_token_count or 0,
     }

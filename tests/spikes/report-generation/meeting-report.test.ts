@@ -118,7 +118,9 @@ bad_number={**base,"observations":[{"text":"購入件数は999件です。","pan
 unknown={**base,"observations":[{"text":"観測です。","panel_ids":["R99"]}]}
 bad_bundle={**bundle,"organization_context_revision":"other-v1"}
 oversized={**bundle,"metric_definitions":{"x":"a"*50000}}
-for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized)]:
+long_summary={**base,"executive_summary":{"text":"あ"*161,"panel_ids":["R4"]}}
+too_many_observations={**base,"observations":base["observations"]*4}
+for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized),(long_summary,bundle),(too_many_observations,bundle)]:
  try:m.normalize_report(raw,current)
  except m.ReportError as error:cases.append(str(error))
 print(json.dumps(cases,ensure_ascii=False))`);
@@ -130,6 +132,8 @@ print(json.dumps(cases,ensure_ascii=False))`);
     '会議報告のlimitationsが配列ではありません。',
     '会議報告のlimitationsには根拠リンクのない数値を書けません。',
     '会議報告の根拠bundleが48 KiBを超えています。',
+    '会議報告の要約は160文字以内にしてください。',
+    '会議報告のobservationsは3件以内にしてください。',
   ]);
 });
 
@@ -153,5 +157,50 @@ print(json.dumps({
     evidence: true,
     impact: true,
     no_warehouse: true,
+  });
+});
+
+test('bounds report output and translates incomplete JSON into stable report errors', () => {
+  const result = python(`
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+genai.types=types.SimpleNamespace(GenerateContentConfig=lambda **kwargs:kwargs)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=4096)
+responses=[
+ types.SimpleNamespace(text='{"executive_summary":{"text":"途中',candidates=[types.SimpleNamespace(finish_reason="MAX_TOKENS")],usage_metadata=usage),
+ types.SimpleNamespace(text='{"executive_summary":{"text":"壊れた',candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=usage),
+]
+class Models:
+ def generate_content(self,**_kwargs):return responses.pop(0)
+client=types.SimpleNamespace(models=Models())
+errors=[]
+for _ in range(2):
+ try:m.generate(client,"model",bundle)
+ except m.ReportError as error:errors.append(str(error))
+properties=m.REPORT_SCHEMA["properties"]
+print(json.dumps({
+ "errors":errors,
+ "max_items":{name:properties[name].get("maxItems") for name in ["observations","interpretations","hypotheses","actions","limitations"]},
+ "summary_length":properties["executive_summary"]["properties"]["text"].get("maxLength"),
+ "claim_length":properties["observations"]["items"]["properties"]["text"].get("maxLength"),
+ "brief":"観測は最大3件" in m.report_request(bundle) and "推奨アクションは最大2件" in m.report_request(bundle),
+},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    errors: [
+      '会議報告が出力上限までに完了しませんでした。今回のVertex AI呼出しは課金対象で、自動再実行していません。',
+      '会議報告のJSONが不完全です。今回のVertex AI呼出しは課金対象で、自動再実行していません。',
+    ],
+    max_items: {
+      observations: 3,
+      interpretations: 2,
+      hypotheses: 2,
+      actions: 2,
+      limitations: 3,
+    },
+    summary_length: 160,
+    claim_length: 120,
+    brief: true,
   });
 });

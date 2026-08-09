@@ -44,6 +44,24 @@ result revisionとSQL hashも表示します。
 
 **Refs:** [Issue #289](https://github.com/Yukihide-Mitsuoka/repchat/issues/289)
 
+## `Unterminated string starting at`で会議報告が停止する
+
+**Affects:** Issue #292修正前の会議報告アシスト。
+
+**Cause:** 会議報告の配列件数と文章量が生成schemaで制限されず、不完全なJSONもfinish reasonを確認せず
+`json.loads`へ渡していました。そのためJSON decoderの英語例外がそのまま画面に表示されました。
+実応答のfinish reasonは保存されていないため、4,096 output tokens到達だったか、別要因だったかは未特定です。
+呼出し済みのVertex AIは課金対象ですが、BigQueryは再実行していません。
+
+**Fix:** 観測3件、解釈2件、仮説2件、推奨アクション2件、限界3件を上限とし、本文・詳細にも文字数上限を
+設けます。生成schemaと受理時検証の両方で制限し、`MAX_TOKENS`または不完全JSONは安定した日本語の
+`ReportError`として停止します。
+
+**Prevention:** 不完全JSONと`MAX_TOKENS`の固定応答回帰テストを実行します。再試行は追加費用を伴うため
+自動化せず、修正版で画面の費用を改めて承認した場合だけ実行します。
+
+**Refs:** [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292)
+
 ## AIの推奨回答を変更していないのに「この仕様を確定してbuild」を押せない
 
 **Affects:** PR #278より前のライブデモ。

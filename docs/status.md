@@ -30,16 +30,18 @@ updated: 2026-08-09
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #289](https://github.com/Yukihide-Mitsuoka/repchat/issues/289)。
-[PR #284](https://github.com/Yukihide-Mitsuoka/repchat/pull/284)と
-[PR #285](https://github.com/Yukihide-Mitsuoka/repchat/pull/285)はmerge済み。会議報告の
-`executive_summary`だけが文字列で根拠パネルIDを持てず、期間やKPIの数値を含むと
-「会議報告の要約には根拠リンクのない数値を書けません。」で報告全体が停止する不整合を確認した。
-#289では要約を`text`と`panel_ids`へ構造化し、観察・解釈等と同じく引用パネル内の数値だけを許可する。
-旧形式の数値を含まない要約は互換入力として受け付けるが、根拠なし数値は引き続きfail closedとする。
-固定応答ブラウザでは要約本文の直下にpanel ID、result revision、SQL revisionが表示されることを確認した。
-`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功。実Vertex AIでの会議報告再生成は
-費用承認前のため未実施。
+**現在の作業スレッド**: [Issue #292](https://github.com/Yukihide-Mitsuoka/repchat/issues/292)。
+[PR #290](https://github.com/Yukihide-Mitsuoka/repchat/pull/290)はmerge済み。修正後の実会議報告生成で
+`Unterminated string starting at: line 1 column 30 (char 29)`が発生した。`/api/report`はHTTP 200で、
+BigQueryは再実行されていない。会議報告schemaに配列件数と文字数の上限がなく、不完全な応答を
+finish reason確認なしで`json.loads`へ渡す経路をfailing-first testで再現した。実応答のfinish reasonは
+保存されていないため、4,096 output tokens到達だったか、別要因だったかは未特定。
+#292では観測3件、解釈2件、仮説2件、アクション2件、限界3件までに制限し、本文・詳細にも文字数上限を
+設ける。生成schemaと受理時検証の双方で制限し、`MAX_TOKENS`と不完全JSONを安定した日本語エラーへ変換する。
+追加費用を伴う自動再実行はしない。修正後の実Vertex AI再生成は未実施。
+`make format`、`make lint`、`make test`、`make build`、`make doctor`は成功し、修正ブランチのデモを
+再起動してHTTP 200を確認した。再起動で直近dashboard bundleは破棄されたため、実会議報告を再確認するには
+相談・buildの費用から改めて承認が必要。
 
 #283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
 リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。
