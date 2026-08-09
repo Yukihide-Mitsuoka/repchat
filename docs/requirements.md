@@ -163,6 +163,9 @@ updated: 2026-08-09
   direct比の絶対削減額と削減率が実測thresholdを超えるbuildだけに費用比較付きで提案する将来最適化とする。
   利用時もstage生成SQL、実panel SQL、単独再現用SQL、lineageを区別し、customer datasetへの書き込み権限を
   既定で追加しない（[ADR-0021](adr/0021-gate-shared-intermediates-on-measured-build-cost.md)、Issue #306）。
+- 将来のSQL workspaceでは、利用者がread-only SQLからpanelを新規作成し、またはAI生成panelをforkして
+  調整できるようにする。作成、preview、公開はAI生成SQLと同じAST、参照table、tenant/scope、scan上限、
+  費用確認を通し、顧客Gitの直接編集を検証経路の代替にしない。
 - **重要な運用前提**：AIが生成に失敗した場合の**フォールバック（テンプレート選択・手動編集導線・サポート導線）**を必ず用意。AIの精度を100%前提にしない。
 
 顧客固有の修正を次回へ再利用する場合は、生の会話履歴を直接検索・上書きするのではなく、scope、権限、
@@ -177,6 +180,10 @@ revision、根拠、期限を持つ分析方針として管理する。詳細と
   読順で、意思決定KPI、説明する推移・内訳、診断用詳細を配置する。関連項目をまとめ、重複を除く。
 - 編集者・分析担当者は選択したグラフから、そのグラフを生成したSQL、指標定義、データ出典、
   検証状態、revisionへ文脈を保ったまま移動できる（Issue #179）。SQLの表示可否も認可する。
+- AI生成dashboardは確定した分析仕様へ対応する不変の原本として残し、利用者が変更するときは派生dashboard
+  revisionを作る。派生dashboardはAI生成または利用者作成の固定panel revisionを配置でき、既存panelの
+  参照追加とfork編集を区別する。新版へ自動追随せず、互換性と費用を確認した明示的upgradeだけを許可する。
+  詳細は[ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)とIssue #308を参照する。
 
 ### 4.5 ロール（Phase1は簡易版）
 - 管理者／編集者／閲覧者の3段。カスタムロールはPhase2。

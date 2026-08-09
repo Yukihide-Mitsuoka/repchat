@@ -82,6 +82,9 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 - dashboard buildのBigQuery費用が実測上のbottleneckになった場合だけ、direct実行との絶対削減額・削減率を
   比較し、条件を満たすbuildへ共有中間結果を提案する（Issue #306、ADR-0021 proposed）。customer
   datasetの書き込み権限は既定で増やさず、Issue #160の`proceed`とADR承認前に実装しない。
+- Issue #179/#180のrevision契約と非同期buildが確定した後、版管理されたpanelをSQL workspaceで新規作成・
+  forkし、AI生成原本を変更せず派生dashboardへ合成する（Issue #308、ADR-0022 proposed）。利用者SQLは
+  untrusted inputとして検証し、design partnerの調整頻度が確認できるまで任意codeや自由layoutへ広げない。
 - 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
 - 基本の生成・統制・配信が安定した後、根拠付きの経営報告と推奨アクションを生成する（Issue #181）。
 - 実顧客で同種修正の反復が観測された場合に、適応型分析メモリーの候補抽出、scope確認、再確認・昇格提案を
