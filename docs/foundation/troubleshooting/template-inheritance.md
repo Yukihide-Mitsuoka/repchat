@@ -1,13 +1,14 @@
 ---
 id: template-inheritance-troubleshooting
 title: Template Inheritance Troubleshooting
-updated: 2026-07-18
+updated: 2026-08-08
 ---
 
 # Template Inheritance Troubleshooting
 
-This guide diagnoses read-only inheritance validation and planning failures. It does not
-authorize fetching, materialization, deletion, or a lock change.
+This guide diagnoses inheritance validation, planning, and finalization failures. A
+write still requires the finalizer's explicit repository and source confirmations; the
+tool never fetches, deletes, commits, pushes, or merges.
 
 ## `parent origin does not match manifest.parent.repository`
 
@@ -20,6 +21,21 @@ direct parent.
 it only through a reviewed child-repository PR.
 
 **Refs:** #32, ADR-0004
+
+## `protected review is required`
+
+**Affects:** `scripts/template_inheritance.py finalize-sync --apply`
+
+**Cause:** The sync branch changes a manifest-protected child path relative to the
+child's local `origin/HEAD`. Parent-only changes to protected paths do not cause this
+error because protected content remains child-owned.
+
+**Fix:** Refresh the child remote refs, inspect the reported path, and remove an
+unintended transport change. If the protected child contract must change, review that
+change explicitly instead of making the finalizer copy the parent's file. The
+inheritance lock is the only protected path that the finalizer may update.
+
+**Refs:** #159, ADR-0015
 
 ## `locked commit is not on the remote branch first-parent history`
 

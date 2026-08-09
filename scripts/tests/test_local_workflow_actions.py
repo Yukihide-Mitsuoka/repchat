@@ -153,7 +153,7 @@ class LocalWorkflowActionsTest(unittest.TestCase):
         else:
             self.assertIn(
                 "googleapis/release-please-action@"
-                "5c625bfb5d1ff62eadeeb3772007f7f66fdcf071",
+                "45996ed1f6d02564a971a2fa1b5860e934307cf7",
                 workflow,
             )
             self.assertIn(
@@ -178,7 +178,7 @@ class LocalWorkflowActionsTest(unittest.TestCase):
         self.assertIn("tag_name:", release_please)
         self.assertIn(
             "googleapis/release-please-action@"
-            "5c625bfb5d1ff62eadeeb3772007f7f66fdcf071",
+            "45996ed1f6d02564a971a2fa1b5860e934307cf7",
             release_please,
         )
         self.assertIn(

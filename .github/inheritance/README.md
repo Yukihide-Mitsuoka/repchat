@@ -116,9 +116,8 @@ separate review and must not auto-merge.
 |------|-------------------|
 | 1. Update a direct child | Template Sync PR names the direct parent and the exact 40-character source commit |
 | 2. Review inherited files | Accepted lock-to-source range reviewed; no protected path changed by transport |
-| 3. Port workflows | Separate maintainer-authenticated PR verified against the same direct-parent source commit |
-| 4. Advance the lock | Lock changes only in a reviewed PR after the complete parent delta is accepted |
-| 5. Merge and continue | Only the merged child commit becomes the source for its direct children |
+| 3. Finalize the same PR | `finalize-sync --apply` materializes supported manual ports and advances the lock only after complete convergence |
+| 4. Merge and continue | Only the merged child commit becomes the source for its direct children |
 
 Template Sync must never auto-merge or apply repository governance. If validation fails,
 disable `TEMPLATE_SYNC_ENABLED` until the manifest and local ignore contract agree.
@@ -148,6 +147,55 @@ commit immediately after it. The report classifies that commit's paths:
 Exit `0` prints the deterministic plan, including candidate and branch-head commits.
 Exit `2` reports invalid metadata, parent identity/history, Git state, or child path.
 See [template inheritance troubleshooting](../../docs/foundation/troubleshooting/template-inheritance.md).
+
+## Plan direct-child bootstrap
+
+A parent publishes its child contract as `inheritance-export.json` under its
+owner-qualified agent contract. Before writing initialization metadata, preview the exact
+template source from a clean non-default child branch:
+
+```bash
+python3 scripts/template_inheritance.py bootstrap-child \
+  --root /path/to/child \
+  --parent-root /path/to/direct-parent \
+  --source-commit <40-character-template-source> \
+  --repository owner/child
+```
+
+The read-only plan verifies both GitHub origins, source ancestry, the published ownership
+contract, agent input order, and byte-for-byte inherited template content. It emits the
+desired manifest, lock, agent profile, and Template Sync exclusions.
+
+Prepare reviewed project-owned payloads outside the child worktree:
+
+```text
+payload/
+├── README.md
+├── .ai/project/agent-overlay.md
+├── .github/workflows/template-sync.yml
+└── docs/inheritance/readmes/<parent-owner>/<parent-repository>.md
+```
+
+The root README must name the child ownership marker. The archive must retain the parent
+marker and exact `source-repository` and `source-commit` frontmatter. The project overlay
+must identify the child without placeholders. The workflow must retain the opt-in guard
+and name the direct parent in both `source_repo_path` and `SOURCE_REPOSITORY`. Apply only
+after reviewing those protected files:
+
+```bash
+python3 scripts/template_inheritance.py bootstrap-child \
+  --root /path/to/child --parent-root /path/to/direct-parent \
+  --source-commit <40-character-template-source> --repository owner/child \
+  --apply --payload-root /path/to/payload \
+  --confirm-repository owner/child \
+  --confirm-source <40-character-template-source>
+```
+
+Apply accepts only exact parent-copy or already-desired targets, refuses a differing
+archive or unrelated managed edit, writes no deletion, and validates the complete
+inheritance contract afterward. Commit the result before repeating; the same confirmed
+operation then returns `already_bootstrapped` without changing files. Enabling the
+repository variable remains a separate authenticated step after review and merge.
 
 ## Report fleet propagation boundaries
 
@@ -186,10 +234,10 @@ its `OWNER/REPOSITORY` shape but does not call GitHub to verify it.
 
 An inherited path excluded by `.templatesyncignore` is reported as `pending_manual_port`
 instead of `pending_sync`; an exact child copy is reported as `manually_ported`.
-`workflow-security-boundary` means maintainer authentication and a separate reviewed PR
-are required. Manual boundaries are intentional. Protected workflow callers retain local events,
-permissions, secrets, and environment selection. Project overlays and profiles retain
-repository identity and semantics. Manifests, locks, and ignore files retain accepted
+`workflow-security-boundary` means maintainer authentication is required on the existing
+Template Sync PR branch. Manual boundaries are intentional. Protected workflow callers
+retain local events, permissions, secrets, and environment selection. Project overlays
+and profiles retain repository identity and semantics. Manifests, locks, and ignore files retain accepted
 provenance and ownership. Other protected paths remain repository-owned unless a
 reviewed contract change moves their ownership. Unowned paths present in the current
 parent target or child require a reviewed ownership decision before synchronization. A
@@ -213,12 +261,12 @@ current remote state is required.
 ## Audit the fixed fleet
 
 [`docs/foundation/inheritance-fleet.json`](../../docs/foundation/inheritance-fleet.json)
-is the canonical, machine-readable list of active direct-parent relationships and
-retired repositories. Its location is already inherited by every maintained direct
+is the canonical, machine-readable list of direct-parent relationships and their
+`active`, `paused`, or `retired` lifecycle. Its location is already inherited by every maintained direct
 child, so adding the config does not require a child-specific ownership migration. It
 stores repository identities and workspace-relative directory names, never absolute
-paths or credentials. The checked-in regression test pins all five active relationships
-and rejects reintroduction of the retired `Yukihide-Mitsuoka/chat-chart` repository.
+paths or credentials. Every entry includes a concise reason. The checked-in regression
+test pins the complete fleet, including retired `Yukihide-Mitsuoka/chat-chart`.
 
 Place the configured repositories as sibling Git worktrees under one directory, refresh
 their remote refs explicitly, then run from the `ai-dev-foundation` worktree:
@@ -230,13 +278,86 @@ make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
 Descendant Makefiles are protected repository-owned files and do not receive this target.
 Use the Foundation worktree as the fleet-wide audit entry point.
 
-The target audits every configured relationship exactly once and labels repository
-identity as `repository_source: fixed-fleet-config`. It validates each child's declared
+The target audits every active relationship exactly once and labels repository identity
+as `repository_source: fixed-fleet-config`. It validates each active child's declared
 parent against the configuration and the parent's credential-free GitHub origin. A
-missing worktree, mismatched parent, retired repository, symlink, invalid contract, or
-content drift fails closed or produces `status: attention`. The target is read-only and
-does not create synchronization PRs, so adding audit coverage does not add another
-inheritance path or another human approval queue.
+missing active worktree, mismatched parent, symlink, invalid contract, or content drift
+fails closed or produces `status: attention`. Paused and retired worktrees are not
+required. Paused entries keep the overall result at `attention`; retired entries remain
+visible without claiming convergence. The target is read-only and creates no approval
+queue.
+
+## Classify propagation impact before merging a parent change
+
+Use `propagation-impact` with two existing commits in a configured parent worktree:
+
+```bash
+python3 scripts/template_inheritance.py propagation-impact \
+  --workspace-root /path/to/worktrees \
+  --parent-repository acme/foundation \
+  --base-commit <40-character-base-commit> \
+  --head-commit <40-character-head-commit>
+```
+
+The read-only command evaluates every changed path against each active direct child's
+manifest and `.templatesyncignore`. It does not evaluate paused or retired children.
+
+| Impact | Required handling |
+|--------|-------------------|
+| `foundation-only` | The path is repository-owned in the child; no propagation action |
+| `schedule-only` | Reviewed Template Sync can carry the inherited path |
+| `manual-boundary` | A workflow or legacy transport exclusion requires an authenticated reviewed port |
+| `child-migration-required` | The path is unowned or changes a child-owned inheritance/project boundary |
+
+The result status is the strongest observed impact. This classification predicts the
+review path; `fleet-audit` remains the post-merge convergence proof.
+
+## Plan single-PR finalization
+
+ADR-0015 consolidates an accepted parent checkpoint into the existing Template Sync PR.
+The expand-phase command is read-only and verifies the clean non-default child branch,
+credential-free child and parent origins, an exact source commit on the refreshed parent
+first-parent range, complete
+inherited tree, executable modes, and protected or unowned changes:
+
+```bash
+python3 scripts/template_inheritance.py finalize-sync \
+  --root /path/to/child-sync-worktree \
+  --parent-root /path/to/direct-parent \
+  --source-commit <40-character-source-commit>
+```
+
+`ready_to_finalize` means every ordinary inherited path already matches and only a
+supported `workflow-security-boundary` manual port or lock advance remains.
+`already_finalized` means the inherited tree and lock are current. `blocked` reports
+the exact pending sync, protected review, ownership review, unsupported manual port, or
+deletion review that must be resolved before applying. Without `--apply`, the command
+never writes.
+
+Protected ownership is evaluated against the child's remote default branch, not against
+the parent's file at the source commit. A parent-only change to a child-owned protected
+path therefore remains outside synchronization. Any protected path changed on the sync
+branch still blocks finalization, except for the lock update owned by the finalizer.
+
+After a `ready_to_finalize` plan is reviewed, repeat the exact child identity and source
+commit to materialize supported workflow ports and atomically advance the lock:
+
+```bash
+python3 scripts/template_inheritance.py finalize-sync \
+  --root /path/to/child-sync-worktree \
+  --parent-root /path/to/direct-parent \
+  --source-commit <40-character-source-commit> \
+  --apply \
+  --confirm-repository OWNER/CHILD \
+  --confirm-source <same-40-character-source-commit>
+```
+
+Apply refuses ordinary pending sync, protected or ownership review, deletion, unsupported
+manual reasons, dirty worktrees, default branches, and mismatched confirmations before
+writing. It preloads the exact parent workflow blobs, verifies convergence before
+atomically replacing the lock, and is idempotent after its result is committed. It never
+fetches, commits, pushes, creates or merges a PR, calls GitHub, or changes repository
+governance.
 
 ## Future transport review trigger
 

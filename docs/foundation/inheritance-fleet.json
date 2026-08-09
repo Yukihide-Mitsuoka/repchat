@@ -1,38 +1,53 @@
 {
-  "schema_version": 1,
-  "retired_repositories": [
-    "Yukihide-Mitsuoka/chat-chart"
-  ],
+  "schema_version": 2,
   "repositories": [
     {
       "repository": "Yukihide-Mitsuoka/nextjs-saas-template",
       "directory": "nextjs-saas-template",
       "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
-      "parent_directory": "ai-dev-foundation"
+      "parent_directory": "ai-dev-foundation",
+      "lifecycle": "active",
+      "reason": "maintained Next.js family template"
     },
     {
       "repository": "Yukihide-Mitsuoka/repchat",
       "directory": "repchat",
       "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
-      "parent_directory": "ai-dev-foundation"
+      "parent_directory": "ai-dev-foundation",
+      "lifecycle": "active",
+      "reason": "maintained application repository"
     },
     {
       "repository": "Yukihide-Mitsuoka/secure-ga4-bq-template",
       "directory": "secure-ga4-bq-template",
       "parent_repository": "Yukihide-Mitsuoka/terraform-gcp-template",
-      "parent_directory": "terraform-gcp-template"
+      "parent_directory": "terraform-gcp-template",
+      "lifecycle": "active",
+      "reason": "maintained Terraform family project"
     },
     {
       "repository": "ea-Mitsuoka/secure-ai-controls",
       "directory": "secure-ai-controls",
       "parent_repository": "Yukihide-Mitsuoka/terraform-gcp-template",
-      "parent_directory": "terraform-gcp-template"
+      "parent_directory": "terraform-gcp-template",
+      "lifecycle": "paused",
+      "reason": "updates paused because owner-level company account access is unavailable"
     },
     {
       "repository": "Yukihide-Mitsuoka/terraform-gcp-template",
       "directory": "terraform-gcp-template",
       "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
-      "parent_directory": "ai-dev-foundation"
+      "parent_directory": "ai-dev-foundation",
+      "lifecycle": "active",
+      "reason": "maintained Terraform family template"
+    },
+    {
+      "repository": "Yukihide-Mitsuoka/chat-chart",
+      "directory": "chat-chart",
+      "parent_repository": "Yukihide-Mitsuoka/ai-dev-foundation",
+      "parent_directory": "ai-dev-foundation",
+      "lifecycle": "retired",
+      "reason": "replaced by Yukihide-Mitsuoka/repchat"
     }
   ]
 }
