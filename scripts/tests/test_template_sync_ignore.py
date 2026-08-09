@@ -48,6 +48,20 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
         self.assertIn('cron: "17 7 * * *"', workflow)
         self.assertNotIn('cron: "0 7 * * 1"', workflow)
 
+    def test_template_sync_is_single_flight_and_preserves_open_prs(self):
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+
+        self.assertIn("group: template-sync-${{ github.repository }}", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+        self.assertIn("id: sync-preflight", workflow)
+        self.assertIn("--state open --limit 101", workflow)
+        self.assertIn("More than 100 open PRs prevent bounded", workflow)
+        self.assertIn('startswith("chore/template_sync_")', workflow)
+        self.assertIn("Multiple open Template Sync PRs require human review", workflow)
+        self.assertIn("steps.sync-preflight.outputs.should_sync == 'true'", workflow)
+        self.assertNotIn("is_force_push_pr", workflow)
+        self.assertNotIn("cleanup_old", workflow)
+
     def test_sync_pr_body_stays_inside_the_run_block(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
 

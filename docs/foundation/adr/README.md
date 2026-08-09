@@ -41,5 +41,6 @@ broaden the search under ADR-0012 when relevance is uncertain.
 | [0013](0013-conditionally-route-project-document-maintenance-rules.md) | Conditionally route project-document maintenance rules | AI context, documentation rules, task routing | accepted | 2026-07-29 |
 | [0014](0014-separate-inherited-agent-contracts-from-project-overlays.md) | Separate inherited agent contracts from project overlays | AI context, template inheritance, workflow ownership | accepted | 2026-07-29 |
 | [0015](0015-consolidate-inheritance-acceptance-in-one-reviewed-pr.md) | Consolidate inheritance acceptance in one reviewed PR | template inheritance, workflow ownership, review operations | accepted | 2026-08-08 |
+| [0016](0016-gate-private-fleet-automation-on-split-credentials.md) | Gate private fleet automation on split credentials | private repositories, template inheritance, fleet audit, credentials | accepted | 2026-08-09 |
 
 <!-- Append new ADRs to this table (newest last). -->
