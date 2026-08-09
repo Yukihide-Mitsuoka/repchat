@@ -15,11 +15,11 @@ updated: 2026-08-09
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #302](https://github.com/Yukihide-Mitsuoka/repchat/issues/302) — 本番のCloudflare公開入口とCloud Run origin迂回防止を分離し、External Application Load Balancer＋Cloud Armorをproposed ADR-0020として定義する。infra作成・有料契約は行わない |
+| 作業 | [Issue #306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306) — dashboard buildの共有中間結果を標準機能にせず、実測費用で限定するproposed ADR-0021を文書化する。実BigQuery、実装、customer datasetへの書き込みは行わない |
 | デモ実行状態 | 2026-08-09に`kotonoha-bi-dev`向けローカルデモを起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
-| 直近完了 | [PR #301](https://github.com/Yukihide-Mitsuoka/repchat/pull/301)はmerge済み。ADR-0019はproposedのため、scoped context memoryの製品実装は既存開始条件を満たすまで行わない。PR #297の会議報告修正もmerge済みだが、実Vertex AIによる再生成は未確認 |
+| 直近完了 | [PR #305](https://github.com/Yukihide-Mitsuoka/repchat/pull/305)はmerge済みで、ライブデモ手順を起動、生成モード、費用、制約、会議報告、回帰確認ごとに再構成した。[PR #303](https://github.com/Yukihide-Mitsuoka/repchat/pull/303)のADR-0020もmerge済みだがstatusはproposedで、infraは未作成 |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #302のproposed ADRと費用・rollout境界をレビュー可能にし、無料の文書品質gateを実行する。infra作成、有料契約、実Vertex AI相談、BigQuery build、会議報告生成は各費用を提示し、オーナー承認後だけ実行する |
+| AIができること | Issue #306のproposed ADR、費用判定、SQL来歴、認可、temporary data境界をレビュー可能にし、無料の文書品質gateを実行する。実装、実BigQuery、infra作成、有料契約はオーナー承認前に行わない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -50,6 +50,7 @@ updated: 2026-08-09
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
+| 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
 | 現在の本番security設計 | [#302 production edge and origin protection](https://github.com/Yukihide-Mitsuoka/repchat/issues/302)。Cloudflare WAFとCloud Armorの責任境界、Cloud Run direct URL遮断、費用、rolloutをproposed ADRとしてレビューする | ADR-0005/0006/0010/0012、ADR-0020 |
 | 現在のPhase 0設計 | [#300 scoped context memory](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)。データソース契約、任意org unit、用途別context compiler、UIの必須／任意文脈をproposed ADRとしてレビューする | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018、ADR-0019 |
 | #297 merge後のデモ確認 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。HTTP 200と固定応答テストは無料で確認できる。実会議報告生成は別途費用確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
@@ -68,7 +69,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-09）
 
-1. **現在:** [Issue #302](https://github.com/Yukihide-Mitsuoka/repchat/issues/302)のADR-0020案をレビューし、repository ownerが承認・修正・却下を判断する。実顧客dataを扱う本番直前の設計であり、現在のlocal demoへinfraを追加しない。
+1. **現在:** [Issue #306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)のADR-0021案をレビューし、repository ownerが承認・修正・却下を判断する。direct実行を既定に維持し、共有中間結果は大きな絶対削減額と削減率を実測できるbuildだけに限定する。実装と実BigQueryは行わない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（画面上限目安約¥5）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
@@ -90,6 +91,7 @@ positioningとroadmapを再評価します。
 | 適応型分析メモリー | accepted。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresの正本で管理し、AIは候補を作るが自動昇格しない | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md) |
 | データソース知識とscope継承 | proposed。custom dimension等をschema検証済みデータソース契約として分離し、任意org unitと用途別context compilerを使う。オーナー承認前は実装禁止 | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0019](adr/0019-separate-datasource-knowledge-from-scoped-analysis-context.md)、[#300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300) |
 | 本番公開入口とorigin防御 | proposed。Cloudflare WAFを利用者入口、External Application Load Balancer＋Cloud ArmorをCloud Run迂回防止境界とする。local demoは対象外で、オーナー承認と費用確認前はinfra作成禁止 | [ADR-0020](adr/0020-protect-production-edge-and-cloud-run-origins.md)、[#302](https://github.com/Yukihide-Mitsuoka/repchat/issues/302) |
+| dashboard buildの共有中間結果 | proposed。panel別direct実行を既定とし、個別buildの絶対削減額と削減率が実測thresholdを超える場合だけcost plannerが提案する。customer datasetへの書き込み権限を既定で増やさない | [ADR-0021](adr/0021-gate-shared-intermediates-on-measured-build-cost.md)、[#306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306) |
 | 接続先・テーブル選択 | 将来設計。ユーザーに任意のdataset/tableを列挙させず、管理者が承認したデータソース・分析領域・テーブルカタログからサーバー側で解決する | [ADR-0005](adr/0005-cache-and-authorization-architecture.md)、[ADR-0010](adr/0010-connection-identity-is-never-a-person.md)、#180 |
 | 課金区分・エンドユーザー認証 | 未決。AIは推測しない | [Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) |
 
@@ -103,10 +105,5 @@ positioningとroadmapを再評価します。
 - 顧客Gitをページ表示時に参照せず、失敗したbuildを有効化しない。
 - `make demo`は実Vertex AIとBigQueryを使う。実行前に費用を明示し、オーナーの同意を得る。
 - 測っていない結果、独自schema品質、更新SLO、製品統合状態を実証済みと書かない。
-
-## レビュー中の文書PR
-
-- [PR #305](https://github.com/Yukihide-Mitsuoka/repchat/pull/305): ライブデモ手順を起動、生成モード、
-  費用確認、制約、会議報告、回帰確認ごとに再構成する。挙動と費用条件は変更しない。
 
 この文書は、現在のIssue、停止条件、次タスクの分岐、または設計判断の正本が変わったときに更新します。

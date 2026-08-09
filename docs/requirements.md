@@ -2,7 +2,7 @@
 id: requirements
 title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
-updated: 2026-07-30
+updated: 2026-08-09
 ---
 
 <!--
@@ -159,6 +159,10 @@ updated: 2026-07-30
 - 分析計画、KPIの意味、グラフを選んだ理由、未確定事項、build状況は、SQL用語を知らない利用者にも
   分かる平易な日本語で説明し、技術的な根拠は必要時にドリルダウンできるよう分離する。
 - 生成、検証、実行、materialize、build、公開の進捗を区別し、完了前にダッシュボードを完成扱いしない。
+- panel別のBigQuery直接実行を既定とする。共有中間結果は、同一tenant・scope・source・期間・grain・revisionで、
+  direct比の絶対削減額と削減率が実測thresholdを超えるbuildだけに費用比較付きで提案する将来最適化とする。
+  利用時もstage生成SQL、実panel SQL、単独再現用SQL、lineageを区別し、customer datasetへの書き込み権限を
+  既定で追加しない（[ADR-0021](adr/0021-gate-shared-intermediates-on-measured-build-cost.md)、Issue #306）。
 - **重要な運用前提**：AIが生成に失敗した場合の**フォールバック（テンプレート選択・手動編集導線・サポート導線）**を必ず用意。AIの精度を100%前提にしない。
 
 顧客固有の修正を次回へ再利用する場合は、生の会話履歴を直接検索・上書きするのではなく、scope、権限、
