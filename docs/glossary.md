@@ -1,7 +1,7 @@
 ---
 id: project-glossary
 title: プロジェクト用語集
-updated: 2026-08-02
+updated: 2026-08-09
 ---
 
 # プロジェクト用語集
@@ -18,6 +18,9 @@ RepChat固有のユビキタス言語を定義します。コード識別子、�
 |------|------|------|------------|--------------|
 | 製品名 | 利用者向けの表示名。現時点では「RepChat」だが、技術識別子には埋め込まない（COD-005） | 製品 | — | GCPプロジェクトID など改名後も維持する技術識別子（リポジトリslugのみ例外的に製品名へ追随：GitHubのリダイレクトで改名が安価なため、LOG-0038） |
 | 組織コンテキスト | tenantまたは分析対象となる顧客組織について、事業モデル、収益構造、会計年度、戦略目標と目標階層、意思決定周期、事業制約、組織固有用語、禁止する解釈をまとめた承認済みの分析前提 | 分析メモリー | 会社プロフィール、ユーザーメモリー | 指標定義、分析レシピ、user表示嗜好 |
+| データソース契約 | custom dimension、nested path、型、grain、join、partition、nullの意味、安全な抽出方法をschema fingerprintと検証証拠へ結び付けたversioned SQL生成知識 | SQL生成、schema適応 | SQLメモリー、過去SQL | 指標定義、生成SQL、組織コンテキスト |
+| 組織単位 | tenantまたは分析対象組織内で、部門固有の文脈を所有・承認する任意の一階層 | scope、分析メモリー | 必須の部署階層 | tenant、analysis subject、user、session |
+| コンテキストコンパイラー | 認証済みscope、有効revision、用途、schema版から、AIへ渡す最小の構造化文脈と適用manifestを決定するserver-side component | AI生成、分析メモリー | 全履歴RAG | 正本policy、vector index、prompt template |
 
 ## 解決済みの曖昧さ
 
