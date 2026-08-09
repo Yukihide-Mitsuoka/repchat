@@ -434,7 +434,6 @@ def generate(client, model: str, bundle: dict):
             system_instruction="あなたは根拠と不確実性を明示する日本語BI報告者。",
             response_mime_type="application/json",
             response_schema=REPORT_SCHEMA,
-            temperature=0,
             thinking_config=types.ThinkingConfig(
                 thinking_level=types.ThinkingLevel.LOW
             ),

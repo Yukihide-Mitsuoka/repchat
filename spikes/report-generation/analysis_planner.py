@@ -236,7 +236,6 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
             response_mime_type="application/json",
             response_schema=_response_schema(answers),
-            temperature=0,
         ),
     )
     usage = response.usage_metadata

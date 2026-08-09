@@ -334,7 +334,7 @@ Sankeyを配置します。各カード内の開閉領域が生成理由、SQL�
 任意の分析パネル生成、デザインパートナー評価は未実装です。
 
 確定済みダッシュボードからは、保存済み集計bundleだけを使う会議報告案を追加生成できます。送信前に
-Vertex AI最大約¥5、BigQuery 0円を再確認し、BigQueryは再実行しません。bundleは48 KiB、出力は
+Vertex AI最大約¥25、BigQuery 0円を再確認し、BigQueryは再実行しません。bundleは48 KiB、出力は
 8,192 tokensと`LOW` thinkingに制限し、組織コンテキスト、
 分析仕様、指標定義、各panelの実行SQL hashとresult revisionを固定します。会議報告の数値はbundle内の
 値と一致し、かつpanel IDへ結び付く場合だけ受理します。観測、解釈、未検証の仮説、期待効果・担当・
@@ -377,7 +377,7 @@ Sankeyは段階接頭辞を除いたページ種別ごとにカテゴリ色を�
 未定義指標ではBigQueryを呼びません。起動ごとに`out/.demo/venv`へpin済みrequirementsを確認・導入し、
 現在のPython環境がdemo venvではない場合だけvenvへ再起動します。質問を送信する直前にページ内の費用確認を表示し、
 「費用を確認して実行」が選ばれるまでVertex AIにもBigQueryにもリクエストを送りません。単一グラフは
-1問あたりVertex AI約¥0.2、BigQueryは
+1問あたりGemini 3.6 FlashのVertex AI約¥1、BigQueryは
 生成SQLと参照SQLの最大2クエリを各20GiBに制限します。[BigQueryのオンデマンド標準単価](https://cloud.google.com/bigquery/pricing)で
 40GiBを換算した上限目安は約¥38、合計は最大約¥39です。無料枠、キャッシュ、実際のスキャン量によっては0円または
 これより少額になります。

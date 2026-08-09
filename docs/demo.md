@@ -172,7 +172,7 @@ Bitcoinプロファイルは`bigquery-public-data.crypto_bitcoin.transactions`�
 
 ##### 単一グラフの費用確認
 
-各質問の送信直前に、Vertex AI約¥0.2、BigQuery最大40GiB・約¥38、合計最大約¥39の目安を再確認します。
+各質問の送信直前に、Gemini 3.6 FlashのVertex AI約¥1、BigQuery最大40GiB・約¥38、合計最大約¥39の目安を再確認します。
 無料枠やキャッシュが適用される場合、BigQuery料金は0円になることがあります。
 
 費用確認はページ内のダイアログで行います。「費用を確認して実行」を選んだ場合だけリクエストを
@@ -183,8 +183,9 @@ Bitcoinプロファイルは`bigquery-public-data.crypto_bitcoin.transactions`�
 確定済みダッシュボードの下にある「この結果から会議報告案を生成」は、追加の費用確認後に、保存済みの
 集計bundleだけをVertex AIへ渡します。BigQueryは再実行しません。
 
-48 KiBのbundle、8,192 output tokens、Gemini 3.5 Flashの`LOW` thinkingで制限した上限目安は、
-Vertex AI約¥5、BigQuery 0円です。表示費用は回答本文に加えて課金対象の思考tokensも含めます。
+48 KiBのbundle、8,192 output tokens、Gemini 3.6 Flashの`LOW` thinkingで制限した上限目安は、
+Vertex AI約¥25、BigQuery 0円です。[Google Cloudの価格表](https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing)
+のtext input $1.50・text output $7.50/100万tokensを用い、回答本文に加えて課金対象の思考tokensも含めます。
 出力は観測、解釈、未検証の仮説、推奨アクション、限界を分離し、数値主張へpanel ID、実行SQL hash、
 result revisionを付けます。
 

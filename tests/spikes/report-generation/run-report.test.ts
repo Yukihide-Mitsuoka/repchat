@@ -169,6 +169,7 @@ answer, usage = module["generate_request"](
 print(json.dumps({
     "model": captured["model"],
     "pricing": module["PRICING"][captured["model"]],
+    "legacy_pricing": module["PRICING"]["gemini-3.5-flash"],
     "has_temperature": hasattr(captured["config"], "temperature"),
     "answer": answer,
     "usage": usage,
@@ -178,6 +179,7 @@ print(json.dumps({
   assert.deepEqual(JSON.parse(result.stdout), {
     model: 'gemini-3.6-flash',
     pricing: [1.5, 7.5],
+    legacy_pricing: [1.5, 9],
     has_temperature: false,
     answer: { sql: 'SELECT 1 AS value', reason: '確認', undefined_terms: [] },
     usage: { input_tokens: 10, output_tokens: 5 },

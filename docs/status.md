@@ -30,13 +30,12 @@ updated: 2026-08-10
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #310](https://github.com/Yukihide-Mitsuoka/repchat/issues/310)。
-実会議報告生成が`MAX_TOKENS`で停止した。fail-closedと自動再実行禁止は意図どおりで、BigQueryは
-再実行されていない。原因は、bounded JSONへ4,096 output tokensしか確保せず、Gemini 3.5 Flashのthinking
-levelを未指定の既定`MEDIUM`にしていたことである。固定応答回帰テストは修正前の4,096、thinking未指定、
-thought tokens未計上を再現した。修正では会議報告だけ`LOW` thinking、8,192 output tokensとし、candidate
-tokensと課金対象のthought tokensを費用へ合算する。実Vertex AIは自動再実行せず、固定応答と無料の品質gateを
-先に完了する。
+**現在の作業スレッド**: [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)。
+[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)で会議報告の`MAX_TOKENS`対策をmainへ取り込んだ。
+ライブデモの既定モデルをGemini 3.6 Flashへ変更し、公式のtext input $1.50・text output $7.50/100万tokensへ
+費用計算を更新する。Gemini 3.6では任意`temperature`設定が非対応のため、SQL生成、分析計画、会議報告から除去する。
+実Vertex AI・BigQueryは呼ばず、固定応答と無料の品質gateで検証する。3.5 Flashの既存実測は歴史記録として保持し、
+3.6 Flashの品質・実費は未検証である。
 
 #283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
 リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。

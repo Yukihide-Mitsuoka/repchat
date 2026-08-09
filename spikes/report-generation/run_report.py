@@ -30,9 +30,12 @@ from pathlib import Path
 HERE = Path(__file__).parent
 DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
 MAX_BYTES_BILLED = 20 * 1024**3  # 20 GiB — the sample month is far under this
-DEFAULT_MODEL = "gemini-3.5-flash"
+DEFAULT_MODEL = "gemini-3.6-flash"
 USD_JPY = 155.0
-PRICING = {"gemini-3.5-flash": (0.30, 2.50)}  # USD per 1M tokens (in, out)
+PRICING = {
+    "gemini-3.6-flash": (1.50, 7.50),
+    "gemini-3.5-flash": (1.50, 9.00),
+}  # USD per 1M tokens (in, out)
 MAX_QUESTION_CHARS = 500
 SHOWCASE_IDS = ("R4", "R11", "R12", "R9", "R16", "R17")
 
@@ -195,7 +198,6 @@ def generate_request(client, model: str, request: str, rules: str):
             system_instruction=rules,
             response_mime_type="application/json",
             response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason", "undefined_terms"]},
-            temperature=0,
         ),
     )
     um = resp.usage_metadata
