@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.5](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.4...v1.15.5) (2026-08-09)
+
+
+### Bug Fixes
+
+* **demo:** validate report-derived evidence ([#297](https://github.com/Yukihide-Mitsuoka/repchat/issues/297)) ([b43eae2](https://github.com/Yukihide-Mitsuoka/repchat/commit/b43eae278c094c8b0674c6220a2a46159a782dda))
+* **sync:** prevent duplicate template reviews ([#299](https://github.com/Yukihide-Mitsuoka/repchat/issues/299)) ([1a9e082](https://github.com/Yukihide-Mitsuoka/repchat/commit/1a9e08222c5b0a62d48a688cae5c681b77ecebdd))
+
 ## [1.15.4](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.3...v1.15.4) (2026-08-09)
 
 
