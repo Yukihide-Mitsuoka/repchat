@@ -477,12 +477,17 @@ class LiveQueryEngine:
                             {
                                 "columns": event["columns"],
                                 "rows": event["rows"],
+                                "visualization": event["visualization"],
                                 "verification": event["verification"],
                             }
                         )
 
                 total_cost += self._run_section(section, period, capture, context)
                 if "rows" in evidence:
+                    if evidence.get("visualization") == "funnel":
+                        evidence["derived_metrics"] = meeting.funnel_conversion_metrics(
+                            evidence["columns"], evidence["rows"]
+                        )
                     result_canonical = json.dumps(
                         evidence, ensure_ascii=False, sort_keys=True, separators=(",", ":")
                     )
