@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — [PR #334](https://github.com/Yukihide-Mitsuoka/repchat/pull/334)で、OpenAI公式資料、Evidence公式競合資料、公開画面観測、オーナー要望、現行デモを区別し、RepChat機能との対応と再現可能なpane／状態／成果物ライフサイクル要件を定義する |
+| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — merge済み[PR #334](https://github.com/Yukihide-Mitsuoka/repchat/pull/334)を基礎に、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)でEvidence公式競合資料との対応、可視context、Insight／publish lifecycle、embedded previewを追加する |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
 | 直近完了 | [PR #329](https://github.com/Yukihide-Mitsuoka/repchat/pull/329)のtemplate同期と[PR #327](https://github.com/Yukihide-Mitsuoka/repchat/pull/327)のv1.16.0 releaseはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
