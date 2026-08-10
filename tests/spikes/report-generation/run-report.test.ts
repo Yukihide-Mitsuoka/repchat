@@ -159,11 +159,25 @@ captured = {}
 class Models:
     def generate_content(self, **kwargs):
         captured.update(kwargs)
+        calls = captured.get("calls", 0)
+        captured["calls"] = calls + 1
+        usage = (
+            types.SimpleNamespace(
+                prompt_token_count=10,
+                candidates_token_count=5,
+                thoughts_token_count=7,
+            )
+            if calls == 0
+            else types.SimpleNamespace(prompt_token_count=10, candidates_token_count=5)
+        )
         return types.SimpleNamespace(
             text='{"sql":"SELECT 1 AS value","reason":"確認","undefined_terms":[]}',
-            usage_metadata=types.SimpleNamespace(prompt_token_count=10, candidates_token_count=5),
+            usage_metadata=usage,
         )
 answer, usage = module["generate_request"](
+    types.SimpleNamespace(models=Models()), module["DEFAULT_MODEL"], "質問", "規則"
+)
+_, legacy_usage = module["generate_request"](
     types.SimpleNamespace(models=Models()), module["DEFAULT_MODEL"], "質問", "規則"
 )
 print(json.dumps({
@@ -173,6 +187,8 @@ print(json.dumps({
     "has_temperature": hasattr(captured["config"], "temperature"),
     "answer": answer,
     "usage": usage,
+    "legacy_usage": legacy_usage,
+    "calls": captured["calls"],
 }, ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -182,7 +198,9 @@ print(json.dumps({
     legacy_pricing: [1.5, 9],
     has_temperature: false,
     answer: { sql: 'SELECT 1 AS value', reason: '確認', undefined_terms: [] },
-    usage: { input_tokens: 10, output_tokens: 5 },
+    usage: { input_tokens: 10, output_tokens: 12 },
+    legacy_usage: { input_tokens: 10, output_tokens: 5 },
+    calls: 2,
   });
 });
 

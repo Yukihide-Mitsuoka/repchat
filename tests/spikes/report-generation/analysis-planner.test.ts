@@ -168,6 +168,54 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
   });
 });
 
+test('planner usage includes thought tokens and supports metadata without them', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json,sys,types
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+raw={
+ "objective_summary":"購入成果の阻害箇所を特定する",
+ "audience":"月次マーケティング会議",
+ "comparison":"月内の日次推移",
+ "hypotheses":["購入導線に減少箇所がある"],
+ "clarifications":[],
+ "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R9","R16","R17"]],
+}
+usage=[
+ types.SimpleNamespace(prompt_token_count=10,candidates_token_count=5,thoughts_token_count=7),
+ types.SimpleNamespace(prompt_token_count=10,candidates_token_count=5),
+]
+calls=0
+class Models:
+ def generate_content(self,**_kwargs):
+  global calls
+  metadata=usage[calls];calls+=1
+  return types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),usage_metadata=metadata)
+client=types.SimpleNamespace(models=Models())
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+answers={"audience":"月次マーケティング会議"}
+first=p.propose(client,"test-model","目的",period,"指標定義",answers)[1]
+legacy=p.propose(client,"test-model","目的",period,"指標定義",answers)[1]
+print(json.dumps({"calls":calls,"first":first,"legacy":legacy},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: 2,
+    first: { input_tokens: 10, output_tokens: 12 },
+    legacy: { input_tokens: 10, output_tokens: 5 },
+  });
+});
+
 test('confirmed plan requires a non-empty answer for every displayed clarification', () => {
   const result = spawnSync(
     'python3',
