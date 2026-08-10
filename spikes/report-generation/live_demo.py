@@ -191,7 +191,9 @@ def navigation_generation_requirements(depth: int) -> list[str]:
         "空なら`/`にする。完全なURLをsource/targetへ出さない",
         "セッション内をevent_timestamp順、同時刻ならpage_path順に並べ、連続する同一page_pathは"
         f"1回の滞在へ統合する。その後の最初の{depth}件を{path_names}にする",
-        "2ページ目が存在するセッションだけを対象にする。`(exit)`などの離脱ノードは作らない",
+        f"各段階のパスはp1〜p{depth}のASCII別名にする。{depth}ページ目が存在する"
+        f"セッションだけを対象にし、上位12経路を抽出する前にp{depth} IS NOT NULLで絞る。"
+        "`(exit)`などの離脱ノードは作らない",
         f"まず{path_names}の組ごとにセッション数を数え、セッション数降順、同数なら{path_names}昇順で"
         f"上位12経路を確定してから、{hops}のedgeへ分割して同一edgeをSUMする",
         f"source/targetの段階接頭辞は正確に{prefixes}とし、最終列のASCII別名は"
@@ -219,6 +221,7 @@ def section_for_question(spec: dict, question: str) -> dict:
         "text": question.strip(),
         "verification": "execution",
         "navigation_depth": depth,
+        "require_full_navigation_depth": True,
         "generation_requirements": navigation_generation_requirements(depth),
     }
 
@@ -319,6 +322,26 @@ def require_deterministic_navigation_order(sql: str, navigation_depth: int = 3) 
     )
 
 
+def require_complete_navigation_depth(sql: str, navigation_depth: int) -> None:
+    """Require the requested final page before selecting the bounded top paths."""
+    limit = re.search(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE)
+    prefix = sql[: limit.start()] if limit else ""
+    without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", prefix, flags=re.S)
+    without_literals = re.sub(r"'(?:''|[^'])*'", "''", without_comments)
+    final_page = f"p{navigation_depth}"
+    if not re.search(
+        rf"\b(?:WHERE|HAVING)\b"
+        rf"(?:(?!\b(?:GROUP\s+BY|ORDER\s+BY|LIMIT|UNION)\b)[\s\S])*?"
+        rf"\b{final_page}\s+IS\s+NOT\s+NULL\b",
+        without_literals,
+        flags=re.IGNORECASE,
+    ):
+        raise LiveDemoError(
+            f"回遊の上位12経路が{navigation_depth}ページ目到達前に抽出されるため"
+            "BigQueryへ送信しません。"
+        )
+
+
 def json_value(value):
     if isinstance(value, (date, datetime)):
         return value.isoformat()
@@ -364,6 +387,8 @@ def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> 
     )
     sources = {stage: set() for stage in range(1, navigation_depth)}
     targets = {stage: set() for stage in range(1, navigation_depth)}
+    outgoing: dict[tuple[int, str], Decimal] = {}
+    incoming: dict[tuple[int, str], Decimal] = {}
     seen_edges: set[tuple[str, str]] = set()
     for source, target, _sessions in rows:
         source_stage = next(
@@ -396,6 +421,13 @@ def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> 
         seen_edges.add(edge)
         sources[source_stage].add(source_page)
         targets[source_stage].add(target_page)
+        sessions = Decimal(str(_sessions))
+        outgoing[(source_stage, source_page)] = outgoing.get(
+            (source_stage, source_page), Decimal(0)
+        ) + sessions
+        incoming[(source_stage + 1, target_page)] = incoming.get(
+            (source_stage + 1, target_page), Decimal(0)
+        ) + sessions
     connected = bool(sources[1]) and all(
         not sources[stage] or sources[stage].issubset(targets[stage - 1])
         for stage in range(2, navigation_depth)
@@ -407,6 +439,21 @@ def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> 
             else "回遊の段階間が接続しないため描画しません。"
         )
         raise LiveDemoError(message)
+    if navigation_depth > 3:
+        has_every_hop = all(sources[stage] for stage in range(1, navigation_depth))
+        conserves_flow = all(
+            sources[stage] == targets[stage - 1]
+            and all(
+                incoming.get((stage, page), Decimal(0))
+                == outgoing.get((stage, page), Decimal(0))
+                for page in sources[stage]
+            )
+            for stage in range(2, navigation_depth)
+        )
+        if not has_every_hop or not conserves_flow:
+            raise LiveDemoError(
+                f"回遊が要求された{navigation_depth}ページ目まで到達しないため描画しません。"
+            )
 
 
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
@@ -724,6 +771,10 @@ class LiveQueryEngine:
                     require_deterministic_navigation_order(
                         normalized, section.get("navigation_depth", 3)
                     )
+                    if section.get("require_full_navigation_depth"):
+                        require_complete_navigation_depth(
+                            normalized, section["navigation_depth"]
+                        )
         except ValueError as error:
             raise LiveDemoError(str(error)) from error
         send(
