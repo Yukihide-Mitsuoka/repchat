@@ -1,7 +1,7 @@
 ---
 id: positioning
 title: ポジショニング — 何で戦い、何で戦わないか
-updated: 2026-07-29
+updated: 2026-08-11
 ---
 
 # ポジショニング
@@ -129,9 +129,9 @@ AIが**正しい**ダッシュボードを作れる必要があり、スキー�
 
 ### 2.2 日本語ドキュメント
 
-海外製品は英語で、かつ dbt やウェアハウスの知識を前提にしています。
-**「日本語で、自社のBigQueryに繋ぐ手順が最初から最後まで書いてある」**は、
-エンジニア1人の会社には実質的な差です。
+Evidence Studioの公式文書は英語が中心ですが、Embedded Analyticsは表示languageを指定できます。
+したがって「画面が日本語である」だけを差別化にしません。**日本語で、自社のBigQuery接続、権限、
+AIへ渡す情報、費用、失敗時の復旧まで説明できること**を提供範囲にします。
 
 **追加コストがほぼゼロの差別化は稀**なので、優先度は高い。
 
@@ -147,10 +147,10 @@ AIが**正しい**ダッシュボードを作れる必要があり、スキー�
 
 ### 2.4 請求書払い・銀行振込
 
-Evidence Cloud も Metabase も**クレジットカードの自己申込**です。日本のSMBには、
-業務ソフトをカード決済する稟議が通らない会社が実在します。
+Evidence Cloudの現在の契約・請求方法は営業確認が必要です。日本のSMBには、業務ソフトを
+カード決済できない会社が実在するため、RepChatは請求書払い・銀行振込へ対応します。
 
-**個人事業主なら明日から対応でき、海外SaaSには当面できません。** 地味ですが決定的な場面があります。
+請求方法が選定条件になるかはデザインパートナーへ確認し、Evidenceの対応可否は営業見積で比較します。
 
 ### 2.5 接続作業をサービスに含める
 
@@ -162,8 +162,8 @@ Evidence Cloud も Metabase も**クレジットカードの自己申込**です
 
 ### 2.6 価格（単独では堀にならない）
 
-Gemini Flash が1問約¥0.1、インフラも数千円規模なので、**Evidence Cloud の $15/人・月を下回っても
-十分黒字**です。
+[競合比較 §2](competitive-landscape.md#2-evidence-cloudは機能の直接競合です)の公開価格だけに合わせず、
+RepChatは利用量と運用工数から価格を決めます。競合価格は契約時に再確認します。
 
 ただし**価格は真似されます**。下げるなら 2.1〜2.5 のいずれかとセットにすること。
 **価格だけを理由に選ばれた顧客は、価格だけを理由に離れます。**
@@ -255,6 +255,50 @@ LookMLのGit連携と共通し、LookMLのモデル開発やbranch運用その�
 顧客数に比例させないためこちら側に置きます。Gitはbuild時だけ使い、閲覧時には参照しません。
 repositoryを持たない顧客には、同じpipelineを使うmanaged fallbackを用意します。
 
+### 2.10 Evidence Cloudと競う境界（2026-08-11）
+
+Evidenceは、SQL／Markdown authoring、AI差分編集、Git branch、review／publish、Analytics Agent、
+Insight保存、Slack／MCP、custom context／skills、RLS、embedded deliveryを既に提供しています。
+RepChatはこれらの機能名や画面構造を差別化として主張しません。
+
+Evidence Embedded Analyticsは、Enterprise Planで公開済みpageを顧客製品へ安全に配信する機能です。
+レポート編集はEvidence StudioまたはGit／CLIで行います。これはRepChatで検討している機能を次のように
+分離すべきことを示します。
+
+| 責務 | RepChatの将来機能 | Evidenceで対応する面 |
+|------|-------------------|----------------------|
+| Authoring | AI対話、Web SQL workspace、versioned panel composition、branch／review | SQL Console、Report Editor、AI diff、Git／CLI |
+| Publishing | 検証済みrevisionを公開対象へ切り替え、rollback可能にする | publishとGit commit |
+| Delivery | tenant identity、RLS、brand、locale、有効期限を束縛して顧客へ表示する | Embedded API＋iframe |
+
+SQL Consoleは任意SQLの探索面、Report EditorはMarkdown／SQL／componentでcustom reportを作る面です。
+AI生成reportもaccept後はDeveloper／Adminがsourceを編集できます。したがって、Web SQL workspaceや
+AI生成SQLの手動調整も機能名だけでは差別化になりません。RepChatで残す判断は、
+[ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)のとおり、AI生成原本を上書きせず、
+利用者の変更をforkしたpanel revisionとして検証・合成することです。
+
+通常のembedded閲覧画面へSQL編集、layout編集、branch操作を出しません。エンジニアが調整する場合は、
+別のauthoring権限とrouteで編集し、review済みrevisionだけを配信します。
+
+RepChatが検証する差は次の組合せです。実装状態を超えて優位と表現しません。
+
+| 候補 | 状態 | 検証する差 |
+|------|------|------------|
+| 日本語の目的分解→KPI・比較・panel提案→利用者確認 | ローカルデモprototype | Evidenceと同じ課題で完成率、確認回数、所要時間を比較 |
+| Vertex AI／BigQueryの実行前費用確認 | ローカルデモに実装 | 費用予測の理解率と実行取消率を測定 |
+| 根拠外数値を拒否する会議報告 | ローカルデモprototype | 根拠追跡率、誤った数値claim、会議での採用率を比較 |
+| 決定、owner付きaction、次回検証までの会議loop | 将来要件 | 会議後にactionが登録・再確認された割合を測定 |
+| 代理店が複数顧客を扱う日本語運用と導入支援 | 提供方針 | デザインパートナーの導入完了率と支援工数を測定 |
+| scope付き適応メモリー | accepted設計、未実装 | 二回目以降の確認削減と訂正率を測定 |
+
+推奨する説明は次の一文です。
+
+> 日本の代理店が、顧客ごとの業務文脈と権限を混ぜず、日本語で分析目的とKPIを合意し、費用を確認してから
+> 実行し、根拠付きダッシュボードと会議で決めるべき施策まで作る。
+
+この説明もデザインパートナー比較で実証するまではポジショニング仮説です。競合事実と出典は
+[競合比較](competitive-landscape.md)を正本とします。
+
 ## 3. 採らない — 時間を使わないもの
 
 **明示しておかないと、機能表の空欄を埋めたくなります。**
@@ -289,8 +333,8 @@ repositoryを持たない顧客には、同じpipelineを使うmanaged fallback�
 | ~~所有権・権限管理が実在する痛み~~ | **1.5 で裏付け済み** — Looker Studio の共有アカウント廃止と、接続者・作成者の退職 | — |
 | **今レポートを作っている人が、明日も作れるか** | **最大の関門。** Looker Studio はドラッグ&ドロップで非エンジニアが作れる。こちらは「自然言語→PR→承認」で**同じ人が同じようには作れない**。今 Looker Studio でレポートを作っている人に、2.7の流れで1枚作ってもらう | **他が全部揃っても売れません。** 唯一かつ最大の判定条件 |
 | 生成された数値が正しい | 2.7 の**既知の数値照合**を組み込み、実データで確認 | 見た目が正しく数字が違うレポートは無いより悪い |
-| 日本語のNL→SQLで海外製品に差をつけられる | **日本語スキーマ・日本語質問20問のベンチマーク**を作り、自社／Evidence Cloud／Metabase の試用で同じ問題を流して正答率を比較 | 2.1・2.2の価値が下がる。逆に差が出れば測定された差別化になる |
-| 日本のSMBが海外SaaSを使わない理由が言語・支払い・サポートにある | 同じヒアリングで「Evidence Cloud を知っていますか／なぜ使わないのですか」 | 2.2・2.4が崩れる |
+| 日本語の分析目的から価値ある成果物までのworkflowでEvidenceより良い結果を出せる | 同じschema、既知値、日本語の目的を使い、分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を比較 | 2.10の製品差が崩れ、日本語支援と運用サービスだけが残る |
+| 日本のSMBがEvidence等を採用しない理由が言語・支払い・サポートにある | 同じヒアリングで「Evidence Cloudを知っていますか。採用しない場合はなぜですか」と確認し、Evidenceの契約条件は営業見積で確認 | 2.2・2.4が崩れる |
 
 **判定条件は先に決めておくこと。** 決めずに聞くと都合よく解釈します。
 

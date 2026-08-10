@@ -26,6 +26,9 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | 分析スレッド | 一つの分析目的について、質問、回答、分析仕様revision、buildを結ぶ対話単位 |
 | インサイト | 一つの質問への回答、可視化、query、source、filter、prompt、実装メモを固定revisionとして保存した再利用可能な成果物 |
 | 分析コレクション | 関連するダッシュボードと分析スレッドを整理する利用者向けディレクトリ。GCP projectやtenantではない |
+| authoring | AI対話、SQL、panel構成、差分、branch、reviewを使って成果物revisionを作成・修正する操作。閲覧・埋め込みとは別permissionとrouteを持つ |
+| publishing | review済みの固定revisionを閲覧対象へ切り替え、rollback可能な来歴を残す操作 |
+| embedded delivery | published revisionを顧客製品内へ表示する配信形態。brand、locale、利用者identity、RLS、有効期限を束縛するが、authoring権限を付与しない |
 | push | 左右領域がメインサーフェスの幅を縮めて同じgrid内へ表示される配置 |
 | overlay | 左右領域がメインサーフェスの上へ重なり、背後の操作を一時的に制限する配置 |
 | 出典区分 | `Official`、`Observed`、`Owner intent`、`RepChat decision`のいずれか。外部製品の事実と本製品の判断を分離する |
@@ -42,6 +45,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | C-3 | 制約 | SQL、取得データ、来歴は権限を持つ利用者だけへ表示する | Issue #179の認可要件を守る |
 | C-4 | 制約 | Issue #160が`proceed`になるまで、この文書を根拠に製品UIを先行実装しない | デモ検証前の過剰実装を防ぐ |
 | C-5 | 制約 | 永続履歴、Git branch操作、アカウント設定をローカルデモで実装済みと表示しない | デモ能力と製品要件を区別する |
+| C-6 | 制約 | authoring、publishing、embedded deliveryを別のroute、permission、audit eventとして扱う | 顧客向け閲覧経路からSQL編集や未承認revisionへ到達することを防ぐ |
 
 ## 3. 目的と範囲
 
@@ -88,7 +92,12 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-08 | RepChat decision | 現行デモは左右pane、4 workspace、panel inspector、費用確認を実装済み。製品要件は現行コードから独立して理想を定義する | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)、[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330) |
 | SRC-09 | Official competitor | Evidence Analytics Agentは、現在のpageとfilterを文脈にし、回答へchart、query、sourceを結び付ける。回答をpromptと実装メモ付きInsightへ保存し、維持管理するpageへ昇格できると説明する | [Analytics Agent](https://evidence.dev/product/analytics-agent) |
 | SRC-10 | Official competitor | Evidence Internal Analyticsは、SQL／Markdown、version control、test、review-before-publish、page access、row-level securityを中心とし、自由なdrag-and-dropを採らないと説明する | [Internal Analytics](https://evidence.dev/product/internal-reporting) |
-| SRC-11 | Official competitor | Evidence Embedded Analyticsは、themeの即時preview、API＋iframe、single-use URL、session length、database RLS、multi-languageを顧客向け配信面として説明する | [Embedded Analytics](https://evidence.dev/product/embedded-analytics) |
+| SRC-11 | Official competitor | Evidence Embedded AnalyticsはEnterprise Plan向けで、公開済みpageをbackend API＋iframeで表示する。single-use URL、JWE、RLS、theme、language、session TTLを持つが、report authoringは提供しない | [Embedded Analytics](https://docs.evidence.studio/features/embedded) |
+| SRC-12 | Official competitor | Evidence Studioは左editorでMarkdown／SQLを編集し、右previewを更新する。AIはdiffを提案し、利用者がaccept／rejectする | [Editing](https://docs.evidence.studio/editing) |
+| SRC-13 | Official competitor | Evidence projectはGit repositoryに対応し、managed repoまたはGitHub repo、branch、commit、review、publishをauthoring lifecycleとして扱う | [Version control](https://docs.evidence.studio/features/version-control) |
+| SRC-14 | Official competitor | Evidence料金ページはTeam $15/人・月、Pro $25/人・月、Enterprise個別見積を示し、Embedded、white labeling、RLSをEnterpriseに含める | [Pricing](https://evidence.dev/pricing) |
+| SRC-15 | Official competitor | Evidence StudioはReport、Explore、SQL Console、AI Chatをself-service面として分ける。pageはMarkdown、SQL、componentで構成できる | [Migration guide](https://docs.evidence.studio/migration-guide)、[Markdown](https://docs.evidence.studio/core-concepts/markdown) |
+| SRC-16 | Official competitor | Viewer／Org Viewerはeditorへアクセスできず、Developer／Adminはreportを編集できる | [Publishing](https://docs.evidence.studio/publishing) |
 
 ### 4.2 証拠の扱い
 
@@ -125,9 +134,11 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Save as Insight | prompt、methodology、filter、query／result revisionを不変なInsight revisionへ保存する | 生の会話全体をそのまま正式成果物にする | MAIN-011、OVR-006 |
 | Insightをpageへ昇格 | 元Insightを変更せず、派生dashboard revisionから参照する | AI生成原本の上書きや無断再query | MAIN-012、Issue #308 |
 | Custom context／skills | 適用中contextと分析手順をscope付きchipとして表示し、利用者が確認・解除する | 全memoryを毎回promptへ投入する | MAIN-013、ADR-0018 |
-| Version control／review／publish | draft、review、preview、published、supersededを成果物statusとして分離する | 編集中revisionの即時公開 | MAIN-014、OVR-007 |
+| SQL Console／inline SQL editor | 将来のSQL workspaceで任意SQLの探索、preview、panel revision作成を行い、dashboard authoringとは分ける | SQL Consoleをpublished custom reportまたはembedded editorとみなす | ADR-0022、別実装Issue |
+| Studio editor／AI diff／live preview | AI対話と構造化panel compositionをauthoring routeへ置き、差分確認と固定previewを分ける | Embedded customer viewへeditorやAI差分承認を出す | MAIN-014、MAIN-017、OVR-007 |
+| Version control／review／publish | draft、review、preview、published、supersededを成果物statusとして分離する | 編集中revisionの即時公開 | MAIN-014、OVR-007、SRC-13 |
 | Code-first、no drag-and-drop | AI対話と構造化panel compositionを主経路にし、自由配置editorを初期範囲にしない | 汎用BI canvasの先行実装 | MAIN-016、Issue #308 |
-| Embedded delivery | authoringから分離した顧客preview／配信modeでbrand、locale、identity、expiryを確認する | iframe URLを通常dashboard共有linkとして流用する | MAIN-015、OVR-008 |
+| Embedded delivery | published revisionだけをauthoringから分離した顧客preview／配信modeで表示し、brand、locale、identity、RLS、expiryを確認する | iframe URLを通常dashboard共有linkとして流用する、または埋め込みをcustom dashboard editorとみなす | MAIN-015、MAIN-017、OVR-008、SRC-11 |
 | Slack／MCP | Web成果物revisionを正本とし、他channelは同じ認可・来歴へ接続するadapterとする | channelごとの独立成果物 | INS-010、ADR-0017 |
 
 ## 6. UIインベントリと機能要件
@@ -208,6 +219,7 @@ AppShell
 | MAIN-014 | dashboard、insight、reportは`draft`→`review`→`published`→`superseded`のstatusを持ち、previewは公開予定の固定revision、公開後の既定閲覧はpublished revisionを表示する | Must |
 | MAIN-015 | embedded customer previewは通常のauthoring routeと分離し、brand、locale、viewport、authorized customer identity、session expiryをtoolbarで確認する。identity切替はadminだけに許可し、server発行preview sessionを必須にする | Should |
 | MAIN-016 | 初期authoringはAI対話、構造化template、panel参照追加、順序変更に限定し、任意座標drag-and-drop、任意HTML／code、自由layout canvasを提供しない | Must |
+| MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
 
 ### 6.4 右セカンダリpane
 
@@ -260,6 +272,8 @@ flowchart LR
   それぞれ別操作・別permission・別audit eventとする。
 - Internal viewとEmbedded customer viewは同じpublished revisionを参照できるが、identity、theme、locale、
   session契約を共有しない。
+- Embedded customer viewのfilter、input、drilldownはpublished revisionの許可されたparameterを変更する
+  閲覧操作であり、authoring revisionを作成しない。
 
 ### 6.7 surface mode別の配置
 
@@ -270,7 +284,7 @@ flowchart LR
 | Insight閲覧 | Insight選択 | 保存済みInsightの回答と可視化 | methodology／SQL／data／来歴Inspector | ダッシュボードへ追加 |
 | 会議報告 | report選択 | report本文、決定、action | 根拠panel／来歴Inspector | reviewまたはpublish |
 | Publish preview | artifact選択 | 公開予定の固定revision | diff、検証、権限、公開先 | publish |
-| Embedded preview | artifact選択 | customer viewの固定revision | brand、locale、identity、expiry | preview終了 |
+| Embedded preview | artifact選択 | customer viewの固定published revision | brand、locale、identity、RLS、expiry。authoring controlは置かない | preview終了 |
 
 desktopの分析対話では中央を会話、右をArtifact Previewとし、回答cardを縦方向に二重表示しません。
 tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じると同じ会話位置へ戻します。
@@ -413,6 +427,7 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 | SQL／取得データ | 個別permission | 個別permission | 可 |
 | publish／fork | 不可 | permission次第 | 可 |
 | customer identity付きpreview | 不可 | 個別permission | 可 |
+| embedded published view | 許可されたidentityで可 | 許可されたidentityで可 | 可 |
 | data source／member／Git設定 | 不可 | 不可 | 可 |
 
 本番role・認証方式の最終決定はIssue #194を正本とし、この表はUIのfail-closed既定です。
@@ -508,6 +523,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-19 | customer previewがbrand、locale、identity、expiryを表示し、期限切れ／越境identity／通常共有linkへの流用を拒否する | MAIN-015、OVR-008、NFR-004 | authorization E2E |
 | AC-20 | 製品主ナビに単一グラフと自由layout canvasがなく、検索、分析対話、Insight、管理済み成果物の責務が混在しない | NAV-004、MAIN-016 | navigation review |
 | AC-21 | 分析対話で右paneをArtifact PreviewからInspectorへ切り替えても会話位置とdraft revisionを維持し、tablet以下ではoverlay／sheetとして復帰できる | APP-006、INS-012、§6.7 | viewport E2E |
+| AC-22 | embedded customer viewはpublished revisionだけを表示し、URL直打ちを含めSQL編集、panel構成、branch、publishへ到達できない。編集者は別authoring routeでのみ修正できる | C-6、MAIN-017、NFR-004 | role別authorization E2E |
 
 ## 15. リスク
 
@@ -523,6 +539,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | R-8 | page-aware AIが不可視のfilterやmemoryを使い、利用者が回答条件を誤認する | 中 | 高 | MAIN-009、MAIN-013、INS-011で送信文脈を明示する |
 | R-9 | quick answerを無制限に保存してInsightが検索不能になる | 中 | 中 | collection、status、archive、参照先を必須metadataにし、retentionをQ-2で決める |
 | R-10 | customer previewがtenant impersonationまたは共有linkの抜け道になる | 低 | 高 | admin限定identity切替、短期server session、通常共有linkとの分離 |
+| R-11 | 埋め込みをcustom dashboard editorと誤認し、顧客向け閲覧経路へauthoring権限を混在させる | 中 | 高 | C-6、MAIN-017、AC-22でrouteとpermissionを分離する |
 
 ## 16. milestone
 

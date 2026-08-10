@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — merge済み[PR #334](https://github.com/Yukihide-Mitsuoka/repchat/pull/334)を基礎に、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)でEvidence公式競合資料との対応、可視context、Insight／publish lifecycle、embedded previewを追加する |
+| 作業 | [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338) — Evidenceの現行公式仕様に合わせて競合比較、ポジショニング、authoring／publishing／embedded deliveryのUI境界を更新する |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
-| 直近完了 | [PR #329](https://github.com/Yukihide-Mitsuoka/repchat/pull/329)のtemplate同期と[PR #327](https://github.com/Yukihide-Mitsuoka/repchat/pull/327)のv1.16.0 releaseはmerge済み |
+| 直近完了 | [PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence UI mappingと[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)のthought token費用計上はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #179の要件文書をreview可能にし、出典、機能mapping、UI inventory、状態行列、受入条件、既存要件とのlinkを検証する。製品実装は開始しない |
+| AIができること | Issue #338の文書をreview可能にし、Evidence公式料金・製品・Studio文書の出典、競合比較、RepChatの実装／設計／将来構想の区分、埋め込みと編集の権限境界を検証する。製品実装は開始しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -28,7 +28,7 @@ updated: 2026-08-11
 1. [status §0](status.md#0-再開手順新しいaiセッション向け)と
    [§1](status.md#1-一行でいうと)で、実装済み範囲、費用、未検証事項を確認する。
 2. [positioning §0](positioning.md#0-前提の確認--勝負の土俵)、
-   [§2.7〜2.9](positioning.md#27-入口は既存の手作業レポートにする)、
+   [§2.7〜2.10](positioning.md#27-入口は既存の手作業レポートにする)、
    [§5](positioning.md#5-未検証の仮説と検証方法)で、対象顧客、差別化、検証対象を確認する。
 3. [roadmap](roadmap.md)で実施順序を確認する。
 4. 下の設計判断索引から、変更対象に関係するADRを全文読む。
@@ -49,6 +49,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
+| 現在の競合・配信境界整理 | [#338 Evidence positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
 | 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
@@ -56,7 +57,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
-| Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
+| 完了したVertex AI費用表示修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)／[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)。分析計画とSQL生成のthought tokensを費用へ含める | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | doctorの基盤テストtimeout | [#315 setup-github wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`make doctor`の`setup-github.sh` wrapper testが5秒timeoutした。再実行で成功扱いにせず、Gemini切替とは別に原因を調査する | `scripts/setup-github.sh`、`scripts/tests/test_setup_github_wrapper.py` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
 | 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
@@ -76,9 +77,9 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-10）
+## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計として、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)をreviewし、外部資料の事実、公開画面観測、オーナー要望、RepChat固有判断の区分と、機能mapping、pane状態、受入条件を確定する。製品実装は開始しない。
+1. **現在:** [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)で、Evidenceの機能を競合事実として更新し、RepChatの差別化仮説とauthoring／publishing／embedded deliveryの境界をreviewする。製品実装は開始しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
