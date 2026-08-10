@@ -97,7 +97,7 @@ print(json.dumps({
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
  "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*40","count*39"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
- "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
+ "progress":all(x in html for x in ["生成の進行状況","実行前","問い合わせを入力し、生成ボタンを押してください。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -387,9 +387,11 @@ print(m.visualization_for_result(
       rows: [
         ['1. 入口: /', '2. /shop', 120],
         ['2. /shop', '3. /cart', 48],
+        ['3. /cart', '4. /complete', 20],
       ],
       columns: ['source', 'target', 'sessions'],
       visualization: 'sankey',
+      navigation_depth: 4,
     },
   };
   assert.doesNotThrow(() =>
@@ -416,7 +418,7 @@ print(m.visualization_for_result(
   const linkStrokes = elements
     .filter((element) => element.tag === 'path')
     .map((element) => element.attributes.stroke);
-  assert.equal(gradients.length, 2, 'each transition should have a color gradient');
+  assert.equal(gradients.length, 3, 'each transition should have a color gradient');
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
     linkStrokes.every((stroke) => /^url\(#sankey-\d+-link-\d+\)$/.test(stroke ?? '')),
@@ -452,7 +454,7 @@ print(m.visualization_for_result(
     elements
       .filter((element) => element.attributes.class === 'sankey-stage')
       .map((element) => element.textContent),
-    ['入口', '2ページ目', '3ページ目'],
+    ['入口', '2ページ目', '3ページ目', '4ページ目'],
   );
   assert.ok(links.every((link) => link.attributes.tabindex === '0'));
   assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
@@ -465,7 +467,10 @@ print(m.visualization_for_result(
   links[0]?.onfocus?.();
   assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
   const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
-  assert.match(terminal?.textContent ?? '', /2ページ目で終了: 72セッション/);
+  assert.match(
+    terminal?.textContent ?? '',
+    /2ページ目で終了: 72セッション、3ページ目で終了: 28セッション/,
+  );
 });
 
 test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
@@ -492,6 +497,85 @@ print(json.dumps(out,ensure_ascii=False))
     '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
     'accepted',
   ]);
+});
+
+test('custom navigation depth keeps the bounded Sankey analysis contract', () => {
+  const result = python(`
+spec=json.loads((m.HERE/"report.json").read_text())
+q3="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"
+q4=q3.replace("3ページ目", "4ページ目")
+sections=[m.section_for_question(spec,q) for q in [q3,q4]]
+too_deep=""
+try:m.section_for_question(spec,q3.replace("3ページ目", "7ページ目"))
+except m.LiveDemoError as error:too_deep=str(error)
+print(json.dumps({"sections":[{"id":s["id"],"component":s["component"],"transition_mode":s["transition_mode"],"navigation_depth":s["navigation_depth"],"verification":s["verification"],"requirements":" ".join(s["generation_requirements"])} for s in sections],"too_deep":too_deep},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const value = JSON.parse(result.stdout);
+  assert.deepEqual(
+    value.sections.map((section: Record<string, string | number>) => ({
+      id: section.id,
+      component: section.component,
+      transition_mode: section.transition_mode,
+      navigation_depth: section.navigation_depth,
+      verification: section.verification,
+    })),
+    [
+      {
+        id: 'R17',
+        component: 'sankey',
+        transition_mode: 'page_navigation',
+        navigation_depth: 3,
+        verification: 'reference',
+      },
+      {
+        id: 'Q1',
+        component: 'sankey',
+        transition_mode: 'page_navigation',
+        navigation_depth: 4,
+        verification: 'execution',
+      },
+    ],
+  );
+  assert.match(value.sections[1].requirements, /4ページ目/);
+  assert.match(value.sections[1].requirements, /3→4/);
+  assert.equal(value.too_deep, '回遊Sankeyで指定できるのは入口から3〜6ページ目までです。');
+});
+
+test('custom navigation depth validates stable ordering and all adjacent stages', () => {
+  const result = python(`
+ordering=[]
+for sql in [
+ "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3 LIMIT 12",
+ "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3,p4 LIMIT 12",
+]:
+ try:m.require_deterministic_navigation_order(sql,4);ordering.append("accepted")
+ except m.LiveDemoError as error:ordering.append(str(error))
+valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",7),("3. /cart","4. /done",4)]
+invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
+validation=[]
+for rows in [valid,invalid]:
+ try:m.validate_navigation_sankey(rows,4);validation.append("accepted")
+ except m.LiveDemoError as error:validation.append(str(error))
+print(json.dumps({"ordering":ordering,"validation":validation},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    ordering: ['回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。', 'accepted'],
+    validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
+  });
+});
+
+test('single-graph progress shows the dynamic stop reason before stage details', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const html = rendered.stdout;
+  const progressStart = html.indexOf('aria-labelledby="progress-title"');
+  const progressEnd = html.indexOf('</section>', progressStart);
+  const progress = html.slice(progressStart, progressEnd);
+  assert.ok(progress.indexOf('id="message"') < progress.indexOf('<ol class="stages">'));
+  assert.doesNotMatch(progress, /質問を送信すると、ここに処理状況が表示されます。/);
+  assert.match(html, /未定義のため停止:/);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
