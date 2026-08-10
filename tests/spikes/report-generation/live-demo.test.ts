@@ -1324,6 +1324,23 @@ test('workspace transitions reveal completed artifacts without mixing build and 
   assert.ok(script.includes('selectInspectorTab("sql")'));
 });
 
+test('meeting report owns persistent processing and error state across workspace navigation', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(rendered.stdout.includes('id="report-status"'));
+  assert.ok(rendered.stdout.includes('id="report-message"'));
+  assert.ok(rendered.stdout.includes('id="report-warning"'));
+  assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
+  assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
+  assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
+  assert.ok(script.includes('setReportState("要承認"'));
+  assert.doesNotMatch(
+    script,
+    /runMeetingReport\(\)[\s\S]*?catch\(e\)[\s\S]*?\$\("dashboard-message"\)/,
+  );
+});
+
 test('collapsed workspace panes keep the explicit five-column desktop grid', () => {
   const result = python(`
 html=m.HTML

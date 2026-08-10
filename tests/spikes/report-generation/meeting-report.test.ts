@@ -294,3 +294,65 @@ print(json.dumps({
     status: 'draft_requires_human_approval',
   });
 });
+
+test('one paid response keeps valid claims and reports excluded unsupported numbers without retrying', () => {
+  const result = python(`
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class Config:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(
+ GenerateContentConfig=Config,
+ ThinkingConfig=Config,
+ ThinkingLevel=types.SimpleNamespace(LOW="LOW"),
+)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+raw={
+ "executive_summary":{"text":"購入件数は895件で、追加診断が必要です。","panel_ids":["R4"]},
+ "observations":[
+  {"text":"購入件数は895件です。","panel_ids":["R4"]},
+  {"text":"根拠外の22件を確認しました。","panel_ids":["R4"]},
+ ],
+ "interpretations":[{"text":"セッションは3000件から4000件です。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],
+ "hypotheses":[{"text":"導線に改善余地がある可能性があります。","validation":"流入別に確認します。","panel_ids":["R4"]}],
+ "actions":[{"text":"6施策を実行します。","owner":"担当者","urgency":"次回会議まで","expected_impact":"判断材料を増やします。","next_step":"導線別に確認します。","success_metric":"購入件数","panel_ids":["R4"]}],
+ "limitations":["直近3か月の目標値が未登録です。"],
+}
+usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=600,thoughts_token_count=0)
+response=types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=usage)
+captured={"calls":0}
+class Models:
+ def generate_content(self,**kwargs):
+  captured["calls"]+=1;captured["config"]=kwargs["config"];return response
+strict_error=""
+try:m.normalize_report(raw,bundle)
+except m.ReportError as error:strict_error=str(error)
+report,_=m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+print(json.dumps({
+ "calls":captured["calls"],
+ "strict_error":strict_error,
+ "observations":[item["text"] for item in report["observations"]],
+ "interpretations":[item["text"] for item in report["interpretations"]],
+ "hypotheses":[item["text"] for item in report["hypotheses"]],
+ "actions":[item["text"] for item in report["actions"]],
+ "limitations":report["limitations"],
+ "warnings":report["generation_warnings"],
+ "limitation_pattern":captured["config"].response_schema["properties"]["limitations"]["items"]["pattern"],
+},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.calls, 1);
+  assert.equal(
+    output.strict_error,
+    '会議報告に根拠パネルへ存在しない数値があります: 22',
+  );
+  assert.deepEqual(output.observations, ['購入件数は895件です。']);
+  assert.deepEqual(output.hypotheses, ['導線に改善余地がある可能性があります。']);
+  assert.ok(output.interpretations.every((value: string) => !/3000|4000/.test(value)));
+  assert.ok(output.actions.every((value: string) => !/6/.test(value)));
+  assert.ok(output.limitations.every((value: string) => !/\d/.test(value)));
+  assert.deepEqual(output.warnings, [
+    'AI出力のうち、根拠を確認できない数値表現または構造を除外しました。',
+  ]);
+  assert.equal(output.limitation_pattern, '^[^0-9０-９]*$');
+});
