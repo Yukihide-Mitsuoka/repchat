@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #321](https://github.com/Yukihide-Mitsuoka/repchat/issues/321) — 期限切れADCを汎用エラーへ潰さず、安全な再認証・デモ再起動手順を画面へ表示する |
+| 作業 | [Issue #321](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322) — 期限切れADCを汎用エラーへ潰さず、安全な再認証・デモ再起動手順を画面へ表示する |
 | デモ実行状態 | 2026-08-10にPR #316 merge後の`main`から`kotonoha-bi-dev`向けローカルデモを再起動し、`http://127.0.0.1:8765/`のHTTP 200とブラウザerror/warning 0を確認した。起動だけではVertex AI・BigQueryを呼んでいない。画面操作による実生成は従来どおり個別の費用確認を必要とする |
 | 直近完了 | [PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)はmerge済みで、同一document内に共存する複数のSankey SVGでpaint-server IDを分離した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ阻害 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証後にデモを再起動する。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
+| 現在のデモ阻害 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証後にデモを再起動する。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
 | Vertex AI費用表示の横断修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)。分析計画とSQL生成もthought tokensを費用へ含める。#310へ混ぜず、固定応答で別途修正する | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
