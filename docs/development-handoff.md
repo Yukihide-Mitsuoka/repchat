@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-10
+updated: 2026-08-11
 ---
 
 # 開発引き継ぎ
@@ -15,11 +15,11 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の追加修正 — [PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)で、根拠外数値を含むAI項目だけを除外し、妥当な会議報告項目を一回の有料応答から保持する |
-| デモ実行状態 | 修正branchを`http://127.0.0.1:8765/`で起動し、会議報告専用の初期状態表示をブラウザで確認した。固定応答248件は成功。実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [PR #332](https://github.com/Yukihide-Mitsuoka/repchat/pull/332)はmerge済みで、左右ペインを閉じてもmainを明示的な中央grid列へ維持する |
+| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — OpenAI公式資料、公開画面観測、オーナー要望、現行デモを区別し、RepChat機能との対応と再現可能なpane／状態／responsive要件を`docs/179-analysis-workspace-spec`で定義する |
+| デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
+| 直近完了 | [PR #329](https://github.com/Yukihide-Mitsuoka/repchat/pull/329)のtemplate同期と[PR #327](https://github.com/Yukihide-Mitsuoka/repchat/pull/327)のv1.16.0 releaseはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #295追加修正の全検証、PR作成、CI確認を行う。strict validator、費用確認、追加の有料呼出しを自動実行しない契約を維持する |
+| AIができること | Issue #179の要件文書をreview可能にし、出典、機能mapping、UI inventory、状態行列、受入条件、既存要件とのlinkを検証する。製品実装は開始しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -49,7 +49,8 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在の会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の追加修正。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外し、追加課金なしで妥当な項目と安全なfallbackを返す。報告状態は報告画面が保持する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py`、`live_demo.py`、各固定応答テスト |
+| 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、権限、deep linkを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
+| 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
@@ -77,7 +78,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-10）
 
-1. **現在:** [PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)で、会議報告のstrict validatorを緩めず、一回の生成応答から妥当な項目を保持する。固定応答テストとローカル画面は確認済み。CIを確認し、実Vertex AIとBigQueryは再実行しない。
+1. **現在:** [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計として、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)をreviewし、外部資料の事実、公開画面観測、オーナー要望、RepChat固有判断の区分と、機能mapping、pane状態、受入条件を確定する。製品実装は開始しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。

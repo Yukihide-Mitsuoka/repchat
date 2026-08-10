@@ -2,7 +2,7 @@
 id: requirements
 title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
-updated: 2026-08-10
+updated: 2026-08-11
 ---
 
 <!--
@@ -184,6 +184,11 @@ revision、根拠、期限を持つ分析方針として管理する。詳細と
   revisionを作る。派生dashboardはAI生成または利用者作成の固定panel revisionを配置でき、既存panelの
   参照追加とfork編集を区別する。新版へ自動追随せず、互換性と費用を確認した明示的upgradeだけを許可する。
   詳細は[ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)とIssue #308を参照する。
+
+閲覧、作成・編集、会議報告、単一グラフを、左ナビゲーション、主サーフェス、権限付き右インスペクターへ
+割り当てる情報設計、pane寸法、responsive、keyboard、状態行列、RepChat機能との対応は
+[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)を正本とする。ChatGPT固有の外観は複製せず、
+公開されたdesktop shell原則とRepChat固有の実装値を分離する。
 
 ### 4.5 ロール（Phase1は簡易版）
 - 管理者／編集者／閲覧者の3段。カスタムロールはPhase2。
