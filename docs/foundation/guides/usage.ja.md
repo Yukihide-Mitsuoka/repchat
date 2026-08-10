@@ -1,14 +1,13 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-08-01
+updated: 2026-08-09
 ---
 
 # 使い方（日本語セットアップ手順書）
 
-> English: [usage.md](usage.md) ／ このファイルは人間向けの日本語手順書です（ADR-0002：
-> ルール本体は英語、人間向けドキュメントは日本語版を併設可）。内容が英語版と食い違った場合は
-> **英語版が正**です。
+> English: [usage.md](usage.md) ／ このファイルはADR-0008で明示的に認められた、人間向けの
+> 日本語foundation文書です。内容が英語版と食い違った場合は**英語版が正**です。
 
 新しいPCや別のGitHubアカウントで基盤を使うときの手順。**まず2つのシナリオのどちらかを判断**
 してください。手順が変わります。
@@ -36,11 +35,13 @@ updated: 2026-08-01
 |--------------------------|----------|
 | 適用可能な保守中の特化テンプレートがない一般プロジェクト | `Yukihide-Mitsuoka/ai-dev-foundation` |
 | Terraformで管理するGoogle Cloud基盤が主要成果物で、Terraform family overlayと`iac-scan`が必要 | `Yukihide-Mitsuoka/terraform-gcp-template` |
+| Next.js SaaS applicationに保守中のNext.js familyとSaaS template契約が必要 | `Yukihide-Mitsuoka/nextjs-saas-template` |
 | 現在必要なfamilyまたはproduct契約を別の保守中テンプレートが公開している | その中間テンプレート |
 
 TerraformやGoogle Cloudを付随的に使うだけでは`terraform-gcp-template`を選びません。
-将来使うかもしれない機能を理由に親を選びません。直接の親による来歴とfamily overlayを
-維持するため、適用可能な中間テンプレートを飛ばさないでください。
+同様に、Next.jsを使うだけでは`nextjs-saas-template`を選びません。保守中のfamily/product契約が
+現在のrepositoryへ適用されることが条件です。将来使うかもしれない機能を理由に親を選びません。
+直接の親による来歴とfamily overlayを維持するため、適用可能な中間テンプレートを飛ばさないでください。
 
 ### 2. 選んだテンプレートから新リポジトリを作成
 
@@ -83,14 +84,35 @@ python3 scripts/template_inheritance.py plan \
   --root . --parent-root ../<選択した親のworktree>
 ```
 
-初期化PRがgreenでmergeされた後、日次のレビュー付き同期へopt-inします。
+初期化PRがgreenでmergeされた後、workflowから直接親を読み取れるrepositoryだけ、日次の
+レビュー付き同期へopt-inします。
 
 ```bash
 gh variable set TEMPLATE_SYNC_ENABLED --body true
 ```
 
+直接親がprivateの場合は、[ADR-0016](../adr/0016-gate-private-fleet-automation-on-split-credentials.md)と
+[Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178)のread-only source
+credential方式が実装され、その継承関係で承認されるまで、この変数を無効のままにしてください。
+認証の回避策としてrepositoryをpublicへ変更してはいけません。
+
 中間templateを親にした場合、agent profileへowner-qualified template overlayを必ず含めます。
 伝播は親から子へ、merge済みの1 hopずつ進みます。
+
+### 3.1. 各同期PRをレビューして確定
+
+Template Syncはsingle-flightです。1つのrepositoryでopenにできる
+`chore/template_sync_*` PRは1件だけです。後続の定期実行や手動実行は重複PRを作らず、既存PRを
+報告します。open中に親へ追加された変更は、そのPRのmerge後に収集されます。
+
+同期branchで直接親の正確なsourceと継承差分をレビューし、ローカルの`finalize-sync` previewを
+実行します。`ready_to_finalize`の場合だけapplyし、対応済みの手動境界とlock更新を同じPRへ
+まとめます。この処理はcommit、push、merge、GitHub API、governance変更を行いません。
+正準コマンドとblockerの意味は
+[継承契約](../../../.github/inheritance/README.md#plan-single-pr-finalization)を参照してください。
+
+各PRには通常のCIと人間のレビューが必要です。中間templateをmergeしてからその直接の子を同期し、
+hopを飛ばしたりauto-mergeしたりしないでください。
 
 ### 4. テンプレートのプレースホルダを置換
 
@@ -194,6 +216,21 @@ make doctor                            # テンプレートが壊れていない
 ```
 これは文字通り「cloneするだけ」ですが、各マシンで下記の**前提ツール**と**認証**は一度必要です。
 
+### 保守対象fleetを監査
+
+Foundation保守者は、明示的にremote refを更新した兄弟worktreeから、設定済みの全active継承関係を
+検証できます。
+
+```bash
+make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+```
+
+このコマンドはローカル、read-only、credential-freeであり、承認作業を作りません。正準fleet設定は
+`active`、`paused`、`retired`を記録します。子のMakefileはこのtargetを継承しないため、
+`ai-dev-foundation` worktreeから実行してください。worktree要件と結果の意味は
+[固定fleetの監査](../../../.github/inheritance/README.md#audit-the-fixed-fleet)を参照してください。
+ADR-0016により、private fleetの定期監査は無効のままです。
+
 ---
 
 ## マシンごとの前提ツール（両シナリオ共通）
@@ -258,8 +295,9 @@ Makefile は壊れません。グローバル `core.autocrlf=true` でこれと�
 - 生成先のアカウント／Org はテンプレートのドロップダウンで選べます（テンプレート所有者と別でOK）。
 - **結論:** このPC 1台で完結します。アカウントを切り替えて（または同一アカウントで）テンプレート
   → 新リポ生成 → clone → 開発、の流れで複数PCは不要です。
-- 秘密情報を含まない基盤なので、再利用が多いなら **public** が最も手軽。厳密に管理したいなら
-  **Organization + private** が綺麗です。
+- visibilityは必要な機密性とgovernanceで決めます。認証を簡単にする目的でprivate repositoryを
+  publicへ戻してはいけません。private親からの定期同期は、ADR-0016のread-only GitHub App方式を
+  Issue #178で実装・承認してから有効化します。それまではローカルの継承操作を使います。
 
 ### Q. 全リポジトリを束ねる作業ディレクトリへの「グローバル指示」は仕組みとして想定されている？ → **はい（Claude Code の公式機能）**
 
@@ -299,7 +337,8 @@ Claude Code は起動時にディレクトリツリーを遡って `CLAUDE.md` �
 
 ## クイックリファレンス:「別アカウントで clone だけで足りる？」
 
-- **基盤を開発する**（シナリオB）: はい。`git clone` ＋ `make setup` ＋（そのマシンで一度）
-  `gh auth refresh -s workflow`。
+- **基盤を開発する**（シナリオB）: はい。`git clone`後にpre-commit hookを直接導入し、
+  `make doctor`を実行します。workflow変更をpushするときは、そのマシンで`workflow` OAuth scopeも
+  更新します。
 - **新規プロジェクトを作る**（シナリオA）: いいえ。「Use this template」→ 上の初期化手順。
   cloneでは新規プロジェクトにこの基盤の履歴とプレースホルダが混入します。

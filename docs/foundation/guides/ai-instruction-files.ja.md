@@ -1,7 +1,7 @@
 ---
 id: ai-instruction-files-ja
 title: AI指示ファイル・ガイド（日本語）
-updated: 2026-07-30
+updated: 2026-08-09
 ---
 
 # AIへ指示を出すファイル群ガイド（日本語）
@@ -10,8 +10,8 @@ updated: 2026-07-30
 振る舞いを「指示・案内・制約」するファイルが多数あります。本書はそれら**すべて**について、
 **利用目的 / 利用シーン / 利用しないシーン / 利用例**を日本語でまとめた早見リファレンスです。
 
-> 人間向けの解説ドキュメントです（ADR-0002：ルール本体は英語、人間向け解説は日本語版可）。
-> 各ファイルの**内容の正**は元ファイル自身です。矛盾があれば元ファイルが優先します。
+> ADR-0008で明示的に認められた、人間向けの日本語foundation文書です。各ファイルの
+> **内容の正**は元ファイル自身です。矛盾があれば元ファイルが優先します。
 
 ## 0. 全体像 — 3層 + 補助
 
@@ -20,9 +20,9 @@ updated: 2026-07-30
 │ CLAUDE.md（Claude Code）/ AGENTS.md（他エージェント）   │  ← まずここを読む
 └───────────────┬───────────────────────────────────────┘
                 │ agent profileのinputsを順番に読込
-┌─ 合成契約 + ルール本体（.ai/）──────────────────────────┐
+┌─ 継承契約 + project overlay + ルール本体（.ai/）─────────┐
 │ guardrails > security > 読込済み契約/入口 > その他 .ai/ > docs/ │  ← 唯一の「正」
-│ README(索引/ルーティング) + 各ドメインのルール           │
+│ contracts（基盤/template）+ project + README（routing）  │
 └───────────────┬───────────────────────────────────────┘
                 │ タスク種別で選ぶ
 ┌─ 手順書（.skills/）─────────────────────────────────────┐
@@ -44,7 +44,10 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 |----------|----------|------|
 | 入口 | [CLAUDE.md](../../../CLAUDE.md), [AGENTS.md](../../../AGENTS.md) | 明示的なagent profileを読み込む薄いアダプター |
 | 構成 | [agent-profile.json](../../../.github/inheritance/agent-profile.json) | 基盤・テンプレート・プロジェクト入力の順序付き一覧 |
+| 継承契約 | [foundation contract](../../../.ai/contracts/foundation/README.md) | identity-freeな基盤指示とguardrail本体 |
+| template契約 | `.ai/contracts/templates/<owner>/<repository>/` | 中間templateが直接の子へ公開する追加契約 |
 | プロジェクト情報 | [agent-overlay.md](../../../.ai/project/agent-overlay.md) | 利用先固有の識別情報・役割・スタック |
+| 条件付きproject文書規則 | [project-document-maintenance.md](../../../.ai/project-document-maintenance.md) | handoff・roadmap・root README・継承を扱う時だけ読む規則 |
 | ルール索引 | [.ai/README.md](../../../.ai/README.md) | 優先順位・タスク別ルーティング表 |
 | ルール本体 | [.ai/](../../../.ai/) の各 `*.md` | 分野別の正準ルール（ID付き） |
 | 手順書 | [.skills/](../../../.skills/) の各 `*.skill.md` | タスク別の実行プレイブック |
@@ -82,6 +85,21 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 - **利用しないシーン**：profileに長いルール本文を複製する、project overlayで基盤のMUST・guardrail・security controlを弱める、`CLAUDE.md`へプロジェクト情報を埋め込む。
 - **利用例**：テンプレートを継承するSaaSでは、基盤契約、テンプレートoverlay、SaaS自身のproject overlayを順番に列挙する。
 
+### `.ai/contracts/foundation/` と `.ai/contracts/templates/<owner>/<repository>/`
+
+- **利用目的**：foundation contractは全repositoryが継承するidentity-freeな指示を持つ。template
+  contractは中間templateが直接の子へ公開するfamily/product追加契約をowner-qualified pathで持つ。
+- **利用シーン**：agent profileが指定した個別pathだけを記載順に全文読み込む。中間templateを追加・
+  変更するときは、直接親が公開したexportとprofile順序を検証する。
+- **利用しないシーン**：directoryを再帰的に探索して未宣言の契約を読み込む、project固有情報を
+  foundation contractへ置く、後段のoverlayでfoundationのMUSTを弱める。
+- **利用例**：foundationの`agent-entry.md`を読み、次に
+  `templates/<owner>/<parent>/agent-overlay.md`、最後にproject overlayを読む。
+
+各namespaceの`inheritance-export.json`は子初期化用の機械可読metadataであり、agentへの文章指示では
+ありません。継承path、profile、project overlayの所有境界と同期確定手順は
+[継承契約](../../../.github/inheritance/README.md)を正とします。
+
 ---
 
 ## 3. 合成契約とルール本体（`.ai/`）
@@ -108,6 +126,7 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 | [workflow.md](../../../.ai/workflow.md) | タスクの進め方・コミット規約（WF） | ほぼ全タスク（intake→PR） | 単発の質問応答 | ブランチ名 `fix/207-null-avatar`、Conventional Commits（WF-020） |
 | [release.md](../../../.ai/release.md) | バージョニング・リリース手順（REL） | リリース準備 | 通常の機能開発中 | `feat` コミットから MINOR を自動導出（REL-001） |
 | [documentation.md](../../../.ai/documentation.md) | ドキュメント規約・更新マトリクス（DOC） | ドキュメント作成、機能変更に伴う更新 | コード内部だけの微修正 | API変更時に doc-update matrix で `docs/api/` 更新を判定（DOC-030） |
+| [project-document-maintenance.md](../../../.ai/project-document-maintenance.md) | project状態・roadmap・root README所有権の条件付き規則 | handoff、roadmap、root README、onboarding、継承を扱う時 | 無関係な実装タスクの常時読込 | 継承初期化時にroot READMEの所有者を確認し、祖先READMEをnamespaced archiveへ保存（DOC-014） |
 | [review-checklist.md](../../../.ai/review-checklist.md) | 10観点のレビュー基準（REV） | PRレビュー、PR前のセルフレビュー | 実装中の細かい判断 | セルフレビューで REV-SEC を走査し秘密混入を確認 |
 | [mission.md](../../../.ai/mission.md) | プロジェクトの目的・成功基準 | 方向性の妥当性判断、オンボーディング | 日々の実装詳細 | 提案が mission の成功基準に沿うか照合 |
 | [decision-log.md](../../../.ai/decision-log.md) | 意思決定の追記索引（LOG/ADR） | 設計変更前に「既に決まってないか」確認、変更後に追記 | 通常の実装 | LOG-0006「jq無しでもガードが動く」を読み、正規表現を安易に簡素化しない |
@@ -300,7 +319,9 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 ---
 
 関連：新環境セットアップ手順は [usage.ja.md](usage.ja.md)、`.ai/` の索引は
-[.ai/README.md](../../../.ai/README.md)、基盤の決定の経緯は [docs/foundation/adr/](../adr/) を参照。
+[.ai/README.md](../../../.ai/README.md)、継承PRの確定・fleet監査・private access境界は
+[継承契約](../../../.github/inheritance/README.md)、基盤の決定の経緯は
+[docs/foundation/adr/](../adr/) を参照。
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-08-01
+updated: 2026-08-09
 ---
 
 # Usage
@@ -35,11 +35,14 @@ Use the closest maintained template whose exported contract applies to the repos
 |-------------------------|---------------|
 | General project with no applicable maintained specialization | `Yukihide-Mitsuoka/ai-dev-foundation` |
 | Terraform-managed Google Cloud infrastructure is the primary deliverable and the Terraform family overlay plus `iac-scan` are required | `Yukihide-Mitsuoka/terraform-gcp-template` |
+| A Next.js SaaS application needs the maintained Next.js family and SaaS template contract | `Yukihide-Mitsuoka/nextjs-saas-template` |
 | Another maintained template exports a family or product contract the repository needs now | That intermediate template |
 
 Incidental use of Terraform or Google Cloud does not select `terraform-gcp-template`.
-Do not choose a parent for a possible future need. Do not bypass an applicable
-intermediate template: direct-parent provenance and family overlays require every hop.
+Likewise, using Next.js does not by itself select `nextjs-saas-template`; the maintained
+family and product contract must apply to the repository now. Do not choose a parent for
+a possible future need. Do not bypass an applicable intermediate template:
+direct-parent provenance and family overlays require every hop.
 
 ### 2. Create the new repo from the selected template
 
@@ -82,14 +85,38 @@ python3 scripts/template_inheritance.py plan \
   --root . --parent-root ../<selected-parent-worktree>
 ```
 
-After the initialization PR is green and merged, opt in to daily reviewed synchronization:
+After the initialization PR is green and merged, a repository whose direct parent is
+readable by its workflow may opt in to daily reviewed synchronization:
 
 ```bash
 gh variable set TEMPLATE_SYNC_ENABLED --body true
 ```
 
+Keep this variable disabled when the direct parent is private until the read-only source
+credential design in [ADR-0016](../adr/0016-gate-private-fleet-automation-on-split-credentials.md)
+and [Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178)
+has been implemented and approved for that inheritance edge. Do not make a repository
+public as an authentication workaround.
+
 For an intermediate parent, the agent profile MUST include its owner-qualified template
 overlay. Propagation then proceeds parent to child one merged hop at a time.
+
+### 3.1. Review and finalize each synchronization PR
+
+Template Sync is single-flight: one repository may have only one open
+`chore/template_sync_*` PR. A later scheduled or manual run reports the existing PR
+instead of creating duplicate review work. Parent changes that arrive while it is open
+are collected after that PR merges.
+
+Review the exact direct-parent source and inherited delta, then use the local
+`finalize-sync` preview on the synchronization branch. Apply only after the preview is
+`ready_to_finalize`; the apply step completes supported manual boundaries and advances
+the lock in the same PR. It never commits, pushes, merges, calls GitHub, or changes
+governance. Use the authoritative commands and blocker meanings in the
+[inheritance contract](../../../.github/inheritance/README.md#plan-single-pr-finalization).
+
+Every resulting PR still requires normal CI and human review. Merge an intermediate
+template before synchronizing its direct children; never skip a hop or auto-merge.
 
 ### 4. Replace template placeholders
 
@@ -197,6 +224,22 @@ make doctor                            # verify the template is intact
 That is genuinely "just clone" — but each new machine still needs the one-time
 **prerequisites** and **auth** below.
 
+### Audit the maintained fleet
+
+Foundation maintainers can verify every configured active direct-parent relationship
+from explicitly refreshed sibling worktrees:
+
+```bash
+make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+```
+
+The command is local, read-only, credential-free, and does not create approval work.
+The canonical fleet file records `active`, `paused`, and `retired` relationships. Run it
+from the `ai-dev-foundation` worktree; descendant Makefiles do not inherit this target.
+See [Audit the fixed fleet](../../../.github/inheritance/README.md#audit-the-fixed-fleet)
+for workspace requirements and result semantics. A scheduled private fleet audit remains
+disabled under ADR-0016.
+
 ---
 
 ## Per-machine prerequisites (both scenarios)
@@ -256,8 +299,9 @@ stays inert until you deliberately enable it.
 
 ## Quick answer: "is `git clone` enough on a different account?"
 
-- **To develop this foundation** (Scenario B): yes — `git clone` + `make setup` +
-  `gh auth refresh -s workflow` on that machine.
+- **To develop this foundation** (Scenario B): yes — `git clone`, install the
+  pre-commit hooks directly, run `make doctor`, and refresh the `workflow` OAuth scope
+  on that machine when you need to push workflow changes.
 - **To start a new project** (Scenario A): no — use "Use this template", then the
   initialization steps above. Cloning would give the new project this repo's history and
   placeholders instead of a clean start.
