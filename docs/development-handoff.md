@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328) — ライブデモをダッシュボード中心の分析ワークスペースへ再構成する。branchは`codex/328-analysis-workspace-shell` |
+| 作業 | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330) — ライブデモをダッシュボード中心の分析ワークスペースへ再構成する。branchは`codex/328-analysis-workspace-shell` |
 | デモ実行状態 | Issue #328 branchを`http://127.0.0.1:8766/`で起動し、クラウド問い合わせなしで左右ペインの開閉・幅変更、4ビュー遷移、ブラウザconsole error/warning 0を確認した。`8765`のmainデモはこの確認で再起動していない |
 | 直近完了 | [PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)はmerge済みで、custom depthの最終ページ到達条件と全段階の流量保存を修正した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
+| 現在のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
