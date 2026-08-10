@@ -376,6 +376,7 @@ print(m.visualization_for_result(
     }
   }
   const chart = new ElementStub('div');
+  const secondChart = new ElementStub('div');
   const context = {
     document: {
       createElementNS: (_namespace: string, tag: string) => new ElementStub(tag),
@@ -391,8 +392,14 @@ print(m.visualization_for_result(
       visualization: 'sankey',
     },
   };
-  assert.doesNotThrow(() => vm.runInNewContext(`${functions}\ngraph(result);`, context));
+  assert.doesNotThrow(() =>
+    vm.runInNewContext(`${functions}\ngraph(result); graph(result, secondChart);`, {
+      ...context,
+      secondChart,
+    }),
+  );
   assert.equal(chart.children[0]?.tag, 'svg');
+  assert.equal(secondChart.children[0]?.tag, 'svg');
   const tags = chart.children[0]?.children.map((child) => child.tag) ?? [];
   assert.ok(tags.includes('path'), 'Sankey links should be SVG paths');
   assert.ok(tags.includes('rect'), 'Sankey nodes should be SVG rectangles');
@@ -412,9 +419,35 @@ print(m.visualization_for_result(
   assert.equal(gradients.length, 2, 'each transition should have a color gradient');
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
-    linkStrokes.every((stroke) => stroke?.startsWith('url(#sankey-link-') === true),
+    linkStrokes.every((stroke) => /^url\(#sankey-\d+-link-\d+\)$/.test(stroke ?? '')),
     'each transition should reference its own source-to-target gradient',
   );
+  const sankeySvgs = [chart.children[0], secondChart.children[0]];
+  const allGradientIds = sankeySvgs.flatMap((svg) =>
+    descendants(svg)
+      .filter((element) => element.tag === 'linearGradient')
+      .map((element) => element.attributes.id),
+  );
+  assert.equal(
+    new Set(allGradientIds).size,
+    allGradientIds.length,
+    'paint-server IDs must be unique across Sankey SVG instances in the same document',
+  );
+  for (const svg of sankeySvgs) {
+    const localGradientIds = new Set(
+      descendants(svg)
+        .filter((element) => element.tag === 'linearGradient')
+        .map((element) => element.attributes.id),
+    );
+    const localLinks = descendants(svg).filter((element) => element.tag === 'path');
+    assert.ok(
+      localLinks.every((link) => {
+        const referencedId = link.attributes.stroke?.match(/^url\(#(.+)\)$/)?.[1];
+        return referencedId !== undefined && localGradientIds.has(referencedId);
+      }),
+      'each link must reference a gradient defined in its own SVG',
+    );
+  }
   assert.deepEqual(
     elements
       .filter((element) => element.attributes.class === 'sankey-stage')
