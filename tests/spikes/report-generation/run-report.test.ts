@@ -21,8 +21,10 @@ function loadRunReport(body: string) {
   return python(`
 import json
 import runpy
+import sys
 from datetime import date
 
+sys.path.insert(0, ${JSON.stringify(path.dirname(RUN_REPORT))})
 module = runpy.run_path(${JSON.stringify(RUN_REPORT)})
 spec = json.loads(open(${JSON.stringify(REPORT_SPEC)}, encoding="utf-8").read())
 ${body}

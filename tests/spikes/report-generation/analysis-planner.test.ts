@@ -89,6 +89,7 @@ test('planner constrains each response schema to unanswered clarification fields
     [
       '-c',
       `import importlib.util,json,sys,types
+sys.path.insert(0,${JSON.stringify(path.dirname(PLANNER))})
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 google=types.ModuleType("google");genai=types.ModuleType("google.genai")
@@ -174,6 +175,7 @@ test('planner usage includes thought tokens and supports metadata without them',
     [
       '-c',
       `import importlib.util,json,sys,types
+sys.path.insert(0,${JSON.stringify(path.dirname(PLANNER))})
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 google=types.ModuleType("google");genai=types.ModuleType("google.genai")
