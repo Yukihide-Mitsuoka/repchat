@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.16.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.6...v1.16.0) (2026-08-10)
+
+
+### Features
+
+* **demo:** add analysis workspace shell ([#330](https://github.com/Yukihide-Mitsuoka/repchat/issues/330)) ([4c6c2b8](https://github.com/Yukihide-Mitsuoka/repchat/commit/4c6c2b81a6045f77594be98271bf8e04afa873b5)), closes [#328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)
+
+
+### Bug Fixes
+
+* **demo:** preserve grid when panes collapse ([#332](https://github.com/Yukihide-Mitsuoka/repchat/issues/332)) ([053e1af](https://github.com/Yukihide-Mitsuoka/repchat/commit/053e1afe807ebdcf30e9d89a013e8bd470655487)), closes [#331](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)
+* **demo:** preserve safe meeting report claims ([#333](https://github.com/Yukihide-Mitsuoka/repchat/issues/333)) ([a14745c](https://github.com/Yukihide-Mitsuoka/repchat/commit/a14745c89c1c2eade4b598137c599f87377c4601))
+* **demo:** require requested navigation depth ([#326](https://github.com/Yukihide-Mitsuoka/repchat/issues/326)) ([db0e369](https://github.com/Yukihide-Mitsuoka/repchat/commit/db0e369c7f2f68251f325873128f269954fa065a))
+
 ## [1.15.6](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.5...v1.15.6) (2026-08-10)
 
 
