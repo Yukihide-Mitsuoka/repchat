@@ -907,6 +907,31 @@ finally:s.shutdown();s.server_close();t.join()
   assert.match(bind.stderr, /host must remain localhost-only/);
 });
 
+test('expired application-default credentials return a safe recovery instruction', () => {
+  const result = python(`
+import threading,urllib.request
+RefreshError=type("RefreshError",(Exception,),{})
+RefreshError.__module__="google.auth.exceptions"
+class E:
+ spec=json.loads((m.HERE/"report.json").read_text())
+ def query(self,_question,_emit):raise RefreshError("sensitive credential detail")
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+try:
+ req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ event=json.loads(urllib.request.urlopen(req).read().decode())
+ print(json.dumps(event,ensure_ascii=False))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const event = JSON.parse(result.stdout.split('\n').find((line) => line.startsWith('{')) ?? '');
+  assert.deepEqual(event, {
+    type: 'error',
+    message:
+      'Google Cloudの認証期限が切れています。gcloud auth application-default loginを実行し、デモを再起動してください。今回の処理は自動再実行していません。',
+  });
+  assert.doesNotMatch(result.stdout, /sensitive credential detail/);
+});
+
 test('dashboard HTTP boundary accepts a bounded confirmed plan larger than a simple query', () => {
   const result = python(`
 import threading,urllib.error,urllib.request
