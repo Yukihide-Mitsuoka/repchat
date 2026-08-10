@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #331](https://github.com/Yukihide-Mitsuoka/repchat/issues/331) — 左ナビを閉じるとmainが暗黙のgrid列へ押し出される回帰を修正する。branchは`codex/331-collapsed-grid-layout` |
+| 作業 | [Issue #331](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)／[PR #332](https://github.com/Yukihide-Mitsuoka/repchat/pull/332) — 左ナビを閉じるとmainが暗黙のgrid列へ押し出される回帰を修正する。branchは`codex/331-collapsed-grid-layout` |
 | デモ実行状態 | Issue #331 branchを`http://127.0.0.1:8766/`で起動し、クラウド問い合わせなしで左のみ・右のみ・両側の閉状態を確認した。mainは明示的な中央列を維持し、横方向のはみ出しとbrowser console error/warningは0件 |
 | 直近完了 | [PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)はmerge済みで、ダッシュボード中心の分析ワークスペースと開閉・リサイズ可能な左右ペインを追加した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモUX修正 | [#331 collapsed grid layout](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)。旧4列CSSが新しい5要素shellへ勝つcascadeを修正し、左右ペインを閉じてもmainを中央列に保つ | `live_demo.py`、`live-demo.test.ts` |
+| 現在のデモUX修正 | [#331 collapsed grid layout](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)／[PR #332](https://github.com/Yukihide-Mitsuoka/repchat/pull/332)。旧4列CSSが新しい5要素shellへ勝つcascadeを修正し、左右ペインを閉じてもmainを中央列に保つ | `live_demo.py`、`live-demo.test.ts` |
 | 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
