@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.15.6](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.5...v1.15.6) (2026-08-10)
+
+
+### Bug Fixes
+
+* **demo:** complete bounded meeting reports ([#312](https://github.com/Yukihide-Mitsuoka/repchat/issues/312)) ([ce2397f](https://github.com/Yukihide-Mitsuoka/repchat/commit/ce2397f3f3aa97daba40bdfbc497935f04912830))
+* **demo:** explain expired application-default credentials ([#322](https://github.com/Yukihide-Mitsuoka/repchat/issues/322)) ([37d647d](https://github.com/Yukihide-Mitsuoka/repchat/commit/37d647d2f74e5862c2dac20c54a2ea42c237c83b))
+* **demo:** isolate Sankey SVG paint-server IDs ([#320](https://github.com/Yukihide-Mitsuoka/repchat/issues/320)) ([67a7694](https://github.com/Yukihide-Mitsuoka/repchat/commit/67a7694e194882fd364e4748311f1700a74ef362))
+* **demo:** preserve custom navigation depth ([#324](https://github.com/Yukihide-Mitsuoka/repchat/issues/324)) ([fd97479](https://github.com/Yukihide-Mitsuoka/repchat/commit/fd97479c3aeba94d47b1bc5aa73a7b93e2cd758c))
+
 ## [1.15.5](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.4...v1.15.5) (2026-08-09)
 
 
