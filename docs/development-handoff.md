@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #325](https://github.com/Yukihide-Mitsuoka/repchat/issues/325) — custom回遊depthで最終ページ到達前に上位12経路を抽出し、指定depth未満のSankeyを正常扱いする不具合を修正する |
+| 作業 | [Issue #325](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326) — custom回遊depthで最終ページ到達前に上位12経路を抽出し、指定depth未満のSankeyを正常扱いする不具合を修正する |
 | デモ実行状態 | 2026-08-10にPR #313 merge後の`main`から`kotonoha-bi-dev`向けローカルデモを再起動し、`http://127.0.0.1:8765/`のHTTP 200を確認した。その後、ユーザー操作で5ページSQLを実行済み。AIはp1〜p5を生成したが結果は3ページまでだった。修正確認の再実行は新しい費用承認を必要とする |
 | 直近完了 | [PR #324](https://github.com/Yukihide-Mitsuoka/repchat/pull/324)はmerge済みで、3〜6ページのcustom depth契約と停止理由表示を追加した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -50,7 +50,7 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモ阻害 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
+| 現在のデモ阻害 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
@@ -76,7 +76,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-10）
 
-1. **現在:** [Issue #325](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)でcustom回遊depthの最終ページ到達条件と全段階の流量保存を固定テストで確認する。実Vertex AI、実BigQueryは再実行しない。
+1. **現在:** [Issue #325](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)でcustom回遊depthの最終ページ到達条件と全段階の流量保存を固定テストで確認する。実Vertex AI、実BigQueryは再実行しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
