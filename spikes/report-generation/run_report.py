@@ -190,6 +190,7 @@ def generation_request(section: dict, period: dict) -> str:
 def generate_request(client, model: str, request: str, rules: str):
     """Generate structured SQL from an already-built analysis request."""
     from google.genai import types
+    from vertex_usage import token_counts
 
     resp = client.models.generate_content(
         model=model,
@@ -200,11 +201,7 @@ def generate_request(client, model: str, request: str, rules: str):
             response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason", "undefined_terms"]},
         ),
     )
-    um = resp.usage_metadata
-    return json.loads(resp.text), {
-        "input_tokens": um.prompt_token_count or 0,
-        "output_tokens": um.candidates_token_count or 0,
-    }
+    return json.loads(resp.text), token_counts(resp.usage_metadata)
 
 
 def generate(client, model: str, section: dict, period: dict, rules: str):

@@ -53,6 +53,24 @@ fail-closed、自動再実行禁止は維持します。
 [Google Cloud thinking](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/thinking)、
 [GenerateContentResponse](https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/GenerateContentResponse)
 
+## 分析計画とSQL生成のVertex AI推定費用がthought tokensを含まない
+
+**Affects:** Issue #311修正前の分析計画相談、単一グラフSQL生成、ダッシュボードSQL生成。
+
+**Cause:** 各経路は`candidates_token_count`だけを出力tokenとして返していました。Geminiが
+`thoughts_token_count`を返す応答では、画面と実行結果のVertex AI推定費用が課金対象になり得る出力tokenを
+過少計上していました。生成結果、SQL、BigQuery実行結果には影響しません。
+
+**Fix:** 分析計画とSQL生成は共通のusage計算を使い、candidate tokensとthought tokensを出力tokenとして
+合算します。SDK応答にthought token属性が無い場合は0として扱います。モデル、thinking level、生成回数、
+自動再実行禁止は変更しません。
+
+**Prevention:** 両経路の固定応答テストでthought tokensの加算と、属性が無い旧SDK形式の後方互換を確認します。
+実Vertex AI・BigQueryを費用確認なしで再実行しません。
+
+**Refs:** [Issue #311](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)、
+[GenerateContentResponse](https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1/GenerateContentResponse)
+
 ## 会議報告に根拠パネルへ存在しない数値があります: 14.56、19.6、49.51
 
 **Affects:** Issue #295修正前の会議報告アシスト。

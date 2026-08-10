@@ -228,6 +228,7 @@ def normalize_plan(
 def propose(client, model: str, objective: str, period: dict, metrics: str, answers: dict):
     """Ask Vertex AI for a bounded plan and normalize its response."""
     from google.genai import types
+    from vertex_usage import token_counts
 
     response = client.models.generate_content(
         model=model,
@@ -238,11 +239,9 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
             response_schema=_response_schema(answers),
         ),
     )
-    usage = response.usage_metadata
-    return normalize_plan(json.loads(response.text), objective, period, answers), {
-        "input_tokens": usage.prompt_token_count or 0,
-        "output_tokens": usage.candidates_token_count or 0,
-    }
+    return normalize_plan(
+        json.loads(response.text), objective, period, answers
+    ), token_counts(response.usage_metadata)
 
 
 def confirm_plan(plan: dict) -> dict:
