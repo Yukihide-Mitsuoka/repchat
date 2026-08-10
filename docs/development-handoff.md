@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — [PR #334](https://github.com/Yukihide-Mitsuoka/repchat/pull/334)で、OpenAI公式資料、公開画面観測、オーナー要望、現行デモを区別し、RepChat機能との対応と再現可能なpane／状態／responsive要件を定義する |
+| 作業 | [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計 — merge済み[PR #334](https://github.com/Yukihide-Mitsuoka/repchat/pull/334)を基礎に、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)でEvidence公式競合資料との対応、可視context、Insight／publish lifecycle、embedded previewを追加する |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
 | 直近完了 | [PR #329](https://github.com/Yukihide-Mitsuoka/repchat/pull/329)のtemplate同期と[PR #327](https://github.com/Yukihide-Mitsuoka/repchat/pull/327)のv1.16.0 releaseはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -49,7 +49,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、権限、deep linkを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
+| 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
