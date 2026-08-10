@@ -292,6 +292,9 @@ gcloud auth application-default login
 SQL、結果、Vertex AI推定費用をEvidence基調の画面に表示します。SQLは
 GitHub Light相当の淡いコード領域で、予約語、関数、文字列、数値、コメント、識別子を色分けします。
 SQL文字列はHTMLとして解釈せず、改行とスペースインデントを保持します。
+分析計画、SQL生成、会議報告のusageは共通してprompt tokensを入力、candidate tokensとthought tokensの
+合計を出力として費用換算します。thought token属性が無いSDK応答は0として扱います。この補正でモデル、
+thinking level、生成回数は変更しません。
 単一グラフの4段階とダッシュボードの3段階は、現在の段階を黄、完了済みを緑で表示します。
 単一グラフと右のパネル詳細に表示するSQLの右上にはコピー操作を置き、成功・失敗をボタンの表示と
 アクセシブル名で通知します。可視化内の件数は整数、率・売上などの連続値は最大小数2桁で表示しますが、
