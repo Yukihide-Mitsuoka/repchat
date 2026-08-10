@@ -1282,6 +1282,80 @@ print(json.dumps({
   });
 });
 
+test('analysis workspace makes the dashboard primary and separates supporting work', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "shell":all(value in html for value in ['class="app-shell"','id="workspace-sidebar"','id="workspace-main"','id="panel-inspector"']),
+ "adjustable":all(value in html for value in ['id="sidebar-toggle"','aria-label="ナビゲーションを折りたたむ"','id="navigation-resizer"','aria-label="ナビゲーションの幅を変更"','id="inspector-toggle"','aria-label="詳細パネルを折りたたむ"','id="inspector-resizer"','aria-label="詳細パネルの幅を変更"']),
+ "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
+ "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
+ "dashboard_first":all(value in html for value in ['id="dashboard-empty"','id="open-build-studio"','ダッシュボードが主役の分析ワークスペース']),
+ "future_honest":all(value in html for value in ['対話履歴（この起動中のみ）','Git連携（将来機能）']),
+ "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    shell: true,
+    adjustable: true,
+    views: true,
+    navigation: true,
+    dashboard_first: true,
+    future_honest: true,
+    inspector: true,
+  });
+});
+
+test('workspace transitions reveal completed artifacts without mixing build and report views', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(script.includes('function selectWorkspace(view)'));
+  assert.ok(script.includes('function toggleSidebar()'));
+  assert.ok(script.includes('function resizeNavigation(event)'));
+  assert.ok(script.includes('function toggleInspector()'));
+  assert.ok(script.includes('function resizeInspector(event)'));
+  assert.ok(script.includes('if(window.innerWidth<1100)toggleInspector()'));
+  assert.ok(script.includes('selectWorkspace("dashboard")'));
+  assert.ok(script.includes('selectWorkspace("report")'));
+  assert.ok(script.includes('$("open-build-studio").onclick=()=>selectWorkspace("build")'));
+  assert.ok(script.includes('openPanelInspector(panel.id)'));
+  assert.ok(script.includes('selectInspectorTab("sql")'));
+});
+
+test('meeting report owns persistent processing and error state across workspace navigation', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(rendered.stdout.includes('id="report-status"'));
+  assert.ok(rendered.stdout.includes('id="report-message"'));
+  assert.ok(rendered.stdout.includes('id="report-warning"'));
+  assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
+  assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
+  assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
+  assert.ok(script.includes('setReportState("要承認"'));
+  assert.ok(
+    script.includes('setReportState("報告案なし","新しいbuild完了後に会議報告案を生成できます。")'),
+  );
+  const reportRequest = script.slice(script.lastIndexOf('async function runMeetingReport()'));
+  assert.doesNotMatch(reportRequest, /\$\("dashboard-message"\)/);
+});
+
+test('collapsed workspace panes keep the explicit five-column desktop grid', () => {
+  const result = python(`
+html=m.HTML
+desktop=html.split('.app-shell{--nav-width:220px',1)[1].split('@media',1)[0]
+grid='grid-template-columns:var(--nav-column) var(--nav-grip) minmax(0,1fr) var(--inspector-grip) var(--inspector-column)'
+print(json.dumps({
+ "sidebar":grid in desktop.split('.app-shell.sidebar-collapsed{',1)[1].split('}',1)[0],
+ "inspector":grid in desktop.split('.app-shell.inspector-collapsed{',1)[1].split('}',1)[0],
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { sidebar: true, inspector: true });
+});
+
 test('dashboard and single-graph progress both expose active and completed states', () => {
   const result = python(`
 html=m.HTML
@@ -1306,7 +1380,7 @@ test('single and dashboard SQL areas provide an accessible clipboard action', ()
 html=m.HTML
 print(json.dumps({
  "single":all(value in html for value in ['class="sql-shell"','id="sql-copy"','aria-label="SQLをコピー"']),
- "dashboard":all(value in html for value in ["makeCopyButton(sql)","codeShell.append(copy,sql)"]),
+ "dashboard":all(value in html for value in ['id="inspector-sql-copy"','configureCopyButton($("inspector-sql-copy"),$("inspector-sql"))']),
  "clipboard":all(value in html for value in ["navigator.clipboard.writeText(target.textContent)","SQLをコピーしました","SQLのコピーに失敗しました"]),
 }))
 `);
@@ -1361,12 +1435,18 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
 
   function invoke(revision: string | null, showCost: () => void) {
     const elements = {
-      'dashboard-message': { className: '', textContent: '' },
-      'dashboard-status': { textContent: '' },
+      'report-message': { className: '', textContent: '' },
+      'report-status': { textContent: '' },
     };
     vm.runInNewContext(
       `let latestBuildRevision=${JSON.stringify(revision)};
        const $=id=>elements[id];
+       const setReportState=(status,message,className="notice")=>{
+         elements["report-status"].textContent=status;
+         elements["report-message"].className=className;
+         elements["report-message"].textContent=message;
+       };
+       const selectWorkspace=()=>{};
        ${source}
        requestMeetingReport();`,
       { elements, showCost },
@@ -1375,9 +1455,9 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
   }
 
   const missing = invoke(null, () => assert.fail('must not open the cost dialog'));
-  assert.equal(missing['dashboard-status'].textContent, 'エラー');
+  assert.equal(missing['report-status'].textContent, 'エラー');
   assert.equal(
-    missing['dashboard-message'].textContent,
+    missing['report-message'].textContent,
     '会議報告案を生成できるbuild結果がありません。',
   );
 
@@ -1386,13 +1466,13 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
     requestedMode = mode ?? '';
   });
   assert.equal(requestedMode, 'report');
-  assert.equal(waiting['dashboard-status'].textContent, '費用確認待ち');
+  assert.equal(waiting['report-status'].textContent, '費用確認待ち');
 
   const failed = invoke('build-1', () => {
     throw new Error('dialog unavailable');
   });
-  assert.equal(failed['dashboard-status'].textContent, 'エラー');
-  assert.equal(failed['dashboard-message'].textContent, '費用確認ダイアログを開けませんでした。');
+  assert.equal(failed['report-status'].textContent, 'エラー');
+  assert.equal(failed['report-message'].textContent, '費用確認ダイアログを開けませんでした。');
 });
 
 test('dashboard UI accepts recommended clarification answers without forced re-proposal', () => {
