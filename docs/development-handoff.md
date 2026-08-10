@@ -15,7 +15,7 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の追加修正 — 根拠外数値を含むAI項目だけを除外し、妥当な会議報告項目を一回の有料応答から保持する。branchは`codex/295-meeting-report-invalid-claims` |
+| 作業 | [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の追加修正 — [PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)で、根拠外数値を含むAI項目だけを除外し、妥当な会議報告項目を一回の有料応答から保持する |
 | デモ実行状態 | 修正branchを`http://127.0.0.1:8765/`で起動し、会議報告専用の初期状態表示をブラウザで確認した。固定応答248件は成功。実Vertex AIとBigQueryは再実行していない |
 | 直近完了 | [PR #332](https://github.com/Yukihide-Mitsuoka/repchat/pull/332)はmerge済みで、左右ペインを閉じてもmainを明示的な中央grid列へ維持する |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -77,7 +77,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-10）
 
-1. **現在:** [Issue #295](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)の追加修正で、会議報告のstrict validatorを緩めず、一回の生成応答から妥当な項目を保持する。固定応答テスト、ローカル画面、CIを確認し、実Vertex AIとBigQueryは再実行しない。
+1. **現在:** [PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)で、会議報告のstrict validatorを緩めず、一回の生成応答から妥当な項目を保持する。固定応答テストとローカル画面は確認済み。CIを確認し、実Vertex AIとBigQueryは再実行しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
