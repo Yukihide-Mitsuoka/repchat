@@ -97,7 +97,7 @@ print(json.dumps({
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
  "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*40","count*39"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
- "progress":all(x in html for x in ["生成の進行状況","実行前","質問を送信すると、ここに処理状況が表示されます。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
+ "progress":all(x in html for x in ["生成の進行状況","実行前","問い合わせを入力し、生成ボタンを押してください。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -561,10 +561,7 @@ print(json.dumps({"ordering":ordering,"validation":validation},ensure_ascii=Fals
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    ordering: [
-      '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-      'accepted',
-    ],
+    ordering: ['回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。', 'accepted'],
     validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
   });
 });
