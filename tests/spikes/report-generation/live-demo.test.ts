@@ -1324,6 +1324,20 @@ test('workspace transitions reveal completed artifacts without mixing build and 
   assert.ok(script.includes('selectInspectorTab("sql")'));
 });
 
+test('collapsed workspace panes keep the explicit five-column desktop grid', () => {
+  const result = python(`
+html=m.HTML
+desktop=html.split('.app-shell{--nav-width:220px',1)[1].split('@media',1)[0]
+grid='grid-template-columns:var(--nav-column) var(--nav-grip) minmax(0,1fr) var(--inspector-grip) var(--inspector-column)'
+print(json.dumps({
+ "sidebar":grid in desktop.split('.app-shell.sidebar-collapsed{',1)[1].split('}',1)[0],
+ "inspector":grid in desktop.split('.app-shell.inspector-collapsed{',1)[1].split('}',1)[0],
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { sidebar: true, inspector: true });
+});
+
 test('dashboard and single-graph progress both expose active and completed states', () => {
   const result = python(`
 html=m.HTML
