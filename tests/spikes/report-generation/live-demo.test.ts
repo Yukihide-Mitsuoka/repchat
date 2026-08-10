@@ -387,9 +387,11 @@ print(m.visualization_for_result(
       rows: [
         ['1. 入口: /', '2. /shop', 120],
         ['2. /shop', '3. /cart', 48],
+        ['3. /cart', '4. /complete', 20],
       ],
       columns: ['source', 'target', 'sessions'],
       visualization: 'sankey',
+      navigation_depth: 4,
     },
   };
   assert.doesNotThrow(() =>
@@ -416,7 +418,7 @@ print(m.visualization_for_result(
   const linkStrokes = elements
     .filter((element) => element.tag === 'path')
     .map((element) => element.attributes.stroke);
-  assert.equal(gradients.length, 2, 'each transition should have a color gradient');
+  assert.equal(gradients.length, 3, 'each transition should have a color gradient');
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
     linkStrokes.every((stroke) => /^url\(#sankey-\d+-link-\d+\)$/.test(stroke ?? '')),
@@ -452,7 +454,7 @@ print(m.visualization_for_result(
     elements
       .filter((element) => element.attributes.class === 'sankey-stage')
       .map((element) => element.textContent),
-    ['入口', '2ページ目', '3ページ目'],
+    ['入口', '2ページ目', '3ページ目', '4ページ目'],
   );
   assert.ok(links.every((link) => link.attributes.tabindex === '0'));
   assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
@@ -465,7 +467,10 @@ print(m.visualization_for_result(
   links[0]?.onfocus?.();
   assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
   const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
-  assert.match(terminal?.textContent ?? '', /2ページ目で終了: 72セッション/);
+  assert.match(
+    terminal?.textContent ?? '',
+    /2ページ目で終了: 72セッション、3ページ目で終了: 28セッション/,
+  );
 });
 
 test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
