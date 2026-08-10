@@ -10,6 +10,28 @@ updated: 2026-08-10
 この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
 BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
 
+## 「Google Cloudの認証期限が切れています」で停止する
+
+**Affects:** Issue #321修正前は、ADCのrefresh tokenが再認証を要求すると「生成または実行に失敗しました。
+端末ログを確認してください。」という汎用エラーだけを表示していました。
+
+**Cause:** Vertex AIまたはBigQueryへの接続時に`google.auth.exceptions.RefreshError`が発生しましたが、
+認証期限切れを安全な利用者向けエラーへ分類していませんでした。SQL生成やSankey描画の不具合ではありません。
+
+**Fix:** 次を実行してブラウザでADCを再認証し、古いcredential objectを破棄するためデモを再起動します。
+
+```bash
+gcloud auth application-default login
+make demo-live PROJECT=<project>
+```
+
+修正版は認証期限切れを画面へ明示し、認証情報やGoogle SDKの例外本文は表示しません。失敗した問い合わせを
+自動再実行しないため、再認証後も画面の費用確認を経て利用者が明示的に実行します。
+
+**Prevention:** 固定例外を使うHTTP回帰テストで復旧手順と機密な例外本文の非表示を検証します。
+
+**Refs:** [Issue #321](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)
+
 ## 会議報告が出力上限までに完了しない
 
 **Affects:** Issue #310修正前の会議報告アシスト。
