@@ -504,7 +504,8 @@ test('custom navigation depth keeps the bounded Sankey analysis contract', () =>
 spec=json.loads((m.HERE/"report.json").read_text())
 q3="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"
 q4=q3.replace("3ページ目", "4ページ目")
-sections=[m.section_for_question(spec,q) for q in [q3,q4]]
+q5=q3.replace("3ページ目", "5ページ目")
+sections=[m.section_for_question(spec,q) for q in [q3,q4,q5]]
 too_deep=""
 try:m.section_for_question(spec,q3.replace("3ページ目", "7ページ目"))
 except m.LiveDemoError as error:too_deep=str(error)
@@ -535,10 +536,18 @@ print(json.dumps({"sections":[{"id":s["id"],"component":s["component"],"transiti
         navigation_depth: 4,
         verification: 'execution',
       },
+      {
+        id: 'Q1',
+        component: 'sankey',
+        transition_mode: 'page_navigation',
+        navigation_depth: 5,
+        verification: 'execution',
+      },
     ],
   );
   assert.match(value.sections[1].requirements, /4ページ目/);
   assert.match(value.sections[1].requirements, /3→4/);
+  assert.match(value.sections[2].requirements, /5ページ目が存在するセッションだけ/);
   assert.equal(value.too_deep, '回遊Sankeyで指定できるのは入口から3〜6ページ目までです。');
 });
 
@@ -551,18 +560,37 @@ for sql in [
 ]:
  try:m.require_deterministic_navigation_order(sql,4);ordering.append("accepted")
  except m.LiveDemoError as error:ordering.append(str(error))
+completion=[]
+for sql in [
+ "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p2 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2,p3,p4,p5,sessions FROM top_paths WHERE p5 IS NOT NULL",
+ "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p5 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2 FROM top_paths",
+]:
+ try:m.require_complete_navigation_depth(sql,5);completion.append("accepted")
+ except m.LiveDemoError as error:completion.append(str(error))
 valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",7),("3. /cart","4. /done",4)]
 invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
 validation=[]
 for rows in [valid,invalid]:
  try:m.validate_navigation_sankey(rows,4);validation.append("accepted")
  except m.LiveDemoError as error:validation.append(str(error))
-print(json.dumps({"ordering":ordering,"validation":validation},ensure_ascii=False))
+five_page=[]
+for rows in [
+ [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10)],
+ [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /checkout",10),("4. /checkout","5. /done",10)],
+]:
+ try:m.validate_navigation_sankey(rows,5);five_page.append("accepted")
+ except m.LiveDemoError as error:five_page.append(str(error))
+print(json.dumps({"ordering":ordering,"completion":completion,"validation":validation,"five_page":five_page},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     ordering: ['回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。', 'accepted'],
+    completion: [
+      '回遊の上位12経路が5ページ目到達前に抽出されるためBigQueryへ送信しません。',
+      'accepted',
+    ],
     validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
+    five_page: ['回遊が要求された5ページ目まで到達しないため描画しません。', 'accepted'],
   });
 });
 
