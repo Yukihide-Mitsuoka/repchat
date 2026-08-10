@@ -494,6 +494,88 @@ print(json.dumps(out,ensure_ascii=False))
   ]);
 });
 
+test('custom navigation depth keeps the bounded Sankey analysis contract', () => {
+  const result = python(`
+spec=json.loads((m.HERE/"report.json").read_text())
+q3="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"
+q4=q3.replace("3ページ目", "4ページ目")
+sections=[m.section_for_question(spec,q) for q in [q3,q4]]
+too_deep=""
+try:m.section_for_question(spec,q3.replace("3ページ目", "7ページ目"))
+except m.LiveDemoError as error:too_deep=str(error)
+print(json.dumps({"sections":[{"id":s["id"],"component":s["component"],"transition_mode":s["transition_mode"],"navigation_depth":s["navigation_depth"],"verification":s["verification"],"requirements":" ".join(s["generation_requirements"])} for s in sections],"too_deep":too_deep},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const value = JSON.parse(result.stdout);
+  assert.deepEqual(
+    value.sections.map((section: Record<string, string | number>) => ({
+      id: section.id,
+      component: section.component,
+      transition_mode: section.transition_mode,
+      navigation_depth: section.navigation_depth,
+      verification: section.verification,
+    })),
+    [
+      {
+        id: 'R17',
+        component: 'sankey',
+        transition_mode: 'page_navigation',
+        navigation_depth: 3,
+        verification: 'reference',
+      },
+      {
+        id: 'Q1',
+        component: 'sankey',
+        transition_mode: 'page_navigation',
+        navigation_depth: 4,
+        verification: 'execution',
+      },
+    ],
+  );
+  assert.match(value.sections[1].requirements, /4ページ目/);
+  assert.match(value.sections[1].requirements, /3→4/);
+  assert.equal(value.too_deep, '回遊Sankeyで指定できるのは入口から3〜6ページ目までです。');
+});
+
+test('custom navigation depth validates stable ordering and all adjacent stages', () => {
+  const result = python(`
+ordering=[]
+for sql in [
+ "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3 LIMIT 12",
+ "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3,p4 LIMIT 12",
+]:
+ try:m.require_deterministic_navigation_order(sql,4);ordering.append("accepted")
+ except m.LiveDemoError as error:ordering.append(str(error))
+valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",7),("3. /cart","4. /done",4)]
+invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
+validation=[]
+for rows in [valid,invalid]:
+ try:m.validate_navigation_sankey(rows,4);validation.append("accepted")
+ except m.LiveDemoError as error:validation.append(str(error))
+print(json.dumps({"ordering":ordering,"validation":validation},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    ordering: [
+      '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
+      'accepted',
+    ],
+    validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
+  });
+});
+
+test('single-graph progress shows the dynamic stop reason before stage details', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const html = rendered.stdout;
+  const progressStart = html.indexOf('aria-labelledby="progress-title"');
+  const progressEnd = html.indexOf('</section>', progressStart);
+  const progress = html.slice(progressStart, progressEnd);
+  assert.ok(progress.indexOf('id="message"') < progress.indexOf('<ol class="stages">'));
+  assert.doesNotMatch(progress, /質問を送信すると、ここに処理状況が表示されます。/);
+  assert.match(html, /未定義のため停止:/);
+});
+
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
