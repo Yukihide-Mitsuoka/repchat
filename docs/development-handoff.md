@@ -15,11 +15,11 @@ updated: 2026-08-10
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330) — ライブデモをダッシュボード中心の分析ワークスペースへ再構成する。branchは`codex/328-analysis-workspace-shell` |
-| デモ実行状態 | Issue #328 branchを`http://127.0.0.1:8766/`で起動し、クラウド問い合わせなしで左右ペインの開閉・幅変更、4ビュー遷移、ブラウザconsole error/warning 0を確認した。`8765`のmainデモはこの確認で再起動していない |
-| 直近完了 | [PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)はmerge済みで、custom depthの最終ページ到達条件と全段階の流量保存を修正した |
+| 作業 | [Issue #331](https://github.com/Yukihide-Mitsuoka/repchat/issues/331) — 左ナビを閉じるとmainが暗黙のgrid列へ押し出される回帰を修正する。branchは`codex/331-collapsed-grid-layout` |
+| デモ実行状態 | Issue #331 branchを`http://127.0.0.1:8766/`で起動し、クラウド問い合わせなしで左のみ・右のみ・両側の閉状態を確認した。mainは明示的な中央列を維持し、横方向のはみ出しとbrowser console error/warningは0件 |
+| 直近完了 | [PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)はmerge済みで、ダッシュボード中心の分析ワークスペースと開閉・リサイズ可能な左右ペインを追加した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #328の固定DOM・ブラウザ表示を確認し、既存の費用確認、SQL生成、build、会議報告の契約を維持したままUIを完成させる。実Vertex AI、実BigQueryは今回再実行しない |
+| AIができること | Issue #331の5列grid契約を固定テストとローカルブラウザで検証し、既存の費用確認、SQL生成、build、会議報告の契約を維持する。実Vertex AI、実BigQueryは今回再実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -50,7 +50,8 @@ updated: 2026-08-10
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
+| 現在のデモUX修正 | [#331 collapsed grid layout](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)。旧4列CSSが新しい5要素shellへ勝つcascadeを修正し、左右ペインを閉じてもmainを中央列に保つ | `live_demo.py`、`live-demo.test.ts` |
+| 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
@@ -77,7 +78,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-10）
 
-1. **現在:** [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)でダッシュボード中心の分析ワークスペースを固定DOMとローカルブラウザで確認する。左右ペインの開閉・幅変更、build完了後のダッシュボード遷移、報告生成後の会議報告遷移を確認し、実Vertex AI、実BigQueryは再実行しない。
+1. **現在:** [Issue #331](https://github.com/Yukihide-Mitsuoka/repchat/issues/331)で左右ペインの閉状態でも明示的な5列grid契約を維持する。左のみ・右のみ・両側の閉状態を固定テストとローカルブラウザで確認し、実Vertex AI、実BigQueryは再実行しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
