@@ -1282,6 +1282,42 @@ print(json.dumps({
   });
 });
 
+test('analysis workspace makes the dashboard primary and separates supporting work', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "shell":all(value in html for value in ['class="app-shell"','id="workspace-sidebar"','id="workspace-main"','id="panel-inspector"']),
+ "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
+ "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
+ "dashboard_first":all(value in html for value in ['id="dashboard-empty"','id="open-build-studio"','ダッシュボードが主役の分析ワークスペース']),
+ "future_honest":all(value in html for value in ['対話履歴（この起動中のみ）','Git連携（将来機能）']),
+ "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    shell: true,
+    views: true,
+    navigation: true,
+    dashboard_first: true,
+    future_honest: true,
+    inspector: true,
+  });
+});
+
+test('workspace transitions reveal completed artifacts without mixing build and report views', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(script.includes('function selectWorkspace(view)'));
+  assert.ok(script.includes('selectWorkspace("dashboard")'));
+  assert.ok(script.includes('selectWorkspace("report")'));
+  assert.ok(script.includes('$ ("open-build-studio")') === false);
+  assert.ok(script.includes('$("open-build-studio").onclick=()=>selectWorkspace("build")'));
+  assert.ok(script.includes('openPanelInspector(panel.id)'));
+  assert.ok(script.includes('selectInspectorTab("sql")'));
+});
+
 test('dashboard and single-graph progress both expose active and completed states', () => {
   const result = python(`
 html=m.HTML
