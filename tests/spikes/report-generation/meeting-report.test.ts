@@ -342,10 +342,7 @@ print(json.dumps({
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.calls, 1);
-  assert.equal(
-    output.strict_error,
-    '会議報告に根拠パネルへ存在しない数値があります: 22',
-  );
+  assert.equal(output.strict_error, '会議報告に根拠パネルへ存在しない数値があります: 22');
   assert.deepEqual(output.observations, ['購入件数は895件です。']);
   assert.deepEqual(output.hypotheses, ['導線に改善余地がある可能性があります。']);
   assert.ok(output.interpretations.every((value: string) => !/3000|4000/.test(value)));

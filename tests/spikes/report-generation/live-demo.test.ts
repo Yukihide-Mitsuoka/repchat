@@ -1335,10 +1335,11 @@ test('meeting report owns persistent processing and error state across workspace
   assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
   assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
   assert.ok(script.includes('setReportState("要承認"'));
-  assert.doesNotMatch(
-    script,
-    /runMeetingReport\(\)[\s\S]*?catch\(e\)[\s\S]*?\$\("dashboard-message"\)/,
+  assert.ok(
+    script.includes('setReportState("報告案なし","新しいbuild完了後に会議報告案を生成できます。")'),
   );
+  const reportRequest = script.slice(script.lastIndexOf('async function runMeetingReport()'));
+  assert.doesNotMatch(reportRequest, /\$\("dashboard-message"\)/);
 });
 
 test('collapsed workspace panes keep the explicit five-column desktop grid', () => {
@@ -1434,12 +1435,18 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
 
   function invoke(revision: string | null, showCost: () => void) {
     const elements = {
-      'dashboard-message': { className: '', textContent: '' },
-      'dashboard-status': { textContent: '' },
+      'report-message': { className: '', textContent: '' },
+      'report-status': { textContent: '' },
     };
     vm.runInNewContext(
       `let latestBuildRevision=${JSON.stringify(revision)};
        const $=id=>elements[id];
+       const setReportState=(status,message,className="notice")=>{
+         elements["report-status"].textContent=status;
+         elements["report-message"].className=className;
+         elements["report-message"].textContent=message;
+       };
+       const selectWorkspace=()=>{};
        ${source}
        requestMeetingReport();`,
       { elements, showCost },
@@ -1448,9 +1455,9 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
   }
 
   const missing = invoke(null, () => assert.fail('must not open the cost dialog'));
-  assert.equal(missing['dashboard-status'].textContent, 'エラー');
+  assert.equal(missing['report-status'].textContent, 'エラー');
   assert.equal(
-    missing['dashboard-message'].textContent,
+    missing['report-message'].textContent,
     '会議報告案を生成できるbuild結果がありません。',
   );
 
@@ -1459,13 +1466,13 @@ test('meeting report click gives immediate feedback and surfaces missing revisio
     requestedMode = mode ?? '';
   });
   assert.equal(requestedMode, 'report');
-  assert.equal(waiting['dashboard-status'].textContent, '費用確認待ち');
+  assert.equal(waiting['report-status'].textContent, '費用確認待ち');
 
   const failed = invoke('build-1', () => {
     throw new Error('dialog unavailable');
   });
-  assert.equal(failed['dashboard-status'].textContent, 'エラー');
-  assert.equal(failed['dashboard-message'].textContent, '費用確認ダイアログを開けませんでした。');
+  assert.equal(failed['report-status'].textContent, 'エラー');
+  assert.equal(failed['report-message'].textContent, '費用確認ダイアログを開けませんでした。');
 });
 
 test('dashboard UI accepts recommended clarification answers without forced re-proposal', () => {
