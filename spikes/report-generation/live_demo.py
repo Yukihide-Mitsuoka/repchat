@@ -137,6 +137,26 @@ class LiveDemoError(RuntimeError):
     """A local-demo failure that is safe to show in the browser."""
 
 
+def google_auth_recovery_message(error: Exception) -> str | None:
+    """Return a bounded recovery instruction for an expired Google ADC chain."""
+    current: BaseException | None = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        error_type = type(current)
+        if (
+            error_type.__module__ == "google.auth.exceptions"
+            and error_type.__name__ == "RefreshError"
+        ):
+            return (
+                "Google Cloudの認証期限が切れています。"
+                "gcloud auth application-default loginを実行し、デモを再起動してください。"
+                "今回の処理は自動再実行していません。"
+            )
+        current = current.__cause__ or current.__context__
+    return None
+
+
 def period_for_question(question: str) -> dict[str, str]:
     """Return the explicit month in a question, bounded by the demo dataset."""
     match = re.search(r"(?P<year>\d{4})年\s*(?P<month>\d{1,2})月", question)
@@ -820,6 +840,11 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         except LiveDemoError as error:
             emit({"type": "error", "message": str(error)})
         except Exception as error:  # noqa: BLE001 — details stay server-side
+            recovery_message = google_auth_recovery_message(error)
+            if recovery_message:
+                print("live query failed: Google authentication expired", flush=True)
+                emit({"type": "error", "message": recovery_message})
+                return
             print(f"live query failed: {type(error).__name__}", flush=True)
             emit({"type": "error", "message": "生成または実行に失敗しました。端末ログを確認してください。"})
     def _headers(self, content_type: str) -> None:
