@@ -567,7 +567,7 @@ for sql in [
 ]:
  try:m.require_complete_navigation_depth(sql,5);completion.append("accepted")
  except m.LiveDemoError as error:completion.append(str(error))
-valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",7),("3. /cart","4. /done",4)]
+valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /done",10)]
 invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
 validation=[]
 for rows in [valid,invalid]:
@@ -576,6 +576,7 @@ for rows in [valid,invalid]:
 five_page=[]
 for rows in [
  [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10)],
+ [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",9),("3. /cart","4. /checkout",9),("4. /checkout","5. /done",9)],
  [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /checkout",10),("4. /checkout","5. /done",10)],
 ]:
  try:m.validate_navigation_sankey(rows,5);five_page.append("accepted")
@@ -590,7 +591,11 @@ print(json.dumps({"ordering":ordering,"completion":completion,"validation":valid
       'accepted',
     ],
     validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
-    five_page: ['回遊が要求された5ページ目まで到達しないため描画しません。', 'accepted'],
+    five_page: [
+      '回遊が要求された5ページ目まで到達しないため描画しません。',
+      '回遊が要求された5ページ目まで到達しないため描画しません。',
+      'accepted',
+    ],
   });
 });
 

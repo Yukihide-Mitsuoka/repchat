@@ -205,6 +205,24 @@ Vertex AI・BigQueryを呼ぶ前に拒否します。
 
 **Refs:** [Issue #323](https://github.com/Yukihide-Mitsuoka/repchat/issues/323)
 
+## 5ページ目まで指定しても3ページ目までしか描画されない
+
+**Affects:** Issue #325修正前のcustom depth回遊Sankey。
+
+**Cause:** Geminiは`p1`〜`p5`と1→2〜4→5を持つ5ページSQLを生成していましたが、上位12経路を
+`p2 IS NOT NULL`だけで抽出していました。短いセッションが上位を占めた結果、実行結果には1→2と2→3しか
+残りませんでした。結果検査も、後続段階が空なら途中終了として許可していました。生成AIが3ページSQLへ
+固定された問題ではありません。
+
+**Fix:** custom depthでは、指定した最終ページの`pN IS NOT NULL`を上位12抽出より前に要求します。この条件が
+無い生成SQLはBigQuery前に拒否します。結果には1→2から`N-1`→Nまでの全段階と、中間段階で一致する流量を
+要求し、欠落時は描画しません。登録済み3ページ設問は既存の参照値と途中終了注記を維持します。
+
+**Prevention:** 固定テストで5ページ生成契約、抽出後にだけ最終ページを絞るSQLの拒否、全4 hopと流量保存を
+検証します。実Vertex AI・BigQueryの再実行は費用を再承認した場合だけ行います。
+
+**Refs:** [Issue #325](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)
+
 ## 回遊Sankeyのノードだけが表示され、遷移線が見えない
 
 **Affects:** Issue #319修正前のライブデモで、ダッシュボードと単一グラフのSankeyを同じページ内に
