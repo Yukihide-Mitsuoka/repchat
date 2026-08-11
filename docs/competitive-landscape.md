@@ -91,9 +91,9 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 
 ### 2. Evidence Cloudは機能の直接競合です
 
-2026-08-11時点の公式情報では、EvidenceはRepChatが検討している主要な機構を既に製品化しています。
+2026-08-11時点の公式情報では、Evidence CloudはRepChatが検討している主要な機構を既に製品化しています。
 
-| 領域 | Evidenceの公式仕様 | RepChatへの含意 |
+| 領域 | Evidence Cloudの公式仕様 | RepChatへの含意 |
 |------|--------------------|-----------------|
 | 分析agent | 現在のpageとfilterを文脈にし、chart、query、source付き回答を作り、Insightとして保存する | 自然言語質問と根拠表示だけでは差別化にならない |
 | channel | SlackとMCP client（Claude Desktop、ChatGPTを含む）から利用できる | SlackをUIにすること自体は差別化にならない |
@@ -103,7 +103,7 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 
 #### Embedded Analyticsは編集機能ではない
 
-EvidenceのEmbedded Analyticsは、**作成済み・公開済みのpageを顧客の製品内へ安全に配信する機能**です。
+Evidence CloudのEmbedded Analyticsは、**作成済み・公開済みのpageを顧客の製品内へ安全に配信する機能**です。
 顧客側backendが認証済み利用者のembed URLを発行し、frontendがiframeで表示します。URLは一回限りで
 2分以内に使用し、開いた後のsessionは指定TTLに従います。利用者属性はJWEで暗号化され、RLSへ渡されます。
 
@@ -119,7 +119,7 @@ Web SQL workspaceに最も近い機能ですが、SQL Console単体をcustom rep
 2026-08-11に確認した公式文書からは、Consoleのqueryを一操作でreportへ昇格する契約までは確認できません。
 
 custom reportの作成面はEvidence StudioのReport Editorです。pageはMarkdown、SQL、componentで構成され、
-Evidence Agentが生成または編集する場合もdiffを利用者がaccept／rejectします。accept後のreport sourceは
+Evidence StudioのAgentが生成または編集する場合もdiffを利用者がaccept／rejectします。accept後のreport sourceは
 Developer／AdminがeditorまたはGit／CLIで編集できます。Viewer／Org Viewerはeditorへアクセスできません。
 
 ただし「全graphに編集可能な生成SQLが一つずつ存在する」とは限りません。Evidence Studioのcomponentは
@@ -129,7 +129,7 @@ data sourceと集計式を直接参照でき、page内inline SQLやstandalone SQ
 公式料金ページの2026-08-11表示では、Teamは$15/人・月、Proは$25/人・月、Enterpriseは個別見積です。
 Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機能表は契約時に再確認します。
 
-参照: [Evidence](https://evidence.dev/)、
+参照: [Evidence Cloud](https://evidence.dev/)、
 [Analytics Agent](https://evidence.dev/product/analytics-agent)、
 [Pricing](https://evidence.dev/pricing)、
 [Evidence Studio editing](https://docs.evidence.studio/editing)、
@@ -140,6 +140,83 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 [Embedded Analytics](https://docs.evidence.studio/features/embedded)、
 [Slack分析インターフェース要件](requirements/slack-analysis-interface.md)
 
+#### Evidence CloudとRepChatの現在の優位性
+
+結論は、**2026-08-11時点の製品完成度と機能範囲はEvidence Cloudが優位**です。RepChatに固有の候補はありますが、
+ローカルデモまたは設計段階であり、顧客比較による製品優位はまだ実証されていません。
+
+| 領域 | 現在の優位 | 評価 |
+|------|------------|------|
+| dashboard描画・UI品質 | Evidence Cloud | RepChatのローカルdemoはEvidence OSSを描画基盤にしており、描画component自体では競争しない |
+| Git・Analytics as Code | Evidence Cloud | version control、review、branch preview、publishを製品化済み |
+| RLS・page access・SSO | Evidence Cloud | RepChatも多層認可を実証済みだが、認証から配信までの製品完成度ではEvidence Cloudが優位 |
+| Embedded・theme・多言語 | Evidence Cloud | theme、iframe／API、顧客別RLS、language指定を製品化済み |
+| 自然言語分析・Insight保存 | Evidence Cloud | page／filterの理解、chart／query／source、Insight保存を製品化済み |
+| Slack・MCP | Evidence Cloud | Slack、Claude Desktop、ChatGPTを含むMCP client対応を公式掲載済み |
+| 日本語での分析計画 | RepChat候補 | 目的をKPI、比較軸、期間、複数panelへ分解して確認するローカルdemoがある。比較検証前 |
+| 最小コホートレポート | RepChat候補 | GA4のacquisition cohortを日本語で定義し、未成熟期間、母数、SQL、集計data、根拠まで結ぶ将来要件。Amplitude代替でもEvidence Cloud優位でもなく、汎用BIより準備が少ない定型分析として検証する |
+| 実行前の費用確認 | RepChat | Vertex AIとBigQueryを別段階で見積もり、上限を承認してから実行する。thought tokenも費用に含める |
+| 会議報告の根拠検証 | RepChat候補 | 根拠外数値を拒否し、妥当な項目だけを残すstrict validatorをローカルdemoへ実装済み。品質優位は未検証 |
+| 日本企業向け運用 | RepChat候補 | 日本語説明、初期接続支援、請求書払い方針、担当者退職に耐える接続設計。design partner検証前 |
+| 顧客固有memoryの統制 | RepChat設計のみ | 組織・部門・利用者scope、承認、revision、期限、取消を設計済み。製品未実装 |
+| 会議から施策・次回検証へ | RepChat将来要件 | 意思決定、担当付きaction、次回効果検証を同じrevision chainへ接続する。製品未実装 |
+| 顧客成果物の所有 | Evidence Cloud | managed repoまたは利用者GitHub repoを提供済み。RepChatは顧客Git配送をaccepted設計としたが未実装 |
+
+RepChatが「Evidence Cloudより優れている」と説明できる条件は、日本語の同一課題を両製品で実行し、分析計画の
+確認回数、既知値の正答率、dashboard完成時間、根拠追跡率、会議action採用率で再現可能な差が出ることです。
+現状の説明は「日本の代理店workflowへ特化して検証中」であり、「総合的に優位」ではありません。
+
+#### コホート分析で競う境界
+
+Amplitudeはbehavioral cohortの定義、複数chartでの再利用、retention、cohort比較、used-by、母集団推移を
+製品化しています。したがってheatmapを一枚追加するだけではAmplitudeへの対抗になりません。
+
+ただし最初からAmplitude全体を再現しないことと、最小機能に価値がないことは同じではありません。
+公開GA4でacquisition cohort、exact-period、未成熟期間、heatmap・table、SQL・集計data・根拠までを
+一つの日本語templateとして提供できれば、利用者が一からSQLを設計する汎用BIより小さな採用理由になり得ます。
+これは競争力仮説であり、Amplitudeと同等、またはEvidence Cloudに優位とは表現しません。
+
+Evidence CloudもSQL、agent skills、custom componentでcohort reportを構成できます。Evidence Labsには
+実験的なCohort Analysis componentがあり、未完期間を除外・空欄表示しないこと、列名制約、error handling不足を
+未解決事項として明記しています。これはEvidence Cloudにcohort分析能力が無いことを意味しません。
+RepChatが検証する差は次のworkflowです。
+
+1. 日本語の目的から分析主体、起点event、復帰event、retention方式、期間、timezone、比較cohortを提案する。
+2. 曖昧な意味を利用者が確認し、不変なcohort specification revisionとしてfreezeする。
+3. Vertex AIとBigQueryの費用を分離して承認し、version付き定義からSQLを生成する。
+4. 未成熟期間を0にせず、cohort size、retained count、rate、SQL、集計data、根拠を同じ結果へ結び付ける。
+5. 結果をdashboard、Insight、会議の意思決定と次回検証へ接続する。
+
+詳細な範囲、受入条件、Amplitude／Evidence Cloudとの同一課題benchmarkは
+[統制されたコホート分析要件](requirements/governed-cohort-analysis.md)と
+[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)を正本とします。predictive cohort、実験配信、
+session replayを初期範囲へ含めず、Issue #160が`proceed`になるまで製品実装しません。
+
+#### 計測設計支援で競う境界
+
+Amplitudeの上流のevent設計を省略すると、cohort、funnel、retentionの意味も失われます。RepChatは将来、
+分析目的からGA4 recommended event、dataLayer契約、実装code、GTM tag・trigger・variable構成、import成果物、
+consent確認事項、QA手順を作る`Design Mode`を検証します。これはGTMを自動操作する製品ではなく、
+代理店と顧客technical ownerがreviewできるbest-practiceの初稿を作るonboarding支援です。
+
+後続`Apply Mode`も、公式GTM APIで隔離workspaceへ適用し、sync・conflict確認とquick previewを行うところまでに
+限定します。RepChatはbrowser、Tag Assistant、本番publishを操作しません。APIはworkspace、tag、trigger、
+variable、version等を管理でき、OAuth scopeもread、edit、version、publishで分かれています。このためpublish
+scopeを持たない構成を製品境界として試験できます。詳細は
+[GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)と
+[#343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)を正本とします。
+
+参照: [GTM API v2](https://developers.google.com/tag-platform/tag-manager/api/v2)、
+[authorization scopes](https://developers.google.com/tag-platform/tag-manager/api/v2/authorization)、
+[container export/import](https://support.google.com/tagmanager/answer/6106997?hl=en)、
+[GA4 recommended events](https://developers.google.com/analytics/devguides/collection/ga4/reference/recommended-events)
+
+参照: [Amplitude Cohort Analysis](https://www.amplitude.com/explore/analytics/cohort-analysis)、
+[Behavioral Cohorts API](https://www.amplitude.com/docs/apis/analytics/behavioral-cohorts)、
+[Retention calculation](https://amplitude.com/docs/analytics/charts/retention-analysis/retention-analysis-calculation)、
+[Evidence Cloud](https://evidence.dev/)、
+[Evidence Labs Cohort Analysis](https://labs.evidence.dev/cohort-analysis)
+
 ### 3. 席数課金そのものへの逆風
 
 **Lightdash は $3,000/月の定額で席数無制限**、OSS版は無料。**Metabaseも定額＋従量の混合**です。
@@ -149,7 +226,7 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 
 ### 4. 「何を見ればいいか」の支援も機能名だけでは差になりません
 
-Evidenceはcustom skillsで確認質問や分析手順を定義でき、公式ページはhealth check、churn調査、board prep
+Evidence Cloudはcustom skillsで確認質問や分析手順を定義でき、公式ページはhealth check、churn調査、board prep
 などを利用例に挙げています。したがって「何を見ればよいか分からない人への対応が競合にない」という
 旧仮説は、2026-08-11時点では事実として使えません。
 
@@ -166,7 +243,7 @@ Evidenceはcustom skillsで確認質問や分析手順を定義でき、公式�
 分析目的を複数の判断可能なKPIとpanelへ分解し、利用者の確認を経て固定成果物へ変える一連の操作です。
 チャットは作成時の入口、ダッシュボードは継続利用の入口として役割を分けます。
 
-Evidenceも回答をInsightへ保存し、管理対象pageへ昇格できます。永続する成果物、Insight保存、
+Evidence Cloudも回答をInsightへ保存し、管理対象pageへ昇格できます。永続する成果物、Insight保存、
 dashboardへの追加もRepChat固有ではありません。比較すべき対象は、成果物の有無ではなく、分析計画の
 合意、費用確認、根拠検証、顧客別の認可、会議actionまでのworkflowです。
 
@@ -180,7 +257,7 @@ dashboardへの追加もRepChat固有ではありません。比較すべき対�
 業務文脈であり、それは業種ごとに異なります。**横断的に薄く当てるより、業種を絞る方が成立しやすい**
 可能性がありますが、これも未検証です。
 
-EvidenceとZenlyticはいずれも近い位置にいます。定期配信、会議用要約、確認質問、分析playbookは
+Evidence CloudとZenlyticはいずれも近い位置にいます。定期配信、会議用要約、確認質問、分析playbookは
 競合が追加できるため、個別機能を恒久的な優位として扱いません。
 
 ## それでも残りうる差別化
@@ -196,7 +273,7 @@ EvidenceとZenlyticはいずれも近い位置にいます。定期配信、会�
 | 日本語の導入支援、請求、説明責任 | 提供方針。競合の国内契約実務は未確認 | 営業比較が必要 |
 
 自然言語SQL、セマンティック層、Git管理、Insight保存、Slack／MCP、custom context／skills、RLS、
-埋め込みはEvidenceを含む競合が提供しているため、単独の差別化として使いません。
+埋め込みはEvidence Cloudを含む競合が提供しているため、単独の差別化として使いません。
 
 ## この文書が示唆する行動
 
@@ -216,9 +293,9 @@ Metabase を使っていないのか」**です。これは机上では答えが
 
 補助として「何を使っていますか」「なぜそれを選びましたか」。**説明ではなく質問だけで済みます。**
 
-Evidenceとの機能比較は公開ページの読解で終えません。同じ日本語の分析目的、同じschema、同じ既知値を使い、
+Evidence Cloudとの機能比較は公開ページの読解で終えません。同じ日本語の分析目的、同じschema、同じ既知値を使い、
 分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を測定します。RepChatが
-Evidenceを上回ったと主張できるのは、この比較で差が再現された後です。
+Evidence Cloudを上回ったと主張できるのは、この比較で差が再現された後です。
 
 ## 関連
 

@@ -40,7 +40,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | A-1 | 前提 | 初期利用者は、複数顧客へ分析を提供する日本の小規模代理店・ソフトウェアベンダーの担当者である | 左ナビゲーションの顧客・分析整理単位を再設計する |
 | A-2 | 前提 | 利用者はダッシュボード閲覧を最頻操作とし、SQL編集より先に結論と根拠を確認する | メインサーフェスの既定画面を再評価する |
 | A-3 | 前提 | デスクトップまたは横長Webが編集者の主端末で、モバイルは閲覧・確認が中心である | モバイル編集要件を別途追加する |
-| C-1 | 制約 | ChatGPT／Evidenceの商標、文章、アイコン、非公開design token、DOM/CSSを複製しない。公開情報から得た情報構造だけを参考にする | ブランド混同と継続的な追随負債を避ける |
+| C-1 | 制約 | ChatGPT／Evidence Cloud／Evidence Studioの商標、文章、アイコン、非公開design token、DOM/CSSを複製しない。公開情報から得た情報構造だけを参考にする | ブランド混同と継続的な追随負債を避ける |
 | C-2 | 制約 | テナント、分析コレクション、GCP project、顧客Git repositoryを同一概念として扱わない | 認可境界と保存先の混同を防ぐ |
 | C-3 | 制約 | SQL、取得データ、来歴は権限を持つ利用者だけへ表示する | Issue #179の認可要件を守る |
 | C-4 | 制約 | Issue #160が`proceed`になるまで、この文書を根拠に製品UIを先行実装しない | デモ検証前の過剰実装を防ぐ |
@@ -90,11 +90,11 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-06 | Observed | 公開・未ログインのChatGPT日本語画面に、sidebar開閉、新しいチャット、チャット検索、画像、Plugins、Deep Research、設定、Help、composerが存在する | [ChatGPT公開画面](https://chatgpt.com/) |
 | SRC-07 | Owner intent | 左右paneの開閉・drag、左上の検索・menu、中段のproject・履歴、左下のaccount・settings、中央との重なりを要件化する | この依頼 |
 | SRC-08 | RepChat decision | 現行デモは左右pane、4 workspace、panel inspector、費用確認を実装済み。製品要件は現行コードから独立して理想を定義する | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)、[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330) |
-| SRC-09 | Official competitor | Evidence Analytics Agentは、現在のpageとfilterを文脈にし、回答へchart、query、sourceを結び付ける。回答をpromptと実装メモ付きInsightへ保存し、維持管理するpageへ昇格できると説明する | [Analytics Agent](https://evidence.dev/product/analytics-agent) |
-| SRC-10 | Official competitor | Evidence Internal Analyticsは、SQL／Markdown、version control、test、review-before-publish、page access、row-level securityを中心とし、自由なdrag-and-dropを採らないと説明する | [Internal Analytics](https://evidence.dev/product/internal-reporting) |
-| SRC-11 | Official competitor | Evidence Embedded AnalyticsはEnterprise Plan向けで、公開済みpageをbackend API＋iframeで表示する。single-use URL、JWE、RLS、theme、language、session TTLを持つが、report authoringは提供しない | [Embedded Analytics](https://docs.evidence.studio/features/embedded) |
+| SRC-09 | Official competitor | Evidence CloudのAnalytics Agentは、現在のpageとfilterを文脈にし、回答へchart、query、sourceを結び付ける。回答をpromptと実装メモ付きInsightへ保存し、維持管理するpageへ昇格できると説明する | [Analytics Agent](https://evidence.dev/product/analytics-agent) |
+| SRC-10 | Official competitor | Evidence CloudのInternal Analyticsは、SQL／Markdown、version control、test、review-before-publish、page access、row-level securityを中心とし、自由なdrag-and-dropを採らないと説明する | [Internal Analytics](https://evidence.dev/product/internal-reporting) |
+| SRC-11 | Official competitor | Evidence CloudのEmbedded AnalyticsはEnterprise Plan向けで、公開済みpageをbackend API＋iframeで表示する。single-use URL、JWE、RLS、theme、language、session TTLを持つが、report authoringは提供しない | [Embedded Analytics](https://docs.evidence.studio/features/embedded) |
 | SRC-12 | Official competitor | Evidence Studioは左editorでMarkdown／SQLを編集し、右previewを更新する。AIはdiffを提案し、利用者がaccept／rejectする | [Editing](https://docs.evidence.studio/editing) |
-| SRC-13 | Official competitor | Evidence projectはGit repositoryに対応し、managed repoまたはGitHub repo、branch、commit、review、publishをauthoring lifecycleとして扱う | [Version control](https://docs.evidence.studio/features/version-control) |
+| SRC-13 | Official competitor | Evidence Studio projectはGit repositoryに対応し、managed repoまたはGitHub repo、branch、commit、review、publishをauthoring lifecycleとして扱う | [Version control](https://docs.evidence.studio/features/version-control) |
 | SRC-14 | Official competitor | Evidence料金ページはTeam $15/人・月、Pro $25/人・月、Enterprise個別見積を示し、Embedded、white labeling、RLSをEnterpriseに含める | [Pricing](https://evidence.dev/pricing) |
 | SRC-15 | Official competitor | Evidence StudioはReport、Explore、SQL Console、AI Chatをself-service面として分ける。pageはMarkdown、SQL、componentで構成できる | [Migration guide](https://docs.evidence.studio/migration-guide)、[Markdown](https://docs.evidence.studio/core-concepts/markdown) |
 | SRC-16 | Official competitor | Viewer／Org Viewerはeditorへアクセスできず、Developer／Adminはreportを編集できる | [Publishing](https://docs.evidence.studio/publishing) |
@@ -123,10 +123,11 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Analytics request scoping | 曖昧さを確認してanalysis specificationをfreezeする | 確認事項とrevisionを表示 | MAIN-002、SRC-03 |
 | KPI root-cause brief | 観測、解釈、仮説、反証、次の検証を分ける | 会議報告prototypeの一部 | MAIN-003、SRC-04 |
 | Business review | 根拠付き会議報告とowner action | 未承認案を生成 | MAIN-003、SRC-05、Issue #181 |
+| Measurement and action handoff | 計測設計から分析、会議、施策exportまで同じworkspace文脈で移動する | 未実装 | APP-007、MAIN-018、ADR-0023 |
 
-### 5.1 Evidenceとの機能対応
+### 5.1 Evidence Cloudとの機能対応
 
-| Evidence公式ページ上の責務 | RepChatで採用する責務 | 採用しない短絡 | 製品要件 |
+| Evidence Cloud公式ページ上の責務 | RepChatで採用する責務 | 採用しない短絡 | 製品要件 |
 |----------------------------|------------------------|----------------|----------|
 | Search／Chat／Insights | 検索、分析対話、保存済みインサイトを別の情報型としてナビゲーションする | 単一グラフ検証画面を製品の主ナビへ残す | NAV-004、NAV-011 |
 | 現在pageとfilterをagentが理解 | 利用企業、成果物revision、filter、選択panel、追加contextを送信前にchipで明示する | 画面上で見えない文脈を自動送信する | MAIN-009、INS-011 |
@@ -156,6 +157,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | APP-004 | route、選択panel、表示revisionをURLで表現し、再読込、back、forward、共有linkで復元する | 文脈保持 | Must | Issue #179 |
 | APP-005 | viewer、editor、adminで利用不能な機能は、存在を隠すか理由付きdisabledにする。クリック後に権限エラーを初めて出さない | 安全性 | Must | C-3 |
 | APP-006 | `SecondaryPane`は`Inspector`と`Artifact Preview`を切り替える。同時表示や入れ子paneを禁止し、切替後も中央の会話またはdashboardのscroll位置を維持する | 情報密度 | Must | SRC-01、SRC-09 |
+| APP-007 | measurement、analysis、report、actionは共通shellとbreadcrumbを使うが、専用route、permission、API、auditを維持する | 文脈と最小権限 | Should | ADR-0023 |
 
 推奨component treeを実装契約とします。
 
@@ -220,6 +222,7 @@ AppShell
 | MAIN-015 | embedded customer previewは通常のauthoring routeと分離し、brand、locale、viewport、authorized customer identity、session expiryをtoolbarで確認する。identity切替はadminだけに許可し、server発行preview sessionを必須にする | Should |
 | MAIN-016 | 初期authoringはAI対話、構造化template、panel参照追加、順序変更に限定し、任意座標drag-and-drop、任意HTML／code、自由layout canvasを提供しない | Must |
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
+| MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
 
 ### 6.4 右セカンダリpane
 
@@ -328,7 +331,7 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | code font | `ui-monospace`, `SFMono-Regular`, monospace |
 
 グラフを主役にするため、navigationとinspectorは白・灰・primaryの低彩度配色を使い、error、warning、successだけに
-意味色を使います。OpenAI／Evidenceのicon、ロゴ、固有文言は使用しません。
+意味色を使います。OpenAI／Evidence Cloud／Evidence Studioのicon、ロゴ、固有文言は使用しません。
 
 ### 7.3 Motion
 
@@ -411,6 +414,8 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 /w/:workspaceId/analyses/:threadId
 /w/:workspaceId/insights/:insightId/revisions/:revisionId
 /w/:workspaceId/reports/:reportRevisionId
+/w/:workspaceId/measurements/:measurementRevisionId
+/w/:workspaceId/actions/:actionRevisionId/packages/:packageRevisionId
 /w/:workspaceId/single-chart/:threadId
 /w/:workspaceId/preview/:artifactType/:artifactId/revisions/:revisionId
 ```
@@ -513,7 +518,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-09 | build中に別routeへ移動して戻っても同じjob IDと進捗を表示する | MAIN-006 | reconnect E2E |
 | AC-10 | dialog、drawer、menuがfocus trap、Escape、focus復帰を満たす | OVR-005、NFR-005 | keyboard E2E |
 | AC-11 | 長い日本語title、SQL、空、loading、errorで縦書き化や意図しない横overflowがない | 成功指標 | fixture visual test |
-| AC-12 | OpenAI／Evidence固有brand asset、文言、非公開tokenを成果物に含めない | C-1 | asset／copy review |
+| AC-12 | OpenAI／Evidence Cloud／Evidence Studio固有brand asset、文言、非公開tokenを成果物に含めない | C-1 | asset／copy review |
 | AC-13 | AI送信前にtenant、artifact revision、filter、panel、context／skillがchipで見え、任意項目を解除できる | MAIN-009、MAIN-013 | context E2E |
 | AC-14 | quick answerの数値から対応result／panel revisionへ移動でき、SQL permissionがない利用者にはSQLを出さない | MAIN-010、INS-005 | role別E2E |
 | AC-15 | quick answerを再queryなしでInsight draftへ保存し、再読込後も質問、methodology、filter、query／result revisionを復元する | MAIN-011、OVR-006、NFR-011 | API＋billing E2E |
@@ -535,7 +540,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | R-4 | 機能を左navへ詰め込み、初見利用者が迷う | 中 | 中 | primary 4項目、secondary collection、user testで検証 |
 | R-5 | SQL／dataを便利さのため閲覧者へ漏らす | 低 | 高 | permissionでtabとAPIを同時に遮断する |
 | R-6 | 永続履歴やGit状態を先に作り、Issue #160前に製品範囲が拡大する | 中 | 高 | C-4、C-5、milestone順序を守る |
-| R-7 | 競合追随でEvidenceの情報構造をそのまま複製し、RepChatの対話→仕様確認→費用gateを弱める | 中 | 高 | §5.1の「採用しない短絡」と既存ADRを実装契約にする |
+| R-7 | 競合追随でEvidence Cloud／Evidence Studioの情報構造をそのまま複製し、RepChatの対話→仕様確認→費用gateを弱める | 中 | 高 | §5.1の「採用しない短絡」と既存ADRを実装契約にする |
 | R-8 | page-aware AIが不可視のfilterやmemoryを使い、利用者が回答条件を誤認する | 中 | 高 | MAIN-009、MAIN-013、INS-011で送信文脈を明示する |
 | R-9 | quick answerを無制限に保存してInsightが検索不能になる | 中 | 中 | collection、status、archive、参照先を必須metadataにし、retentionをQ-2で決める |
 | R-10 | customer previewがtenant impersonationまたは共有linkの抜け道になる | 低 | 高 | admin限定identity切替、短期server session、通常共有linkとの分離 |

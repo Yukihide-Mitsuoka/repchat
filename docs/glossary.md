@@ -23,6 +23,8 @@ RepChat固有のユビキタス言語を定義します。コード識別子、�
 | コンテキストコンパイラー | 認証済みscope、有効revision、用途、schema版から、AIへ渡す最小の構造化文脈と適用manifestを決定するserver-side component | AI生成、分析メモリー | 全履歴RAG | 正本policy、vector index、prompt template |
 | パネルrevision | SQL、chart設定、metric・schema・scope・検証状態を固定した再利用可能な不変成果物 | dashboard生成、SQL workspace | グラフのコピー、最新パネル | result revision、dashboard revision |
 | 派生ダッシュボード | AI生成または既存dashboardを親に持ち、固定したpanel revisionとlayoutを合成する利用者編集可能な新しいdashboard revision | dashboard編集、公開 | AI生成dashboardの上書き | AI生成原本、空dashboard、panel revision |
+| 施策案（Action Proposal） | AIまたは人間が、分析根拠、目的、KPI、期間、対象、予算案とともに作る未確定の施策候補 | 会議意思決定、施策検討 | 実行指示、広告発注 | 承認済みaction revision、施策パッケージ |
+| 施策パッケージ（Action Package） | 人間が承認した施策案を、tenant・scope、根拠、承認、有効期限、schema versionとともに外部連携用の不変revisionへ固定したprovider非依存の契約 | developer API、外部施策連携 | 支出命令、媒体別入稿データ | 施策案、CSV export profile、execution adapter、external outcome |
 
 ## 解決済みの曖昧さ
 

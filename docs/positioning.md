@@ -150,7 +150,7 @@ AIへ渡す情報、費用、失敗時の復旧まで説明できること**を�
 Evidence Cloudの現在の契約・請求方法は営業確認が必要です。日本のSMBには、業務ソフトを
 カード決済できない会社が実在するため、RepChatは請求書払い・銀行振込へ対応します。
 
-請求方法が選定条件になるかはデザインパートナーへ確認し、Evidenceの対応可否は営業見積で比較します。
+請求方法が選定条件になるかはデザインパートナーへ確認し、Evidence Cloudの対応可否は営業見積で比較します。
 
 ### 2.5 接続作業をサービスに含める
 
@@ -240,6 +240,14 @@ DWH に直接SQLを投げれば作り込みを飛ばせますが、**意味も�
 できなくなった分だけ悪くなります。**「代理店が正しいと知っている分析が定義済みで入っていて、
 日本語で聞けて、資産が顧客に残る」**が売り物です。
 
+コホート分析はこの位置づけを検証する代表例です。heatmapを追加するのではなく、分析主体、起点・復帰event、
+retention方式、期間、timezone、未成熟期間の扱いを日本語で確認してから実行します。範囲と受入条件は
+[統制されたコホート分析要件](requirements/governed-cohort-analysis.md)を正本とします。
+
+最初の公開GA4版はAmplitude代替ではありません。それでも、定義済みacquisition cohortを日本語で呼び出し、
+未成熟期間、母数、SQL、集計data、根拠まで一体で確認できれば、汎用BIより準備が少ない定型分析として
+小さな競争力になり得ます。この段階的な価値もdesign partnerで利用意向を測り、実証前に優位と断言しません。
+
 ### 2.9 決着 — 生成物は顧客のリポジトリに置く（2026-07-28）
 
 「本体はこちらでホスト、**生成したページとSQLは顧客側の Git**」という案は、
@@ -257,15 +265,15 @@ repositoryを持たない顧客には、同じpipelineを使うmanaged fallback�
 
 ### 2.10 Evidence Cloudと競う境界（2026-08-11）
 
-Evidenceは、SQL／Markdown authoring、AI差分編集、Git branch、review／publish、Analytics Agent、
+Evidence Cloudは、SQL／Markdown authoring、AI差分編集、Git branch、review／publish、Analytics Agent、
 Insight保存、Slack／MCP、custom context／skills、RLS、embedded deliveryを既に提供しています。
 RepChatはこれらの機能名や画面構造を差別化として主張しません。
 
-Evidence Embedded Analyticsは、Enterprise Planで公開済みpageを顧客製品へ安全に配信する機能です。
+Evidence CloudのEmbedded Analyticsは、Enterprise Planで公開済みpageを顧客製品へ安全に配信する機能です。
 レポート編集はEvidence StudioまたはGit／CLIで行います。これはRepChatで検討している機能を次のように
 分離すべきことを示します。
 
-| 責務 | RepChatの将来機能 | Evidenceで対応する面 |
+| 責務 | RepChatの将来機能 | Evidence Cloudで対応する面 |
 |------|-------------------|----------------------|
 | Authoring | AI対話、Web SQL workspace、versioned panel composition、branch／review | SQL Console、Report Editor、AI diff、Git／CLI |
 | Publishing | 検証済みrevisionを公開対象へ切り替え、rollback可能にする | publishとGit commit |
@@ -284,7 +292,8 @@ RepChatが検証する差は次の組合せです。実装状態を超えて優�
 
 | 候補 | 状態 | 検証する差 |
 |------|------|------------|
-| 日本語の目的分解→KPI・比較・panel提案→利用者確認 | ローカルデモprototype | Evidenceと同じ課題で完成率、確認回数、所要時間を比較 |
+| 日本語の目的分解→KPI・比較・panel提案→利用者確認 | ローカルデモprototype | Evidence Cloudと同じ課題で完成率、確認回数、所要時間を比較 |
+| 日本語によるcohort定義→費用確認→未成熟期間を区別したretention | 要件のみ | Amplitude、Evidence Cloudと同一課題で定義誤り、結果一致、根拠追跡、費用理解を比較 |
 | Vertex AI／BigQueryの実行前費用確認 | ローカルデモに実装 | 費用予測の理解率と実行取消率を測定 |
 | 根拠外数値を拒否する会議報告 | ローカルデモprototype | 根拠追跡率、誤った数値claim、会議での採用率を比較 |
 | 決定、owner付きaction、次回検証までの会議loop | 将来要件 | 会議後にactionが登録・再確認された割合を測定 |
@@ -298,6 +307,19 @@ RepChatが検証する差は次の組合せです。実装状態を超えて優�
 
 この説明もデザインパートナー比較で実証するまではポジショニング仮説です。競合事実と出典は
 [競合比較](competitive-landscape.md)を正本とします。
+
+### 2.11 計測設計はRepChat、GTM操作と公開は境界外（2026-08-11）
+
+分析品質は、上流のevent、parameter、identity、consentの品質を超えられません。RepChatは将来、分析目的から
+GA4 recommended event、dataLayer契約、site実装code、GTM構成、import成果物、検証手順を作る
+`Design Mode`をonboarding機能として検証します。一般的なbest practiceをreview可能な初稿にするのであり、
+未知のlegacy containerを正しいと推測して書き換える機能ではありません。
+
+後続`Apply Mode`は公式GTM APIで隔離workspaceへ適用し、sync・conflict確認とquick previewを行うところまでです。
+RepChatはbrowserを操作せず、publish scopeを要求せず、本番versionを公開しません。利用者はpreview手順を受け取り、
+GTM側で実siteの発火とpublishを確認します。この境界により、分析支援からproduction site運用へ製品責任を
+無制限に広げません。正本は
+[GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)とします。
 
 ## 3. 採らない — 時間を使わないもの
 
@@ -333,8 +355,8 @@ RepChatが検証する差は次の組合せです。実装状態を超えて優�
 | ~~所有権・権限管理が実在する痛み~~ | **1.5 で裏付け済み** — Looker Studio の共有アカウント廃止と、接続者・作成者の退職 | — |
 | **今レポートを作っている人が、明日も作れるか** | **最大の関門。** Looker Studio はドラッグ&ドロップで非エンジニアが作れる。こちらは「自然言語→PR→承認」で**同じ人が同じようには作れない**。今 Looker Studio でレポートを作っている人に、2.7の流れで1枚作ってもらう | **他が全部揃っても売れません。** 唯一かつ最大の判定条件 |
 | 生成された数値が正しい | 2.7 の**既知の数値照合**を組み込み、実データで確認 | 見た目が正しく数字が違うレポートは無いより悪い |
-| 日本語の分析目的から価値ある成果物までのworkflowでEvidenceより良い結果を出せる | 同じschema、既知値、日本語の目的を使い、分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を比較 | 2.10の製品差が崩れ、日本語支援と運用サービスだけが残る |
-| 日本のSMBがEvidence等を採用しない理由が言語・支払い・サポートにある | 同じヒアリングで「Evidence Cloudを知っていますか。採用しない場合はなぜですか」と確認し、Evidenceの契約条件は営業見積で確認 | 2.2・2.4が崩れる |
+| 日本語の分析目的から価値ある成果物までのworkflowでEvidence Cloudより良い結果を出せる | 同じschema、既知値、日本語の目的を使い、分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を比較 | 2.10の製品差が崩れ、日本語支援と運用サービスだけが残る |
+| 日本のSMBがEvidence Cloud等を採用しない理由が言語・支払い・サポートにある | 同じヒアリングで「Evidence Cloudを知っていますか。採用しない場合はなぜですか」と確認し、Evidence Cloudの契約条件は営業見積で確認 | 2.2・2.4が崩れる |
 
 **判定条件は先に決めておくこと。** 決めずに聞くと都合よく解釈します。
 
