@@ -1,16 +1,16 @@
 ---
 id: competitive-landscape
-title: 競合比較 — 構想と既存製品の重なり（2026-07-30 時点）
-updated: 2026-07-30
+title: 競合比較 — 構想と既存製品の重なり
+updated: 2026-08-11
 ---
 
 # 競合比較
 
 ## この文書の役割と限界
 
-**2026-07-27 に各社の公開ページを取得して作成しました。** 記憶ではなく当日の記述に基づきます。
-ただし**この領域は動きが速く、価格も機能も変わります**。半年後にそのまま信じないでください。
-再確認するときは、同じ7項目で各社のトップページと料金ページを取り直すのが最短です。
+各社比較の基礎は2026-07-27の公開情報です。Evidence Cloudだけは2026-08-11に公式製品ページと
+Evidence Studio公式文書で再確認しました。価格と機能は変わるため、導入判断時には同じ項目を
+公式製品ページ、公式文書、見積で再確認します。
 
 比較対象は「[discovery-log](discovery-log.md) の構想 ＝ Git管理・安全な権限管理・複数DWH接続・
 自然言語SQL生成・自動ダッシュボード生成・チャットUI」と重なる製品に限定しています。
@@ -21,15 +21,15 @@ updated: 2026-07-30
 |---|---|---|---|---|---|---|
 | **コード管理・Git** | ✅ SQL＋markdown、バージョン管理 | ✅ Git連携＋dbt | ✅ **AML で定義、PRでレビュー・ロールバック** | ✅ **セマンティック層がGit、PRでレビュー** | ✅ dbtネイティブ、CI/CD | ❌ アプリDB |
 | **セマンティック層** | △ | ✅ | ✅ AML / AQL | ✅ | ✅ dbt由来 | △ |
-| **自然言語・AI** | ✅ AIエージェント（markdown生成） | ✅ チャット | ✅ 平易な言葉で質問、要約、**曖昧なら聞き返す** | ✅ **NL第一。回答に出典** | ✅ AIエージェント＋MCP | ✅ 全プランでAI質問 |
+| **自然言語・AI** | ✅ page／filterを理解するAnalytics Agent、Insight保存、Slack／MCP | ✅ チャット | ✅ 平易な言葉で質問、要約、**曖昧なら聞き返す** | ✅ **NL第一。回答に出典** | ✅ AIエージェント＋MCP | ✅ 全プランでAI質問 |
 | **BigQuery** | ✅ | ✅ | ✅ | ✅ | 記載なし（要確認） | ✅ |
-| **行レベル権限** | ✅ **Team以上** | ✅ アクセスフィルタ | ✅ **行・列** | ✅ ロールベース | 記載なし（要確認） | ✅ **Proのみ** |
-| **埋め込み・マルチテナント** | ✅ Enterprise | ✅ ホワイトラベル＋SSO | ✅ **同じ層でテナント別セキュリティ** | — | ✅ 従量課金の別枠 | ✅ Proのみ |
-| **価格** | **$15/人/月**（Team）<br>$25/人/月（Pro） | 非公開 | 非公開 | 非公開 | **$3,000/月 定額・席数無制限**<br>OSS版は無料 | $100/月＋$6/人<br>**Pro $575/月＋$12/人** |
+| **行レベル権限** | ✅ **Enterprise**。Team／Proは非対応 | ✅ アクセスフィルタ | ✅ **行・列** | ✅ ロールベース | 記載なし（要確認） | ✅ **Proのみ** |
+| **埋め込み・マルチテナント** | ✅ Enterprise。公開済みpageをAPI＋iframeで配信 | ✅ ホワイトラベル＋SSO | ✅ **同じ層でテナント別セキュリティ** | — | ✅ 従量課金の別枠 | ✅ Proのみ |
+| **価格** | Team **$15/人・月**、Pro **$25/人・月**、Enterpriseは個別見積 | 非公開 | 非公開 | 非公開 | **$3,000/月 定額・席数無制限**<br>OSS版は無料 | $100/月＋$6/人<br>**Pro $575/月＋$12/人** |
 | **対象** | — | スタートアップ〜大企業 | データチーム全般 | **大企業**（Verizon等） | データチーム | 全般 |
-| **「何を見ればいいか分からない人」への対応** | ❌ | ❌ | ❌ | △ AIアナリストを標榜 | ❌ | ❌ |
-| **日本語・国内対応** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **請求書払い** | ❌ 自己申込（カード） | 不明 | 不明 | 不明 | 不明 | ❌ 自己申込（カード） |
+| **「何を見ればいいか分からない人」への対応** | △ custom skillsで確認質問・分析手順を定義可能 | ❌ | ❌ | △ AIアナリストを標榜 | ❌ | ❌ |
+| **日本語・国内対応** | 埋め込みはlanguage指定可。日本語の導入支援・契約実務は未確認 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **請求書払い** | 未確認 | 不明 | 不明 | 不明 | 不明 | ❌ 自己申込（カード） |
 | **実質的な競合か**（日本のSMB視点） | **◎ 本命** | ✕ 土俵が違う | ✕ 土俵が違う | ✕ 土俵が違う | △ 定額が重い／OSSは要運用 | **◎** |
 
 ## 実際に置き換える相手 — 上の表には載っていません
@@ -89,33 +89,55 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 **Zenlytic** は自然言語を第一の入口に置き、その精度をGit管理のセマンティック層で担保しています。
 **「AIの出力をPRでレビューする」という構想の中核は、既に実装されています。**
 
-### 2. Evidence Cloud が最大の問題です
+### 2. Evidence Cloudは機能の直接競合です
 
-**$15/人/月（Team）に、行レベルセキュリティ・ページ単位のアクセス制御・AIクレジットが含まれます。**
+2026-08-11時点の公式情報では、EvidenceはRepChatが検討している主要な機構を既に製品化しています。
 
-構想していた月3,000〜6,000円は、**土台にしている製品の商用版より高い**ことになります。
-しかも向こうは既に、こちらが未実装の機能（行レベル権限、ページ単位制御、SSO）を売っています。
+| 領域 | Evidenceの公式仕様 | RepChatへの含意 |
+|------|--------------------|-----------------|
+| 分析agent | 現在のpageとfilterを文脈にし、chart、query、source付き回答を作り、Insightとして保存する | 自然言語質問と根拠表示だけでは差別化にならない |
+| channel | SlackとMCP client（Claude Desktop、ChatGPTを含む）から利用できる | SlackをUIにすること自体は差別化にならない |
+| context | custom context、skills、evals、observabilityを提供する | 顧客固有contextや分析手順の保存だけでは差別化にならない |
+| authoring | Evidence Studioのeditor、AI差分提案、live preview、Git branch、review、publishを提供する | SQL／Markdown、Git、AI編集、branch previewだけでは差別化にならない |
+| embedded delivery | Enterprise Planで、公開済みpageをbackend APIから取得したsingle-use URLでiframe表示し、JWE、RLS、theme、language、session TTLを適用する | 埋め込み、white-label、RLSだけでは差別化にならない |
 
-「Evidenceを土台に、権限管理を足して売る」という形は、**提供元が同じことを安くやっている**
-という構図です。
+#### Embedded Analyticsは編集機能ではない
 
-#### 2026-07-30追記：SlackをUIにしても単独では差別化にならない
+EvidenceのEmbedded Analyticsは、**作成済み・公開済みのpageを顧客の製品内へ安全に配信する機能**です。
+顧客側backendが認証済み利用者のembed URLを発行し、frontendがiframeで表示します。URLは一回限りで
+2分以内に使用し、開いた後のsessionは指定TTLに従います。利用者属性はJWEで暗号化され、RLSへ渡されます。
 
-Evidenceの現行公開ページには、dashboard/data app、AI Chat、AI支援開発、RLS、page access、埋め込みが
-掲載されている。公開情報から、end userがSlackで自然言語質問を行う同等機能までは確認できなかったが、
-**未掲載であることは持続的な優位を意味しない**。Slack通知やbotは各社が追加できるinterfaceである。
+レポートを作成・修正する場所はEvidence StudioまたはGit／CLIです。閲覧者はfilterやinputを操作できますが、
+Embedded Analytics自体がSQL editor、自由layout editor、またはGit branch操作を顧客製品へ埋め込むわけでは
+ありません。したがって、RepChatで検討しているWeb SQL workspaceとversioned panel compositionは
+**authoring**、顧客製品内表示は**delivery**であり、補完関係にあります。
 
-RepChatが検証すべき差は、Slackそのものではなく次の一連のworkflowである。
+#### SQL Consoleとcustom reportは別の面です
 
-- 日本語の会話から「何を分析するか」を分解し、複数KPIとdashboardへまとめる
-- 代理店workspace内の複数顧客をchannel単位で分離し、Webと同じ認可・監査を通す
-- 指標定義、生成SQL、検証結果、immutable revisionを一つの来歴として残す
-- Slackは要約・graph・linkの入口、Webはdashboard・SQL・定義の正本として役割分担する
+SQL Consoleは、接続済みdataを任意SQLで探索するself-service面です。RepChatで提案済みの
+Web SQL workspaceに最も近い機能ですが、SQL Console単体をcustom report editorとは扱いません。
+2026-08-11に確認した公式文書からは、Consoleのqueryを一操作でreportへ昇格する契約までは確認できません。
 
-ただし、このworkflowもSQLが正しくなければ価値にならない。公開GA4 schemaでの成功は、未知の独自
-nested schemaへの一般化を証明しないため、Issue #188を自由質問機能の実装gateにする。
+custom reportの作成面はEvidence StudioのReport Editorです。pageはMarkdown、SQL、componentで構成され、
+Evidence Agentが生成または編集する場合もdiffを利用者がaccept／rejectします。accept後のreport sourceは
+Developer／AdminがeditorまたはGit／CLIで編集できます。Viewer／Org Viewerはeditorへアクセスできません。
 
-参照: [Evidence](https://evidence.dev/)、[Evidence documentation](https://docs.evidence.dev/)、
+ただし「全graphに編集可能な生成SQLが一つずつ存在する」とは限りません。Evidence Studioのcomponentは
+data sourceと集計式を直接参照でき、page内inline SQLやstandalone SQL fileを使う構成もあります。
+編集可能なのはreport source全体であり、必ずしも各graph専用の明示SQL fileではありません。
+
+公式料金ページの2026-08-11表示では、Teamは$15/人・月、Proは$25/人・月、Enterpriseは個別見積です。
+Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機能表は契約時に再確認します。
+
+参照: [Evidence](https://evidence.dev/)、
+[Analytics Agent](https://evidence.dev/product/analytics-agent)、
+[Pricing](https://evidence.dev/pricing)、
+[Evidence Studio editing](https://docs.evidence.studio/editing)、
+[Markdown](https://docs.evidence.studio/core-concepts/markdown)、
+[Publishing and roles](https://docs.evidence.studio/publishing)、
+[Studio migration guide](https://docs.evidence.studio/migration-guide)、
+[Version control](https://docs.evidence.studio/features/version-control)、
+[Embedded Analytics](https://docs.evidence.studio/features/embedded)、
 [Slack分析インターフェース要件](requirements/slack-analysis-interface.md)
 
 ### 3. 席数課金そのものへの逆風
@@ -125,30 +147,28 @@ nested schemaへの一般化を証明しないため、Issue #188を自由質問
 
 ユーザー単位課金は、**ある規模を超えると必ず定額製品と比較されます**。
 
-### 4. 既存製品が解いているのは「SQLが書けない」であって「何を見ればいいか分からない」ではない
+### 4. 「何を見ればいいか」の支援も機能名だけでは差になりません
 
-**この表で唯一、どの列も埋まっていない行**がこれです。
+Evidenceはcustom skillsで確認質問や分析手順を定義でき、公式ページはhealth check、churn調査、board prep
+などを利用例に挙げています。したがって「何を見ればよいか分からない人への対応が競合にない」という
+旧仮説は、2026-08-11時点では事実として使えません。
 
-各社が競っているのは**質問を投げる手段**（自然言語、チャット、セマンティック層による精度担保）です。
-しかしこれは**利用者が「何を聞くべきか」を分かっていること**を前提にしています。BIの席が
-導入後に使われなくなる典型的な理由は、SQLが書けないことではなく、**何を見ればよいか分からない**
-ことです。**チャットUIを足しても、この前提は解消しません。**
+残る検証対象は、**日本語の代理店業務で、利用者が目的だけを伝えた後に、KPI、比較軸、期間、panel構成、
+根拠、会議で決めるべきactionまでを少ない確認回数で合意できるか**です。機能の有無ではなく、対象業務での
+完了率、正確性、所要時間で比較します。
 
 | | 利用者に要求されるもの | 使える人 |
 |---|---|---|
 | チャット | **何を聞くべきか分かっていること** | 分析ができる少数 |
 | ダッシュボード | 見るだけ | **全員** |
 
-したがって「自動でダッシュボード生成」は**出力形式の話ではありません**。
-**「質問できない人」を利用者に含めるための手段**です。チャットは**作る側の入口**、
-ダッシュボードは**使う側の入口**で、役割が違います。
+「自動でダッシュボード生成」は、質問を一つのchartへ変える機能ではありません。RepChatで検証する対象は、
+分析目的を複数の判断可能なKPIとpanelへ分解し、利用者の確認を経て固定成果物へ変える一連の操作です。
+チャットは作成時の入口、ダッシュボードは継続利用の入口として役割を分けます。
 
-これは土台の選択とも整合します。Evidence は**永続するページを生成する**ので固定物が自然に残りますが、
-チャット中心の製品では回答が流れて消えます。
-
-**ただし、正確に言う必要があります。** ダッシュボード機能はどの製品にもあります。差になりうるのは
-**「誰がダッシュボードの中身を決めるか」**です。既存製品では**何を見るべきか分かっている人間**が
-作ります。ここを埋められるかどうかが論点であって、ダッシュボードの有無ではありません。
+Evidenceも回答をInsightへ保存し、管理対象pageへ昇格できます。永続する成果物、Insight保存、
+dashboardへの追加もRepChat固有ではありません。比較すべき対象は、成果物の有無ではなく、分析計画の
+合意、費用確認、根拠検証、顧客別の認可、会議actionまでのworkflowです。
 
 #### この仮説に対する反証材料
 
@@ -160,25 +180,23 @@ nested schemaへの一般化を証明しないため、Issue #188を自由質問
 業務文脈であり、それは業種ごとに異なります。**横断的に薄く当てるより、業種を絞る方が成立しやすい**
 可能性がありますが、これも未検証です。
 
-**Zenlytic が最も近い位置にいます。**「レポート・プレゼン資料・Excelモデルを生成するAIデータアナリスト」
-を標榜しており、定期配信のAIダイジェストを各社が足すのは技術的に容易です。
-**数ヶ月で埋まりうる差**と見るべきで、恒久的な優位ではありません。
+EvidenceとZenlyticはいずれも近い位置にいます。定期配信、会議用要約、確認質問、分析playbookは
+競合が追加できるため、個別機能を恒久的な優位として扱いません。
 
 ## それでも残りうる差別化
 
-技術ではなく、**市場と言語**の側にあります。
+候補は個別技術ではなく、対象顧客とworkflowの組合せです。
 
-- **「質問できない人」を利用者に含めること**（上記4）— どの列も埋まっていない唯一の行。
-  ただし**未検証の仮説**であり、Zenlyticの方向と競合し、数ヶ月で埋まりうる
-- **日本語・日本市場** — 上記はすべて英語圏の製品で、日本のSMBに対する言語・サポート・
-  請求書払い・商習慣への対応は薄い。**個人事業主が現実に守れる領域**はここ
-- **接続が退職で壊れない** — 正面から売っている製品を見ない
-  （[ADR-0010](adr/0010-connection-identity-is-never-a-person.md) D1）
-- **価格帯と対象規模** — Zenlyticは大企業向け、Lightdashは月$3,000。
-  **「エンジニア1人の小さな会社」という帯は、上位製品が降りてこない**
+| 差別化候補 | 現在の根拠 | 現在の判定 |
+|------------|------------|------------|
+| 日本の小規模代理店が複数顧客を安全に扱う運用 | 主要顧客は確定。製品統合は未完了 | 検証対象 |
+| 日本語で目的を分解し、KPI・panel・費用を確認してから実行 | ローカルデモにprototypeあり | 実顧客比較が必要 |
+| 根拠外数値を拒否する会議報告と、決定・owner・次回検証のloop | strict validatorはprototype、意思決定loopは将来要件 | 現在の製品優位とは主張しない |
+| 接続主体を人から分離し、担当者退職で壊れない | ADR-0010で設計確定 | 運用価値をデザインパートナーで確認 |
+| 日本語の導入支援、請求、説明責任 | 提供方針。競合の国内契約実務は未確認 | 営業比較が必要 |
 
-**逆に、技術的な差別化として当てにできないもの**: 自然言語SQL、セマンティック層、Git管理、
-行レベル権限。**すべて既に複数社が持っています。**
+自然言語SQL、セマンティック層、Git管理、Insight保存、Slack／MCP、custom context／skills、RLS、
+埋め込みはEvidenceを含む競合が提供しているため、単独の差別化として使いません。
 
 ## この文書が示唆する行動
 
@@ -198,8 +216,13 @@ Metabase を使っていないのか」**です。これは机上では答えが
 
 補助として「何を使っていますか」「なぜそれを選びましたか」。**説明ではなく質問だけで済みます。**
 
+Evidenceとの機能比較は公開ページの読解で終えません。同じ日本語の分析目的、同じschema、同じ既知値を使い、
+分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を測定します。RepChatが
+Evidenceを上回ったと主張できるのは、この比較で差が再現された後です。
+
 ## 関連
 
 - [.ai/decision-log.md](../.ai/decision-log.md) — LOG-0062
 - [ai-governance-requirements.md](ai-governance-requirements.md) — 上位層の前提条件
+- [analysis-workspace-ui.md](requirements/analysis-workspace-ui.md) — authoring、publish、embedのUI境界
 - [status.md](status.md) — 実装状況
