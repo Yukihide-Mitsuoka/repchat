@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359) — 共通composerを768px上限へ縮め、入力本文に合わせて上方向へ自動伸長させる |
-| デモ実行状態 | [PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)とrelease PR #349はmerge済み。Issue #359を最新mainから実装し、固定応答の`make test-unit` 262件は成功。実Vertex AIとBigQueryは再実行していない |
+| 作業 | [Issue #359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)／[PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360) — 共通composerを768px上限へ縮め、入力本文に合わせて上方向へ自動伸長させる |
+| デモ実行状態 | [PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)とrelease PR #349はmerge済み。PR #360は`make test` 262件とbrowser実測に成功し、CI待ち。実Vertex AIとBigQueryは再実行していない |
 | 直近完了 | [PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)の実行前分析相談、[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)のcomposer・dashboard行resize・左pane調整、[PR #354](https://github.com/Yukihide-Mitsuoka/repchat/pull/354)のcompact titleはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #359を`spikes/report-generation`内で仕上げ、composerの最大幅、自動伸長、pane開閉・resize時の再計算、responsive、既存品質gateを固定応答とbrowserで検証する。製品UIへ移植せず、有料queryを実行しない |
+| AIができること | PR #360のCIとreviewを確認し、指摘があれば同じbranchで修正する。製品UIへ移植せず、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
