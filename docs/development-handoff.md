@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)／[PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348) — デザインパートナーへ見せる前に、ライブデモの視覚階層、カード配置、左右pane、responsiveを固定応答で洗練する |
-| デモ実行状態 | 左右paneを持つローカルprototypeを、中央ダッシュボードが主役になるvisual hierarchyへ改修。広い画面・1100px・900px・720pxを固定データで確認済み。実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界、[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較はmerge済み |
+| 作業 | [Issue #350](https://github.com/Yukihide-Mitsuoka/repchat/issues/350) — 固定表示用serverを操作可能なlive demoと混同したことによる非JSONエラーを解消し、左右paneがviewport全高を所有するshellへ直す |
+| デモ実行状態 | [PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348)はmerge済み。視覚階層の第一弾は完了したが、全体headerが左右paneを覆う構造、太い境界、大型control、固定serverへの誤誘導が残った。Issue #350で修正中。実Vertex AIとBigQueryは再実行していない |
+| 直近完了 | [PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348)のデモ視覚階層、[PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界、[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #347を`spikes/report-generation`内で仕上げ、固定応答、paneの4状態、responsive、keyboard focus、既存品質gateを検証する。製品UIへ移植せず、外部APIも実装しない |
+| AIができること | Issue #350を`spikes/report-generation`内で仕上げ、非JSON応答、pane所有関係、4状態、responsive、keyboard focus、既存品質gateを検証する。製品UIへ移植せず、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -82,7 +82,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)で、中央ダッシュボードを主役にしたvisual hierarchy、左右pane、responsive、focus状態を固定応答で検証する。実Vertex AI・BigQueryは実行しない。
+1. **現在:** [Issue #350](https://github.com/Yukihide-Mitsuoka/repchat/issues/350)で、操作不能な固定serverへの誘導をなくし、非JSON応答を安全に案内し、左右paneを全高・中央headerを中央列だけにしたshellを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
 2. **UI確認後:** ローカルデモを最新mainから再起動し、オーナーがダッシュボード、作成・編集、会議報告、単一グラフの見た目と操作を確認する。必要ならデザインパートナーへ見せる前の改善をIssueへ分ける。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。

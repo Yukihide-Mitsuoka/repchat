@@ -1335,6 +1335,52 @@ test('analysis workspace starts with overlays closed on narrow viewports', () =>
   assert.match(rendered.stdout, /window\.innerWidth<=960/);
 });
 
+test('workspace panes own the full height while the header belongs to the main column', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const html = rendered.stdout;
+  const shell = html.indexOf('id="app-shell"');
+  const sidebar = html.indexOf('id="workspace-sidebar"');
+  const header = html.indexOf('class="app-header"');
+  const main = html.indexOf('id="workspace-main"');
+  const inspector = html.indexOf('id="panel-inspector"');
+  assert.ok(shell < sidebar && sidebar < header && header < main && main < inspector);
+  assert.match(html, /grid-template-rows:44px minmax\(0,1fr\)/);
+  assert.match(html, /\.workspace-sidebar\{grid-column:1;grid-row:1\/3/);
+  assert.match(html, /\.workspace-inspector\{grid-column:5;grid-row:1\/3/);
+  assert.match(html, /\.app-header\{grid-column:3;grid-row:1/);
+  assert.match(html, /class="sidebar-chrome"><span class="brand">RepChat/);
+  assert.match(html, /class="header-title">分析ワークスペース/);
+  assert.doesNotMatch(html, /<span class="brand">RepChat<\/span><span>Live analysis demo/);
+});
+
+test('workspace chrome uses compact controls and separates splitter hit area from its hairline', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /--header-height:44px/);
+  assert.match(rendered.stdout, /--icon-button-size:32px/);
+  assert.match(rendered.stdout, /--splitter-hit-area:8px/);
+  assert.match(rendered.stdout, /--splitter-line:1px/);
+  assert.match(
+    rendered.stdout,
+    /\.app-shell\.inspector-collapsed \.workspace-inspector,[^}]+display:none;overflow:hidden/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.app-shell\.sidebar-collapsed \.navigation-resizer,[^}]+display:none/,
+  );
+  assert.match(rendered.stdout, /font-weight:500/);
+  assert.doesNotMatch(rendered.stdout, /font-weight:800/);
+});
+
+test('live client reports non-JSON endpoint responses without leaking HTML', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /content-type/);
+  assert.match(rendered.stdout, /操作可能なライブデモへ接続できません/);
+  assert.doesNotMatch(rendered.stdout, /\(await res\.json\(\)\)\.error/);
+});
+
 test('workspace transitions reveal completed artifacts without mixing build and report views', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
