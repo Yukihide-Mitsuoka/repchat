@@ -742,6 +742,19 @@ print(json.dumps({"period":period,"ids":[s["id"] for s in sections],"requested_m
   });
 });
 
+test('dashboard layout normalizes incomplete and single-card rows to the full width', () => {
+  const result = python(`
+layouts=m.dashboard_layout_rows(["R4","R11","R9","R16"])
+print(json.dumps(layouts,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    { panel_ids: ['R4', 'R11'], shares: [66.6667, 33.3333] },
+    { panel_ids: ['R9'], shares: [100] },
+    { panel_ids: ['R16'], shares: [100] },
+  ]);
+});
+
 test('dashboard engine streams six generated panels without paid dependencies', () => {
   const result = python(`
 import threading
@@ -770,12 +783,17 @@ m.report.generate=generate;m.report.exec_bq=execute
 events=[]
 e.dashboard("2020年12月のECサイト分析ダッシュボードを作って",events.append)
 panel_results=[event for event in events if event["type"]=="result"]
-print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
+print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"layout":events[0]["layout_rows"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     first: 'dashboard_plan',
     last: 'dashboard_complete',
+    layout: [
+      { panel_ids: ['R4', 'R11', 'R12'], shares: [50, 25, 25] },
+      { panel_ids: ['R9', 'R17'], shares: [40, 60] },
+      { panel_ids: ['R16'], shares: [100] },
+    ],
     generated: [
       ['R4', '2020年12月'],
       ['R11', '2020年12月'],
@@ -1390,9 +1408,9 @@ test('dashboard resizes every shared row without free rearrangement', () => {
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.ok(script.includes('function groupDashboardPanelRow(ids,initialShares)'));
-  assert.ok(script.includes('groupDashboardPanelRow(["R4","R11","R12"],[50,25,25])'));
-  assert.ok(script.includes('groupDashboardPanelRow(["R9","R17"],[40,60])'));
-  assert.ok(script.includes('groupDashboardPanelRows();'));
+  assert.ok(
+    script.includes('e.layout_rows.forEach(row=>groupDashboardPanelRow(row.panel_ids,row.shares))'),
+  );
   assert.ok(script.includes('separator.setAttribute("role","separator")'));
   assert.ok(script.includes('separator.setAttribute("aria-valuemin"'));
   assert.ok(script.includes('separator.setAttribute("aria-valuemax"'));

@@ -83,6 +83,38 @@ print(json.dumps({"context":p.ORGANIZATION_CONTEXT["revision"] in request,"metri
   });
 });
 
+test('broad purchase improvement recommends all six panels but preserves explicit removal', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+raw={
+ "objective_summary":"購入成果の阻害箇所を特定して優先施策を決める",
+ "audience":"月次マーケティング会議",
+ "comparison":"月内の日次推移とファネル段階",
+ "hypotheses":["購入導線に課題がある"],
+ "clarifications":[],
+ "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R11","R9","R16","R17"]],
+}
+objective="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
+recommended=p.normalize_plan(raw,objective,period,{"audience":"月次マーケティング会議"},complete_purchase_recommendations=True)
+edited={**recommended,"panels":[panel for panel in recommended["panels"] if panel["id"]!="R12"]}
+confirmed=p.confirm_plan(edited)
+print(json.dumps({"recommended":[panel["id"] for panel in recommended["panels"]],"confirmed":[panel["id"] for panel in confirmed["panels"]]},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    recommended: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
+    confirmed: ['R4', 'R11', 'R9', 'R16', 'R17'],
+  });
+});
+
 test('planner constrains each response schema to unanswered clarification fields', () => {
   const result = spawnSync(
     'python3',

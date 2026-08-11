@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)／[PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360) — 共通composerを768px上限へ縮め、入力本文に合わせて上方向へ自動伸長させる |
-| デモ実行状態 | [PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)とrelease PR #349はmerge済み。PR #360は`make test` 262件とbrowser実測に成功し、CI待ち。実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)の実行前分析相談、[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)のcomposer・dashboard行resize・左pane調整、[PR #354](https://github.com/Yukihide-Mitsuoka/repchat/pull/354)のcompact titleはmerge済み |
+| 作業 | [Issue #362](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)／[PR #363](https://github.com/Yukihide-Mitsuoka/repchat/pull/363) — dashboardの行幅を100%へ正規化し、単独の折れ線を全幅にし、広い購入成果改善相談では6つの検証済みパネルを既定提案する |
+| デモ実行状態 | [PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)はmerge済み。PR #363の修正ブランチを`http://127.0.0.1:8765/`で起動中。固定応答と全テストは成功し、実Vertex AIとBigQueryは再実行していない |
+| 直近完了 | [PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)のcomposer 768px上限・自動伸長、[PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)の実行前分析相談、[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)のdashboard行resize・左pane調整はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | PR #360のCIとreviewを確認し、指摘があれば同じbranchで修正する。製品UIへ移植せず、有料queryを実行しない |
+| AIができること | PR #363のCIとreviewを確認し、指摘があれば同じbranchで修正する。固定fixtureで6パネル、単独行100%、欠落行の比率再配分を確認し、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -55,6 +55,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在の競合・配信境界整理 | [#338 Evidence Cloud positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence Cloud公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
 | 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
+| 直近のdashboard修正 | [#362 row completeness](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)。選択パネル集合から行と比率をserverで正規化し、単独行を100%、欠落のある複数カード行も合計100%にする。広い購入成果改善相談はR4／R11／R12／R9／R16／R17を提案時に補完するが、確認画面での明示的な選択解除は維持する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py` |
 | 直近のデモUX | [#352 unified analysis workspace](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。4つのpeer modeを成果物treeと分析スレッドへ変え、中央下端の共通composerからdashboard／Insight／reportを明示選択する。単一グラフは右Artifact Preview、dashboard／reportは中央の成果物pageとし、既存の費用gate・SQL検査・根拠検証を維持する。左右toggleはviewport端へ固定して開閉時に座標を変えない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockを廃止する。履歴操作はブラウザへ委ね、永続履歴・保存・Git連携は未実装 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 完了したデモ調整 | [#355 composer and dashboard row resize](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)／[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)。composerは中央列追従、22px角丸、初期960px上限を導入した。現行の768px上限と自動伸長は[#359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)が上書きする。dashboardは同じ行の全境界を操作可能にし、隣接cardだけを連動させる。左paneは一行title、hover／focus marquee、16px icon列、4px gap／paddingへ圧縮する。順序変更、自由配置、永続化はしない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 現在の分析相談UX | [#357 consult before broad analysis](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)。「どんな分析をしたらいい」等はSQLへfallbackせず、GA4の検証済み4候補またはBitcoinの保証済み1候補を、判断目的・可視化・依頼例付きで表示する。選択はcomposer反映だけで、再送信と既存費用gateの承認後に実行する。query APIも相談文を拒否する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
@@ -84,7 +85,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)で、共通composerを768px上限へ縮め、入力本文に合わせて上方向へ自動伸長する挙動を固定応答とbrowserで検証する。実Vertex AI・BigQueryは実行しない。
+1. **現在:** [Issue #362](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)で、dashboardの単独行100%、複数カード行の合計100%、購入成果改善の6パネル提案を固定応答とbrowserで検証する。実Vertex AI・BigQueryは実行しない。
 2. **UI確認後:** ローカルデモを最新mainから再起動し、オーナーがダッシュボード、作成・編集、会議報告、単一グラフの見た目と操作を確認する。必要ならデザインパートナーへ見せる前の改善をIssueへ分ける。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。

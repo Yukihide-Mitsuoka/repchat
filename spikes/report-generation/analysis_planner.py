@@ -55,6 +55,7 @@ PANEL_CATALOG = {
 }
 
 CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
+PURCHASE_IMPROVEMENT_PANEL_IDS = tuple(PANEL_CATALOG)
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -160,6 +161,8 @@ def normalize_plan(
     objective: str,
     period: dict[str, str],
     answers: dict[str, str] | None = None,
+    *,
+    complete_purchase_recommendations: bool = False,
 ) -> dict:
     """Validate model output and produce a deterministic proposed revision."""
     answers = answers or {}
@@ -202,6 +205,18 @@ def normalize_plan(
         panel_reasons[panel_id] = _text(item.get("reason"), "パネル選択理由")
     if not 4 <= len(panel_reasons) <= 6:
         raise PlannerError("分析計画のパネルは4〜6件にしてください。")
+    compact_objective = "".join(objective.split())
+    broad_purchase_improvement = (
+        "購入" in compact_objective
+        and "改善" in compact_objective
+        and any(word in compact_objective for word in ("課題", "優先施策"))
+    )
+    if complete_purchase_recommendations and broad_purchase_improvement:
+        for panel_id in PURCHASE_IMPROVEMENT_PANEL_IDS:
+            panel_reasons.setdefault(
+                panel_id,
+                f"{PANEL_CATALOG[panel_id]['decision']}ため",
+            )
     panels = [
         {"id": panel_id, **item, "reason": panel_reasons[panel_id]}
         for panel_id, item in PANEL_CATALOG.items()
@@ -240,7 +255,11 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
         ),
     )
     return normalize_plan(
-        json.loads(response.text), objective, period, answers
+        json.loads(response.text),
+        objective,
+        period,
+        answers,
+        complete_purchase_recommendations=True,
     ), token_counts(response.usage_metadata)
 
 

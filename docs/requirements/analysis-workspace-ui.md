@@ -241,7 +241,7 @@ AppShell
 | MAIN-016 | 初期authoringはAI対話、構造化template、panel参照追加、順序変更に限定し、任意座標drag-and-drop、任意HTML／code、自由layout canvasを提供しない | Must |
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
 | MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
-| MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
+| MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。選択パネルが減った行は残存カードの比率を合計100%へ正規化し、単独行は常に利用可能幅の100%を使う。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
 | MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。data profileの検証済み範囲から、分析title、支える判断、可視化、具体的な依頼例を選択cardで示す。選択はcomposerへ依頼文を反映するだけで実行せず、利用者が編集して再送信し、費用確認を承認した後だけVertex AI・BigQueryを実行する。client bypassでもquery APIが同じ相談文を拒否する | Must |
 
 ### 6.4 右セカンダリpane
@@ -563,7 +563,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |
 | AC-24 | 左treeの選択titleと44px header titleが一致し、本文上部に同じ大型title／説明blockがない | APP-002 | viewport E2E＋navigation review |
 | AC-25 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
-| AC-26 | composerが中央列に合わせて縮み、desktopで768pxを超えず22pxの角丸を保つ。入力本文は内容に合わせて上方向へ伸長し、通常の長文でtextarea内に縦スクロールを表示しない。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
+| AC-26 | composerが中央列に合わせて縮み、desktopで768pxを超えず22pxの角丸を保つ。入力本文は内容に合わせて上方向へ伸長し、通常の長文でtextarea内に縦スクロールを表示しない。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。行内カードが欠けても残存カードが合計100%を使い、単独の折れ線等は左右paneの状態にかかわらず全幅になる。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
 | AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
