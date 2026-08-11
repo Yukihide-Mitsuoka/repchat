@@ -61,12 +61,7 @@ DASHBOARD_CHARTS = ("scorecard", "bar", "line", "table", "sankey")
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
 DYNAMIC_PANEL_FIELDS = (
-    "title",
-    "kpi",
-    "chart",
-    "decision",
-    "reason",
-    "execution_prompt",
+    "title", "kpi", "chart", "decision", "reason", "execution_prompt"
 )
 
 
