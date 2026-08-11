@@ -1400,6 +1400,23 @@ test('left navigation stays compact and scrolls long titles only on interaction'
   );
 });
 
+test('pane splitters keep an accessible hit area without visible layout gaps', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(
+    rendered.stdout,
+    /--nav-grip:1px;--inspector-column:var\(--inspector-width\);--inspector-grip:1px/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.navigation-resizer,\.inspector-resizer\{[^}]*width:var\(--splitter-hit-area\)[^}]*justify-self:center/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.navigation-resizer::after,\.inspector-resizer::after\{left:50%;transform:translateX\(-50%\)\}/,
+  );
+});
+
 test('analysis workspace visual hierarchy protects charts and the main surface', () => {
   const result = python(`
 html=m.HTML

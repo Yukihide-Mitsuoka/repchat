@@ -216,6 +216,7 @@ AppShell
 | NAV-010 | sidebarを閉じたdesktop状態ではpaneを0pxにし、headerのtoggleだけを残す。icon railは作らない | Must |
 | NAV-011 | 分析スレッドと保存済みインサイトを混在させず、インサイトにはdraft／review／published、更新日時、参照先dashboardのstatusを表示する | Must |
 | NAV-012 | 左paneのtitleは一行で折り返さず、通常時は領域内で省略する。pointer hoverまたはkeyboard focus時だけ行内を横へ流し、全文を読めるようにする。icon列は16px、titleとのgapは4px、pane左右paddingは4pxとし、選択背景のために行高を増やさない | Should |
+| NAV-013 | 左右paneと中央paneは1px境界線で隣接し、resize操作のための余白をlayoutへ追加しない。pointer用の8px hit areaは境界線を中心に両paneへ重ねる | Must |
 
 ### 6.3 メインサーフェス
 
@@ -562,6 +563,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-25 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
 | AC-26 | composerが中央列に合わせて縮み、desktopで960pxを超えず22pxの角丸を保つ。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
+| AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる | NAV-013 | computed style＋pointer E2E |
 
 ## 15. リスク
 
