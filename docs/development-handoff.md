@@ -15,11 +15,11 @@ updated: 2026-08-12
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #373](https://github.com/Yukihide-Mitsuoka/repchat/issues/373) — 固定候補の提示にすぎなかった単一分析相談を、schema・metric・目的・履歴からAIが分析仕様そのものを新規設計する複数turn相談へ置き換える |
-| デモ実行状態 | [PR #372](https://github.com/Yukihide-Mitsuoka/repchat/pull/372)はmerge済み。Issue #373の修正ブランチで分析planner／live demoの固定応答テスト68件が2026-08-12に成功した。実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [PR #372](https://github.com/Yukihide-Mitsuoka/repchat/pull/372)の共有可能なdashboard layout revision要件、[PR #365](https://github.com/Yukihide-Mitsuoka/repchat/pull/365)のdashboard閲覧モード、[PR #363](https://github.com/Yukihide-Mitsuoka/repchat/pull/363)のdashboard行完全性・単独行全幅はmerge済み |
+| 作業 | [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374) — dashboard plannerの固定6分析依存を外し、AIが作った任意の分析仕様をreview、freeze、SQL生成、描画まで保持する |
+| デモ実行状態 | [PR #375](https://github.com/Yukihide-Mitsuoka/repchat/pull/375)と[PR #376](https://github.com/Yukihide-Mitsuoka/repchat/pull/376)の単一分析相談はmerge済み。Issue #374は固定応答で検証し、実Vertex AIとBigQueryは再実行していない |
+| 直近完了 | [Issue #373](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)の状態付きAI相談、[PR #372](https://github.com/Yukihide-Mitsuoka/repchat/pull/372)の共有可能なdashboard layout revision要件、[PR #365](https://github.com/Yukihide-Mitsuoka/repchat/pull/365)のdashboard閲覧モードはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #373のtest、format、lint、reviewを完了し、固定候補一覧をAIへ渡さず、follow-up履歴から新しい分析仕様を作ることを固定応答で確認する。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
+| AIができること | Issue #374のtest、format、lint、reviewを完了し、固定候補一覧が通常plannerへ渡らず、動的分析仕様がfreeze後のSQL生成とlayoutまで保持されることを固定応答で確認する。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -59,7 +59,8 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在のdashboard閲覧UX | [#364 dashboard focus mode](https://github.com/Yukihide-Mitsuoka/repchat/issues/364)。build成功時だけ右paneを閉じ、composerを小型ランチャーへ縮小する。hoverでは状態を変えず、click／keyboardで下書きとactionを保持した入力欄へ復帰する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモUX | [#352 unified analysis workspace](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。4つのpeer modeを成果物treeと分析スレッドへ変え、中央下端の共通composerからdashboard／Insight／reportを明示選択する。単一グラフは右Artifact Preview、dashboard／reportは中央の成果物pageとし、既存の費用gate・SQL検査・根拠検証を維持する。左右toggleはviewport端へ固定して開閉時に座標を変えない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockを廃止する。履歴操作はブラウザへ委ね、永続履歴・保存・Git連携は未実装 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 完了したデモ調整 | [#355 composer and dashboard row resize](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)／[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)。composerは中央列追従、22px角丸、初期960px上限を導入した。現行の768px上限と自動伸長は[#359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)が上書きする。dashboardは同じ行の全境界を操作可能にし、隣接cardだけを連動させる。左paneは一行title、hover／focus marquee、16px icon列、4px gap／paddingへ圧縮する。順序変更、自由配置、永続化はしない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
-| 現在の分析相談UX | [#373 stateful AI consultation](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)。#357の固定候補提示は分析相談として不十分だった。現在の修正はVertex AIへschema・metric・期間・目的・最大8 turnの履歴を渡し、仮説、指標、切り口、比較、可視化、理由、実行用日本語仕様を新規に作らせる。選択はcomposer反映だけで、SQL生成・BigQueryは別費用gate後。固定候補一覧は通常plannerへ渡さない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py`、各test |
+| 完了した分析相談UX | [#373 stateful AI consultation](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)。Vertex AIへschema・metric・期間・目的・最大8 turnの履歴を渡し、分析仕様を新規に作らせる。選択はcomposer反映だけで、SQL生成・BigQueryは別費用gate後 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py`、各test |
+| 現在のdashboard planner | [#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)。初回提案数と最大件数だけを管理者設定とし、AIが作るtitle、KPI、軸、chart、判断用途、理由、日本語実行仕様を固定候補IDへ置換せずfreeze・buildする | [デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py`、各test |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
@@ -86,8 +87,8 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-12）
 
-1. **現在:** [Issue #373](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)で、固定候補をAIへ渡さず、単一グラフ相談が新しい分析仕様を生成し、follow-up履歴を保持することを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
-2. **UI確認後:** ローカルデモを最新修正から再起動し、送信時のcomposer clear、追記型の利用者／AI履歴、提案card選択、cancel・error時の下書き復元を確認する。
+1. **現在:** [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で、固定候補を通常plannerへ渡さず、AIが作る任意のdashboard分析仕様をreview、freeze、SQL生成、描画まで保持することを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
+2. **UI確認後:** ローカルデモを最新修正から再起動し、動的panel仕様、件数境界、可視化別layout、結果形状不一致の拒否を確認する。
 3. **オーナー承認後:** Vertex AIだけを使う相談を「どんな分析をしたらいい？」→「他にない？」の2 turnで確認し、既出案の固定反復ではないことを評価する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
