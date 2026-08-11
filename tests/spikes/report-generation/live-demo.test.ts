@@ -1622,6 +1622,30 @@ test('workspace transitions reveal completed artifacts without mixing build and 
   assert.ok(script.includes('selectInspectorTab("sql")'));
 });
 
+test('artifact pane can expand to three quarters while preserving the main workspace', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const context = vm.createContext({});
+  vm.runInContext(
+    `${script.match(/const INSPECTOR_MIN_WIDTH=.*?function inspectorMaximumWidth\(viewportWidth,navigationWidth\)\{.*?\}/s)?.[0]}
+result={closed:inspectorMaximumWidth(1440,0),open:inspectorMaximumWidth(1440,221),narrow:inspectorMaximumWidth(900,0)}`,
+    context,
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(context.result)), {
+    closed: 1079,
+    open: 858,
+    narrow: 539,
+  });
+  assert.ok(script.includes('setInspectorWidth(currentInspectorWidth())'));
+  assert.ok(script.includes('inspectorResizer.setAttribute("aria-valuemax"'));
+  assert.doesNotMatch(script, /Math\.min\(560,window\.innerWidth-event\.clientX\)/);
+  assert.match(
+    rendered.stdout,
+    /\.workspace-inspector \.table-scroll th,\.workspace-inspector \.table-scroll td\{padding:6px 8px;font-size:12px;line-height:1\.35/,
+  );
+});
+
 test('meeting report owns persistent processing and error state across workspace navigation', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
