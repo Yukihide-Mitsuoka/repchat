@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) — 同一workspace UIと内部のpermission・API・credential・audit分離、provider非依存Action Package、広告・決済adapter境界をreviewする |
+| 作業 | [Issue #345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)／[PR #346](https://github.com/Yukihide-Mitsuoka/repchat/pull/346) — 同一workspace UIと内部のpermission・API・credential・audit分離、provider非依存Action Package、広告・決済adapter境界をreviewする |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
 | 直近完了 | [PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界、[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
@@ -82,7 +82,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)で、Action Package API要件とADR-0023をreviewする。API、CSV、webhook、広告connector、決済は実装しない。
+1. **現在:** [PR #346](https://github.com/Yukihide-Mitsuoka/repchat/pull/346)で、Action Package API要件とADR-0023をreviewする。API、CSV、webhook、広告connector、決済は実装しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
