@@ -8,7 +8,8 @@ updated: 2026-08-11
 # 統制されたコホート分析要件
 
 この文書は、日本語の分析目的からコホートの意味を確認し、再現可能な定義、費用承認、SQL、検証済み結果、
-解釈までを作る将来要件を定義する。Amplitudeの主要なコホート・リテンション分析に対抗するが、
+解釈までを作る将来要件を定義する。最初はAmplitude代替ではなく、代理店がすぐ使える日本語の定型分析として
+小さな競争力を検証する。Amplitudeの主要なコホート・リテンション分析へ段階的に近づけるが、
 Evidence Cloudとの差は描画componentではなく、意味を確定してから実行する統制workflowで検証する。
 追跡Issueは[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)である。
 
@@ -25,6 +26,7 @@ Evidence Cloudとの差は描画componentではなく、意味を確定してか
 | 成熟期間 | 対象cohortの全分析主体が該当intervalまで観測されるだけの時間が経過した期間 |
 | cohort specification | 分析主体、起点・復帰event、期間、粒度、timezone、retention方式、filter、比較軸を固定した不変revision |
 | cohort result | specification revision、query revision、result revision、検証結果へ追跡できるmatrix、curve、集計表 |
+| 最小コホートレポート | acquisition cohort、exact-period retention、未成熟期間の区別、heatmap・table、SQL・集計data・根拠に限定したPhase 1成果物 |
 
 ## 2. 前提と制約
 
@@ -33,6 +35,7 @@ Evidence Cloudとの差は描画componentではなく、意味を確定してか
 | A-1 | 検証対象の仮説 | 日本語で目的を伝え、曖昧な意味だけを確認できれば、Amplitude型の分析を専門家なしで再現できる | design partnerが定義作業を負担と判断した場合は代理店template中心へ変更する |
 | A-2 | 競合事実 | Amplitudeはbehavioral cohort、retention、cohort比較、再利用を製品化している | 同等の意味契約を持たない簡易heatmapでは対抗にならない |
 | A-3 | 競合事実 | Evidence CloudはSQL、custom component、agent skillsでcohort reportを構成でき、Evidence Labsにも実験的componentがある | 「cohort chartがある」だけではEvidence Cloudとの差にならない |
+| A-4 | 検証対象の仮説 | 最小コホートレポートだけでも、汎用BIより準備が少ない日本語の定型分析として採用理由になる | 利用意向が上がらなければ差別化と表現せず、Phase 2以降を再評価する |
 | C-1 | 制約 | Issue #160が`proceed`になるまで製品実装しない | 今回は要件、競合境界、実装順序だけを記録する |
 | C-2 | 制約 | cohort specificationをfreezeする前にSQLを生成・実行しない | AIの暗黙解釈を分析定義にしない |
 | C-3 | 制約 | 未成熟期間を0として表示せず、空欄または未確定として扱う | 観測不足を離脱と誤認させない |
@@ -60,6 +63,14 @@ Evidence Cloudとの差は描画componentではなく、意味を確定してか
   cohort比較、heatmap・table・curve、定義revision、費用承認、SQL・集計data・根拠、再利用、監査。
 - **対象外:** predictive cohort、propensity model、experiment配信、push通知、広告activation、session replay、
   Amplitude互換API、自由な任意code実行、Issue #160判定前の製品実装。
+
+### 3.1 最小コホートレポートの位置づけ
+
+Phase 1はAmplitudeのbehavioral cohort、saved cohort、used-by、predictive／activationを再現しない。
+それでも、定義済みのGA4 acquisition cohortを日本語で依頼し、未成熟期間を0と誤表示せず、母数、SQL、
+集計data、根拠まで同時に確認できるなら、一般的なdashboard生成だけより一段深い定型分析になる。
+この「多少の強み」は要件上の仮説であり、Amplitude対抗またはEvidence Cloud優位とは販売上表現しない。
+同じ課題を汎用BI、Amplitude、Evidence Cloud、RepChatで行い、準備時間、定義誤り、根拠追跡、利用意向を測る。
 - **関係者:**
 
   | role | 関心 | 決定権限 |
@@ -208,7 +219,7 @@ on-or-afterか、購入者の判定期間を提案する。利用者が確認し
 | 段階 | 範囲 | 開始条件 |
 |------|------|----------|
 | Phase 0 — 要件とbenchmark設計 | 本文書、競合境界、reference fixture、同一課題benchmark | 今回。製品実装なし |
-| Phase 1 — 公開GA4 demo | acquisition cohort、exact-period、未成熟blank、heatmap・table、SQL・data・根拠 | #160=`proceed`、費用承認、reference SQL review |
+| Phase 1 — 最小コホートレポート | 公開GA4のacquisition cohort、exact-period、未成熟blank、heatmap・table、SQL・data・根拠 | #160=`proceed`、費用承認、reference SQL review |
 | Phase 2 — 製品analysis | versioned specification、on-or-after、費用gate、provenance、認可、publish | #179/#180のrevision・build契約と#188の品質境界が安定 |
 | Phase 3 — reusable behavioral cohort | event・property定義、used-by、cohort比較、dashboard・Insight・会議report参照 | Phase 2の正確性・越境・費用試験が成功 |
 | Phase 4 — activation拡張 | predictive cohort、experiment・施策連携 | design partnerの反復需要と別要件・ADRが承認済み |

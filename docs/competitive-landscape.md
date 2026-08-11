@@ -154,6 +154,7 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 | 自然言語分析・Insight保存 | Evidence Cloud | page／filterの理解、chart／query／source、Insight保存を製品化済み |
 | Slack・MCP | Evidence Cloud | Slack、Claude Desktop、ChatGPTを含むMCP client対応を公式掲載済み |
 | 日本語での分析計画 | RepChat候補 | 目的をKPI、比較軸、期間、複数panelへ分解して確認するローカルdemoがある。比較検証前 |
+| 最小コホートレポート | RepChat候補 | GA4のacquisition cohortを日本語で定義し、未成熟期間、母数、SQL、集計data、根拠まで結ぶ将来要件。Amplitude代替でもEvidence Cloud優位でもなく、汎用BIより準備が少ない定型分析として検証する |
 | 実行前の費用確認 | RepChat | Vertex AIとBigQueryを別段階で見積もり、上限を承認してから実行する。thought tokenも費用に含める |
 | 会議報告の根拠検証 | RepChat候補 | 根拠外数値を拒否し、妥当な項目だけを残すstrict validatorをローカルdemoへ実装済み。品質優位は未検証 |
 | 日本企業向け運用 | RepChat候補 | 日本語説明、初期接続支援、請求書払い方針、担当者退職に耐える接続設計。design partner検証前 |
@@ -170,6 +171,11 @@ RepChatが「Evidence Cloudより優れている」と説明できる条件は�
 Amplitudeはbehavioral cohortの定義、複数chartでの再利用、retention、cohort比較、used-by、母集団推移を
 製品化しています。したがってheatmapを一枚追加するだけではAmplitudeへの対抗になりません。
 
+ただし最初からAmplitude全体を再現しないことと、最小機能に価値がないことは同じではありません。
+公開GA4でacquisition cohort、exact-period、未成熟期間、heatmap・table、SQL・集計data・根拠までを
+一つの日本語templateとして提供できれば、利用者が一からSQLを設計する汎用BIより小さな採用理由になり得ます。
+これは競争力仮説であり、Amplitudeと同等、またはEvidence Cloudに優位とは表現しません。
+
 Evidence CloudもSQL、agent skills、custom componentでcohort reportを構成できます。Evidence Labsには
 実験的なCohort Analysis componentがあり、未完期間を除外・空欄表示しないこと、列名制約、error handling不足を
 未解決事項として明記しています。これはEvidence Cloudにcohort分析能力が無いことを意味しません。
@@ -185,6 +191,25 @@ RepChatが検証する差は次のworkflowです。
 [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)と
 [#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)を正本とします。predictive cohort、実験配信、
 session replayを初期範囲へ含めず、Issue #160が`proceed`になるまで製品実装しません。
+
+#### 計測設計支援で競う境界
+
+Amplitudeの上流のevent設計を省略すると、cohort、funnel、retentionの意味も失われます。RepChatは将来、
+分析目的からGA4 recommended event、dataLayer契約、実装code、GTM tag・trigger・variable構成、import成果物、
+consent確認事項、QA手順を作る`Design Mode`を検証します。これはGTMを自動操作する製品ではなく、
+代理店と顧客technical ownerがreviewできるbest-practiceの初稿を作るonboarding支援です。
+
+後続`Apply Mode`も、公式GTM APIで隔離workspaceへ適用し、sync・conflict確認とquick previewを行うところまでに
+限定します。RepChatはbrowser、Tag Assistant、本番publishを操作しません。APIはworkspace、tag、trigger、
+variable、version等を管理でき、OAuth scopeもread、edit、version、publishで分かれています。このためpublish
+scopeを持たない構成を製品境界として試験できます。詳細は
+[GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)と
+[#343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)を正本とします。
+
+参照: [GTM API v2](https://developers.google.com/tag-platform/tag-manager/api/v2)、
+[authorization scopes](https://developers.google.com/tag-platform/tag-manager/api/v2/authorization)、
+[container export/import](https://support.google.com/tagmanager/answer/6106997?hl=en)、
+[GA4 recommended events](https://developers.google.com/analytics/devguides/collection/ga4/reference/recommended-events)
 
 参照: [Amplitude Cohort Analysis](https://www.amplitude.com/explore/analytics/cohort-analysis)、
 [Behavioral Cohorts API](https://www.amplitude.com/docs/apis/analytics/behavioral-cohorts)、

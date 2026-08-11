@@ -244,6 +244,10 @@ DWH に直接SQLを投げれば作り込みを飛ばせますが、**意味も�
 retention方式、期間、timezone、未成熟期間の扱いを日本語で確認してから実行します。範囲と受入条件は
 [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)を正本とします。
 
+最初の公開GA4版はAmplitude代替ではありません。それでも、定義済みacquisition cohortを日本語で呼び出し、
+未成熟期間、母数、SQL、集計data、根拠まで一体で確認できれば、汎用BIより準備が少ない定型分析として
+小さな競争力になり得ます。この段階的な価値もdesign partnerで利用意向を測り、実証前に優位と断言しません。
+
 ### 2.9 決着 — 生成物は顧客のリポジトリに置く（2026-07-28）
 
 「本体はこちらでホスト、**生成したページとSQLは顧客側の Git**」という案は、
@@ -303,6 +307,19 @@ RepChatが検証する差は次の組合せです。実装状態を超えて優�
 
 この説明もデザインパートナー比較で実証するまではポジショニング仮説です。競合事実と出典は
 [競合比較](competitive-landscape.md)を正本とします。
+
+### 2.11 計測設計はRepChat、GTM操作と公開は境界外（2026-08-11）
+
+分析品質は、上流のevent、parameter、identity、consentの品質を超えられません。RepChatは将来、分析目的から
+GA4 recommended event、dataLayer契約、site実装code、GTM構成、import成果物、検証手順を作る
+`Design Mode`をonboarding機能として検証します。一般的なbest practiceをreview可能な初稿にするのであり、
+未知のlegacy containerを正しいと推測して書き換える機能ではありません。
+
+後続`Apply Mode`は公式GTM APIで隔離workspaceへ適用し、sync・conflict確認とquick previewを行うところまでです。
+RepChatはbrowserを操作せず、publish scopeを要求せず、本番versionを公開しません。利用者はpreview手順を受け取り、
+GTM側で実siteの発火とpublishを確認します。この境界により、分析支援からproduction site運用へ製品責任を
+無制限に広げません。正本は
+[GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)とします。
 
 ## 3. 採らない — 時間を使わないもの
 
