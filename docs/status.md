@@ -30,11 +30,13 @@ updated: 2026-08-11
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)。
-デザインパートナーへ見せる前に、ライブデモを「機能が並ぶ検証画面」から、中央のダッシュボードを主役にした
-分析ワークスペースへ洗練する。KPIの優先順位、カード配置、左右paneの開閉、1100px以下でのoverlay、
-960px以下の初期折りたたみ、720pxの一列表示を固定応答で確認する。実Vertex AI・BigQueryは呼ばない。
-製品UIへの移植、永続履歴、Git連携、公開workflowを実装済みのようには見せない。
+**現在の作業スレッド**: [Issue #350](https://github.com/Yukihide-Mitsuoka/repchat/issues/350)。
+[PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348)の視覚階層改修はmerge済みだが、固定表示用serverを
+操作可能なlive demoとして案内したため、生成操作がHTML error pageをJSONとして解釈して失敗した。また全体headerが
+左右paneの上を横断し、ChatGPTの添付観測と異なる所有構造、太い境界、大型controlが残った。Issue #350では
+固定表示とlive serverを分離し、非JSON応答を安全に案内し、左右paneをviewport全高、中央headerを中央列だけへ置く。
+1pxの境界と8pxのdrag領域を分離し、32px icon control、36px navigation行、400〜600のfont weightを検証する。
+実Vertex AI・BigQueryは呼ばない。製品UIへの移植、永続履歴、Git連携、公開workflowを実装済みのようには見せない。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
 同じ作業中の先行doctorは成功していたが、再実行で成功扱いにせず、[Issue #315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)へ分離した。

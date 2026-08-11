@@ -98,12 +98,16 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-14 | Official competitor | Evidence料金ページはTeam $15/人・月、Pro $25/人・月、Enterprise個別見積を示し、Embedded、white labeling、RLSをEnterpriseに含める | [Pricing](https://evidence.dev/pricing) |
 | SRC-15 | Official competitor | Evidence StudioはReport、Explore、SQL Console、AI Chatをself-service面として分ける。pageはMarkdown、SQL、componentで構成できる | [Migration guide](https://docs.evidence.studio/migration-guide)、[Markdown](https://docs.evidence.studio/core-concepts/markdown) |
 | SRC-16 | Official competitor | Viewer／Org Viewerはeditorへアクセスできず、Developer／Adminはreportを編集できる | [Publishing](https://docs.evidence.studio/publishing) |
+| SRC-17 | Official | ChatGPTのProjectsはsidebarから作成・選択し、project内へchatとfileをまとめ、chatをprojectへ移動できる | [Projects in ChatGPT](https://help.openai.com/en/articles/10169521-using-projects-in-chatgpt) |
+| SRC-18 | Official | ChatGPT Canvasはchatとは別の右側workspaceを開き、本文を直接編集しながら会話で修正できる | [Canvas in ChatGPT](https://help.openai.com/en/articles/9930697-what-is-the-canvas-feature-in-chatgpt) |
+| SRC-19 | Owner-provided observation | 2026-08-11のChatGPTデスクトップ画像では、左paneがviewport上端から下端までを所有し、中央headerは左paneの右から始まる。pane境界は細い線、上部操作は小型で、階層は余白・濃淡・選択背景を中心に表現される | この依頼の添付画像 |
 
 ### 4.2 証拠の扱い
 
 - `Official`はOpenAI公式資料が説明する責務やworkflowだけを根拠にする。ChatGPT固有の寸法とは扱わない。
 - `Observed`はURL、locale、認証状態、観測日を固定する。SRC-06は日本語、未ログイン、2026-08-10のDOM観測である。
 - `Owner intent`は製品要望であり、外部製品の事実として引用しない。
+- `Owner-provided observation`は提供画像のviewportと時点に限る観測であり、ChatGPTの非公開tokenや全画面共通仕様とは扱わない。
 - `Official competitor`は競合自身の製品説明であり、性能やsecurityをRepChatが実測した証拠とは扱わない。
 - 寸法、breakpoint、motion、menu順はすべて`RepChat decision`として以下に固定する。
 
@@ -115,9 +119,11 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Search chats | 認可scope内のダッシュボード・分析スレッドを検索 | 未実装 | NAV-003 |
 | Projects | 顧客別または目的別の分析コレクション | 将来機能の文言だけ | NAV-005。tenantとは分離 |
 | Chat history | 分析スレッドと分析仕様revisionの履歴 | 起動中の固定表示だけ | NAV-006 |
+| Full-height primary pane | 組織／collection／履歴を中央成果物から独立して保持する | 画面全体header配下のsidebarから全高paneへ修正 | APP-001、APP-002、SRC-19 |
 | Center conversation | AIと目的、KPI、比較、読者、panel候補を相談 | 作成・編集view | MAIN-002、Issue #180 |
 | Artifact/detail | 完成ダッシュボードまたは会議報告を主表示 | dashboard/report view | MAIN-001、MAIN-003 |
 | Inspector | 選択panelの理由、定義、SQL、data、lineage | 理由、SQL、data、来歴の4タブ | INS-001〜INS-007 |
+| Canvas-like secondary work area | 対話を残してdraft成果物またはpanel詳細を開く抽象pane | 現在はpanel inspectorだけ | APP-006、INS-012、SRC-18 |
 | Settings | account、表示、data source、members、Git接続 | 未実装 | NAV-008、OVR-003 |
 | Dashboard planning | 意思決定からKPI階層とpanel構成を決める | 最大6panelの対話prototype | MAIN-002、SRC-02 |
 | Analytics request scoping | 曖昧さを確認してanalysis specificationをfreezeする | 確認事項とrevisionを表示 | MAIN-002、SRC-03 |
@@ -130,6 +136,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Evidence Cloud公式ページ上の責務 | RepChatで採用する責務 | 採用しない短絡 | 製品要件 |
 |----------------------------|------------------------|----------------|----------|
 | Search／Chat／Insights | 検索、分析対話、保存済みインサイトを別の情報型としてナビゲーションする | 単一グラフ検証画面を製品の主ナビへ残す | NAV-004、NAV-011 |
+| polished native layouts | ダッシュボード本文の視覚階層を優先し、shellはhairline、低彩度面、小型controlで従属させる | Evidence Cloudのbrand、CSS、componentを複製する | APP-002、§7、AC-23 |
 | 現在pageとfilterをagentが理解 | 利用企業、成果物revision、filter、選択panel、追加contextを送信前にchipで明示する | 画面上で見えない文脈を自動送信する | MAIN-009、INS-011 |
 | chart、query、source付きquick answer | 回答本文、最小可視化、根拠linkを同じ回答cardへ置き、SQLは権限付きinspectorで開く | 全利用者へSQLを常時露出する | MAIN-010、INS-005 |
 | Save as Insight | prompt、methodology、filter、query／result revisionを不変なInsight revisionへ保存する | 生の会話全体をそのまま正式成果物にする | MAIN-011、OVR-006 |
@@ -151,8 +158,8 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 
 | ID | 要件 | 目的 | 優先度 | 根拠 |
 |----|------|------|--------|------|
-| APP-001 | app shellは`AppHeader`、`PrimaryNavigationPane`、`MainSurface`、`SecondaryPane`、`OverlayHost`の5領域を持つ | 文脈保持 | Must | SRC-01 |
-| APP-002 | headerは高さ52pxでstickyとし、左にsidebar toggleと製品名、中央に組織／分析コレクション／成果物breadcrumb、右に状態・共有／公開・secondary pane toggleを置く | 発見性 | Must | RepChat decision |
+| APP-001 | app shellは全高の`PrimaryNavigationPane`、`MainColumn`、全高の`SecondaryPane`、`OverlayHost`を兄弟領域として持つ。`MainHeader`は`MainColumn`内に置き、左右paneの上を横断しない | 文脈保持 | Must | SRC-18、SRC-19 |
+| APP-002 | `MainHeader`は高さ44pxでstickyとし、左にsidebar toggleと現在の成果物、右に組織／分析コレクション、状態、secondary pane toggleを置く。製品名、検索、projectは左paneの`NavigationHeader`へ置く | 発見性 | Must | SRC-17、SRC-19、RepChat decision |
 | APP-003 | 左右paneがpush状態でも`MainSurface`をDOM上の明示的な中央grid列に保ち、閉じたpaneは0pxにする | レイアウト安定性 | Must | PR #332 |
 | APP-004 | route、選択panel、表示revisionをURLで表現し、再読込、back、forward、共有linkで復元する | 文脈保持 | Must | Issue #179 |
 | APP-005 | viewer、editor、adminで利用不能な機能は、存在を隠すか理由付きdisabledにする。クリック後に権限エラーを初めて出さない | 安全性 | Must | C-3 |
@@ -163,20 +170,24 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 
 ```text
 AppShell
-├── AppHeader
-│   ├── PrimaryNavigationToggle
-│   ├── WorkspaceBreadcrumb
-│   ├── ArtifactStatus
-│   └── InspectorToggle
 ├── PrimaryNavigationPane
 │   ├── NavigationHeader
+│   │   ├── ProductIdentity
+│   │   ├── Search
+│   │   └── PrimaryNavigationToggle
 │   ├── PrimaryActions
 │   ├── Collections
 │   ├── RecentAnalysisThreads
 │   └── AccountControl
-├── MainSurface
-│   └── Dashboard | AnalysisConversation | Insight | MeetingReport | SingleChart | PublishPreview
+├── MainColumn
+│   ├── MainHeader
+│   │   ├── WorkspaceBreadcrumb
+│   │   ├── ArtifactStatus
+│   │   └── InspectorToggle
+│   └── MainSurface
+│       └── Dashboard | AnalysisConversation | Insight | MeetingReport | SingleChart | PublishPreview
 ├── SecondaryPane
+│   ├── SecondaryPaneHeader
 │   ├── InspectorPane
 │   │   └── Reason | Definition | SQL | Data | Provenance | Methodology
 │   └── ArtifactPreview
@@ -300,19 +311,21 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 
 | token | 値 | 適用 |
 |-------|----|------|
-| `header-height` | 52px | 全desktop／tablet |
+| `header-height` | 44px | `MainColumn`だけ。左右paneはこの行の外側で全高を所有する |
 | `nav-width-default` | 220px | 1181px以上 |
 | `nav-width-min` / `max` | 180px / 360px | drag範囲 |
 | `inspector-width-default` | 330px | 1181px以上 |
 | `inspector-width-min` / `max` | 280px / 560px | drag範囲 |
 | `artifact-preview-width-default` | 480px | 1181px以上の分析対話 |
 | `artifact-preview-width-min` / `max` | 420px / 720px | drag範囲。中央min-widthを侵害する場合はoverlayへ切替 |
-| `splitter-track` | 6px | pointer hit領域とfocus領域 |
+| `splitter-hit-area` | 8px | pointer hit領域とfocus領域。見える境界線の太さではない |
+| `splitter-line` | 1px | pane境界の可視線 |
 | `resize-key-step` | 20px | 左右矢印1回 |
 | `main-padding` | 上下24px、左右28px、下72px | desktop |
 | `mobile-main-padding` | 上下20px、左右16px、下48px | 760px以下 |
 | `panel-gap` | 16px | dashboard grid |
-| `control-height` | 最小34px | headerのpane toggle |
+| `icon-control` | 32px角 | headerとpane headerのicon button |
+| `navigation-row-height` | 最小36px | 左paneの主要行 |
 | `focus-ring` | 3px、primary 10% opacity | input、button、separator |
 
 ### 7.2 色と文字
@@ -329,9 +342,14 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | subtle | `#f7f8fa` |
 | body font | `Inter`, `Noto Sans JP`, system sans-serif |
 | code font | `ui-monospace`, `SFMono-Regular`, monospace |
+| body weight | 400 |
+| label / button weight | 500 |
+| heading weight | 600 |
 
 グラフを主役にするため、navigationとinspectorは白・灰・primaryの低彩度配色を使い、error、warning、successだけに
-意味色を使います。OpenAI／Evidence Cloud／Evidence Studioのicon、ロゴ、固有文言は使用しません。
+意味色を使います。境界は1px hairlineを基本とし、選択状態は太い枠ではなく背景色と文字色で示します。
+OpenAI／Evidence Cloud／Evidence Studioのicon、ロゴ、固有文言は使用しません。上記の数値は添付画像の
+模写値ではなく、観測した情報階層をRepChatへ対応させるための製品判断です。
 
 ### 7.3 Motion
 
@@ -344,10 +362,10 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 
 | viewport | 左pane | 右pane | resize | 同時open | メイン保護 |
 |----------|--------|--------|--------|----------|------------|
-| 1181px以上 | push、既定open | push、既定open | 両方 | 可 | 中央を明示grid列に維持 |
-| 960〜1180px | push、既定180px | overlay、既定closed | 左のみ。右は最大50vwで固定 | 可 | 右paneは中央幅を縮めない |
-| 761〜959px | overlay、既定closed | overlay、既定closed | 不可 | 不可。後から開いた方を優先 | backdropとfocus trap |
-| 760px以下 | modal drawer、既定closed | 全幅detail sheet、既定closed | 不可 | 不可 | dashboardを単列化 |
+| 1181px以上 | 全高push、既定open | 全高push、既定open | 両方 | 可 | `MainHeader`と本文を同じ中央列に維持 |
+| 960〜1180px | 全高push、既定180px | 全高overlay、既定closed | 左のみ。右は最大50vwで固定 | 可 | 右paneは中央headerを含めて覆うが左paneは覆わない |
+| 761〜959px | 全高overlay、既定closed | 全高overlay、既定closed | 不可 | 不可。後から開いた方を優先 | paneはviewport上端から表示し、backdropとfocus trapを持つ |
+| 760px以下 | 全高modal drawer、既定closed | 全幅detail sheet、既定closed | 不可 | 不可 | dashboardを単列化 |
 
 desktop wideでは次の4状態をすべて自動試験します。
 
@@ -497,7 +515,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 
 ## 13. 運用要件
 
-- visual regressionは1440×900、1180×820、1024×768、768×1024、390×844で取得します。
+- visual regressionは1440×900、1100×820、900×768、720×900、390×844で取得します。
 - 各viewportで左右の許可された状態、空、loading、error、長い日本語title、長いSQLをfixture化します。
 - design tokenとbreakpointを一か所で管理し、文書値と実装値の一致をtestします。
 - UI計測eventはSQL、自然言語問い合わせ、結果値、顧客名を含めません。
@@ -507,7 +525,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 
 | ID | 条件 | 検証対象 | 検証方法 |
 |----|------|----------|----------|
-| AC-01 | component treeの5領域が存在し、dashboardが既定main surfaceである | APP-001、MAIN-001 | DOM／component test |
+| AC-01 | 左右paneがviewport全高を所有し、`MainHeader`が中央列だけに属し、dashboardが既定main surfaceである | APP-001、MAIN-001 | DOM／component test |
 | AC-02 | desktop wideのL1-R0、L1-R1、L0-R0、L0-R1で中央列が崩れない | APP-003、NAV-001、INS-002 | 1440px visual regression |
 | AC-03 | 左右resizeがmin／maxでclampされ、keyboardは20px刻みでaria値を更新する | NAV-001、INS-002、NFR-005 | unit＋E2E |
 | AC-04 | medium、tablet、mobileが§8のpush／overlay／drawer契約に一致する | §8 | viewport E2E |
@@ -529,6 +547,8 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-20 | 製品主ナビに単一グラフと自由layout canvasがなく、検索、分析対話、Insight、管理済み成果物の責務が混在しない | NAV-004、MAIN-016 | navigation review |
 | AC-21 | 分析対話で右paneをArtifact PreviewからInspectorへ切り替えても会話位置とdraft revisionを維持し、tablet以下ではoverlay／sheetとして復帰できる | APP-006、INS-012、§6.7 | viewport E2E |
 | AC-22 | embedded customer viewはpublished revisionだけを表示し、URL直打ちを含めSQL編集、panel構成、branch、publishへ到達できない。編集者は別authoring routeでのみ修正できる | C-6、MAIN-017、NFR-004 | role別authorization E2E |
+| AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |
+| AC-24 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
 
 ## 15. リスク
 

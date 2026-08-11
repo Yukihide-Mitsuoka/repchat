@@ -142,6 +142,44 @@ async function runDashboard(){$("cost-dialog").close();selectWorkspace("build");
 async function runMeetingReport(){$("cost-dialog").close();selectWorkspace("report");const q=$("dashboard-question").value.trim();$("report-submit").disabled=true;setReportState("生成中","根拠と不確実性を整理中です。");try{await stream("/api/report",q,handleMeetingReport,"ga4",{build_revision:latestBuildRevision})}catch(e){setReportState("エラー",e.message,"notice error")}finally{$("report-submit").disabled=false}}
 </script></body></html>"""
 
+# The navigation and inspector own the full viewport. Only the center column owns
+# the context header; this avoids placing a global toolbar in front of both panes.
+_GLOBAL_HEADER = re.search(r'<header class="app-header">.*?</header>', HTML)
+if _GLOBAL_HEADER is None:  # pragma: no cover - static template invariant
+    raise RuntimeError("live demo header markup is missing")
+_original_header_markup = _GLOBAL_HEADER.group(0)
+_header_markup = _original_header_markup.replace(
+    '<span class="brand">RepChat</span><span>Live analysis demo</span>',
+    '<span class="header-title">分析ワークスペース</span>',
+)
+HTML = HTML.replace(_original_header_markup, "", 1)
+HTML = HTML.replace('<main id="workspace-main"', _header_markup + '<main id="workspace-main"', 1)
+HTML = HTML.replace(
+    '<aside id="workspace-sidebar" class="workspace-sidebar">',
+    '<aside id="workspace-sidebar" class="workspace-sidebar">'
+    '<div class="sidebar-chrome"><span class="brand">RepChat</span>'
+    '<span>Analysis workspace</span></div>',
+    1,
+)
+
+# A static or proxy error page is commonly HTML. Never parse it as JSON or expose
+# its markup; explain that the browser is not connected to the live API instead.
+HTML = HTML.replace(
+    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={}){",
+    "async function responseError(res){const type=res.headers.get(\"content-type\")||\"\";"
+    "if(type.includes(\"application/json\")){try{const body=await res.json();"
+    "if(body&&body.error)return body.error}catch(_error){}}"
+    "return `操作可能なライブデモへ接続できません（HTTP ${res.status}）。"
+    "固定表示ではなくdemo-liveを起動してください。`}"
+    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={}){",
+    1,
+)
+HTML = HTML.replace(
+    "if(!res.ok)throw new Error((await res.json()).error);",
+    "if(!res.ok)throw new Error(await responseError(res));",
+    1,
+)
+
 # Keep the local demo's feature-verification styles intact while applying the
 # partner-facing workspace visual contract as the final cascade layer (#347).
 WORKSPACE_POLISH_CSS = r"""
@@ -165,7 +203,7 @@ button:active:not(:disabled){transform:translateY(1px)}
 :focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
 textarea,select{border-color:var(--color-border-strong);border-radius:var(--radius-control)}
 .app-header{position:sticky;top:0;z-index:50;background:#ffffffed;backdrop-filter:blur(14px);border-color:#e3e7ed;box-shadow:0 1px 0 #10182808}
-.brand{font-size:17px;font-weight:800;letter-spacing:-.02em}
+.brand{font-size:17px;font-weight:600;letter-spacing:-.02em}
 .draft-badge,.status-pill{border-color:#d7dde5;background:#fff;box-shadow:0 1px 1px #10182808}
 #sidebar-toggle,#inspector-toggle{border-color:#c8d0da;background:#fff;box-shadow:0 1px 2px #1018280d}
 #sidebar-toggle:hover,#inspector-toggle:hover{background:#edf3f8;border-color:#9fb5c9}
@@ -236,18 +274,64 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .local-note{padding:14px 2px 0;color:#7a8595;font-size:11px}
 .view-actions{gap:8px}
 dialog{border:0;border-radius:12px;box-shadow:0 24px 70px #10182838}
+
+/* Issue #350: pane-owned chrome, compact type, and invisible resize hit areas. */
+:root{--header-height:44px;--icon-button-size:32px;--splitter-hit-area:8px;--splitter-line:1px}
+body{font-size:13px;font-weight:400}
+.app-shell{grid-template-rows:44px minmax(0,1fr);min-height:100vh}
+.app-header{grid-column:3;grid-row:1;position:sticky;top:0;z-index:30;height:var(--header-height);min-width:0;padding:0 12px;border-bottom:var(--splitter-line) solid #e8e8e8;box-shadow:none;background:#fff;backdrop-filter:none}
+.header-context{gap:8px;min-width:0}
+.header-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#343541;font-size:12px;font-weight:500}
+.header-context strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
+.brand{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.sidebar-chrome{display:flex;align-items:center;gap:8px;min-height:var(--header-height);padding:0 8px;color:#6b6b70;font-size:11px}
+.sidebar-chrome .brand{color:#202123}
+#sidebar-toggle,#inspector-toggle{width:var(--icon-button-size);height:var(--icon-button-size);min-height:var(--icon-button-size);border:0;border-radius:7px;padding:0;background:transparent;box-shadow:none;font-size:14px}
+#sidebar-toggle:hover,#inspector-toggle:hover{border:0;background:#ececf1}
+button{min-height:32px;padding:6px 11px;font-weight:500;letter-spacing:0}
+.workspace-sidebar{grid-column:1;grid-row:1/3;position:sticky;top:0;height:100vh;padding:0 8px 12px;border:0;background:#f7f7f8;box-shadow:none}
+.workspace-nav{gap:2px}
+.workspace-nav button{min-height:36px;border-radius:7px;padding:7px 9px;font-weight:500}
+.workspace-nav button.selected{background:#ececf1;box-shadow:none}
+.sidebar-label{margin:16px 9px 6px;font-weight:500;letter-spacing:.06em;text-transform:none}
+.navigation-resizer,.inspector-resizer{position:sticky;top:0;z-index:35;height:100vh;border:0;background:transparent;touch-action:none}
+.navigation-resizer{grid-column:2;grid-row:1/3}
+.inspector-resizer{grid-column:4;grid-row:1/3}
+.app-shell.sidebar-collapsed .navigation-resizer,.app-shell.inspector-collapsed .inspector-resizer{display:none}
+.navigation-resizer::after,.inspector-resizer::after{content:"";position:absolute;top:0;bottom:0;width:var(--splitter-line);background:#e5e5e5}
+.navigation-resizer::after{right:calc((var(--splitter-hit-area) - var(--splitter-line))/2)}
+.inspector-resizer::after{left:calc((var(--splitter-hit-area) - var(--splitter-line))/2)}
+.navigation-resizer:hover,.navigation-resizer.dragging,.navigation-resizer:focus,.inspector-resizer:hover,.inspector-resizer.dragging,.inspector-resizer:focus{background:#4b84b414}
+.workspace{grid-column:3;grid-row:2;width:100%;padding:22px 24px 56px}
+.workspace-inspector{grid-column:5;grid-row:1/3;position:sticky;top:0;height:100vh;padding:16px 14px;border:0;background:#fafafa;box-shadow:none}
+.app-shell.inspector-collapsed .workspace-inspector,.app-shell.sidebar-collapsed .workspace-sidebar{display:none;overflow:hidden}
+.workspace-topbar{margin-bottom:18px}
+.eyebrow{font-weight:500}
+h1{font-size:24px;font-weight:600}
+h2,.dashboard-card h3{font-weight:600}
+.status-pill,.panel-state{font-weight:500}
+.panel{border-color:#e5e7eb;box-shadow:0 1px 2px #10182808}
+.dashboard-card{box-shadow:0 1px 2px #10182808}
+@media(max-width:1400px) and (min-width:1181px){
+.dashboard-card:nth-child(1){grid-column:span 12}
+.dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 6}
+}
 @media(max-width:1180px) and (min-width:961px){
 .app-shell,.app-shell.sidebar-collapsed,.app-shell.inspector-collapsed{--inspector-column:0px;--inspector-grip:0px;grid-template-columns:var(--nav-column) var(--nav-grip) minmax(0,1fr)}
-.workspace-inspector{position:fixed;z-index:40;top:52px;right:0;width:min(380px,42vw);height:calc(100vh - 52px);box-shadow:var(--shadow-pane);transform:translateX(0);transition:transform 160ms ease-out,visibility 160ms}
+.app-header{grid-column:3;grid-row:1}
+.workspace-sidebar{grid-row:1/3}
+.workspace{grid-column:3;grid-row:2}
+.workspace-inspector{position:fixed;z-index:40;top:0;right:0;width:min(380px,42vw);height:100vh;box-shadow:var(--shadow-pane);transform:translateX(0);transition:transform 160ms ease-out,visibility 160ms}
 .app-shell.inspector-collapsed .workspace-inspector{visibility:hidden;transform:translateX(100%)}
 .inspector-resizer{display:none}
 .dashboard-card:nth-child(1){grid-column:span 12}
 .dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 6}
 }
 @media(max-width:960px){
-.app-shell,.app-shell.sidebar-collapsed,.app-shell.inspector-collapsed{display:grid;grid-template-columns:minmax(0,1fr)}
-.workspace{grid-column:1;width:100%}
-.workspace-sidebar,.workspace-inspector{position:fixed;z-index:45;top:52px;height:calc(100vh - 52px);box-shadow:var(--shadow-pane);transition:transform 160ms ease-out,visibility 160ms}
+.app-shell,.app-shell.sidebar-collapsed,.app-shell.inspector-collapsed{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:var(--header-height) minmax(0,1fr)}
+.app-header{grid-column:1;grid-row:1}
+.workspace{grid-column:1;grid-row:2;width:100%}
+.workspace-sidebar,.workspace-inspector{position:fixed;z-index:45;top:0;height:100vh;box-shadow:var(--shadow-pane);transition:transform 160ms ease-out,visibility 160ms}
 .workspace-sidebar{left:0;width:min(320px,88vw);transform:translateX(0)}
 .workspace-inspector{right:0;width:min(420px,92vw);transform:translateX(0)}
 .app-shell.sidebar-collapsed .workspace-sidebar{display:flex;visibility:hidden;transform:translateX(-100%)}
