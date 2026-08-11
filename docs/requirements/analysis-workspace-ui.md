@@ -137,6 +137,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Evidence Cloud公式ページ上の責務 | RepChatで採用する責務 | 採用しない短絡 | 製品要件 |
 |----------------------------|------------------------|----------------|----------|
 | Search／Chat／Insights | 検索、分析対話、保存済みインサイトを別の情報型としてナビゲーションする | 単一グラフ検証画面を製品の主ナビへ残す | NAV-004、NAV-011 |
+| 用途別のquick question／Insight card | 「何を分析すべきか」という探索を、判断目的付きの選択候補として提示し、選択後も編集・確認してから実行する | 曖昧な相談文を既定SQLへfallbackして自動実行する | MAIN-020、AC-29 |
 | polished native layouts | ダッシュボード本文の視覚階層を優先し、shellはhairline、低彩度面、小型controlで従属させる | Evidence Cloudのbrand、CSS、componentを複製する | APP-002、§7、AC-23 |
 | 現在pageとfilterをagentが理解 | 利用企業、成果物revision、filter、選択panel、追加contextを送信前にchipで明示する | 画面上で見えない文脈を自動送信する | MAIN-009、INS-011 |
 | chart、query、source付きquick answer | 回答本文、最小可視化、根拠linkを同じ回答cardへ置き、SQLは権限付きinspectorで開く | 全利用者へSQLを常時露出する | MAIN-010、INS-005 |
@@ -241,6 +242,7 @@ AppShell
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
 | MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
 | MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
+| MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。data profileの検証済み範囲から、分析title、支える判断、可視化、具体的な依頼例を選択cardで示す。選択はcomposerへ依頼文を反映するだけで実行せず、利用者が編集して再送信し、費用確認を承認した後だけVertex AI・BigQueryを実行する。client bypassでもquery APIが同じ相談文を拒否する | Must |
 
 ### 6.4 右セカンダリpane
 
@@ -564,6 +566,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-26 | composerが中央列に合わせて縮み、desktopで960pxを超えず22pxの角丸を保つ。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
+| AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
 
 ## 15. リスク
 

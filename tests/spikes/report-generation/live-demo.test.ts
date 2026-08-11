@@ -987,10 +987,11 @@ test('live HTTP boundary serves same-origin JSON and rejects unsafe requests and
 import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
- def query(self,q,emit):emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ query_count=0
+ def query(self,q,emit):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
  def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
  def meeting_report(self,revision,emit):emit({"type":"meeting_report","build_revision":revision})
-s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
+engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
  req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
@@ -999,12 +1000,15 @@ try:
  dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
  report_req=urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"build-111111111111"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  report_revision=json.loads(urllib.request.urlopen(report_req).read().decode())["build_revision"]
+ broad_req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"どんな分析をしたらいい？"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ try:urllib.request.urlopen(broad_req)
+ except urllib.error.HTTPError as e:statuses.append(e.code)
  try:urllib.request.urlopen(urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"bad"}).encode(),headers={"content-type":"application/json","origin":base},method="POST"))
  except urllib.error.HTTPError as e:statuses.append(e.code)
  for ct,origin in [("text/plain",base),("application/json","https://attacker.example")]:
   try:urllib.request.urlopen(urllib.request.Request(base+"/api/query",data=b"{}",headers={"content-type":ct,"origin":origin},method="POST"))
   except urllib.error.HTTPError as e:statuses.append(e.code)
- print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"report_revision":report_revision,"statuses":statuses}))
+ print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"report_revision":report_revision,"statuses":statuses,"query_count":engine.query_count}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -1013,7 +1017,8 @@ finally:s.shutdown();s.server_close();t.join()
     value: 118380,
     dashboard_count: 6,
     report_revision: 'build-111111111111',
-    statuses: [400, 415, 403],
+    statuses: [400, 400, 415, 403],
+    query_count: 1,
   });
   const bind = spawnSync(
     'python3',
@@ -1290,7 +1295,7 @@ print(json.dumps({
  "adjustable":all(value in html for value in ['id="sidebar-toggle"','aria-label="ナビゲーションを折りたたむ"','id="navigation-resizer"','aria-label="ナビゲーションの幅を変更"','id="inspector-toggle"','aria-label="詳細パネルを折りたたむ"','id="inspector-resizer"','aria-label="詳細パネルの幅を変更"']),
  "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
  "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
- "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="dashboard"','data-composer-action="insight"','data-composer-action="report"']),
+ "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="consult"','data-composer-action="dashboard"','data-composer-action="insight"','data-composer-action="report"']),
  "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','購入成果改善ダッシュボード','未保存のインサイト','aria-label="分析スレッド"','購入成果を改善する','現在の対話']),
  "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
  "artifact_preview":all(value in html for value in ['id="artifact-preview"','id="artifact-preview-host"','単一グラフのインサイト']),
@@ -1306,6 +1311,41 @@ print(json.dumps({
     artifact_tree: true,
     inspector: true,
     artifact_preview: true,
+  });
+});
+
+test('broad analysis requests stop at a selectable consultation before paid execution', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.match(rendered.stdout, /id="analysis-consultation"/);
+  assert.match(rendered.stdout, /id="consultation-recommendations"/);
+  assert.match(rendered.stdout, /この段階ではVertex AIとBigQueryを実行しません/);
+  assert.ok(script.includes('function isConsultationPrompt(question)'));
+  assert.ok(script.includes('function showAnalysisConsultation(question,profile)'));
+  assert.ok(script.includes('function selectAnalysisRecommendation(recommendation)'));
+  assert.ok(script.includes('if(action==="consult"||isConsultationPrompt(question))'));
+  assert.ok(script.includes('selectWorkspace("consult");setComposerAction("consult",false)'));
+  assert.ok(script.includes('setComposerAction("insight",false)'));
+  const submit =
+    script.match(/function submitComposer\(\)\{.*?\}\nconst originalQueryHandler/s)?.[0] ?? '';
+  assert.ok(
+    submit.indexOf('if(action==="consult"||isConsultationPrompt(question))') <
+      submit.indexOf('showCost("graph")'),
+  );
+});
+
+test('consultation prompt detection is bounded to advice requests', () => {
+  const result = python(`
+print(json.dumps({
+ "broad":[m.requires_analysis_consultation(value) for value in ["どんな分析をしたらいい？","何を分析すればいい？","おすすめの分析を教えて"]],
+ "concrete":[m.requires_analysis_consultation(value) for value in ["2021年1月のセッション数を出して","2021年1月のWebサイト回遊を分析して","2024年1月のBitcoin取引の受取アドレス数帯別の取引数を出して"]]
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    broad: [true, true, true],
+    concrete: [false, false, false],
   });
 });
 

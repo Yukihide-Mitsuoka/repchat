@@ -42,6 +42,25 @@ def running_in_demo_venv() -> bool:
     """Return whether this process is using the demo virtual environment."""
     return Path(sys.prefix).resolve() == VENV_DIR.resolve()
 
+
+_ANALYSIS_CONSULTATION_PATTERNS = (
+    re.compile(r"^(?:どんな|何を|何の|どういう).*分析.*(?:したら|すれば|できる).*(?:いい|よい)?$"),
+    re.compile(r"^(?:おすすめ|推奨).*分析.*(?:教えて|提案して|知りたい)$"),
+    re.compile(r"^分析.*相談(?:したい|させて|して)?$"),
+)
+
+
+def requires_analysis_consultation(question: str) -> bool:
+    """Return whether a prompt asks for advice rather than a runnable analysis.
+
+    This guard is intentionally narrow. Concrete prompts remain eligible for the
+    existing cost gate, while common Japanese discovery questions cannot fall
+    through to a default SQL template and unexpectedly spend money.
+    """
+    compact = re.sub(r"\s+", "", question.strip())
+    compact = re.sub(r"[?？!！。]+$", "", compact)
+    return any(pattern.fullmatch(compact) for pattern in _ANALYSIS_CONSULTATION_PATTERNS)
+
 HTML = r"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>RepChat | ライブ分析デモ</title><style>
@@ -70,7 +89,7 @@ label{font-size:14px;font-weight:700;display:block;margin-bottom:9px}select{bord
 const $=id=>document.getElementById(id),stages=["generate","validate","execute","render"],dashboardStages=["plan","review","build"],dashboardPanels=new Map();let pendingMode="dashboard-plan",currentPlan=null,currentAnswers={},pendingPlan=null,latestBuildRevision=null,activePanelId=null;let reportWorkspaceState="報告案なし";const profileDefaults={ga4:{question:"2021年1月のセッション数を流入チャネル（medium）別に、多い順で出して",note:"公開GA4サンプルの2020年11月〜2021年1月を分析します。"},bitcoin:{question:"2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して",note:"公開Bitcoin取引の2024年を分析します。outputs とその中の addresses を二段階で展開する非GA4検証です。"}};function selectProfile(profile,replaceQuestion=true){$("dataset-profile").value=profile;$("profile-note").textContent=profileDefaults[profile].note;if(replaceQuestion)$("question").value=profileDefaults[profile].question}document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{selectProfile(b.dataset.profile,false);$("question").value=b.dataset.q});
 function stage(name){let reached=false;for(const s of stages){const el=$("s-"+s);if(s===name){el.className="active";el.setAttribute("aria-current","step");reached=true}else{el.className=reached?"":"done";el.removeAttribute("aria-current")}}}
 function dashboardStage(name){const current=name==="complete"?dashboardStages.length:dashboardStages.indexOf(name);dashboardStages.forEach((stageName,index)=>{const el=$("dashboard-step-"+stageName);el.className="plan-item"+(current>=0&&index<current?" done":index===current?" active":"");if(index===current)el.setAttribute("aria-current","step");else el.removeAttribute("aria-current")})}
-function selectWorkspace(view){const views={dashboard:"artifact-dashboard-view",build:"build-studio-view",report:"meeting-report-view",graph:"graph-workspace"},copy={dashboard:["購入成果改善ダッシュボード","ダッシュボードが主役の分析ワークスペースです。作成過程と会議報告は別の画面で確認できます。","下書き"],build:["ダッシュボードを作成・編集","AIと分析目的を相談し、確認した仕様だけをbuildします。","相談・build"],report:["会議報告","ダッシュボードの根拠bundleから作成した報告案を確認します。","報告案なし"],graph:["単一グラフを生成","日本語からSQL生成・安全検査・BigQuery実行・可視化までを確認します。","ライブ実行"]};Object.entries(views).forEach(([name,id])=>{$(id).classList.toggle("hidden",name!==view);const button=$("view-"+name);button.classList.toggle("selected",name===view);if(name===view)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current")});$("page-title").textContent=copy[view][0];$("page-lead").textContent=copy[view][1];$("workspace-state").textContent=view==="report"?reportWorkspaceState:copy[view][2]}
+function selectWorkspace(view){const views={dashboard:"artifact-dashboard-view",build:"build-studio-view",consult:"analysis-consultation",report:"meeting-report-view",graph:"graph-workspace"},copy={dashboard:["購入成果改善ダッシュボード","ダッシュボードが主役の分析ワークスペースです。作成過程と会議報告は別の画面で確認できます。","下書き"],build:["ダッシュボードを作成・編集","AIと分析目的を相談し、確認した仕様だけをbuildします。","相談・build"],consult:["分析候補を相談","目的に合う分析を選び、実行する依頼へ具体化します。","相談中"],report:["会議報告","ダッシュボードの根拠bundleから作成した報告案を確認します。","報告案なし"],graph:["単一グラフを生成","日本語からSQL生成・安全検査・BigQuery実行・可視化までを確認します。","ライブ実行"]};Object.entries(views).forEach(([name,id])=>{$(id).classList.toggle("hidden",name!==view);const button=$("view-"+name);if(!button)return;button.classList.toggle("selected",name===view);if(name===view)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current")});$("page-title").textContent=copy[view][0];$("page-lead").textContent=copy[view][1];$("workspace-state").textContent=view==="report"?reportWorkspaceState:copy[view][2]}
 function setReportState(status,message,className="notice"){reportWorkspaceState=status;$("report-status").textContent=status;$("report-message").className=className;$("report-message").textContent=message;if(!$("meeting-report-view").classList.contains("hidden"))$("workspace-state").textContent=status}
 function toggleSidebar(){const shell=$("app-shell"),collapsed=shell.classList.toggle("sidebar-collapsed"),button=$("sidebar-toggle");button.setAttribute("aria-expanded",String(!collapsed));button.setAttribute("aria-label",collapsed?"ナビゲーションを展開":"ナビゲーションを折りたたむ");button.title=button.getAttribute("aria-label")}
 function resizeNavigation(event){const width=Math.max(180,Math.min(360,event.clientX));$("app-shell").style.setProperty("--nav-width",width+"px");$("navigation-resizer").setAttribute("aria-valuenow",String(width))}
@@ -193,6 +212,7 @@ _composer_markup = r"""
 <div class="composer-context">
 <span id="composer-target" class="composer-target">対象: 現在の分析スレッド</span>
 <div class="composer-actions" role="group" aria-label="実行する操作">
+<button type="button" data-composer-action="consult">相談</button>
 <button type="button" class="selected" data-composer-action="dashboard">ダッシュボード</button>
 <button type="button" data-composer-action="insight">インサイト</button>
 <button type="button" data-composer-action="report">会議報告</button>
@@ -207,6 +227,25 @@ _composer_markup = r"""
 """
 HTML = HTML.replace(
     '<p class="lead local-note">', _composer_markup + '<p class="lead local-note">', 1
+)
+
+_consultation_markup = r"""
+<section id="analysis-consultation" class="workspace-view analysis-consultation hidden" aria-labelledby="consultation-heading">
+<div class="consultation-user"><span>あなた</span><p id="consultation-question">どんな分析をしたらいい？</p></div>
+<div class="consultation-assistant">
+<p class="eyebrow">Analysis consultation</p>
+<h2 id="consultation-heading">まず、判断したいことに近い分析を選んでください</h2>
+<p id="consultation-introduction" class="lead">検証済みの分析候補から始められます。候補を選んでもまだ実行しません。</p>
+<p class="consultation-free"><strong>相談・候補選択は無料です。</strong> この段階ではVertex AIとBigQueryを実行しません。</p>
+<div id="consultation-recommendations" class="consultation-recommendations" aria-label="おすすめの分析"></div>
+<p id="consultation-status" class="consultation-status" role="status" aria-live="polite">候補を選ぶか、下の入力欄で目的を追加してください。</p>
+</div>
+</section>
+"""
+HTML = HTML.replace(
+    '<section id="build-studio-view"',
+    _consultation_markup + '<section id="build-studio-view"',
+    1,
 )
 
 _artifact_preview_markup = r"""
@@ -479,6 +518,10 @@ h1{font-size:22px}
 #composer-profile{min-height:26px;margin:0;padding:3px 22px 3px 7px;border-color:#dedee3;font-size:10px}
 #composer-input{min-height:52px;max-height:150px;padding:7px 4px;border:0;border-radius:0;resize:none;box-shadow:none;font-size:13px}#composer-input:focus{border:0;outline:0}
 #composer-submit{display:grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;border:0;border-radius:50%;background:#202123;font-size:16px}
+.analysis-consultation{max-width:860px;margin:8px auto 120px}
+.consultation-user{display:flex;justify-content:flex-end;margin:8px 0 30px}.consultation-user span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.consultation-user p{max-width:78%;margin:0;padding:10px 14px;border-radius:16px 16px 4px 16px;background:#ececef;color:#27272a;font-size:14px;line-height:1.55}
+.consultation-assistant{max-width:760px}.consultation-assistant h2{font-size:20px;letter-spacing:-.01em}.consultation-assistant>.lead{margin:8px 0 0;font-size:13px}.consultation-free{margin:15px 0 18px;padding-left:11px;border-left:2px solid #4b84b4;color:#5f6672;font-size:12px;line-height:1.6}.consultation-free strong{color:#234e70}
+.consultation-recommendations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.recommendation-card{display:grid;grid-template-columns:1fr auto;gap:5px 12px;min-height:128px;padding:14px;border:1px solid #dedee3;border-radius:10px;background:#fff;color:#27272a;text-align:left;box-shadow:none}.recommendation-card:hover,.recommendation-card:focus-visible{border-color:#7aa4c7;background:#f8fbfd}.recommendation-card.selected{border-color:#1f4e79;box-shadow:0 0 0 2px #1f4e7920}.recommendation-card strong{font-size:14px;font-weight:650}.recommendation-card .recommendation-chart{align-self:start;padding:2px 7px;border-radius:999px;background:#f1f1f3;color:#667085;font-size:10px;font-weight:500}.recommendation-card span:not(.recommendation-chart){grid-column:1/-1;color:#5f6672;font-size:11px;font-weight:400;line-height:1.55}.recommendation-card .recommendation-decision{color:#344054}.consultation-status{margin:14px 0 0;color:#667085;font-size:12px;line-height:1.55}
 #build-studio-view .query-panel,#graph-workspace>.query-panel{display:none}
 .artifact-preview-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px}.artifact-preview-heading strong{font-size:12px;font-weight:500}
 #artifact-preview-host #output>.grid{grid-template-columns:1fr}#artifact-preview-host #output .panel{margin-top:10px;padding:13px;border-radius:8px;box-shadow:none}
@@ -486,7 +529,7 @@ h1{font-size:22px}
 .workspace-inspector.artifact-active #inspector-empty,.workspace-inspector.artifact-active #inspector-content{display:none}
 @media(max-width:1180px){.analysis-composer{left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip))/2);width:min(960px,calc(100vw - var(--nav-column) - var(--nav-grip) - 48px))}}
 @media(max-width:960px){.analysis-composer{left:50%;bottom:8px;width:calc(100vw - 24px)}.workspace{padding-bottom:140px}.workspace-inspector{padding-top:52px}}
-@media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}}
+@media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}.consultation-recommendations{grid-template-columns:1fr}.consultation-user p{max-width:92%}}
 """
 HTML = HTML.replace("</style>", WORKSPACE_POLISH_CSS + "\n</style>")
 
@@ -497,17 +540,29 @@ function toggleSidebar(){const collapsed=$("app-shell").classList.toggle("sideba
 function toggleInspector(){const collapsed=$("app-shell").classList.toggle("inspector-collapsed");updatePaneButton("inspector-toggle","right",!collapsed,collapsed?"成果物パネルを展開":"成果物パネルを折りたたむ")}
 function showInsightArtifact(hasResult=false){const pane=$("panel-inspector");pane.classList.add("artifact-active");$("artifact-preview").className="artifact-preview";$("artifact-preview-empty").className=hasResult?"hidden":"inspector-empty";$("inspector-title").textContent="インサイト";$("inspector-subtitle").textContent="未保存の分析結果";if($("app-shell").classList.contains("inspector-collapsed"))toggleInspector()}
 function hideInsightArtifact(){const pane=$("panel-inspector");pane.classList.remove("artifact-active");$("artifact-preview").className="artifact-preview hidden"}
-function setComposerAction(action,copyInput=true){document.querySelectorAll("[data-composer-action]").forEach(button=>button.classList.toggle("selected",button.dataset.composerAction===action));$("analysis-composer").dataset.action=action;$("composer-profile").className=action==="insight"?"":"hidden";const input=$("composer-input");if(copyInput)input.value=action==="dashboard"?$("dashboard-question").value:action==="insight"?$("question").value:"このダッシュボードの結果から、会議で判断すべき論点と次のアクションを報告案にして";$("composer-target").textContent=action==="dashboard"?"対象: 現在の分析スレッド":action==="insight"?"対象: 未保存のインサイト":"対象: 最新ダッシュボード"}
+const analysisRecommendations={ga4:[
+{title:"主要なサイト回遊",decision:"訪問者が入口からどこへ進み、どこで経路が途切れるかを確認する",chart:"Sankey",keywords:["回遊","導線","ページ","離脱"],prompt:"2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"},
+{title:"流入チャネル別の規模",decision:"集客量の大きいチャネルを把握し、深掘りする入口を決める",chart:"棒グラフ",keywords:["流入","チャネル","集客","medium"],prompt:"2021年1月のセッション数を流入チャネル（medium）別に、多い順で出して"},
+{title:"日別セッション推移",decision:"期間内の山谷を把握し、施策日や異常日の確認対象を絞る",chart:"折れ線",keywords:["日別","推移","時系列","変化"],prompt:"2021年1月の日別セッション数を、日付の昇順で出して"},
+{title:"月間セッション規模",decision:"対象月のWeb利用規模を単一KPIとして確認する",chart:"スコアカード",keywords:["規模","全体","セッション","kpi"],prompt:"2021年1月のセッション数を出して"}
+],bitcoin:[
+{title:"受取アドレス数帯別の取引数",decision:"取引ごとの受取先の複雑度を分布で確認する",chart:"棒グラフ",keywords:["受取","アドレス","複雑","取引"],prompt:"2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して"}
+]};
+function isConsultationPrompt(question){const compact=question.trim().replace(/\s+/g,"").replace(/[?？!！。]+$/,"");return[/^(?:どんな|何を|何の|どういう).*分析.*(?:したら|すれば|できる).*(?:いい|よい)?$/,/^(?:おすすめ|推奨).*分析.*(?:教えて|提案して|知りたい)$/,/^分析.*相談(?:したい|させて|して)?$/].some(pattern=>pattern.test(compact))}
+function recommendationScore(recommendation,question){const normalized=question.toLowerCase();return recommendation.keywords.reduce((score,keyword)=>score+(normalized.includes(keyword)?1:0),0)}
+function selectAnalysisRecommendation(recommendation){document.querySelectorAll(".recommendation-card").forEach(card=>{const selected=card.dataset.prompt===recommendation.prompt;card.classList.toggle("selected",selected);card.setAttribute("aria-pressed",String(selected))});setComposerAction("insight",false);$("composer-input").value=recommendation.prompt;$("consultation-status").textContent=`「${recommendation.title}」を依頼文へ反映しました。必要なら編集し、もう一度送信すると費用確認へ進みます。`;$("composer-message").textContent="候補を反映しました。まだSQL生成・BigQuery実行はしていません。";$("inspector-title").textContent=recommendation.title;$("inspector-subtitle").textContent="分析候補・未実行";$("inspector-empty").textContent=`${recommendation.decision}ための候補です。依頼文を確認し、費用確認後に実行します。`;$("composer-input").focus()}
+function showAnalysisConsultation(question,profile){hideInsightArtifact();selectWorkspace("consult");setComposerAction("consult",false);$("inspector-title").textContent="分析候補";$("inspector-subtitle").textContent="まだ実行していません";$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";$("inspector-empty").textContent="候補を選ぶと、支える判断と実行前の状態をここで確認できます。SQLや取得データは費用確認後だけ表示します。";$("consultation-question").textContent=question;const recommendations=[...analysisRecommendations[profile]].sort((a,b)=>recommendationScore(b,question)-recommendationScore(a,question));$("consultation-introduction").textContent=profile==="bitcoin"?"Bitcoinデモは現在、検証済みの1分析だけを提案します。対応外の分析を実行可能と見せません。":"検証済みの候補を、入力した目的に近い順で提示します。選択後も依頼文を編集できます。";const host=$("consultation-recommendations");host.replaceChildren();recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=recommendation.chart;decision.textContent=`判断: ${recommendation.decision}`;prompt.textContent=`依頼例: ${recommendation.prompt}`;card.dataset.prompt=recommendation.prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)});$("consultation-status").textContent="候補を選ぶか、下の入力欄で目的を追加してください。";$("composer-message").textContent="相談中です。候補選択までは無料です。"}
+function setComposerAction(action,copyInput=true){document.querySelectorAll("[data-composer-action]").forEach(button=>button.classList.toggle("selected",button.dataset.composerAction===action));$("analysis-composer").dataset.action=action;$("composer-profile").className=["consult","insight"].includes(action)?"":"hidden";const input=$("composer-input");if(copyInput)input.value=action==="consult"?"どんな分析をしたらいい？":action==="dashboard"?$("dashboard-question").value:action==="insight"?$("question").value:"このダッシュボードの結果から、会議で判断すべき論点と次のアクションを報告案にして";$("composer-target").textContent=action==="consult"?"対象: 分析テーマを相談":action==="dashboard"?"対象: 現在の分析スレッド":action==="insight"?"対象: 未保存のインサイト":"対象: 最新ダッシュボード"}
 const baseSelectWorkspace=selectWorkspace;
 selectWorkspace=view=>{baseSelectWorkspace(view);$("compact-title").textContent=$("page-title").textContent};
-function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
+function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}if(action==="consult"||isConsultationPrompt(question)){showAnalysisConsultation(question,$("composer-profile").value);return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
 const originalQueryHandler=handle;handle=e=>{if(["sql","result","refusal"].includes(e.type))showInsightArtifact(true);originalQueryHandler(e)};
 const originalPanelInspector=openPanelInspector;openPanelInspector=panelId=>{hideInsightArtifact();originalPanelInspector(panelId)};
 $("artifact-preview-host").appendChild($("output"));
 document.querySelectorAll("[data-composer-action]").forEach(button=>button.onclick=()=>setComposerAction(button.dataset.composerAction));
 $("composer-profile").onchange=()=>$("dataset-profile").value=$("composer-profile").value;
 $("composer-submit").onclick=submitComposer;$("composer-input").onkeydown=event=>{if((event.metaKey||event.ctrlKey)&&event.key==="Enter")submitComposer()};
-$("new-analysis").onclick=()=>{selectWorkspace("build");setComposerAction("dashboard");$("composer-input").focus()};
+$("new-analysis").onclick=()=>{selectWorkspace("consult");setComposerAction("consult");$("composer-input").focus()};
 $("view-dashboard").onclick=()=>{hideInsightArtifact();selectWorkspace("dashboard");setComposerAction("dashboard",false)};
 $("view-build").onclick=()=>{hideInsightArtifact();selectWorkspace("build");setComposerAction("dashboard",false)};
 $("view-report").onclick=()=>{hideInsightArtifact();selectWorkspace("report");setComposerAction("report",false)};
@@ -1313,6 +1368,11 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                     [panel["id"] for panel in confirmed["panels"]]
                     if confirmed
                     else None,
+                )
+            elif requires_analysis_consultation(question):
+                raise ValueError(
+                    "分析内容が具体化されていません。相談から分析候補を選び、"
+                    "期間・指標・比較軸を確定してください。"
                 )
             elif profile == "bitcoin":
                 bitcoin.section(question)

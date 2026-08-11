@@ -30,12 +30,12 @@ updated: 2026-08-11
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #355](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)。
+**現在の作業スレッド**: [Issue #357](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)。
 Issue #352／PR #353で成果物tree、中央下端composer、右Artifact／Inspector paneへ統合し、PR #354で
-選択titleをcompact headerへ限定した。現在はcomposerを中央列へ追従させつつ960pxで上限とし、22px角丸で
-通常cardと区別する。同じ行のdashboard cardは全境界をpointer／keyboardで調整でき、隣接cardだけが連動する。
-行の合計幅と並び順を変えず、自由配置と永続化はしない。左paneはtitleを折り返さず、hover／focus時だけ横へ流し、
-icon列と余白を圧縮する。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
+選択titleをcompact headerへ限定した。Issue #355／PR #356ではcomposer幅、dashboard row resize、左paneの
+compact spacing、pane境界を改善してmerge済み。現在は「どんな分析をしたらいい？」等の探索的な問いを
+既定SQLへfallbackさせず、profile別の検証済み分析候補を選択・編集してから既存の費用gateへ進める。
+候補選択まではVertex AI・BigQueryを呼ばず、query APIの直接呼出しも同じ相談文を拒否する。
 製品UIへの移植、永続履歴、成果物保存、Git連携、公開workflowは未実装である。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
