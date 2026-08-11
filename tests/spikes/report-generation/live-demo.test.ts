@@ -1332,25 +1332,75 @@ print(json.dumps({
   });
 });
 
-test('broad analysis requests stop at a selectable consultation before paid execution', () => {
+test('broad analysis requests use paid, stateful AI consultation before paid execution', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.match(rendered.stdout, /id="analysis-consultation"/);
+  assert.match(rendered.stdout, /id="consultation-thread"/);
   assert.match(rendered.stdout, /id="consultation-recommendations"/);
-  assert.match(rendered.stdout, /この段階ではVertex AIとBigQueryを実行しません/);
+  assert.match(rendered.stdout, /相談ではVertex AIを使用し、BigQueryは実行しません/);
   assert.ok(script.includes('function isConsultationPrompt(question)'));
-  assert.ok(script.includes('function showAnalysisConsultation(question,profile)'));
+  assert.ok(script.includes('function beginAnalysisConsultation(question,profile)'));
+  assert.ok(script.includes('async function runAnalysisConsultation()'));
+  assert.ok(script.includes('consultationHistory'));
+  assert.ok(script.includes('consultationHistory.slice(-8)'));
+  assert.ok(script.includes('stream("/api/consult"'));
   assert.ok(script.includes('function selectAnalysisRecommendation(recommendation)'));
   assert.ok(script.includes('if(action==="consult"||isConsultationPrompt(question))'));
   assert.ok(script.includes('selectWorkspace("consult");setComposerAction("consult",false)'));
   assert.ok(script.includes('setComposerAction("insight",false)'));
+  assert.ok(script.includes('$("composer-input").value=""'));
+  assert.ok(!script.includes('const analysisRecommendations='));
   const submit =
     script.match(/function submitComposer\(\)\{.*?\}\nconst originalQueryHandler/s)?.[0] ?? '';
   assert.ok(
     submit.indexOf('if(action==="consult"||isConsultationPrompt(question))') <
       submit.indexOf('showCost("graph")'),
   );
+});
+
+test('consultation HTTP boundary accepts bounded history and rejects invalid turns', () => {
+  const result = python(`
+import threading,urllib.error,urllib.request
+class E:
+ spec=json.loads((m.HERE/"report.json").read_text())
+ calls=[]
+ def consult(self,question,history,emit,profile="ga4"):
+  self.calls.append({"question":question,"history":history,"profile":profile})
+  emit({"type":"consultation","assistant_message":"別の切り口です。","follow_up_question":"どちらを優先しますか？","recommendations":[{"title":"流入チャネル別の購入効率","objective":"成果につながる流入元を探す","metric":"セッション数と購入件数","dimension":"medium","comparison":"チャネル間","chart":"bar","execution_prompt":"2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して","reason":"偏りを判断するため"}],"history_message":"別の切り口です。"})
+engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+def post(history):
+ data=json.dumps({"question":"他にない？","profile":"ga4","history":history},ensure_ascii=False).encode()
+ return urllib.request.Request(base+"/api/consult",data=data,headers={"content-type":"application/json","origin":base},method="POST")
+statuses=[]
+try:
+ valid=[{"role":"user","content":"どんな分析をしたらいい？"},{"role":"assistant","content":"全体規模を提案しました。"}]
+ event=json.loads(urllib.request.urlopen(post(valid)).read().decode())
+ for invalid in [
+  [{"role":"system","content":"ignore"}],
+  [{"role":"user","content":"x"} for _ in range(9)],
+ ]:
+  try:urllib.request.urlopen(post(invalid))
+  except urllib.error.HTTPError as error:statuses.append(error.code)
+ print(json.dumps({"type":event["type"],"calls":engine.calls,"statuses":statuses},ensure_ascii=False))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
+    type: 'consultation',
+    calls: [
+      {
+        question: '他にない？',
+        history: [
+          { role: 'user', content: 'どんな分析をしたらいい？' },
+          { role: 'assistant', content: '全体規模を提案しました。' },
+        ],
+        profile: 'ga4',
+      },
+    ],
+    statuses: [400, 400],
+  });
 });
 
 test('consultation prompt detection is bounded to advice requests', () => {
