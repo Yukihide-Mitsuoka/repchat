@@ -92,6 +92,24 @@ def requires_analysis_consultation(question: str) -> bool:
     consultation = compact.startswith("分析") and "相談" in compact
     return discovery or recommendation or consultation
 
+
+def analysis_consultation_context(metrics: str, profile: str) -> str:
+    """Expose schema semantics, not a menu of prewritten analyses, to the planner."""
+    if profile == "bitcoin":
+        return "利用可能期間は2024年1月〜12月。\n" + bitcoin.prompt_rules()
+    return f"""利用可能期間は2020年11月〜2021年1月。未指定時は2021年1月を提案に使う。
+BigQuery GA4 exportの主な列:
+- event_date, event_timestamp, event_name, user_pseudo_id
+- traffic_source.medium, device.category, ecommerce.transaction_id, ecommerce.purchase_revenue
+- event_params ARRAY<STRUCT<key STRING, value STRUCT<string_value STRING, int_value INT64, double_value FLOAT64>>>
+- items ARRAY<STRUCT<item_id STRING, item_name STRING, item_category STRING, price FLOAT64, quantity INT64>>
+利用できる主な切り口:
+- 日付、流入medium、device category、event_name、page_locationから正規化したpage_path、商品属性
+- セッション内の時系列、入口、連続ページ遷移、イベント到達段階
+定義済み指標:
+{metrics}
+指標定義にない語は推測せず、追加定義が必要だと説明する。"""
+
 HTML = r"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>RepChat | ライブ分析デモ</title><style>
@@ -190,9 +208,9 @@ function handleDashboard(e){if(e.type==="dashboard_plan"){$("dashboard-empty").c
 function handlePlan(e){if(e.type==="plan_stage"){$("dashboard-status").textContent="相談中";$("dashboard-message").textContent=e.message}else if(e.type==="plan")renderAnalysisPlan(e);else if(e.type==="error")throw new Error(e.message)}
 function handleMeetingReport(e){if(e.type==="report_stage"){selectWorkspace("report");setReportState("生成中",e.message)}else if(e.type==="meeting_report"){renderMeetingReport(e);setReportState("要承認",`根拠付き会議報告案を生成しました。Vertex AI推定 ¥${e.cost_jpy}`);selectWorkspace("report")}else if(e.type==="error")throw new Error(e.message)}
 async function stream(endpoint,question,eventHandler,profile="ga4",extra={}){const res=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question,profile,...extra})});if(!res.ok)throw new Error((await res.json()).error);const reader=res.body.getReader(),dec=new TextDecoder();let buf="";while(true){const{done,value}=await reader.read();buf+=dec.decode(value||new Uint8Array(),{stream:!done});const lines=buf.split("\n");buf=lines.pop();for(const line of lines)if(line)eventHandler(JSON.parse(line));if(done){if(buf.trim())eventHandler(JSON.parse(buf));break}}}
-function showCost(mode){const dashboard=mode.startsWith("dashboard")||mode==="report",input=$(dashboard?"dashboard-question":"question"),message=$(dashboard?"dashboard-message":"message");if(!input.value.trim()){message.className="notice error";message.textContent="問い合わせを入力してください。";return}pendingMode=mode;const planning=mode==="dashboard-plan",building=mode==="dashboard-build",reporting=mode==="report",bitcoin=!dashboard&&$("dataset-profile").value==="bitcoin",count=building?pendingPlan.panels.length:0;$("cost-description").textContent=planning?"分析計画の相談ではVertex AIだけを使用し、BigQueryは実行しません。":building?`確定する${count}件の分析で実際のVertex AIとBigQueryを使用します。`:reporting?"確定した集計結果から会議報告案を作ります。BigQueryは再実行しません。":"この質問では実際のVertex AIとBigQueryを使用します。";$("cost-vertex").textContent=planning?"Vertex AI 約¥1（分析計画1回）":building?`Vertex AI 約¥${count}（SQL生成${count}回）`:reporting?"Vertex AI 最大約¥25（根拠bundle 48 KiB・出力8,192 tokens上限・思考tokensを含む）":"Vertex AI 約¥1";$("cost-bigquery").textContent=planning?"BigQuery ¥0（仕様確定前は実行しません）":building?`BigQuery 最大${count*40} GiB（生成＋参照を各20 GiB、最大約¥${count*38}）`:reporting?"BigQuery ¥0（保存済み集計bundleだけを参照）":bitcoin?"BigQuery dry run 約2.91 GiB（上限20 GiB・参照値照合なし、最大約¥19）":"BigQuery 最大40 GiB（20 GiB × 最大2クエリ、最大約¥38）";$("cost-total").textContent=planning?"今回の相談 約¥1":building?`合計最大約¥${count*39}`:reporting?"今回の報告案 最大約¥25":bitcoin?"通常約¥5・最大約¥20":"合計最大約¥39";$("cost-dialog").showModal()}
+function showCost(mode){const consultation=mode==="analysis-consult",dashboard=mode.startsWith("dashboard")||mode==="report",input=consultation?{value:pendingConsultation?.question||""}:$(dashboard?"dashboard-question":"question"),message=consultation?$("consultation-status"):$(dashboard?"dashboard-message":"message");if(!input.value.trim()){message.className="notice error";message.textContent="問い合わせを入力してください。";return}pendingMode=mode;const planning=mode==="dashboard-plan",building=mode==="dashboard-build",reporting=mode==="report",bitcoin=!dashboard&&!consultation&&$("dataset-profile").value==="bitcoin",count=building?pendingPlan.panels.length:0;$("cost-description").textContent=consultation?"分析内容の相談ではVertex AIだけを使用し、BigQueryは実行しません。":planning?"分析計画の相談ではVertex AIだけを使用し、BigQueryは実行しません。":building?`確定する${count}件の分析で実際のVertex AIとBigQueryを使用します。`:reporting?"確定した集計結果から会議報告案を作ります。BigQueryは再実行しません。":"この質問では実際のVertex AIとBigQueryを使用します。";$("cost-vertex").textContent=consultation?"Vertex AI 約¥1（分析相談1回）":planning?"Vertex AI 約¥1（分析計画1回）":building?`Vertex AI 約¥${count}（SQL生成${count}回）`:reporting?"Vertex AI 最大約¥25（根拠bundle 48 KiB・出力8,192 tokens上限・思考tokensを含む）":"Vertex AI 約¥1";$("cost-bigquery").textContent=consultation?"BigQuery ¥0（相談では実行しません）":planning?"BigQuery ¥0（仕様確定前は実行しません）":building?`BigQuery 最大${count*40} GiB（生成＋参照を各20 GiB、最大約¥${count*38}）`:reporting?"BigQuery ¥0（保存済み集計bundleだけを参照）":bitcoin?"BigQuery dry run 約2.91 GiB（上限20 GiB・参照値照合なし、最大約¥19）":"BigQuery 最大40 GiB（20 GiB × 最大2クエリ、最大約¥38）";$("cost-total").textContent=consultation?"今回の相談 約¥1":planning?"今回の相談 約¥1":building?`合計最大約¥${count*39}`:reporting?"今回の報告案 最大約¥25":bitcoin?"通常約¥5・最大約¥20":"合計最大約¥39";$("cost-dialog").showModal()}
 function requestMeetingReport(){if(!latestBuildRevision){setReportState("エラー","会議報告案を生成できるbuild結果がありません。","notice error");selectWorkspace("report");return}setReportState("費用確認待ち","会議報告案の生成費用を確認してください。BigQueryは再実行しません。");try{showCost("report")}catch(_error){setReportState("エラー","費用確認ダイアログを開けませんでした。","notice error");selectWorkspace("report")}}
-configureCopyButton($("sql-copy"),$("sql"));configureCopyButton($("inspector-sql-copy"),$("inspector-sql"));$("view-dashboard").onclick=()=>selectWorkspace("dashboard");$("view-build").onclick=()=>selectWorkspace("build");$("view-report").onclick=()=>selectWorkspace("report");$("view-graph").onclick=()=>selectWorkspace("graph");$("open-build-studio").onclick=()=>selectWorkspace("build");$("back-to-dashboard").onclick=()=>selectWorkspace("dashboard");$("sidebar-toggle").onclick=toggleSidebar;$("inspector-toggle").onclick=toggleInspector;$("inspector-tab-reason").onclick=()=>selectInspectorTab("reason");$("inspector-tab-sql").onclick=()=>selectInspectorTab("sql");$("inspector-tab-data").onclick=()=>selectInspectorTab("data");$("inspector-tab-provenance").onclick=()=>selectInspectorTab("provenance");const navigationResizer=$("navigation-resizer");navigationResizer.setAttribute("aria-valuenow",parseInt(getComputedStyle($("app-shell")).getPropertyValue("--nav-width"),10)||220);navigationResizer.onpointerdown=event=>{navigationResizer.classList.add("dragging");navigationResizer.setPointerCapture(event.pointerId);resizeNavigation(event)};navigationResizer.onpointermove=event=>{if(navigationResizer.classList.contains("dragging"))resizeNavigation(event)};navigationResizer.onpointerup=event=>{navigationResizer.classList.remove("dragging");navigationResizer.releasePointerCapture(event.pointerId)};navigationResizer.onkeydown=event=>{if(!["ArrowLeft","ArrowRight"].includes(event.key))return;event.preventDefault();const current=parseInt(getComputedStyle($("app-shell")).getPropertyValue("--nav-width"),10)||220,width=Math.max(180,Math.min(360,event.key==="ArrowLeft"?current-20:current+20));$("app-shell").style.setProperty("--nav-width",width+"px");navigationResizer.setAttribute("aria-valuenow",String(width))};const inspectorResizer=$("inspector-resizer");inspectorResizer.setAttribute("aria-valuenow",parseInt(getComputedStyle($("app-shell")).getPropertyValue("--inspector-width"),10)||330);inspectorResizer.onpointerdown=event=>{inspectorResizer.classList.add("dragging");inspectorResizer.setPointerCapture(event.pointerId);resizeInspector(event)};inspectorResizer.onpointermove=event=>{if(inspectorResizer.classList.contains("dragging"))resizeInspector(event)};inspectorResizer.onpointerup=event=>{inspectorResizer.classList.remove("dragging");inspectorResizer.releasePointerCapture(event.pointerId)};inspectorResizer.onkeydown=event=>{if(!["ArrowLeft","ArrowRight"].includes(event.key))return;event.preventDefault();const current=parseInt(getComputedStyle($("app-shell")).getPropertyValue("--inspector-width"),10)||330,width=Math.max(280,Math.min(560,event.key==="ArrowLeft"?current+20:current-20));$("app-shell").style.setProperty("--inspector-width",width+"px");inspectorResizer.setAttribute("aria-valuenow",String(width))};$("dataset-profile").onchange=()=>selectProfile($("dataset-profile").value);$("result-tab-chart").onclick=()=>selectResultTab("chart");$("result-tab-data").onclick=()=>selectResultTab("data");$("submit").onclick=()=>showCost("graph");$("dashboard-submit").onclick=()=>{currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")};$("plan-audience").oninput=()=>syncPlanFieldAnswer("audience",$("plan-audience").value);$("plan-comparison").oninput=()=>syncPlanFieldAnswer("comparison",$("plan-comparison").value);$("plan-revise").onclick=()=>{try{collectAnswers();showCost("dashboard-plan")}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message}};$("plan-build").onclick=()=>{try{collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message}};$("report-submit").onclick=requestMeetingReport;$("cancel-cost").onclick=()=>$("cost-dialog").close();$("confirm-cost").onclick=()=>pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery();selectWorkspace("dashboard");if(window.innerWidth<1100)toggleInspector();
+configureCopyButton($("sql-copy"),$("sql"));configureCopyButton($("inspector-sql-copy"),$("inspector-sql"));$("view-dashboard").onclick=()=>selectWorkspace("dashboard");$("view-build").onclick=()=>selectWorkspace("build");$("view-report").onclick=()=>selectWorkspace("report");$("view-graph").onclick=()=>selectWorkspace("graph");$("open-build-studio").onclick=()=>selectWorkspace("build");$("back-to-dashboard").onclick=()=>selectWorkspace("dashboard");$("sidebar-toggle").onclick=toggleSidebar;$("inspector-toggle").onclick=toggleInspector;$("inspector-tab-reason").onclick=()=>selectInspectorTab("reason");$("inspector-tab-sql").onclick=()=>selectInspectorTab("sql");$("inspector-tab-data").onclick=()=>selectInspectorTab("data");$("inspector-tab-provenance").onclick=()=>selectInspectorTab("provenance");const navigationResizer=$("navigation-resizer");navigationResizer.setAttribute("aria-valuenow",parseInt(getComputedStyle($("app-shell")).getPropertyValue("--nav-width"),10)||220);navigationResizer.onpointerdown=event=>{navigationResizer.classList.add("dragging");navigationResizer.setPointerCapture(event.pointerId);resizeNavigation(event)};navigationResizer.onpointermove=event=>{if(navigationResizer.classList.contains("dragging"))resizeNavigation(event)};navigationResizer.onpointerup=event=>{navigationResizer.classList.remove("dragging");navigationResizer.releasePointerCapture(event.pointerId)};navigationResizer.onkeydown=event=>{if(!["ArrowLeft","ArrowRight"].includes(event.key))return;event.preventDefault();const current=parseInt(getComputedStyle($("app-shell")).getPropertyValue("--nav-width"),10)||220,width=Math.max(180,Math.min(360,event.key==="ArrowLeft"?current-20:current+20));$("app-shell").style.setProperty("--nav-width",width+"px");navigationResizer.setAttribute("aria-valuenow",String(width))};const inspectorResizer=$("inspector-resizer");inspectorResizer.setAttribute("aria-valuenow",parseInt(getComputedStyle($("app-shell")).getPropertyValue("--inspector-width"),10)||330);inspectorResizer.onpointerdown=event=>{inspectorResizer.classList.add("dragging");inspectorResizer.setPointerCapture(event.pointerId);resizeInspector(event)};inspectorResizer.onpointermove=event=>{if(inspectorResizer.classList.contains("dragging"))resizeInspector(event)};inspectorResizer.onpointerup=event=>{inspectorResizer.classList.remove("dragging");inspectorResizer.releasePointerCapture(event.pointerId)};inspectorResizer.onkeydown=event=>{if(!["ArrowLeft","ArrowRight"].includes(event.key))return;event.preventDefault();const current=parseInt(getComputedStyle($("app-shell")).getPropertyValue("--inspector-width"),10)||330,width=Math.max(280,Math.min(560,event.key==="ArrowLeft"?current+20:current-20));$("app-shell").style.setProperty("--inspector-width",width+"px");inspectorResizer.setAttribute("aria-valuenow",String(width))};$("dataset-profile").onchange=()=>selectProfile($("dataset-profile").value);$("result-tab-chart").onclick=()=>selectResultTab("chart");$("result-tab-data").onclick=()=>selectResultTab("data");$("submit").onclick=()=>showCost("graph");$("dashboard-submit").onclick=()=>{currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")};$("plan-audience").oninput=()=>syncPlanFieldAnswer("audience",$("plan-audience").value);$("plan-comparison").oninput=()=>syncPlanFieldAnswer("comparison",$("plan-comparison").value);$("plan-revise").onclick=()=>{try{collectAnswers();showCost("dashboard-plan")}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message}};$("plan-build").onclick=()=>{try{collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message}};$("report-submit").onclick=requestMeetingReport;$("cancel-cost").onclick=()=>{if(pendingMode==="analysis-consult")rollbackPendingConsultation();$("cost-dialog").close()};$("confirm-cost").onclick=()=>pendingMode==="analysis-consult"?runAnalysisConsultation():pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery();selectWorkspace("dashboard");if(window.innerWidth<1100)toggleInspector();
 async function runQuery(){$("cost-dialog").close();const q=$("question").value.trim(),profile=$("dataset-profile").value;$("submit").disabled=true;$("run-status").textContent="処理中";$("output").className="hidden";clearResult();stage("generate");$("message").className="notice";$("message").textContent="Vertex AIへ問い合わせています。";try{await stream("/api/query",q,handle,profile)}catch(e){$("message").className="notice error";$("message").textContent=e.message;finish("エラー")}finally{$("submit").disabled=false}}
 async function runPlan(){$("cost-dialog").close();selectWorkspace("build");const q=$("dashboard-question").value.trim();$("dashboard-submit").disabled=true;$("plan-revise").disabled=true;dashboardStage("plan");$("dashboard-status").textContent="相談中";$("dashboard-message").className="notice";$("dashboard-message").textContent="分析目的を分解しています。";try{await stream("/api/plan",q,handlePlan,"ga4",{answers:currentAnswers})}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message;$("dashboard-status").textContent="エラー"}finally{$("dashboard-submit").disabled=false;$("plan-revise").disabled=false}}
 async function runDashboard(){$("cost-dialog").close();selectWorkspace("build");const q=$("dashboard-question").value.trim();$("plan-build").disabled=true;dashboardStage("build");$("dashboard-status").textContent="build中";$("dashboard-output").className="hidden";$("report-output").className="panel hidden report-home";$("report-empty").className="panel empty-state";$("report-submit").className="hidden";latestBuildRevision=null;setReportState("報告案なし","新しいbuild完了後に会議報告案を生成できます。");$("dashboard-message").className="notice";$("dashboard-message").textContent="確定した分析仕様をfreezeし、buildを開始します。";try{await stream("/api/dashboard",q,handleDashboard,"ga4",{analysis_plan:pendingPlan})}catch(e){$("dashboard-message").className="notice error";$("dashboard-message").textContent=e.message;$("dashboard-status").textContent="エラー"}finally{$("plan-build").disabled=false}}
@@ -268,14 +286,14 @@ HTML = HTML.replace(
 
 _consultation_markup = r"""
 <section id="analysis-consultation" class="workspace-view analysis-consultation hidden" aria-labelledby="consultation-heading">
-<div class="consultation-user"><span>あなた</span><p id="consultation-question">どんな分析をしたらいい？</p></div>
+<div id="consultation-thread" class="consultation-thread" aria-label="分析相談の対話履歴"></div>
 <div class="consultation-assistant">
 <p class="eyebrow">Analysis consultation</p>
-<h2 id="consultation-heading">まず、判断したいことに近い分析を選んでください</h2>
-<p id="consultation-introduction" class="lead">検証済みの分析候補から始められます。候補を選んでもまだ実行しません。</p>
-<p class="consultation-free"><strong>相談・候補選択は無料です。</strong> この段階ではVertex AIとBigQueryを実行しません。</p>
+<h2 id="consultation-heading">AIと分析内容を相談してください</h2>
+<p id="consultation-introduction" class="lead">AIがスキーマ、指標定義、目的、これまでの対話から分析仕様を考察します。</p>
+<p class="consultation-free"><strong>相談ではVertex AIを使用し、BigQueryは実行しません。</strong> SQL生成とデータ取得は、候補選択後に別途確認します。</p>
 <div id="consultation-recommendations" class="consultation-recommendations" aria-label="おすすめの分析"></div>
-<p id="consultation-status" class="consultation-status" role="status" aria-live="polite">候補を選ぶか、下の入力欄で目的を追加してください。</p>
+<p id="consultation-status" class="consultation-status" role="status" aria-live="polite">下の入力欄から、判断したいことを相談してください。</p>
 </div>
 </section>
 """
@@ -560,7 +578,7 @@ h1{font-size:22px}
 #composer-input{min-height:52px;max-height:none;padding:7px 4px;overflow-y:hidden;border:0;border-radius:0;resize:none;box-shadow:none;font-size:13px}#composer-input:focus{border:0;outline:0}
 #composer-submit{display:grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;border:0;border-radius:50%;background:#202123;font-size:16px}
 .analysis-consultation{max-width:860px;margin:8px auto 120px}
-.consultation-user{display:flex;justify-content:flex-end;margin:8px 0 30px}.consultation-user span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.consultation-user p{max-width:78%;margin:0;padding:10px 14px;border-radius:16px 16px 4px 16px;background:#ececef;color:#27272a;font-size:14px;line-height:1.55}
+.consultation-thread{display:grid;gap:16px;margin:8px 0 30px}.consultation-message{max-width:760px;margin:0;white-space:pre-wrap;font-size:14px;line-height:1.65}.consultation-message.user{justify-self:end;max-width:78%;padding:10px 14px;border-radius:16px 16px 4px 16px;background:#ececef;color:#27272a}.consultation-message.assistant{justify-self:start;color:#343541}
 .consultation-assistant{max-width:760px}.consultation-assistant h2{font-size:20px;letter-spacing:-.01em}.consultation-assistant>.lead{margin:8px 0 0;font-size:13px}.consultation-free{margin:15px 0 18px;padding-left:11px;border-left:2px solid #4b84b4;color:#5f6672;font-size:12px;line-height:1.6}.consultation-free strong{color:#234e70}
 .consultation-recommendations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.recommendation-card{display:grid;grid-template-columns:1fr auto;gap:5px 12px;min-height:128px;padding:14px;border:1px solid #dedee3;border-radius:10px;background:#fff;color:#27272a;text-align:left;box-shadow:none}.recommendation-card:hover,.recommendation-card:focus-visible{border-color:#7aa4c7;background:#f8fbfd}.recommendation-card.selected{border-color:#1f4e79;box-shadow:0 0 0 2px #1f4e7920}.recommendation-card strong{font-size:14px;font-weight:650}.recommendation-card .recommendation-chart{align-self:start;padding:2px 7px;border-radius:999px;background:#f1f1f3;color:#667085;font-size:10px;font-weight:500}.recommendation-card span:not(.recommendation-chart){grid-column:1/-1;color:#5f6672;font-size:11px;font-weight:400;line-height:1.55}.recommendation-card .recommendation-decision{color:#344054}.consultation-status{margin:14px 0 0;color:#667085;font-size:12px;line-height:1.55}
 #build-studio-view .query-panel,#graph-workspace>.query-panel{display:none}
@@ -571,7 +589,7 @@ h1{font-size:22px}
 .workspace-inspector .table-scroll th,.workspace-inspector .table-scroll td{padding:6px 8px;font-size:12px;line-height:1.35;vertical-align:top}
 @media(max-width:1180px){.analysis-composer{left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip))/2);width:min(768px,calc(100vw - var(--nav-column) - var(--nav-grip) - 48px))}}
 @media(max-width:960px){.analysis-composer{left:50%;bottom:8px;width:min(768px,calc(100vw - 24px))}.workspace{padding-bottom:140px}.workspace-inspector{padding-top:52px}}
-@media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}.consultation-recommendations{grid-template-columns:1fr}.consultation-user p{max-width:92%}}
+@media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}.consultation-recommendations{grid-template-columns:1fr}.consultation-message.user{max-width:92%}}
 """
 HTML = HTML.replace("</style>", WORKSPACE_POLISH_CSS + "\n</style>")
 
@@ -582,28 +600,26 @@ function toggleSidebar(){const collapsed=$("app-shell").classList.toggle("sideba
 function toggleInspector(){const collapsed=$("app-shell").classList.toggle("inspector-collapsed");updatePaneButton("inspector-toggle","right",!collapsed,collapsed?"成果物パネルを展開":"成果物パネルを折りたたむ");resizeComposerInput()}
 function showInsightArtifact(hasResult=false){const pane=$("panel-inspector");pane.classList.add("artifact-active");$("artifact-preview").className="artifact-preview";$("artifact-preview-empty").className=hasResult?"hidden":"inspector-empty";$("inspector-title").textContent="インサイト";$("inspector-subtitle").textContent="未保存の分析結果";if($("app-shell").classList.contains("inspector-collapsed"))toggleInspector()}
 function hideInsightArtifact(){const pane=$("panel-inspector");pane.classList.remove("artifact-active");$("artifact-preview").className="artifact-preview hidden"}
-const analysisRecommendations={ga4:[
-{title:"主要なサイト回遊",decision:"訪問者が入口からどこへ進み、どこで経路が途切れるかを確認する",chart:"Sankey",keywords:["回遊","導線","ページ","離脱"],prompt:"2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"},
-{title:"流入チャネル別の規模",decision:"集客量の大きいチャネルを把握し、深掘りする入口を決める",chart:"棒グラフ",keywords:["流入","チャネル","集客","medium"],prompt:"2021年1月のセッション数を流入チャネル（medium）別に、多い順で出して"},
-{title:"日別セッション推移",decision:"期間内の山谷を把握し、施策日や異常日の確認対象を絞る",chart:"折れ線",keywords:["日別","推移","時系列","変化"],prompt:"2021年1月の日別セッション数を、日付の昇順で出して"},
-{title:"月間セッション規模",decision:"対象月のWeb利用規模を単一KPIとして確認する",chart:"スコアカード",keywords:["規模","全体","セッション","kpi"],prompt:"2021年1月のセッション数を出して"}
-],bitcoin:[
-{title:"受取アドレス数帯別の取引数",decision:"取引ごとの受取先の複雑度を分布で確認する",chart:"棒グラフ",keywords:["受取","アドレス","複雑","取引"],prompt:"2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して"}
-]};
 function isConsultationPrompt(question){let compact=[...question.trim()].filter(character=>![" ","　","\t","\n","\r"].includes(character)).join("");while("?？!！。".includes(compact.at(-1)))compact=compact.slice(0,-1);const discovery=["どんな","何を","何の","どういう"].some(prefix=>compact.startsWith(prefix))&&compact.includes("分析")&&["したら","すれば","できる"].some(word=>compact.includes(word)),recommendation=["おすすめ","推奨"].some(prefix=>compact.startsWith(prefix))&&compact.includes("分析")&&["教えて","提案して","知りたい"].some(suffix=>compact.endsWith(suffix)),consultation=compact.startsWith("分析")&&compact.includes("相談");return discovery||recommendation||consultation}
-function recommendationScore(recommendation,question){const normalized=question.toLowerCase();return recommendation.keywords.reduce((score,keyword)=>score+(normalized.includes(keyword)?1:0),0)}
+const consultationHistory=[];let pendingConsultation=null,consultationProfile=null;
+function appendConsultationMessage(role,text){const message=Object.assign(document.createElement("p"),{className:`consultation-message ${role}`,textContent:text});$("consultation-thread").append(message);message.scrollIntoView({block:"nearest"});return message}
+function resetConsultation(profile){consultationHistory.splice(0);$("consultation-thread").replaceChildren();$("consultation-recommendations").replaceChildren();consultationProfile=profile}
+function rollbackPendingConsultation(){if(!pendingConsultation)return;const pending=pendingConsultation,last=consultationHistory.at(-1);if(last?.role==="user"&&last.content===pending.question)consultationHistory.pop();pending.message.remove();$("composer-input").value=pending.question;resizeComposerInput();$("consultation-status").textContent="相談を実行しませんでした。発言を編集して再送信できます。";pendingConsultation=null;$("composer-input").focus()}
+function renderAnalysisRecommendations(recommendations){const host=$("consultation-recommendations");host.replaceChildren();const chartLabels={scorecard:"スコアカード",bar:"棒グラフ",line:"折れ線",table:"テーブル",sankey:"サンキー"};recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),definition=document.createElement("span"),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=chartLabels[recommendation.chart]||recommendation.chart;decision.textContent=`判断: ${recommendation.objective}`;definition.textContent=`指標: ${recommendation.metric} / 軸: ${recommendation.dimension} / 比較: ${recommendation.comparison}`;prompt.textContent=`AIが定義した実行仕様: ${recommendation.execution_prompt}`;card.dataset.prompt=recommendation.execution_prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,definition,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)})}
+function handleAnalysisConsultation(event){if(event.type==="consultation_stage"){$("consultation-status").textContent=event.message;return}if(event.type==="error")throw new Error(event.message);if(event.type!=="consultation")return;appendConsultationMessage("assistant",`${event.assistant_message}\n\n${event.follow_up_question}`);consultationHistory.push({role:"assistant",content:event.history_message});renderAnalysisRecommendations(event.recommendations);$("consultation-status").textContent=`AIが${event.recommendations.length}件の分析仕様を考察しました。Vertex AI推定 ¥${event.cost_jpy}。候補を選ぶか、下から追加相談できます。`;$("composer-message").textContent="相談結果を確認してください。BigQueryはまだ実行していません。";pendingConsultation=null}
+function beginAnalysisConsultation(question,profile){hideInsightArtifact();selectWorkspace("consult");setComposerAction("consult",false);if(consultationProfile!==profile)resetConsultation(profile);$("inspector-title").textContent="分析相談";$("inspector-subtitle").textContent="BigQuery未実行";$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";$("inspector-empty").textContent="AIが目的、指標、軸、比較、可視化を考察します。選択後にSQL生成費用を別途確認します。";const history=consultationHistory.slice(-8),message=appendConsultationMessage("user",question);consultationHistory.push({role:"user",content:question});pendingConsultation={question,profile,history,message};$("composer-input").value="";resizeComposerInput();$("consultation-status").textContent="費用確認後にVertex AIへ相談します。BigQueryは実行しません。";$("composer-message").textContent="相談費用を確認してください。";try{showCost("analysis-consult")}catch(error){rollbackPendingConsultation();$("consultation-status").textContent=error.message}}
+async function runAnalysisConsultation(){const pending=pendingConsultation;if(!pending)return;$("cost-dialog").close();$("consultation-status").textContent="AIが分析目的と利用可能なデータを照合しています。";try{await stream("/api/consult",pending.question,handleAnalysisConsultation,pending.profile,{history:pending.history})}catch(error){rollbackPendingConsultation();$("consultation-status").textContent=error.message}}
 function resizeComposerInput(){const input=$("composer-input");input.style.height="auto";input.style.height=`${input.scrollHeight}px`}
 function collapseComposer(){const composer=$("analysis-composer");composer.classList.add("composer-collapsed");$("composer-launcher").setAttribute("aria-expanded","false");$("composer-input").blur()}
 function collapseComposerFromControl(){collapseComposer();$("composer-launcher").focus()}
 function expandComposer(focusInput=true){const composer=$("analysis-composer");composer.classList.remove("composer-collapsed");$("composer-launcher").setAttribute("aria-expanded","true");resizeComposerInput();if(focusInput)$("composer-input").focus()}
 // Issue #364: completed dashboards prioritize reading; explicit controls restore chat without hover-driven layout changes.
 function enterDashboardReadingMode(){hideInsightArtifact();$("analysis-composer").classList.add("dashboard-ready");if(!$("app-shell").classList.contains("inspector-collapsed"))toggleInspector();collapseComposer()}
-function selectAnalysisRecommendation(recommendation){document.querySelectorAll(".recommendation-card").forEach(card=>{const selected=card.dataset.prompt===recommendation.prompt;card.classList.toggle("selected",selected);card.setAttribute("aria-pressed",String(selected))});setComposerAction("insight",false);$("composer-input").value=recommendation.prompt;resizeComposerInput();$("consultation-status").textContent=`「${recommendation.title}」を依頼文へ反映しました。必要なら編集し、もう一度送信すると費用確認へ進みます。`;$("composer-message").textContent="候補を反映しました。まだSQL生成・BigQuery実行はしていません。";$("inspector-title").textContent=recommendation.title;$("inspector-subtitle").textContent="分析候補・未実行";$("inspector-empty").textContent=`${recommendation.decision}ための候補です。依頼文を確認し、費用確認後に実行します。`;$("composer-input").focus()}
-function showAnalysisConsultation(question,profile){hideInsightArtifact();selectWorkspace("consult");setComposerAction("consult",false);$("inspector-title").textContent="分析候補";$("inspector-subtitle").textContent="まだ実行していません";$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";$("inspector-empty").textContent="候補を選ぶと、支える判断と実行前の状態をここで確認できます。SQLや取得データは費用確認後だけ表示します。";$("consultation-question").textContent=question;const recommendations=[...analysisRecommendations[profile]].sort((a,b)=>recommendationScore(b,question)-recommendationScore(a,question));$("consultation-introduction").textContent=profile==="bitcoin"?"Bitcoinデモは現在、検証済みの1分析だけを提案します。対応外の分析を実行可能と見せません。":"検証済みの候補を、入力した目的に近い順で提示します。選択後も依頼文を編集できます。";const host=$("consultation-recommendations");host.replaceChildren();recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=recommendation.chart;decision.textContent=`判断: ${recommendation.decision}`;prompt.textContent=`依頼例: ${recommendation.prompt}`;card.dataset.prompt=recommendation.prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)});$("consultation-status").textContent="候補を選ぶか、下の入力欄で目的を追加してください。";$("composer-message").textContent="相談中です。候補選択までは無料です。"}
+function selectAnalysisRecommendation(recommendation){document.querySelectorAll(".recommendation-card").forEach(card=>{const selected=card.dataset.prompt===recommendation.execution_prompt;card.classList.toggle("selected",selected);card.setAttribute("aria-pressed",String(selected))});setComposerAction("insight",false);$("composer-input").value=recommendation.execution_prompt;resizeComposerInput();$("consultation-status").textContent=`「${recommendation.title}」のAI分析仕様を依頼文へ反映しました。必要なら編集し、再送信すると費用確認へ進みます。`;$("composer-message").textContent="AIが考察した仕様を反映しました。まだSQL生成・BigQuery実行はしていません。";$("inspector-title").textContent=recommendation.title;$("inspector-subtitle").textContent="AI分析仕様・未実行";$("inspector-empty").textContent=`${recommendation.reason} 依頼文を確認し、費用確認後にSQLを生成します。`;$("composer-input").focus()}
 function setComposerAction(action,copyInput=true){document.querySelectorAll("[data-composer-action]").forEach(button=>button.classList.toggle("selected",button.dataset.composerAction===action));$("analysis-composer").dataset.action=action;$("composer-profile").className=["consult","insight"].includes(action)?"":"hidden";const input=$("composer-input");if(copyInput)input.value=action==="consult"?"どんな分析をしたらいい？":action==="dashboard"?$("dashboard-question").value:action==="insight"?$("question").value:"このダッシュボードの結果から、会議で判断すべき論点と次のアクションを報告案にして";resizeComposerInput();$("composer-target").textContent=action==="consult"?"対象: 分析テーマを相談":action==="dashboard"?"対象: 現在の分析スレッド":action==="insight"?"対象: 未保存のインサイト":"対象: 最新ダッシュボード"}
 const baseSelectWorkspace=selectWorkspace;
 selectWorkspace=view=>{baseSelectWorkspace(view);$("compact-title").textContent=$("page-title").textContent;if(view!=="dashboard"){$("analysis-composer").classList.remove("dashboard-ready");expandComposer(false)}};
-function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}if(action==="consult"||isConsultationPrompt(question)){showAnalysisConsultation(question,$("composer-profile").value);return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
+function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}if(action==="consult"||isConsultationPrompt(question)){beginAnalysisConsultation(question,$("composer-profile").value);return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
 const originalQueryHandler=handle;handle=e=>{if(["sql","result","refusal"].includes(e.type))showInsightArtifact(true);originalQueryHandler(e)};
 const originalPanelInspector=openPanelInspector;openPanelInspector=panelId=>{hideInsightArtifact();originalPanelInspector(panelId)};
 $("artifact-preview-host").appendChild($("output"));
@@ -1035,6 +1051,36 @@ class LiveQueryEngine:
         finally:
             self.lock.release()
 
+    def consult(
+        self,
+        question: str,
+        history: list[dict[str, str]],
+        emit: Callable[[dict], None],
+        profile: str = "ga4",
+    ) -> None:
+        """Create history-aware analysis specifications without querying BigQuery."""
+        if not self.lock.acquire(blocking=False):
+            raise LiveDemoError("別の問い合わせを処理中です。完了後に再送してください。")
+        try:
+            emit({"type": "consultation_stage", "message": "分析目的と利用可能なデータを照合中です。"})
+            consultation, usage = planner.propose_consultation(
+                self.client,
+                self.model,
+                question,
+                history,
+                analysis_consultation_context(self.metrics, profile),
+                profile,
+            )
+            cost = (
+                usage["input_tokens"] * report.PRICING[self.model][0]
+                + usage["output_tokens"] * report.PRICING[self.model][1]
+            ) / 1e6 * report.USD_JPY
+            emit({"type": "consultation", **consultation, "cost_jpy": round(cost, 3)})
+        except (ValueError, planner.PlannerError) as error:
+            raise LiveDemoError(str(error)) from error
+        finally:
+            self.lock.release()
+
     def dashboard(
         self,
         question: str,
@@ -1362,7 +1408,13 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         else:
             self._send(204 if self.path == "/favicon.ico" else 404, b"", "text/plain")
     def do_POST(self) -> None:
-        if self.path not in {"/api/query", "/api/dashboard", "/api/plan", "/api/report"}:
+        if self.path not in {
+            "/api/query",
+            "/api/dashboard",
+            "/api/plan",
+            "/api/report",
+            "/api/consult",
+        }:
             self._send_json(404, {"error": "not found"})
             return
         content_type = self.headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -1392,6 +1444,7 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             answers = body.get("answers", {}) if isinstance(body, dict) else None
             analysis_plan = body.get("analysis_plan") if isinstance(body, dict) else None
             build_revision = body.get("build_revision") if isinstance(body, dict) else None
+            history = body.get("history", []) if isinstance(body, dict) else None
             if not isinstance(question, str):
                 raise ValueError("question must be a string")
             if profile not in {"ga4", "bitcoin"}:
@@ -1406,7 +1459,27 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                 for key, value in answers.items()
             ):
                 raise ValueError("answers must contain only short supported text fields")
-            if self.path == "/api/report":
+            if self.path == "/api/consult":
+                if not isinstance(history, list) or len(history) > 8:
+                    raise ValueError("history must contain at most 8 turns")
+                total_history_chars = 0
+                for index, turn in enumerate(history):
+                    expected_role = "user" if index % 2 == 0 else "assistant"
+                    if (
+                        not isinstance(turn, dict)
+                        or set(turn) != {"role", "content"}
+                        or turn.get("role") != expected_role
+                        or not isinstance(turn.get("content"), str)
+                        or not turn["content"].strip()
+                        or len(turn["content"]) > 800
+                    ):
+                        raise ValueError("history contains an invalid turn")
+                    total_history_chars += len(turn["content"])
+                if total_history_chars > 3000:
+                    raise ValueError("history is too large")
+                if not question.strip() or len(question) > report.MAX_QUESTION_CHARS:
+                    raise ValueError("consultation question is invalid")
+            elif self.path == "/api/report":
                 if not isinstance(build_revision, str) or not re.fullmatch(
                     r"build-[0-9a-f]{12}", build_revision
                 ):
@@ -1448,7 +1521,9 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             self.wfile.write((json.dumps(event, ensure_ascii=False) + "\n").encode())
             self.wfile.flush()
         try:
-            if self.path == "/api/report":
+            if self.path == "/api/consult":
+                self.engine.consult(question, history, emit, profile=profile)
+            elif self.path == "/api/report":
                 self.engine.meeting_report(build_revision, emit)
             elif self.path == "/api/plan":
                 self.engine.plan(question, answers, emit)
