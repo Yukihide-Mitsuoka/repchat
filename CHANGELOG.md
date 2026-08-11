@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.16.0...v1.16.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **demo:** include thought tokens in generation usage ([#335](https://github.com/Yukihide-Mitsuoka/repchat/issues/335)) ([8e7c521](https://github.com/Yukihide-Mitsuoka/repchat/commit/8e7c521f301b58525e15ff17b937e9f120b24ff1))
+
 ## [1.16.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.15.6...v1.16.0) (2026-08-10)
 
 
