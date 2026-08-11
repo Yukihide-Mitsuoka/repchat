@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.17.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.16.1...v1.17.0) (2026-08-11)
+
+
+### Features
+
+* **demo:** consult before broad analysis execution ([#358](https://github.com/Yukihide-Mitsuoka/repchat/issues/358)) ([f53cf07](https://github.com/Yukihide-Mitsuoka/repchat/commit/f53cf07beb889a93dd8110235b60bf8908730744)), closes [#357](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)
+* **demo:** polish the analysis workspace ([#348](https://github.com/Yukihide-Mitsuoka/repchat/issues/348)) ([0c0002c](https://github.com/Yukihide-Mitsuoka/repchat/commit/0c0002cf1e12bc24f11fb43d43465ece05a3539d)), closes [#347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)
+* **demo:** refine workspace layout controls ([#356](https://github.com/Yukihide-Mitsuoka/repchat/issues/356)) ([3f6f74c](https://github.com/Yukihide-Mitsuoka/repchat/commit/3f6f74c6eb9e3611547906aee4fc7955a1cfcfe9))
+* **demo:** unify analysis chat and artifact workspace ([#353](https://github.com/Yukihide-Mitsuoka/repchat/issues/353)) ([8e7edfb](https://github.com/Yukihide-Mitsuoka/repchat/commit/8e7edfb801b9ffdaeb30640bf29acdc547247f75)), closes [#352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)
+
+
+### Bug Fixes
+
+* **demo:** align workspace shell and live errors ([#351](https://github.com/Yukihide-Mitsuoka/repchat/issues/351)) ([ad2013e](https://github.com/Yukihide-Mitsuoka/repchat/commit/ad2013e1b7be0efca9811b8b949cdfa39b86b912))
+* **demo:** keep workspace titles compact ([#354](https://github.com/Yukihide-Mitsuoka/repchat/issues/354)) ([5d64c5c](https://github.com/Yukihide-Mitsuoka/repchat/commit/5d64c5cc2da69149d407eca32085aa57c21aecb5)), closes [#352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)
+
 ## [1.16.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.16.0...v1.16.1) (2026-08-11)
 
 
