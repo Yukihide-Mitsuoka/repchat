@@ -229,7 +229,7 @@ AppShell
 | MAIN-004 | 単一グラフは共通composerの「インサイト」actionから生成し、保存前は右`Artifact Preview`へ表示する。保存時に固定Insight revisionとなり、通常利用の独立modeにはしない | Should |
 | MAIN-005 | ダッシュボードはgraphと必要なtableを主表示し、SQLを常時展開しない。panel選択でINS-001を開く | Must |
 | MAIN-006 | build中に別routeへ移動してもjob状態を失わず、左navとheaderに実行中表示を残す | Must |
-| MAIN-007 | AI対話composerは中央列のviewport下端へ固定し、中央列の幅から左右24pxずつを除いた幅へ追従する。ただしdesktopの最大幅は960pxとし、通常cardより大きい22pxの角丸で会話入口を区別する。paneの開閉・resizeやdashboard、thread、reportの選択でも所属と入力下書きを保つ。送信前に対象成果物／threadと「ダッシュボード」「インサイト」「会議報告」のactionを明示し、送信、停止、添付、費用が発生する操作を区別する | Must |
+| MAIN-007 | AI対話composerは中央列のviewport下端へ固定し、中央列の幅から左右24pxずつを除いた幅へ追従する。ただしdesktopの最大幅は768pxとし、通常cardより大きい22pxの角丸で会話入口を区別する。入力本文は内容に合わせて上方向へ伸長し、通常の長文ではtextarea内に縦スクロールを表示しない。paneの開閉・resizeやdashboard、thread、reportの選択でも所属と入力下書きを保つ。送信前に対象成果物／threadと「ダッシュボード」「インサイト」「会議報告」のactionを明示し、送信、停止、添付、費用が発生する操作を区別する | Must |
 | MAIN-008 | 空、読込、streaming、確認待ち、費用確認待ち、build中、部分成功、成功、停止、error、要承認、公開済みを別状態として表示する | Must |
 | MAIN-009 | AI対話のheaderまたはcomposer直上に、利用企業、data source、成果物revision、適用filter、選択panel、追加context／skillをchipで表示する。利用者は任意chipを送信前に解除でき、必須scopeはlock iconと理由を示す | Must |
 | MAIN-010 | quick answerは「回答」「最小可視化またはtable」「根拠を確認」「インサイトとして保存」「続けて質問」を一つのcardへ置く。数値claimはresult／panel revisionへ結び付け、SQLはpermissionがある場合だけinspectorで開く | Must |
@@ -336,7 +336,7 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | `icon-control` | 32px角 | headerとpane headerのicon button |
 | `navigation-row-height` | 最小36px | 左paneの主要行 |
 | `focus-ring` | 3px、primary 10% opacity | input、button、separator |
-| `composer-max-width` | 960px | desktopの共通composer。中央列が狭い場合は追従して縮む |
+| `composer-max-width` | 768px | desktopの共通composer。中央列が狭い場合は追従して縮む |
 | `composer-radius` | 22px | 通常cardと会話入力の役割を区別する |
 | `dashboard-row-splitter` | hit area 10px、visible 1px | 同じ行の隣接card幅を連動して変更する境界 |
 
@@ -563,7 +563,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |
 | AC-24 | 左treeの選択titleと44px header titleが一致し、本文上部に同じ大型title／説明blockがない | APP-002 | viewport E2E＋navigation review |
 | AC-25 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
-| AC-26 | composerが中央列に合わせて縮み、desktopで960pxを超えず22pxの角丸を保つ。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
+| AC-26 | composerが中央列に合わせて縮み、desktopで768pxを超えず22pxの角丸を保つ。入力本文は内容に合わせて上方向へ伸長し、通常の長文でtextarea内に縦スクロールを表示しない。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
 | AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
