@@ -128,8 +128,11 @@ if(!["bar","line"].includes(r.visualization)){box.appendChild(table(r.columns,r.
 const rows=r.rows,w=820,h=r.visualization==="bar"?Math.max(260,rows.length*38+45):360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`});box.appendChild(svg);if(r.visualization==="bar"){const vals=rows.map(x=>Number(x[1])),max=Math.max(...vals,1);rows.forEach((x,i)=>{const y=20+i*38,bw=(w-260)*vals[i]/max;svg.appendChild(node("text",{x:4,y:y+16})).textContent=String(x[0]).slice(0,28);svg.append(node("rect",{x:205,y,width:bw,height:24,rx:4,fill:"#3973c6"}));svg.appendChild(node("text",{x:215+bw,y:y+16})).textContent=chartValue(x[1],r.columns?.[1]??"")})}else{const vals=rows.map(x=>Number(x[1])),min=Math.min(...vals),max=Math.max(...vals),span=max-min||1,pts=vals.map((v,i)=>[45+i*(w-80)/Math.max(rows.length-1,1),25+(max-v)*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:"#3973c6","stroke-width":3}));pts.forEach(p=>svg.append(node("circle",{cx:p[0],cy:p[1],r:4,fill:"#185adb"})))}}
 function finish(status){$("run-status").textContent=status;stages.forEach(s=>$("s-"+s).removeAttribute("aria-current"))}
 function handle(e){if(e.type==="stage"){stage(e.stage);$("message").textContent=e.message}else if(e.type==="sql"){stage("validate");$("output").className="";renderSql($("sql"),e.sql);$("reason").textContent=e.reason}else if(e.type==="result"){stage("render");$("output").className="";$("verification").className=e.verification==="matched"?"notice":"notice warning";$("verification").textContent=e.verification_label;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}（BigQuery利用料は別）`;populateResult(e);$("message").textContent="生成・実行・描画が完了しました。";stages.forEach(s=>$("s-"+s).className="done");finish("完了")}else if(e.type==="refusal"){stage("render");$("output").className="";renderSql($("sql"),"");$("reason").textContent=e.reason;$("verification").className="notice warning";$("verification").textContent=`未定義のため生成しません: ${e.undefined_terms.join("、")}`;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;clearResult();$("message").textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;finish("停止")}else if(e.type==="error")throw new Error(e.message)}
-function createDashboardCard(panel){const card=Object.assign(document.createElement("section"),{className:"dashboard-card"+(panel.id==="R17"?" full":panel.id==="R9"||panel.id==="R16"?" wide":"" )}),head=document.createElement("div"),title=document.createElement("h3"),state=Object.assign(document.createElement("span"),{className:"panel-state",textContent:"待機中"}),purpose=Object.assign(document.createElement("p"),{className:"purpose",textContent:panel.purpose}),chart=Object.assign(document.createElement("div"),{className:"chart"}),inspect=Object.assign(document.createElement("button"),{className:"inspect-panel",type:"button",textContent:"詳細を確認"}),reason=document.createElement("p"),verification=Object.assign(document.createElement("p"),{className:"notice",textContent:"未実行"}),sql=Object.assign(document.createElement("pre"),{className:"sql"}),data=document.createElement("div");title.textContent=panel.title;head.append(title,state);inspect.onclick=()=>openPanelInspector(panel.id);card.append(head,purpose,chart,inspect);$("dashboard-grid").append(card);dashboardPanels.set(panel.id,{card,title:panel.title,purpose:panel.purpose,state,chart,reason,verification,sql,data})}
-function handleDashboard(e){if(e.type==="dashboard_plan"){$("dashboard-empty").className="hidden";$("dashboard-output").className="";$("dashboard-title").textContent=e.period+" 月次ECサイト分析";$("dashboard-provenance").textContent=`分析仕様 ${e.plan_revision} / 組織コンテキスト ${e.organization_context_revision}。左上の成果から右下の診断へ読み進めます。`;$("dashboard-grid").replaceChildren();dashboardPanels.clear();activePanelId=null;$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";e.panels.forEach(createDashboardCard);$("dashboard-message").textContent=`${e.panels.length}件の分析へ分解しました。順番にSQLを生成します。`;return}const panel=dashboardPanels.get(e.panel_id);if(e.type==="stage"&&panel){panel.state.textContent=`${e.panel_index}/${e.panel_count} ${e.stage==="generate"?"SQL生成中":"BigQuery実行中"}`;$("dashboard-message").textContent=`${e.title}: ${e.message}`;if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="sql"&&panel){renderSql(panel.sql,e.sql);panel.reason.textContent=e.reason;panel.state.textContent="SQL検査済み";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="result"&&panel){graph(e,panel.chart);panel.data.replaceChildren(table(e.columns,e.rows));panel.verification.className=e.verification==="matched"?"notice":"notice warning";panel.verification.textContent=e.verification_label;panel.state.textContent="描画完了";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="refusal"&&panel){panel.reason.textContent=e.reason;panel.verification.className="notice warning";panel.verification.textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;panel.state.textContent="停止";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="dashboard_complete"){dashboardStage("complete");$("dashboard-status").textContent="完了";$("dashboard-cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;$("dashboard-message").textContent=`${e.panel_count}件のSQL生成・実行・描画が完了しました。`;latestBuildRevision=e.build_revision;$("report-submit").className=latestBuildRevision?"":"hidden";selectWorkspace("dashboard");return}if(e.type==="error")throw new Error(e.message)}
+function createDashboardCard(panel){const card=Object.assign(document.createElement("section"),{className:"dashboard-card"+(panel.id==="R17"?" full":panel.id==="R9"||panel.id==="R16"?" wide":"" )}),head=document.createElement("div"),title=document.createElement("h3"),state=Object.assign(document.createElement("span"),{className:"panel-state",textContent:"待機中"}),purpose=Object.assign(document.createElement("p"),{className:"purpose",textContent:panel.purpose}),chart=Object.assign(document.createElement("div"),{className:"chart"}),inspect=Object.assign(document.createElement("button"),{className:"inspect-panel",type:"button",textContent:"詳細を確認"}),reason=document.createElement("p"),verification=Object.assign(document.createElement("p"),{className:"notice",textContent:"未実行"}),sql=Object.assign(document.createElement("pre"),{className:"sql"}),data=document.createElement("div");card.dataset.panelId=panel.id;title.textContent=panel.title;head.append(title,state);inspect.onclick=()=>openPanelInspector(panel.id);card.append(head,purpose,chart,inspect);$("dashboard-grid").append(card);dashboardPanels.set(panel.id,{card,title:panel.title,purpose:panel.purpose,state,chart,reason,verification,sql,data})}
+function renderDashboardRow(row,cards,separators,shares){const columns=[];cards.forEach((card,index)=>{columns.push(`minmax(${card.dataset.panelId==="R17"?420:card.dataset.panelId==="R9"?260:150}px,${shares[index]}fr)`);if(index<separators.length)columns.push("10px")});row.style.gridTemplateColumns=columns.join(" ");separators.forEach((separator,index)=>{const before=shares.slice(0,index).reduce((total,value)=>total+value,0),combined=shares[index]+shares[index+1],position=Math.round(before+shares[index]);separator.setAttribute("aria-valuemin",String(Math.round(before+15)));separator.setAttribute("aria-valuemax",String(Math.round(before+combined-15)));separator.setAttribute("aria-valuenow",String(position));separator.setAttribute("aria-valuetext",`${cards[index].querySelector("h3").textContent} ${Math.round(shares[index])}%、${cards[index+1].querySelector("h3").textContent} ${Math.round(shares[index+1])}%`)})}
+function groupDashboardPanelRow(ids,initialShares){const cards=ids.map(id=>dashboardPanels.get(id)?.card);if(cards.some(card=>!card))return;const grid=$("dashboard-grid"),row=Object.assign(document.createElement("section"),{className:"dashboard-layout-row"}),shares=[...initialShares],separators=[];grid.insertBefore(row,cards[0]);cards.forEach((card,index)=>{row.append(card);if(index===cards.length-1)return;const separator=Object.assign(document.createElement("div"),{className:"dashboard-card-resizer",tabIndex:0,title:`${dashboardPanels.get(ids[index]).title}と${dashboardPanels.get(ids[index+1]).title}の幅を調整`});separator.setAttribute("role","separator");separator.setAttribute("aria-label",separator.title);separator.setAttribute("aria-orientation","vertical");row.append(separator);separators.push(separator)});const resize=(index,event)=>{const bounds=row.getBoundingClientRect(),usable=Math.max(bounds.width-separators.length*10,1),before=shares.slice(0,index).reduce((total,value)=>total+value,0),combined=shares[index]+shares[index+1],desired=(event.clientX-bounds.left-index*10)/usable*100-before,minLeft=15,minRight=15,left=Math.max(minLeft,Math.min(combined-minRight,desired));shares[index]=left;shares[index+1]=combined-left;renderDashboardRow(row,cards,separators,shares)};separators.forEach((separator,index)=>{const stop=event=>{separator.classList.remove("dragging");if(separator.hasPointerCapture(event.pointerId))separator.releasePointerCapture(event.pointerId)};separator.onpointerdown=event=>{separator.classList.add("dragging");separator.setPointerCapture(event.pointerId);resize(index,event)};separator.onpointermove=event=>{if(separator.classList.contains("dragging"))resize(index,event)};separator.onpointerup=stop;separator.onpointercancel=stop;separator.onkeydown=event=>{if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;event.preventDefault();const combined=shares[index]+shares[index+1],left=event.key==="Home"?15:event.key==="End"?combined-15:event.key==="ArrowLeft"?shares[index]-5:shares[index]+5,next=Math.max(15,Math.min(combined-15,left));shares[index]=next;shares[index+1]=combined-next;renderDashboardRow(row,cards,separators,shares)}});renderDashboardRow(row,cards,separators,shares)}
+function groupDashboardPanelRows(){groupDashboardPanelRow(["R4","R11","R12"],[50,25,25]);groupDashboardPanelRow(["R9","R17"],[40,60]);const trend=dashboardPanels.get("R16")?.card;if(trend)trend.classList.add("dashboard-card-full-row")}
+function handleDashboard(e){if(e.type==="dashboard_plan"){$("dashboard-empty").className="hidden";$("dashboard-output").className="";$("dashboard-title").textContent=e.period+" 月次ECサイト分析";$("dashboard-provenance").textContent=`分析仕様 ${e.plan_revision} / 組織コンテキスト ${e.organization_context_revision}。左上の成果から右下の診断へ読み進めます。`;$("dashboard-grid").replaceChildren();dashboardPanels.clear();activePanelId=null;$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";e.panels.forEach(createDashboardCard);groupDashboardPanelRows();$("dashboard-message").textContent=`${e.panels.length}件の分析へ分解しました。順番にSQLを生成します。`;return}const panel=dashboardPanels.get(e.panel_id);if(e.type==="stage"&&panel){panel.state.textContent=`${e.panel_index}/${e.panel_count} ${e.stage==="generate"?"SQL生成中":"BigQuery実行中"}`;$("dashboard-message").textContent=`${e.title}: ${e.message}`;if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="sql"&&panel){renderSql(panel.sql,e.sql);panel.reason.textContent=e.reason;panel.state.textContent="SQL検査済み";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="result"&&panel){graph(e,panel.chart);panel.data.replaceChildren(table(e.columns,e.rows));panel.verification.className=e.verification==="matched"?"notice":"notice warning";panel.verification.textContent=e.verification_label;panel.state.textContent="描画完了";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="refusal"&&panel){panel.reason.textContent=e.reason;panel.verification.className="notice warning";panel.verification.textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;panel.state.textContent="停止";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="dashboard_complete"){dashboardStage("complete");$("dashboard-status").textContent="完了";$("dashboard-cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;$("dashboard-message").textContent=`${e.panel_count}件のSQL生成・実行・描画が完了しました。`;latestBuildRevision=e.build_revision;$("report-submit").className=latestBuildRevision?"":"hidden";selectWorkspace("dashboard");return}if(e.type==="error")throw new Error(e.message)}
 function handlePlan(e){if(e.type==="plan_stage"){$("dashboard-status").textContent="相談中";$("dashboard-message").textContent=e.message}else if(e.type==="plan")renderAnalysisPlan(e);else if(e.type==="error")throw new Error(e.message)}
 function handleMeetingReport(e){if(e.type==="report_stage"){selectWorkspace("report");setReportState("生成中",e.message)}else if(e.type==="meeting_report"){renderMeetingReport(e);setReportState("要承認",`根拠付き会議報告案を生成しました。Vertex AI推定 ¥${e.cost_jpy}`);selectWorkspace("report")}else if(e.type==="error")throw new Error(e.message)}
 async function stream(endpoint,question,eventHandler,profile="ga4",extra={}){const res=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({question,profile,...extra})});if(!res.ok)throw new Error((await res.json()).error);const reader=res.body.getReader(),dec=new TextDecoder();let buf="";while(true){const{done,value}=await reader.read();buf+=dec.decode(value||new Uint8Array(),{stream:!done});const lines=buf.split("\n");buf=lines.pop();for(const line of lines)if(line)eventHandler(JSON.parse(line));if(done){if(buf.trim())eventHandler(JSON.parse(buf));break}}}
@@ -157,8 +160,7 @@ HTML = HTML.replace('<main id="workspace-main"', _header_markup + '<main id="wor
 HTML = HTML.replace(
     '<aside id="workspace-sidebar" class="workspace-sidebar">',
     '<aside id="workspace-sidebar" class="workspace-sidebar">'
-    '<div class="sidebar-chrome"><span class="brand">RepChat</span>'
-    '<span>Analysis workspace</span></div>',
+    '<div class="sidebar-chrome"><span class="brand">RepChat</span></div>',
     1,
 )
 
@@ -172,13 +174,13 @@ _sidebar_body = r"""
 <button id="new-analysis" class="new-analysis" type="button">新しい分析</button>
 <p class="sidebar-label">成果物</p>
 <nav class="workspace-nav artifact-tree" aria-label="分析成果物">
-<button id="view-dashboard" type="button"><span>購入成果改善ダッシュボード</span><small>2021年1月</small></button>
-<button id="view-graph" type="button"><span>未保存のインサイト</span><small>単一グラフ</small></button>
-<button id="view-report" type="button"><span>会議報告</span><small>根拠付き下書き</small></button>
+<button id="view-dashboard" type="button" title="購入成果改善ダッシュボード"><span class="sidebar-title"><span>購入成果改善ダッシュボード</span></span><small>2021年1月</small></button>
+<button id="view-graph" type="button" title="未保存のインサイト"><span class="sidebar-title"><span>未保存のインサイト</span></span><small>単一グラフ</small></button>
+<button id="view-report" type="button" title="会議報告"><span class="sidebar-title"><span>会議報告</span></span><small>根拠付き下書き</small></button>
 </nav>
 <p class="sidebar-label">分析スレッド</p>
 <nav class="workspace-nav thread-tree" aria-label="分析スレッド">
-<button id="view-build" class="selected" type="button" aria-current="page"><span>購入成果を改善する</span><small>現在の対話</small></button>
+<button id="view-build" class="selected" type="button" aria-current="page" title="購入成果を改善する"><span class="sidebar-title"><span>購入成果を改善する</span></span><small>現在の対話</small></button>
 </nav>
 <div class="sidebar-account"><span class="account-avatar">デ</span><span><strong>デモ組織</strong><small>EC月次分析</small></span></div>
 </aside>"""
@@ -313,13 +315,21 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-head .lead{margin:7px 0 0;font-size:12px}
 .dashboard-head>div:last-child{min-width:128px;padding-left:18px;border-left:1px solid #e5e9ee;text-align:right}
 .dashboard-head>div:last-child strong{font-size:13px}
-.dashboard-grid{gap:14px;margin-top:14px;align-items:stretch}
+.dashboard-grid{gap:14px;margin-top:14px;align-items:stretch;container-type:inline-size}
 .dashboard-card{display:flex;flex-direction:column;grid-column:span 4;min-width:0;min-height:268px;padding:18px 18px 16px;border-color:#dde3ea;border-radius:var(--radius-card);box-shadow:var(--shadow-card);overflow:hidden;transition:border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}
 .dashboard-card:hover{border-color:#bcc9d5;box-shadow:0 2px 4px #1018280d,0 14px 34px #10182812;transform:translateY(-1px)}
 .dashboard-card:nth-child(1){grid-column:span 6}
 .dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}
 .dashboard-card:nth-child(4),.dashboard-card:nth-child(5){grid-column:span 6;min-height:390px}
 .dashboard-card:nth-child(6){grid-column:1/-1;min-height:470px}
+.dashboard-layout-row{grid-column:1/-1;display:grid;align-items:stretch;min-width:0}
+.dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:390px;margin:0}
+.dashboard-layout-row:first-child>.dashboard-card{min-height:268px}
+.dashboard-card-full-row{grid-column:1/-1;min-height:390px}
+.dashboard-card-resizer{position:relative;z-index:2;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
+.dashboard-card-resizer::after{content:"";position:absolute;top:12px;bottom:12px;left:calc(50% - .5px);width:1px;border-radius:999px;background:#dfe4ea;transition:background 120ms ease,box-shadow 120ms ease}
+.dashboard-card-resizer:hover::after,.dashboard-card-resizer:focus-visible::after,.dashboard-card-resizer.dragging::after{background:#4b84b4;box-shadow:0 0 0 3px #4b84b426}
+@container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-card-resizer{display:none}}
 .dashboard-card h3{font-size:15px;line-height:1.45;letter-spacing:-.01em}
 .dashboard-card .purpose{min-height:0;margin:9px 0 16px;color:#687386;font-size:11px}
 .panel-state{display:inline-flex;align-items:center;min-height:23px;padding:3px 7px;border-radius:999px;background:var(--color-success-soft);color:var(--color-success);font-size:10px;white-space:nowrap}
@@ -362,11 +372,13 @@ body{font-size:13px;font-weight:400}
 #sidebar-toggle,#inspector-toggle{width:var(--icon-button-size);height:var(--icon-button-size);min-height:var(--icon-button-size);border:0;border-radius:7px;padding:0;background:transparent;box-shadow:none;font-size:14px}
 #sidebar-toggle:hover,#inspector-toggle:hover{border:0;background:#ececf1}
 button{min-height:32px;padding:6px 11px;font-weight:500;letter-spacing:0}
-.workspace-sidebar{grid-column:1;grid-row:1/3;position:sticky;top:0;height:100vh;padding:0 8px 12px;border:0;background:#f7f7f8;box-shadow:none}
-.workspace-nav{gap:2px}
-.workspace-nav button{min-height:36px;border-radius:7px;padding:7px 9px;font-weight:500}
+.workspace-sidebar{grid-column:1;grid-row:1/3;position:sticky;top:0;height:100vh;padding:0 4px 8px;border:0;background:#f7f7f8;box-shadow:none}
+.workspace-nav{gap:1px}
+.workspace-nav button{grid-template-columns:16px minmax(0,1fr);column-gap:4px;min-height:36px;border-radius:7px;padding:6px 4px;font-weight:500;overflow:hidden}
 .workspace-nav button.selected{background:#ececf1;box-shadow:none}
-.sidebar-label{margin:16px 9px 6px;font-weight:500;letter-spacing:.06em;text-transform:none}
+.workspace-nav button:focus-visible{outline:2px solid #7fa2c2;outline-offset:-2px}
+.workspace-nav button::before{width:16px;font-size:14px}
+.sidebar-label{margin:12px 5px 4px;font-weight:500;letter-spacing:.06em;text-transform:none}
 .navigation-resizer,.inspector-resizer{position:sticky;top:0;z-index:35;height:100vh;border:0;background:transparent;touch-action:none}
 .navigation-resizer{grid-column:2;grid-row:1/3}
 .inspector-resizer{grid-column:4;grid-row:1/3}
@@ -428,6 +440,9 @@ h1{font-size:22px}
 .dashboard-head>div:last-child{margin-top:14px;padding:12px 0 0;border-top:1px solid #e5e9ee;border-left:0;text-align:left}
 .dashboard-grid{grid-template-columns:1fr}
 .dashboard-card,.dashboard-card:nth-child(1),.dashboard-card:nth-child(2),.dashboard-card:nth-child(3),.dashboard-card:nth-child(4),.dashboard-card:nth-child(5),.dashboard-card:nth-child(6){grid-column:1;min-height:auto}
+.dashboard-layout-row{grid-column:1;grid-template-columns:minmax(0,1fr)!important;gap:14px}
+.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}
+.dashboard-card-resizer{display:none}
 .dashboard-card{padding:17px}
 .dashboard-card:nth-child(4),.dashboard-card:nth-child(5){min-height:340px}
 .dashboard-card:nth-child(6){min-height:420px}
@@ -442,19 +457,23 @@ h1{font-size:22px}
 #sidebar-toggle{left:8px}#inspector-toggle{right:8px}
 .pane-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
 .pane-icon .pane-fill{fill:currentColor;stroke:none;opacity:.18}
-.sidebar-chrome{padding-left:42px;border-bottom:1px solid #e7e7e8}
+.sidebar-chrome{gap:5px;padding:0 4px 0 40px;border-bottom:1px solid #e7e7e8}
 .workspace-inspector{padding-top:52px}
 .workspace{height:calc(100vh - var(--header-height));overflow:auto;padding-bottom:150px}
 .workspace-topbar{display:none}
-.workspace-sidebar .new-analysis{width:100%;justify-content:flex-start;margin:10px 0 2px;border:0;background:transparent;color:#202123;text-align:left}
-.workspace-sidebar .new-analysis::before{content:"＋";margin-right:9px;font-size:17px}
+.workspace-sidebar .new-analysis{width:100%;justify-content:flex-start;margin:6px 0 1px;padding:6px 4px;border:0;background:transparent;color:#202123;text-align:left}
+.workspace-sidebar .new-analysis::before{content:"＋";width:16px;margin-right:4px;font-size:16px;text-align:center}
 .artifact-tree button,.thread-tree button{grid-template-rows:auto auto}
-.artifact-tree button span,.thread-tree button span{grid-column:2;line-height:1.25}
+.artifact-tree .sidebar-title,.thread-tree .sidebar-title{grid-column:2;display:block;min-width:0;overflow:hidden;container-type:inline-size;line-height:1.25;white-space:nowrap}
+.sidebar-title>span{display:block;width:max-content;min-width:100%;white-space:nowrap}
+.workspace-nav button:hover .sidebar-title>span,.workspace-nav button:focus-visible .sidebar-title>span{animation:sidebar-title-marquee 4s linear infinite alternate}
+@keyframes sidebar-title-marquee{0%,18%{transform:translateX(0)}82%,100%{transform:translateX(calc(-100% + 100cqw))}}
+@media(prefers-reduced-motion:reduce){.workspace-nav button:hover .sidebar-title>span,.workspace-nav button:focus-visible .sidebar-title>span{animation:none}}
 .artifact-tree button small,.thread-tree button small{grid-column:2;color:#8a8a91;font-size:10px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sidebar-account{display:flex;align-items:center;gap:9px;margin-top:auto;padding:10px 8px 2px;border-top:1px solid #e7e7e8;color:#343541}
+.sidebar-account{display:flex;align-items:center;gap:6px;margin-top:auto;padding:8px 4px 0;border-top:1px solid #e7e7e8;color:#343541}
 .sidebar-account>span:last-child{display:grid;min-width:0}.sidebar-account strong{font-size:12px;font-weight:500}.sidebar-account small{color:#85858b;font-size:10px}
 .account-avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e4e4e7;font-size:11px}
-.analysis-composer{position:fixed;z-index:60;left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip))/2);bottom:14px;width:calc(100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip) - 48px);margin:0;padding:9px 11px 10px;transform:translateX(-50%);border:1px solid #d9d9df;border-radius:16px;background:#fff;box-shadow:0 8px 28px #10182817}
+.analysis-composer{position:fixed;z-index:60;left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip))/2);bottom:14px;width:min(960px,calc(100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip) - 48px));margin:0;padding:9px 11px 10px;transform:translateX(-50%);border:1px solid #d9d9df;border-radius:22px;background:#fff;box-shadow:0 8px 28px #10182817}
 .composer-context,.composer-footer{display:flex;align-items:center;gap:8px}.composer-context{flex-wrap:wrap;margin-bottom:5px}.composer-footer{justify-content:space-between;color:#85858b;font-size:10px}
 .composer-target{padding:3px 7px;border-radius:999px;background:#f1f1f3;color:#5f5f66;font-size:10px}
 .composer-actions{display:flex;gap:2px}.composer-actions button{min-height:24px;padding:3px 7px;border:0;border-radius:6px;background:transparent;color:#6b6b72;font-size:10px}.composer-actions button.selected{background:#ececf1;color:#202123}
@@ -466,7 +485,7 @@ h1{font-size:22px}
 #artifact-preview-host #output>.grid{grid-template-columns:1fr}#artifact-preview-host #output .panel{margin-top:10px;padding:13px;border-radius:8px;box-shadow:none}
 #artifact-preview-host #output h2{font-size:13px}#artifact-preview-host .chart svg{min-width:620px}#artifact-preview-host .sql{font-size:10px;max-height:320px}
 .workspace-inspector.artifact-active #inspector-empty,.workspace-inspector.artifact-active #inspector-content{display:none}
-@media(max-width:1180px){.analysis-composer{left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip))/2);width:calc(100vw - var(--nav-column) - var(--nav-grip) - 48px)}}
+@media(max-width:1180px){.analysis-composer{left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip))/2);width:min(960px,calc(100vw - var(--nav-column) - var(--nav-grip) - 48px))}}
 @media(max-width:960px){.analysis-composer{left:50%;bottom:8px;width:calc(100vw - 24px)}.workspace{padding-bottom:140px}.workspace-inspector{padding-top:52px}}
 @media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}}
 """

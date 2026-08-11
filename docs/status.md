@@ -30,13 +30,12 @@ updated: 2026-08-11
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。
-Issue #350／PR #351で非JSON応答、pane所有構造、hairline、control密度を修正済み。次に、4つのpeer modeを
-成果物treeと分析スレッドへ置き換え、中央下端の一つのcomposerからdashboard、未保存Insight、会議報告を
-明示選択する。単一グラフの結果は右Artifact Preview、dashboard／reportは中央成果物pageへ置く。左右toggleは
-viewport端に固定し、pane開閉・resizeで座標を変えず、iconとaccessible nameで状態を示す。既存の費用gate、
-SQL検査、根拠検証は変更しない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockをなくす。
-製品版の履歴操作はURL化してブラウザへ委ねる。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
+**現在の作業スレッド**: [Issue #355](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)。
+Issue #352／PR #353で成果物tree、中央下端composer、右Artifact／Inspector paneへ統合し、PR #354で
+選択titleをcompact headerへ限定した。現在はcomposerを中央列へ追従させつつ960pxで上限とし、22px角丸で
+通常cardと区別する。同じ行のdashboard cardは全境界をpointer／keyboardで調整でき、隣接cardだけが連動する。
+行の合計幅と並び順を変えず、自由配置と永続化はしない。左paneはtitleを折り返さず、hover／focus時だけ横へ流し、
+icon列と余白を圧縮する。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
 製品UIへの移植、永続履歴、成果物保存、Git連携、公開workflowは未実装である。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。

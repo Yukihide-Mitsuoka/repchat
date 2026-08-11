@@ -215,6 +215,7 @@ AppShell
 | NAV-009 | dashboard／insight／report／threadのoverflow menuは「開く」「名前変更」「固定／固定解除」「複製またはfork」「linkをコピー」「archive」を順に示す。権限やstatusで利用不能な項目は理由付きdisabledにし、削除はseparator後の最後に置き確認dialogを必須にする | Should |
 | NAV-010 | sidebarを閉じたdesktop状態ではpaneを0pxにし、headerのtoggleだけを残す。icon railは作らない | Must |
 | NAV-011 | 分析スレッドと保存済みインサイトを混在させず、インサイトにはdraft／review／published、更新日時、参照先dashboardのstatusを表示する | Must |
+| NAV-012 | 左paneのtitleは一行で折り返さず、通常時は領域内で省略する。pointer hoverまたはkeyboard focus時だけ行内を横へ流し、全文を読めるようにする。icon列は16px、titleとのgapは4px、pane左右paddingは4pxとし、選択背景のために行高を増やさない | Should |
 
 ### 6.3 メインサーフェス
 
@@ -226,7 +227,7 @@ AppShell
 | MAIN-004 | 単一グラフは共通composerの「インサイト」actionから生成し、保存前は右`Artifact Preview`へ表示する。保存時に固定Insight revisionとなり、通常利用の独立modeにはしない | Should |
 | MAIN-005 | ダッシュボードはgraphと必要なtableを主表示し、SQLを常時展開しない。panel選択でINS-001を開く | Must |
 | MAIN-006 | build中に別routeへ移動してもjob状態を失わず、左navとheaderに実行中表示を残す | Must |
-| MAIN-007 | AI対話composerは中央列のviewport下端へ固定し、中央列の幅から左右24pxずつを除いた幅へ追従する。paneの開閉・resizeやdashboard、thread、reportの選択でも所属と入力下書きを保つ。送信前に対象成果物／threadと「ダッシュボード」「インサイト」「会議報告」のactionを明示し、送信、停止、添付、費用が発生する操作を区別する | Must |
+| MAIN-007 | AI対話composerは中央列のviewport下端へ固定し、中央列の幅から左右24pxずつを除いた幅へ追従する。ただしdesktopの最大幅は960pxとし、通常cardより大きい22pxの角丸で会話入口を区別する。paneの開閉・resizeやdashboard、thread、reportの選択でも所属と入力下書きを保つ。送信前に対象成果物／threadと「ダッシュボード」「インサイト」「会議報告」のactionを明示し、送信、停止、添付、費用が発生する操作を区別する | Must |
 | MAIN-008 | 空、読込、streaming、確認待ち、費用確認待ち、build中、部分成功、成功、停止、error、要承認、公開済みを別状態として表示する | Must |
 | MAIN-009 | AI対話のheaderまたはcomposer直上に、利用企業、data source、成果物revision、適用filter、選択panel、追加context／skillをchipで表示する。利用者は任意chipを送信前に解除でき、必須scopeはlock iconと理由を示す | Must |
 | MAIN-010 | quick answerは「回答」「最小可視化またはtable」「根拠を確認」「インサイトとして保存」「続けて質問」を一つのcardへ置く。数値claimはresult／panel revisionへ結び付け、SQLはpermissionがある場合だけinspectorで開く | Must |
@@ -238,6 +239,7 @@ AppShell
 | MAIN-016 | 初期authoringはAI対話、構造化template、panel参照追加、順序変更に限定し、任意座標drag-and-drop、任意HTML／code、自由layout canvasを提供しない | Must |
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
 | MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
+| MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
 
 ### 6.4 右セカンダリpane
 
@@ -331,6 +333,9 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | `icon-control` | 32px角 | headerとpane headerのicon button |
 | `navigation-row-height` | 最小36px | 左paneの主要行 |
 | `focus-ring` | 3px、primary 10% opacity | input、button、separator |
+| `composer-max-width` | 960px | desktopの共通composer。中央列が狭い場合は追従して縮む |
+| `composer-radius` | 22px | 通常cardと会話入力の役割を区別する |
+| `dashboard-row-splitter` | hit area 10px、visible 1px | 同じ行の隣接card幅を連動して変更する境界 |
 
 ### 7.2 色と文字
 
@@ -391,6 +396,7 @@ desktop wideでは次の4状態をすべて自動試験します。
 | 左pane開閉 | `Ctrl/Cmd+B` | header toggle |
 | 右pane開閉 | `Ctrl/Cmd+Option+I` | header toggle／panel詳細 |
 | pane resize | separator focus後、左右矢印で20px | 6px splitterをdrag |
+| dashboard card resize | 行内separator focus後、左右矢印で5ポイント | 10px hit areaをdrag |
 | inspector tab | Tabでtablistへ移動、左右矢印で選択 | tab click |
 | overlayを閉じる | `Escape` | closeまたはbackdrop |
 
@@ -554,6 +560,8 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |
 | AC-24 | 左treeの選択titleと44px header titleが一致し、本文上部に同じ大型title／説明blockがない | APP-002 | viewport E2E＋navigation review |
 | AC-25 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
+| AC-26 | composerが中央列に合わせて縮み、desktopで960pxを超えず22pxの角丸を保つ。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
+| AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 
 ## 15. リスク
 
