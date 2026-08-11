@@ -343,6 +343,11 @@ Sankeyの結果形状と
 これはIssue #180のローカル未検証プロトタイプです。本番の永続revision、非同期queue、再開、公開、
 任意の分析パネル生成、デザインパートナー評価は未実装です。
 
+Issue #374の準備として、固定候補を渡さずにAIが`title`、`kpi`、`chart`、`decision`、`reason`、
+`execution_prompt`を作る別のplanner契約を追加しています。初回提案数は
+`ANALYSIS_INITIAL_PANEL_COUNT`、上限は`ANALYSIS_MAX_PANEL_COUNT`で管理し、既定は6件／20件です。
+この準備契約は現在のlive endpointから未使用であり、固定候補を置き換えるdashboard連携は後続PRで行います。
+
 単一グラフの「相談」は、Vertex AIへ現在の問いと最大8 turnのbrowser session履歴、対象schema、
 定義済み指標を渡し、1〜4件の分析仕様を新規に作ります。「他にない？」では既出提案を避けます。
 固定候補配列はplannerへ渡しません。提案選択は日本語の実行仕様をcomposerへ移すだけで、SQL生成と
