@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343) — GA4/GTM計測実装アシスタントをDesign ModeとAPI quick previewまでのApply Modeに分け、browser操作とpublishを境界外にする将来要件をreviewする |
+| 作業 | [Issue #343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)／[PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344) — GA4/GTM計測実装アシスタントをDesign ModeとAPI quick previewまでのApply Modeに分け、browser操作とpublishを境界外にする将来要件をreviewする |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
 | 直近完了 | [PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較、[PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339)の競合資料更新はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
