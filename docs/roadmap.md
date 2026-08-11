@@ -96,6 +96,10 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
   pilotする（[#343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)、
   [要件](requirements/measurement-implementation-assistant.md)）。後続Apply Modeも公式GTM APIによる隔離workspace、
   sync・conflict、quick previewまでとし、browser操作と本番publishを製品範囲に含めない。
+- Issue #181のaction revisionが安定し、最初の外部consumerが確認できた場合だけ、承認済み施策を
+  provider非依存のAction Package JSONとして出力するdeveloper APIを検討する（[#345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)、
+  [要件](requirements/action-package-api.md)、ADR-0023 proposed）。CSV・webhook・媒体別formatはadapterとし、
+  広告公開、予算変更、振込、決済endpointとpayment dataはRepChat Coreへ含めない。
 - 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
 - 基本の生成・統制・配信が安定した後、根拠付き報告を最大3件の意思決定、担当付きアクション、次回の
   効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。

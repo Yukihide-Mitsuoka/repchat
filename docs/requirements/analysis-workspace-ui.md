@@ -123,6 +123,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Analytics request scoping | 曖昧さを確認してanalysis specificationをfreezeする | 確認事項とrevisionを表示 | MAIN-002、SRC-03 |
 | KPI root-cause brief | 観測、解釈、仮説、反証、次の検証を分ける | 会議報告prototypeの一部 | MAIN-003、SRC-04 |
 | Business review | 根拠付き会議報告とowner action | 未承認案を生成 | MAIN-003、SRC-05、Issue #181 |
+| Measurement and action handoff | 計測設計から分析、会議、施策exportまで同じworkspace文脈で移動する | 未実装 | APP-007、MAIN-018、ADR-0023 |
 
 ### 5.1 Evidence Cloudとの機能対応
 
@@ -156,6 +157,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | APP-004 | route、選択panel、表示revisionをURLで表現し、再読込、back、forward、共有linkで復元する | 文脈保持 | Must | Issue #179 |
 | APP-005 | viewer、editor、adminで利用不能な機能は、存在を隠すか理由付きdisabledにする。クリック後に権限エラーを初めて出さない | 安全性 | Must | C-3 |
 | APP-006 | `SecondaryPane`は`Inspector`と`Artifact Preview`を切り替える。同時表示や入れ子paneを禁止し、切替後も中央の会話またはdashboardのscroll位置を維持する | 情報密度 | Must | SRC-01、SRC-09 |
+| APP-007 | measurement、analysis、report、actionは共通shellとbreadcrumbを使うが、専用route、permission、API、auditを維持する | 文脈と最小権限 | Should | ADR-0023 |
 
 推奨component treeを実装契約とします。
 
@@ -220,6 +222,7 @@ AppShell
 | MAIN-015 | embedded customer previewは通常のauthoring routeと分離し、brand、locale、viewport、authorized customer identity、session expiryをtoolbarで確認する。identity切替はadminだけに許可し、server発行preview sessionを必須にする | Should |
 | MAIN-016 | 初期authoringはAI対話、構造化template、panel参照追加、順序変更に限定し、任意座標drag-and-drop、任意HTML／code、自由layout canvasを提供しない | Must |
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
+| MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
 
 ### 6.4 右セカンダリpane
 
@@ -411,6 +414,8 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 /w/:workspaceId/analyses/:threadId
 /w/:workspaceId/insights/:insightId/revisions/:revisionId
 /w/:workspaceId/reports/:reportRevisionId
+/w/:workspaceId/measurements/:measurementRevisionId
+/w/:workspaceId/actions/:actionRevisionId/packages/:packageRevisionId
 /w/:workspaceId/single-chart/:threadId
 /w/:workspaceId/preview/:artifactType/:artifactId/revisions/:revisionId
 ```

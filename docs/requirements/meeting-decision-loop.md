@@ -75,6 +75,7 @@ updated: 2026-08-10
 | FR-012 | 想定問答は凍結したevidence bundleと承認済み組織コンテキストだけを参照し、回答ごとに根拠または回答不能理由を示す | 会議支援 | Should | ライブQ&Aでも検証境界を維持する |
 | FR-013 | 外部配布前に承認状態を確認し、draftを共有しようとした場合は停止する | 人間統制 | Must | Issue #181 |
 | FR-014 | 生成、修正、承認、保留、却下、アクション変更、効果評価を監査イベントとして記録する | 監査 | Must | 再現性と責任分界 |
+| FR-015 | 承認済みaction revisionを、別permissionでAction Packageへ発行し、外部status・実績を次回評価へ戻せる | 外部handoff | Should | 外部実行をCoreへ持ち込まず転記を減らす |
 
 ### 4.1 状態と遷移
 
@@ -128,6 +129,7 @@ updated: 2026-08-10
 | 指標定義層 | 読取 | metric definition ID・version、許可されたderived metric | 未定義なら確認または拒否 |
 | 認証・role | 読取 | server-side tenant、analysis subject、user、role | Issue #194に依存しfail closed |
 | 外部配布 | 出力 | 承認済みreport revisionと認可付きlink | draftまたは監査失敗時は配布停止 |
+| 施策パッケージAPI | 出力・入力 | 承認済みaction revision、外部status・実績 | [専用要件](action-package-api.md)とADR-0023に従い、広告・決済を実行しない |
 
 ## 8. インフラと費用
 
@@ -178,7 +180,7 @@ updated: 2026-08-10
 | Phase 1 — 意思決定中心の会議パック | FR-001〜006、010〜012。1分報告、最大3論点、検証可能scenario、根拠Q&A | Issue #160=`proceed`、#179/#180のrevision・閲覧契約が安定、Issue #181の根拠付き報告が製品経路へ接続 |
 | Phase 2 — 決定・アクション管理 | FR-007〜009、013、014。承認、決定記録、アクション、監査、次回評価 | 適応型分析メモリーPhase 1と本番role・認証が完成 |
 | Phase 3 — 定例会議pilot | 3回連続利用、操作時間、継続判断、原価測定 | Phase 2の境界・監査テストが成功 |
-| Phase 4 — 外部連携 | タスク管理連携、Slack通知、会議中の追加interface | pilotで反復需要が確認され、別要件・ADRを承認 |
+| Phase 4 — 外部連携 | Action Package、タスク管理連携、Slack通知、会議中の追加interface | pilotで反復需要が確認され、[専用要件](action-package-api.md)とADR-0023を承認 |
 
 ## 13. 未決事項
 

@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)／[PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344) — GA4/GTM計測実装アシスタントをDesign ModeとAPI quick previewまでのApply Modeに分け、browser操作とpublishを境界外にする将来要件をreviewする |
+| 作業 | [Issue #345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)／[PR #346](https://github.com/Yukihide-Mitsuoka/repchat/pull/346) — 同一workspace UIと内部のpermission・API・credential・audit分離、provider非依存Action Package、広告・決済adapter境界をreviewする |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
-| 直近完了 | [PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較、[PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339)の競合資料更新はmerge済み |
+| 直近完了 | [PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界、[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #343のmeasurement specification、成果物契約、GTM API scope、quick preview、no-browser・no-publish境界、Phase 0文書をreview可能にする。製品実装または外部変更は開始しない |
+| AIができること | Issue #345のAction Package schema、状態、permission、JSON・CSV adapter、external outcome、no-ad-write・no-payment境界、ADR-0023をreview可能にする。APIまたはconnectorは実装しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -49,6 +49,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
+| 現在の施策handoff設計 | [#345 action package API boundary](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)。同一workspace内でもpermission、credential、API、auditを分離し、承認済みactionをJSON packageとして外部へ渡す。CSV等はadapter、広告・決済writeは対象外 | [施策パッケージAPI要件](requirements/action-package-api.md)、[ADR-0023](adr/0023-unify-workflow-while-isolating-external-action.md)、[会議意思決定ループ要件](requirements/meeting-decision-loop.md) |
 | 現在の計測設計支援 | [#343 GA4/GTM measurement implementation assistant](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)。Design Modeは設計・code・import成果物・QA手順、Apply Modeは公式APIの隔離workspace・sync・conflict・quick previewまでとする。browser操作とpublishはしない | [GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)、[競合比較](competitive-landscape.md)、[ポジショニング](positioning.md) |
 | 現在のcohort分析設計 | [#341 governed cohort analysis](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)。日本語で意味をfreezeし、未成熟期間、費用、根拠を統制する要件と、Amplitude／Evidence Cloudとの同一課題benchmarkを記録する。Issue #160判定前に製品実装しない | [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)、[競合比較](competitive-landscape.md)、[ポジショニング](positioning.md) |
 | 現在の競合・配信境界整理 | [#338 Evidence Cloud positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence Cloud公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
@@ -81,7 +82,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)で、GA4/GTM計測実装アシスタントのDesign Mode、API quick preview、no-browser・no-publish境界をreviewする。製品実装または外部変更は開始しない。
+1. **現在:** [PR #346](https://github.com/Yukihide-Mitsuoka/repchat/pull/346)で、Action Package API要件とADR-0023をreviewする。API、CSV、webhook、広告connector、決済は実装しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
@@ -105,6 +106,7 @@ positioningとroadmapを再評価します。
 | 本番公開入口とorigin防御 | proposed。Cloudflare WAFを利用者入口、External Application Load Balancer＋Cloud ArmorをCloud Run迂回防止境界とする。local demoは対象外で、オーナー承認と費用確認前はinfra作成禁止 | [ADR-0020](adr/0020-protect-production-edge-and-cloud-run-origins.md)、[#302](https://github.com/Yukihide-Mitsuoka/repchat/issues/302) |
 | dashboard buildの共有中間結果 | proposed。panel別direct実行を既定とし、個別buildの絶対削減額と削減率が実測thresholdを超える場合だけcost plannerが提案する。customer datasetへの書き込み権限を既定で増やさない | [ADR-0021](adr/0021-gate-shared-intermediates-on-measured-build-cost.md)、[#306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306) |
 | panel再利用と利用者編集 | proposed。panelを不変revisionとし、AI生成dashboardは上書きせず、参照追加・fork・利用者作成SQLを派生dashboardへ合成する。利用者SQLは同じ認可・検証・費用確認を通す | [ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)、[#308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308) |
+| 計測から施策handoffまでの製品境界 | proposed。同じworkspace shellで文脈を接続するが、permission、credential、API、auditを分ける。承認済みactionはprovider非依存Action Packageとして出力し、広告・予算・決済writeはCoreに入れない | [ADR-0023](adr/0023-unify-workflow-while-isolating-external-action.md)、[要件](requirements/action-package-api.md)、[#345](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) |
 | 統制されたcohort分析 | draft。日本語で分析主体、起点・復帰event、retention方式、期間、timezoneをfreezeし、未成熟期間を0にせず、費用・SQL・集計data・根拠を同じrevision chainへ結ぶ | [要件](requirements/governed-cohort-analysis.md)、[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341) |
 | 接続先・テーブル選択 | 将来設計。ユーザーに任意のdataset/tableを列挙させず、管理者が承認したデータソース・分析領域・テーブルカタログからサーバー側で解決する | [ADR-0005](adr/0005-cache-and-authorization-architecture.md)、[ADR-0010](adr/0010-connection-identity-is-never-a-person.md)、#180 |
 | 課金区分・エンドユーザー認証 | 未決。AIは推測しない | [Issue #194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) |

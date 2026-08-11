@@ -37,6 +37,7 @@ updated: 2026-08-11
 | C-5 | 制約 | consent設定は法的助言または法令準拠の保証ではない | privacy・legal ownerの確認を必須にする |
 | C-6 | 制約 | credential、cookie、生のuser識別子、利用者が取得したTag Assistant記録をprompt、log、顧客Gitへ無制限に保存しない | debug成果物にはPIIが含まれ得る |
 | C-7 | 制約 | 既存custom tag、server-side tagging、CMP、SPA状態管理を未知のまま自動変換しない | unsupported要素を列挙し、人のreviewへ戻す |
+| C-8 | 制約 | 計測、分析、会議、施策は同じworkspaceから移動できるが、permission、credential、API、auditを共有しない | UIの連続性を権限統合と誤解しない |
 
 ## 3. 目的と範囲
 
@@ -203,7 +204,8 @@ Apply Modeを有効にした場合だけ、次を追加する。
 
 Phase 1・2は分析品質を上流から改善するRepChatのonboarding機能とする。Phase 3も隔離workspaceの
 API quick previewまでに限定する。browser操作とproduction publishは製品境界外とし、別製品候補としても
-現時点では追わない。
+現時点では追わない。同一workspaceと内部境界の判断は[ADR-0023](../adr/0023-unify-workflow-while-isolating-external-action.md)、
+外部施策のdeveloper contractは[施策パッケージAPI要件](action-package-api.md)を正本とする。
 
 ## 13. 未決事項
 
