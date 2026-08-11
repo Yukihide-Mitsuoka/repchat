@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #362](https://github.com/Yukihide-Mitsuoka/repchat/issues/362) — dashboardの行幅を100%へ正規化し、単独の折れ線を全幅にし、広い購入成果改善相談では6つの検証済みパネルを既定提案する |
-| デモ実行状態 | [PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)はmerge済み。Issue #362の修正ブランチを`http://127.0.0.1:8765/`で起動中。固定応答と全テストは成功し、実Vertex AIとBigQueryは再実行していない |
+| 作業 | [Issue #362](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)／[PR #363](https://github.com/Yukihide-Mitsuoka/repchat/pull/363) — dashboardの行幅を100%へ正規化し、単独の折れ線を全幅にし、広い購入成果改善相談では6つの検証済みパネルを既定提案する |
+| デモ実行状態 | [PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)はmerge済み。PR #363の修正ブランチを`http://127.0.0.1:8765/`で起動中。固定応答と全テストは成功し、実Vertex AIとBigQueryは再実行していない |
 | 直近完了 | [PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)のcomposer 768px上限・自動伸長、[PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)の実行前分析相談、[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)のdashboard行resize・左pane調整はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #362のPRでCIとreviewを確認し、指摘があれば同じbranchで修正する。固定fixtureで6パネル、単独行100%、欠落行の比率再配分を確認し、有料queryを実行しない |
+| AIができること | PR #363のCIとreviewを確認し、指摘があれば同じbranchで修正する。固定fixtureで6パネル、単独行100%、欠落行の比率再配分を確認し、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
