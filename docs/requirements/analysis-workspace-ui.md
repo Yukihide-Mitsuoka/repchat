@@ -243,6 +243,7 @@ AppShell
 | MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
 | MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。選択パネルが減った行は残存カードの比率を合計100%へ正規化し、単独行は常に利用可能幅の100%を使う。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
 | MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。data profileの検証済み範囲から、分析title、支える判断、可視化、具体的な依頼例を選択cardで示す。選択はcomposerへ依頼文を反映するだけで実行せず、利用者が編集して再送信し、費用確認を承認した後だけVertex AI・BigQueryを実行する。client bypassでもquery APIが同じ相談文を拒否する | Must |
+| MAIN-021 | dashboard build成功時は閲覧を優先し、右セカンダリpaneを閉じ、共通composerを下書きとactionを保持した小型の「AIに相談」ランチャーへ縮小する。ランチャーはbuttonとしてkeyboard focusとaccessible nameを持ち、明示操作で同じcomposerを復帰する。pointer接近だけでは表示状態を変えない。相談、build、error、dashboard以外のsurfaceでは自動縮小しない | Must |
 
 ### 6.4 右セカンダリpane
 
@@ -302,7 +303,7 @@ flowchart LR
 
 | mode | 左ナビゲーション | メインサーフェス | 右セカンダリpane | primary action |
 |------|------------------|------------------|----------------------|----------------|
-| Dashboard閲覧 | dashboard／collection選択 | published dashboard。共通composerは同じ位置に残す | 選択panelのInspector | 共有、修正相談、または会議報告へ |
+| Dashboard閲覧 | dashboard／collection選択 | published dashboard。build成功後は共通composerを同じ下端位置の小型ランチャーへ縮小する | build成功時はclosed。選択panelのInspectorとして明示的に開く | 共有、AIに相談、修正相談、または会議報告へ |
 | 分析対話 | thread／Insight履歴 | 会話、context bar、sticky composer | 生成中回答のArtifact Preview。必要時はInspectorへ切替 | 仕様確認またはInsight保存 |
 | Insight閲覧 | Insight選択 | 保存済みInsightの回答と可視化 | methodology／SQL／data／来歴Inspector | ダッシュボードへ追加 |
 | 会議報告 | report選択 | report本文、決定、action。共通composerから追加分析または改稿を依頼できる | 根拠panel／来歴Inspector | reviewまたはpublish |
@@ -338,6 +339,7 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | `focus-ring` | 3px、primary 10% opacity | input、button、separator |
 | `composer-max-width` | 768px | desktopの共通composer。中央列が狭い場合は追従して縮む |
 | `composer-radius` | 22px | 通常cardと会話入力の役割を区別する |
+| `composer-launcher-height` | 最小34px | dashboard閲覧時の明示的な会話復帰button |
 | `dashboard-row-splitter` | hit area 10px、visible 1px | 同じ行の隣接card幅を連動して変更する境界 |
 
 ### 7.2 色と文字
@@ -401,6 +403,7 @@ desktop wideでは次の4状態をすべて自動試験します。
 | pane resize | separator focus後、左右矢印で20px | 6px splitterをdrag |
 | dashboard card resize | 行内separator focus後、左右矢印で5ポイント | 10px hit areaをdrag |
 | inspector tab | Tabでtablistへ移動、左右矢印で選択 | tab click |
+| dashboard閲覧からAI相談を復帰 | Tabで「AIに相談」へ移動してEnter／Space | 小型ランチャーをclick |
 | overlayを閉じる | `Escape` | closeまたはbackdrop |
 
 separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`、`aria-valuemax`、
@@ -428,6 +431,7 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
     "panel_revision_id": "panel-rev-1",
     "inspector_tab": "reason"
   },
+  "composer": {"state": "collapsed", "draft_preserved": true},
   "artifact": {"kind": "dashboard", "status": "published", "revision_id": "dashboard-rev-1"},
   "job": {"id": null, "state": "idle"}
 }
@@ -567,6 +571,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
 | AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
+| AC-30 | dashboard build成功時だけ右paneが閉じ、composerが34px以上の「AIに相談」ランチャーへ縮小する。ランチャーと縮小buttonはkeyboardで操作でき、手動縮小後はランチャーへfocusを移し、復帰後も入力下書きとactionを保持する。相談中、build中、error時は自動縮小しない | MAIN-007、MAIN-021、INS-009 | DOM＋keyboard／viewport E2E |
 
 ## 15. リスク
 
