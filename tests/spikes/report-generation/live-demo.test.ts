@@ -1403,6 +1403,40 @@ test('shared composer stays readable, grows upward, and routes through cost gate
   );
 });
 
+test('completed dashboards enter an accessible reading mode without losing chat', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(rendered.stdout.includes('id="composer-launcher"'));
+  assert.ok(rendered.stdout.includes('aria-label="AIへの相談入力を開く"'));
+  assert.ok(rendered.stdout.includes('id="composer-collapse"'));
+  assert.match(
+    rendered.stdout,
+    /\.analysis-composer\.composer-collapsed\{[^}]*width:auto[^}]*box-shadow:none/,
+  );
+  assert.ok(script.includes('function collapseComposer()'));
+  assert.ok(
+    script.includes(
+      'function collapseComposerFromControl(){collapseComposer();$("composer-launcher").focus()}',
+    ),
+  );
+  assert.ok(script.includes('function expandComposer(focusInput=true)'));
+  assert.ok(script.includes('function enterDashboardReadingMode()'));
+  assert.ok(
+    script.includes(
+      'if(!$("app-shell").classList.contains("inspector-collapsed"))toggleInspector()',
+    ),
+  );
+  assert.ok(script.includes('$("composer-launcher").onclick=()=>expandComposer()'));
+  assert.ok(script.includes('$("composer-collapse").onclick=collapseComposerFromControl'));
+  assert.ok(script.includes('selectWorkspace("dashboard");enterDashboardReadingMode()'));
+  assert.ok(
+    script.includes(
+      'if(view!=="dashboard"){$("analysis-composer").classList.remove("dashboard-ready");expandComposer(false)}',
+    ),
+  );
+});
+
 test('dashboard resizes every shared row without free rearrangement', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
@@ -1535,7 +1569,7 @@ test('selected workspace title is compact and not repeated above the main conten
   assert.match(rendered.stdout, /\.workspace-topbar\{display:none\}/);
   assert.match(
     rendered.stdout,
-    /selectWorkspace=view=>\{baseSelectWorkspace\(view\);\$\("compact-title"\)\.textContent=\$\("page-title"\)\.textContent\}/,
+    /selectWorkspace=view=>\{baseSelectWorkspace\(view\);\$\("compact-title"\)\.textContent=\$\("page-title"\)\.textContent;/,
   );
   assert.match(
     rendered.stdout,
