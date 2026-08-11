@@ -1105,6 +1105,36 @@ finally:s.shutdown();s.server_close();t.join()
   assert.equal(observed.oversized_status, 400);
 });
 
+test('planning HTTP boundary requires a valid current plan and revision instruction together', () => {
+  const result = python(`
+import threading,urllib.error,urllib.request
+class E:
+ spec=json.loads((m.HERE/"report.json").read_text())
+ def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+question="2021年1月の購入課題を分析するダッシュボードを作って"
+def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[panel(index) for index in range(1,7)]}
+plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
+def request(extra):
+ data=json.dumps({"question":question,"profile":"ga4","answers":{"audience":"責任者"},**extra},ensure_ascii=False).encode()
+ return urllib.request.Request(base+"/api/plan",data=data,headers={"content-type":"application/json","origin":base},method="POST")
+try:
+ valid=json.loads(urllib.request.urlopen(request({"analysis_plan":plan,"revision_instruction":"流入別を追加して"})).read().decode())
+ statuses=[]
+ for extra in [{"analysis_plan":plan},{"revision_instruction":"追加して"},{"analysis_plan":plan,"revision_instruction":"長"*501}]:
+  try:urllib.request.urlopen(request(extra))
+  except urllib.error.HTTPError as error:statuses.append(error.code)
+ print(json.dumps({"valid":valid,"statuses":statuses},ensure_ascii=False))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
+    valid: { type: 'plan', count: 6, instruction: '流入別を追加して' },
+    statuses: [400, 400, 400],
+  });
+});
+
 test('non-GA4 selector exposes the bounded Bitcoin nested-schema demonstration', () => {
   const result = python(`
 html=m.HTML
@@ -1271,7 +1301,7 @@ e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="me
 def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して"}
 raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
-m.planner.propose_dashboard=lambda *_args:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
+m.planner.propose_dashboard=lambda *_args,**_kwargs:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
 events=[];e.plan(raw["objective"],raw["answers"],events.append)
 confirmed=m.planner.confirm_dashboard_plan(raw)
 period,sections=m.dashboard_sections_for_plan(raw["objective"],confirmed)
@@ -1284,6 +1314,27 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"id
     ids: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
     period: '2021年1月',
     confirmed: 'confirmed',
+  });
+});
+
+test('planning sends the selected current plan and revision instruction back to the AI', () => {
+  const result = python(`
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
+calls=[]
+def propose(*_args,**kwargs):
+ calls.append({"count":len(kwargs["current_plan"]["panels"]),"instruction":kwargs["instruction"],"status":kwargs["current_plan"]["status"]})
+ return raw,{"input_tokens":10,"output_tokens":5}
+m.planner.propose_dashboard=propose
+events=[];e.plan(raw["objective"],raw["answers"],events.append,analysis_plan=raw,revision_instruction="流入別パネルを追加して")
+print(json.dumps({"calls":calls,"events":[event["type"] for event in events]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: [{ count: 6, instruction: '流入別パネルを追加して', status: 'confirmed' }],
+    events: ['plan_stage', 'plan'],
   });
 });
 
@@ -1353,6 +1404,7 @@ print(json.dumps({
  "copy":all(value in html for value in ["AIと分析計画を相談","仕様を確定するまでBigQueryは実行しません","この仕様を確定してbuild"]),
  "review":all(value in html for value in ['id="plan-review"','id="plan-clarifications"','id="plan-panels"','id="plan-revision"']),
  "flow":all(value in html for value in ['/api/plan','answers:currentAnswers','analysis_plan:pendingPlan','selected.size<1']),
+ "iterative":all(value in html for value in ['id="plan-revision-instruction"','analysis_plan:pendingPlanBase','revision_instruction:pendingPlanInstruction','追加・変更・削除']),
  "memory":all(value in html for value in ["organization_context_revision","ローカルデモfixture・本番メモリー未接続"]),
 }))
 `);
@@ -1361,6 +1413,7 @@ print(json.dumps({
     copy: true,
     review: true,
     flow: true,
+    iterative: true,
     memory: true,
   });
 });
@@ -1959,7 +2012,7 @@ test('dashboard UI accepts recommended clarification answers without forced re-p
   const result = python(`
 html=m.HTML
 print(json.dumps({
- "accepted_copy":all(value in html for value in ["推奨回答を採用済み（編集可）","AIに再提案（任意）"]),
+ "accepted_copy":all(value in html for value in ["推奨回答を採用済み（編集可）","変更依頼を添えてAIへ再提案できます"]),
  "captures_defaults":"currentAnswers[item.field]=input.value.trim()" in html,
  "syncs_edits":"input.oninput=syncClarificationAnswers" in html,
  "build_collects":'collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")' in html,

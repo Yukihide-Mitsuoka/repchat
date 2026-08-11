@@ -174,12 +174,17 @@ def _response_schema(answers: dict[str, str]) -> dict:
     return schema
 
 
-def _dashboard_response_schema(answers: dict[str, str]) -> dict:
-    """Constrain an initial AI-authored dashboard to the configured panel count."""
+def _dashboard_response_schema(
+    answers: dict[str, str], *, revising: bool = False
+) -> dict:
+    """Constrain an initial or revised AI-authored dashboard."""
     schema = _response_schema(answers)
     schema["properties"]["panels"] = copy.deepcopy(
         DYNAMIC_PLAN_SCHEMA["properties"]["panels"]
     )
+    if revising:
+        schema["properties"]["panels"]["minItems"] = 1
+        schema["properties"]["panels"]["maxItems"] = MAX_PANEL_COUNT
     return schema
 
 
@@ -215,16 +220,46 @@ def planning_request(
 
 
 def dashboard_planning_request(
-    objective: str, period: dict[str, str], metrics: str, answers: dict[str, str]
+    objective: str,
+    period: dict[str, str],
+    metrics: str,
+    answers: dict[str, str],
+    *,
+    current_plan: dict | None = None,
+    instruction: str | None = None,
 ) -> str:
-    """Build an initial request that asks the model to author panel specifications."""
+    """Build an initial or iterative dashboard planning request."""
+    if (current_plan is None) != (instruction is None):
+        raise PlannerError("現在案と変更依頼は一緒に指定してください。")
     answered = json.dumps(answers, ensure_ascii=False, sort_keys=True)
+    if current_plan is None:
+        revision_context = f"""これは初回提案である。
+- 最初から大量に列挙せず、今回の目的に適したパネルを{INITIAL_PANEL_COUNT}件提案する。"""
+    else:
+        current = {
+            "objective_summary": current_plan.get("objective_summary"),
+            "audience": current_plan.get("audience"),
+            "comparison": current_plan.get("comparison"),
+            "hypotheses": current_plan.get("hypotheses"),
+            "panels": [
+                {field: panel.get(field) for field in DYNAMIC_PANEL_FIELDS}
+                for panel in current_plan.get("panels", [])
+            ],
+        }
+        revision_context = f"""これは現在案への追加・変更・削除相談である。
+利用者の変更依頼: {instruction}
+現在の分析仕様: {json.dumps(current, ensure_ascii=False, sort_keys=True)}
+- 明示されていない既存パネルは維持する。
+- 追加依頼なら新しい分析仕様を追加し、既存案を置換しない。
+- 変更・削除依頼なら対象だけを変更し、重複なしの1〜{MAX_PANEL_COUNT}件にする。
+- 上限{MAX_PANEL_COUNT}件へ達した場合は追加せず、その理由を目的要約へ明記する。"""
     return f"""次の依頼から、月次ECサイト分析ダッシュボードを計画する。
 
 依頼: {objective}
 対象期間: {period['label']}
 読者回答: {answered}
 組織コンテキスト: {json.dumps(ORGANIZATION_CONTEXT, ensure_ascii=False)}
+{revision_context}
 スキーマ・指標定義:
 {metrics}
 
@@ -238,7 +273,6 @@ def dashboard_planning_request(
 規則:
 - 目的を意思決定へ言い換え、検証可能な仮説を最大3件にする。
 - 固定済みの分析候補から選ばず、目的と仮説から分析仕様そのものを新規に考える。
-- 最初から大量に列挙せず、今回の目的に適したパネルを{INITIAL_PANEL_COUNT}件提案する。
 - 可視化は慣例で決めず、比較、構成比、時系列、偏り、フローのどれを判断するかに合わせて選ぶ。
 - 各パネルにはtitle、kpi、chart、decision、reasonと、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
 - execution_promptにはSQLを書かない。対象期間、指標、軸、比較、必要な出力列が分かる仕様にする。
@@ -420,7 +454,15 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
 
 
 def propose_dashboard(
-    client, model: str, objective: str, period: dict, metrics: str, answers: dict
+    client,
+    model: str,
+    objective: str,
+    period: dict,
+    metrics: str,
+    answers: dict,
+    *,
+    current_plan: dict | None = None,
+    instruction: str | None = None,
 ):
     """Ask Vertex AI to author bounded dashboard panel specifications."""
     from google.genai import types
@@ -428,16 +470,38 @@ def propose_dashboard(
 
     response = client.models.generate_content(
         model=model,
-        contents=dashboard_planning_request(objective, period, metrics, answers),
+        contents=dashboard_planning_request(
+            objective,
+            period,
+            metrics,
+            answers,
+            current_plan=current_plan,
+            instruction=instruction,
+        ),
         config=types.GenerateContentConfig(
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
             response_mime_type="application/json",
-            response_schema=_dashboard_response_schema(answers),
+            response_schema=_dashboard_response_schema(
+                answers, revising=current_plan is not None
+            ),
         ),
     )
-    return normalize_dashboard_plan(
+    plan = normalize_dashboard_plan(
         json.loads(response.text), objective, period, answers
-    ), token_counts(response.usage_metadata)
+    )
+    add_only = instruction and any(
+        word in instruction for word in ("追加", "他にも", "ほかにも", "増や")
+    ) and not any(
+        word in instruction for word in ("削除", "除外", "減ら", "置換", "入れ替")
+    )
+    if (
+        current_plan is not None
+        and add_only
+        and len(current_plan.get("panels", [])) < MAX_PANEL_COUNT
+        and len(plan["panels"]) <= len(current_plan.get("panels", []))
+    ):
+        raise PlannerError("追加依頼に対して分析パネルが追加されませんでした。")
+    return plan, token_counts(response.usage_metadata)
 
 
 CONSULTATION_CHARTS = DASHBOARD_CHARTS
