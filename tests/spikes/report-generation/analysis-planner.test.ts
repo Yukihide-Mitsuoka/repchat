@@ -115,6 +115,69 @@ print(json.dumps({"recommended":[panel["id"] for panel in recommended["panels"]]
   });
 });
 
+test('analysis consultation creates new executable specifications from context and history', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+context="定義済み指標: セッション数、購入件数。利用可能な軸: medium、device category。"
+history=[
+ {"role":"user","content":"どんな分析をしたらいい？"},
+ {"role":"assistant","content":"全体規模を確認する分析を提案しました。"},
+]
+raw={
+ "assistant_message":"別の切り口なら流入元を比較できます。",
+ "recommendations":[{
+  "title":"流入チャネル別の購入効率",
+  "objective":"集客量だけでなく購入成果につながる流入元を見つける",
+  "metric":"セッション数と購入件数",
+  "dimension":"medium",
+  "comparison":"2021年1月の流入チャネル間比較",
+  "chart":"bar",
+  "execution_prompt":"2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して",
+  "reason":"集客の偏りと成果の両方を判断できるため"
+ }],
+ "follow_up_question":"成果と集客のどちらを優先しますか？",
+}
+normalized=p.normalize_consultation(raw)
+request=p.consultation_request("他にない？",history,context,"ga4")
+errors=[]
+for invalid in [
+ {**raw,"recommendations":[raw["recommendations"][0],raw["recommendations"][0]]},
+ {**raw,"recommendations":[{**raw["recommendations"][0],"execution_prompt":"SELECT * FROM events"}]},
+ {**raw,"recommendations":[{**raw["recommendations"][0],"reason":""}]},
+]:
+ try:p.normalize_consultation(invalid)
+ except p.PlannerError as error:errors.append(str(error))
+print(json.dumps({
+ "titles":[item["title"] for item in normalized["recommendations"]],
+ "generated_prompt":normalized["recommendations"][0]["execution_prompt"],
+ "history_in_request":all(item["content"] in request for item in history),
+ "current_in_request":"他にない？" in request,
+ "context_in_request":"medium" in request,
+ "errors":errors,
+},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    titles: ['流入チャネル別の購入効率'],
+    generated_prompt: '2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して',
+    history_in_request: true,
+    current_in_request: true,
+    context_in_request: true,
+    errors: [
+      '分析相談に重複した候補があります。',
+      '分析相談の実行依頼にはSQLを書けません。',
+      '分析相談の候補理由が空です。',
+    ],
+  });
+});
+
 test('planner constrains each response schema to unanswered clarification fields', () => {
   const result = spawnSync(
     'python3',

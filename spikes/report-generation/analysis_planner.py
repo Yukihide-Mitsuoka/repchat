@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 
 ORGANIZATION_CONTEXT = {
     "revision": "demo-org-ec-v1",
@@ -260,6 +261,179 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
         period,
         answers,
         complete_purchase_recommendations=True,
+    ), token_counts(response.usage_metadata)
+
+
+CONSULTATION_CHARTS = (
+    "scorecard",
+    "bar",
+    "line",
+    "table",
+    "sankey",
+)
+CONSULTATION_FIELDS = (
+    "title",
+    "objective",
+    "metric",
+    "dimension",
+    "comparison",
+    "chart",
+    "execution_prompt",
+    "reason",
+)
+
+
+def _consultation_schema() -> dict:
+    recommendation_properties = {
+        field: {"type": "string"} for field in CONSULTATION_FIELDS
+    }
+    recommendation_properties["chart"] = {
+        "type": "string",
+        "format": "enum",
+        "enum": list(CONSULTATION_CHARTS),
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "assistant_message": {"type": "string"},
+            "recommendations": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 4,
+                "items": {
+                    "type": "object",
+                    "properties": recommendation_properties,
+                    "required": list(CONSULTATION_FIELDS),
+                },
+            },
+            "follow_up_question": {"type": "string"},
+        },
+        "required": [
+            "assistant_message",
+            "recommendations",
+            "follow_up_question",
+        ],
+    }
+
+
+def consultation_request(
+    question: str,
+    history: list[dict[str, str]],
+    context: str,
+    profile: str,
+) -> str:
+    """Build one bounded, history-aware consultation turn."""
+    transcript = "\n".join(
+        f"{item['role']}: {item['content']}" for item in history
+    ) or "（初回）"
+    return f"""日本語で分析テーマを相談する。SQLやデータ取得はまだ行わない。
+
+これまでの対話:
+{transcript}
+
+今回の利用者発言: {question}
+
+分析対象profile: {profile}
+利用できるスキーマ・指標・期間の文脈:
+{context}
+
+規則:
+- 今回の発言と対話履歴を踏まえ、分析担当者として自然な日本語で応答する。
+- 分析仮説を立て、目的に役立つ新しい分析仕様を1〜4件考える。
+- 各仕様には、指標、切り口、比較軸、可視化、選択理由、SQL生成へ渡せる具体的な日本語依頼を書く。
+- 「他にない」など別案を求められた場合、履歴で既に提示した分析をできる限り避ける。
+- 最後に、分析目的を具体化する短い確認質問を1件だけ書く。
+- 文脈にない指標・列・因果関係・取得済みでない数値を捏造しない。
+- SQLは書かない。execution_promptは、別工程のSQL生成AIへ渡す1行の日本語仕様にする。
+- 固定例から選択したように見せず、今回の目的に対する考察をassistant_messageとreasonへ明示する。
+"""
+
+
+def _bounded_consultation_text(value, label: str, limit: int = 500) -> str:
+    text = " ".join(str(value or "").split())
+    if not text:
+        raise PlannerError(f"分析相談の{label}が空です。")
+    if len(text) > limit:
+        raise PlannerError(f"分析相談の{label}が長すぎます。")
+    return text
+
+
+def normalize_consultation(raw: dict) -> dict:
+    """Validate newly reasoned analysis specifications before SQL generation."""
+    if not isinstance(raw, dict):
+        raise PlannerError("分析相談がJSON objectではありません。")
+    recommendations = []
+    seen: set[str] = set()
+    raw_recommendations = raw.get("recommendations")
+    if not isinstance(raw_recommendations, list) or not 1 <= len(raw_recommendations) <= 4:
+        raise PlannerError("分析相談の候補は1〜4件にしてください。")
+    for item in raw_recommendations:
+        if not isinstance(item, dict):
+            raise PlannerError("分析相談の候補がobjectではありません。")
+        recommendation = {
+            field: _bounded_consultation_text(
+                item.get(field),
+                "候補理由" if field == "reason" else field,
+                80 if field in {"title", "metric", "dimension", "comparison"} else 500,
+            )
+            for field in CONSULTATION_FIELDS
+        }
+        if recommendation["chart"] not in CONSULTATION_CHARTS:
+            raise PlannerError("分析相談の可視化種別が未対応です。")
+        execution_prompt = recommendation["execution_prompt"]
+        if re.search(
+            r"(?:```|`|\b(?:SELECT|WITH|FROM|GROUP\s+BY)\b)",
+            execution_prompt,
+            flags=re.IGNORECASE,
+        ):
+            raise PlannerError("分析相談の実行依頼にはSQLを書けません。")
+        duplicate_key = "".join(execution_prompt.lower().split())
+        if duplicate_key in seen:
+            raise PlannerError("分析相談に重複した候補があります。")
+        seen.add(duplicate_key)
+        recommendations.append(recommendation)
+    assistant_message = _bounded_consultation_text(raw.get("assistant_message"), "応答")
+    follow_up_question = _bounded_consultation_text(
+        raw.get("follow_up_question"), "確認質問"
+    )
+    titles = "、".join(item["title"] for item in recommendations)
+    history_message = (
+        f"{assistant_message}\n提案: {titles}\n確認: {follow_up_question}"
+    )
+    return {
+        "assistant_message": assistant_message,
+        "recommendations": recommendations,
+        "follow_up_question": follow_up_question,
+        "history_message": history_message,
+    }
+
+
+def propose_consultation(
+    client,
+    model: str,
+    question: str,
+    history: list[dict[str, str]],
+    context: str,
+    profile: str,
+):
+    """Ask Vertex AI to reason about new analyses without generating SQL."""
+    from google.genai import types
+    from vertex_usage import token_counts
+
+    response = client.models.generate_content(
+        model=model,
+        contents=consultation_request(question, history, context, profile),
+        config=types.GenerateContentConfig(
+            system_instruction=(
+                "あなたは利用者の意思決定を明確にし、実行可能な分析だけを提案する"
+                "日本語BIアナリスト。"
+            ),
+            response_mime_type="application/json",
+            response_schema=_consultation_schema(),
+        ),
+    )
+    return normalize_consultation(
+        json.loads(response.text)
     ), token_counts(response.usage_metadata)
 
 
