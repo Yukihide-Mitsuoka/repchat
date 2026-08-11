@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #364](https://github.com/Yukihide-Mitsuoka/repchat/issues/364) — dashboard build成功後に右paneを閉じ、共通composerを下書き保持の小型「AIに相談」ランチャーへ縮小する閲覧モードを追加する |
+| 作業 | [Issue #364](https://github.com/Yukihide-Mitsuoka/repchat/issues/364)／[PR #365](https://github.com/Yukihide-Mitsuoka/repchat/pull/365) — dashboard build成功後に右paneを閉じ、共通composerを下書き保持の小型「AIに相談」ランチャーへ縮小する閲覧モードを追加する |
 | デモ実行状態 | [PR #363](https://github.com/Yukihide-Mitsuoka/repchat/pull/363)はmerge済み。Issue #364の修正ブランチを`http://127.0.0.1:8765/`で起動中。固定応答と全テストは成功し、実Vertex AIとBigQueryは再実行していない |
 | 直近完了 | [PR #363](https://github.com/Yukihide-Mitsuoka/repchat/pull/363)のdashboard行完全性・単独行全幅・6パネル提案、[PR #360](https://github.com/Yukihide-Mitsuoka/repchat/pull/360)のcomposer 768px上限・自動伸長、[PR #358](https://github.com/Yukihide-Mitsuoka/repchat/pull/358)の実行前分析相談はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #364のPRを作成し、CIとreviewを確認する。build成功時だけ右paneとcomposerが縮小し、明示操作で下書きへ復帰することを固定応答で確認し、有料queryを実行しない |
+| AIができること | PR #365のCIとreviewを確認する。build成功時だけ右paneとcomposerが縮小し、明示操作で下書きへ復帰することを固定応答で確認し、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
