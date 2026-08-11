@@ -1282,7 +1282,7 @@ print(json.dumps({
   });
 });
 
-test('analysis workspace makes the dashboard primary and separates supporting work', () => {
+test('analysis workspace uses one conversation and an artifact tree', () => {
   const result = python(`
 html=m.HTML
 print(json.dumps({
@@ -1290,9 +1290,10 @@ print(json.dumps({
  "adjustable":all(value in html for value in ['id="sidebar-toggle"','aria-label="ナビゲーションを折りたたむ"','id="navigation-resizer"','aria-label="ナビゲーションの幅を変更"','id="inspector-toggle"','aria-label="詳細パネルを折りたたむ"','id="inspector-resizer"','aria-label="詳細パネルの幅を変更"']),
  "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
  "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
- "dashboard_first":all(value in html for value in ['id="dashboard-empty"','id="open-build-studio"','ダッシュボードが主役の分析ワークスペース']),
- "future_honest":all(value in html for value in ['対話履歴（この起動中のみ）','Git連携（将来機能）']),
+ "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="dashboard"','data-composer-action="insight"','data-composer-action="report"']),
+ "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','未保存の単一グラフ','aria-label="分析スレッド"','現在の対話']),
  "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
+ "artifact_preview":all(value in html for value in ['id="artifact-preview"','id="artifact-preview-host"','単一グラフのインサイト']),
 }))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -1301,10 +1302,39 @@ print(json.dumps({
     adjustable: true,
     views: true,
     navigation: true,
-    dashboard_first: true,
-    future_honest: true,
+    conversation: true,
+    artifact_tree: true,
     inspector: true,
+    artifact_preview: true,
   });
+});
+
+test('workspace pane controls stay viewport-anchored and expose their state visually', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /#sidebar-toggle,#inspector-toggle\{position:fixed/);
+  assert.match(rendered.stdout, /#sidebar-toggle\{left:8px\}#inspector-toggle\{right:8px\}/);
+  assert.match(rendered.stdout, /function paneIcon\(side,expanded\)/);
+  assert.match(rendered.stdout, /button\.dataset\.state=expanded\?"open":"closed"/);
+  assert.match(rendered.stdout, /replaceChildren\(paneIcon\(side,expanded\)\)/);
+  assert.match(rendered.stdout, /成果物パネルを展開/);
+});
+
+test('shared composer routes explicit actions through the existing cost gates', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(script.includes('function submitComposer()'));
+  assert.ok(script.includes('showCost("dashboard-plan")'));
+  assert.ok(script.includes('showCost("graph")'));
+  assert.ok(script.includes('showCost("report")'));
+  assert.ok(script.includes('$("artifact-preview-host").appendChild($("output"))'));
+  assert.ok(script.includes('selectWorkspace("build");setComposerAction("dashboard",false)'));
+  assert.match(
+    rendered.stdout,
+    /width:calc\(100vw - var\(--nav-column\) - var\(--nav-grip\) - var\(--inspector-column\) - var\(--inspector-grip\) - 48px\)/,
+  );
+  assert.doesNotMatch(rendered.stdout, /\.analysis-composer\{[^}]*width:min\(760px/);
 });
 
 test('analysis workspace visual hierarchy protects charts and the main surface', () => {
@@ -1333,6 +1363,7 @@ test('analysis workspace starts with overlays closed on narrow viewports', () =>
   assert.equal(rendered.status, 0, rendered.stderr);
   assert.match(rendered.stdout, /window\.innerWidth<=1180/);
   assert.match(rendered.stdout, /window\.innerWidth<=960/);
+  assert.match(rendered.stdout, /!\$\("app-shell"\)\.classList\.contains\("inspector-collapsed"\)/);
 });
 
 test('workspace panes own the full height while the header belongs to the main column', () => {

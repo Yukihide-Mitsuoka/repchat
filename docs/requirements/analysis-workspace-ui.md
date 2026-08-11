@@ -89,7 +89,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-05 | Official | business reviewはKPI、定義、過去報告、owner noteを使い、重要数値をsourceへ結び付けて未支持主張を除外する | [Prepare a business review](https://learn.chatgpt.com/use-cases/monthly-business-review-narrative) |
 | SRC-06 | Observed | 公開・未ログインのChatGPT日本語画面に、sidebar開閉、新しいチャット、チャット検索、画像、Plugins、Deep Research、設定、Help、composerが存在する | [ChatGPT公開画面](https://chatgpt.com/) |
 | SRC-07 | Owner intent | 左右paneの開閉・drag、左上の検索・menu、中段のproject・履歴、左下のaccount・settings、中央との重なりを要件化する | この依頼 |
-| SRC-08 | RepChat decision | 現行デモは左右pane、4 workspace、panel inspector、費用確認を実装済み。製品要件は現行コードから独立して理想を定義する | [Issue #328](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)、[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330) |
+| SRC-08 | RepChat decision | ローカルデモは左右pane、成果物tree、中央の共通composer、右のArtifact／Inspector pane、費用確認を実装する。永続保存や製品認可は未実装で、製品要件は現行コードから独立して理想を定義する | [Issue #352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352) |
 | SRC-09 | Official competitor | Evidence CloudのAnalytics Agentは、現在のpageとfilterを文脈にし、回答へchart、query、sourceを結び付ける。回答をpromptと実装メモ付きInsightへ保存し、維持管理するpageへ昇格できると説明する | [Analytics Agent](https://evidence.dev/product/analytics-agent) |
 | SRC-10 | Official competitor | Evidence CloudのInternal Analyticsは、SQL／Markdown、version control、test、review-before-publish、page access、row-level securityを中心とし、自由なdrag-and-dropを採らないと説明する | [Internal Analytics](https://evidence.dev/product/internal-reporting) |
 | SRC-11 | Official competitor | Evidence CloudのEmbedded AnalyticsはEnterprise Plan向けで、公開済みpageをbackend API＋iframeで表示する。single-use URL、JWE、RLS、theme、language、session TTLを持つが、report authoringは提供しない | [Embedded Analytics](https://docs.evidence.studio/features/embedded) |
@@ -159,17 +159,21 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | ID | 要件 | 目的 | 優先度 | 根拠 |
 |----|------|------|--------|------|
 | APP-001 | app shellは全高の`PrimaryNavigationPane`、`MainColumn`、全高の`SecondaryPane`、`OverlayHost`を兄弟領域として持つ。`MainHeader`は`MainColumn`内に置き、左右paneの上を横断しない | 文脈保持 | Must | SRC-18、SRC-19 |
-| APP-002 | `MainHeader`は高さ44pxでstickyとし、左にsidebar toggleと現在の成果物、右に組織／分析コレクション、状態、secondary pane toggleを置く。製品名、検索、projectは左paneの`NavigationHeader`へ置く | 発見性 | Must | SRC-17、SRC-19、RepChat decision |
+| APP-002 | `MainHeader`は高さ44pxでstickyとし、現在の成果物、組織／分析コレクション、状態を置く。製品名、検索、projectは左paneの`NavigationHeader`へ置き、左右toggleはAPP-008の固定`ChromeAnchorLayer`が所有する | 発見性 | Must | SRC-17、SRC-19、RepChat decision |
 | APP-003 | 左右paneがpush状態でも`MainSurface`をDOM上の明示的な中央grid列に保ち、閉じたpaneは0pxにする | レイアウト安定性 | Must | PR #332 |
 | APP-004 | route、選択panel、表示revisionをURLで表現し、再読込、back、forward、共有linkで復元する | 文脈保持 | Must | Issue #179 |
 | APP-005 | viewer、editor、adminで利用不能な機能は、存在を隠すか理由付きdisabledにする。クリック後に権限エラーを初めて出さない | 安全性 | Must | C-3 |
 | APP-006 | `SecondaryPane`は`Inspector`と`Artifact Preview`を切り替える。同時表示や入れ子paneを禁止し、切替後も中央の会話またはdashboardのscroll位置を維持する | 情報密度 | Must | SRC-01、SRC-09 |
 | APP-007 | measurement、analysis、report、actionは共通shellとbreadcrumbを使うが、専用route、permission、API、auditを維持する | 文脈と最小権限 | Should | ADR-0023 |
+| APP-008 | 左右pane toggleはviewportの左右上端へ固定し、paneの開閉・resizeで座標を変えない。開状態では各paneのchrome、閉状態では`MainColumn`のchromeとして見えるが、同じcontrolを使い、icon・`aria-expanded`・labelで状態を一致させる | 操作の予測可能性 | Must | SRC-19、RepChat decision |
 
 推奨component treeを実装契約とします。
 
 ```text
 AppShell
+├── ChromeAnchorLayer
+│   ├── PrimaryNavigationToggle
+│   └── SecondaryPaneToggle
 ├── PrimaryNavigationPane
 │   ├── NavigationHeader
 │   │   ├── ProductIdentity
@@ -182,8 +186,7 @@ AppShell
 ├── MainColumn
 │   ├── MainHeader
 │   │   ├── WorkspaceBreadcrumb
-│   │   ├── ArtifactStatus
-│   │   └── InspectorToggle
+│   │   └── ArtifactStatus
 │   └── MainSurface
 │       └── Dashboard | AnalysisConversation | Insight | MeetingReport | SingleChart | PublishPreview
 ├── SecondaryPane
@@ -203,7 +206,7 @@ AppShell
 | NAV-001 | 左paneはdesktopで既定220px、最小180px、最大360pxとし、開閉とdrag resizeを提供する | Must |
 | NAV-002 | 固定上部に「新しい分析」を置き、選択中の利用企業・認可scopeを引き継いだ空の分析スレッドを作る | Must |
 | NAV-003 | 固定上部に検索を置き、許可されたダッシュボード、インサイト、会議報告、分析スレッドのtitleとmetadataだけを検索する。SQL本文、結果値、非公開prompt本文、他tenantは検索対象外とする | Must |
-| NAV-004 | 製品の主ナビゲーションを「ダッシュボード」「分析対話」「インサイト」「会議報告」の順にする。単一グラフはデモ／検証routeへ限定し、製品の主ナビへ置かない | Must |
+| NAV-004 | 左paneはpeer mode切替ではなく成果物treeと分析スレッドtreeにする。成果物treeはダッシュボード、保存済みInsight、会議報告を持ち、分析スレッドを別sectionへ置く。単一グラフは「未保存Insight」として右Artifact Previewへ出し、主ナビの独立modeにしない | Must |
 | NAV-005 | 中央scroll領域に分析コレクションを表示し、展開時に配下のダッシュボード、インサイト、会議報告、分析スレッドを種別ごとに表示する | Should |
 | NAV-006 | 分析履歴は更新日時の降順で「固定」「今日」「過去7日」「それ以前」に分け、空状態と読込中を表示する | Should |
 | NAV-007 | 中央領域だけをscrollし、「新しい分析／検索」と最下部account controlは常時表示する | Must |
@@ -219,10 +222,10 @@ AppShell
 | MAIN-001 | 既定routeは完成または直近成功revisionのダッシュボードとし、未生成時は作成・編集への単一primary actionを示す | Must |
 | MAIN-002 | 作成・編集は、分析目的、AI対話、推奨回答、KPI・panel候補、仕様revision、費用確認、build progressを一つの分析スレッドとして表示する | Must |
 | MAIN-003 | 会議報告は、要約、観測、解釈、仮説、反証または不足情報、owner付きaction、根拠link、承認状態を表示する | Must |
-| MAIN-004 | 単一グラフは、任意設問の検証経路としてダッシュボード生成から独立して残すが、通常利用のprimary navigationには昇格させない | Should |
+| MAIN-004 | 単一グラフは共通composerの「インサイト」actionから生成し、保存前は右`Artifact Preview`へ表示する。保存時に固定Insight revisionとなり、通常利用の独立modeにはしない | Should |
 | MAIN-005 | ダッシュボードはgraphと必要なtableを主表示し、SQLを常時展開しない。panel選択でINS-001を開く | Must |
 | MAIN-006 | build中に別routeへ移動してもjob状態を失わず、左navとheaderに実行中表示を残す | Must |
-| MAIN-007 | AI対話composerは作成・編集の下端へsticky配置し、送信、停止、添付、費用が発生する操作の区別を明示する | Should |
+| MAIN-007 | AI対話composerは中央列のviewport下端へ固定し、中央列の幅から左右24pxずつを除いた幅へ追従する。paneの開閉・resizeやdashboard、thread、reportの選択でも所属と入力下書きを保つ。送信前に対象成果物／threadと「ダッシュボード」「インサイト」「会議報告」のactionを明示し、送信、停止、添付、費用が発生する操作を区別する | Must |
 | MAIN-008 | 空、読込、streaming、確認待ち、費用確認待ち、build中、部分成功、成功、停止、error、要承認、公開済みを別状態として表示する | Must |
 | MAIN-009 | AI対話のheaderまたはcomposer直上に、利用企業、data source、成果物revision、適用filter、選択panel、追加context／skillをchipで表示する。利用者は任意chipを送信前に解除でき、必須scopeはlock iconと理由を示す | Must |
 | MAIN-010 | quick answerは「回答」「最小可視化またはtable」「根拠を確認」「インサイトとして保存」「続けて質問」を一つのcardへ置く。数値claimはresult／panel revisionへ結び付け、SQLはpermissionがある場合だけinspectorで開く | Must |
@@ -293,10 +296,10 @@ flowchart LR
 
 | mode | 左ナビゲーション | メインサーフェス | 右セカンダリpane | primary action |
 |------|------------------|------------------|----------------------|----------------|
-| Dashboard閲覧 | dashboard／collection選択 | published dashboard | 選択panelのInspector | 共有または会議報告へ |
+| Dashboard閲覧 | dashboard／collection選択 | published dashboard。共通composerは同じ位置に残す | 選択panelのInspector | 共有、修正相談、または会議報告へ |
 | 分析対話 | thread／Insight履歴 | 会話、context bar、sticky composer | 生成中回答のArtifact Preview。必要時はInspectorへ切替 | 仕様確認またはInsight保存 |
 | Insight閲覧 | Insight選択 | 保存済みInsightの回答と可視化 | methodology／SQL／data／来歴Inspector | ダッシュボードへ追加 |
-| 会議報告 | report選択 | report本文、決定、action | 根拠panel／来歴Inspector | reviewまたはpublish |
+| 会議報告 | report選択 | report本文、決定、action。共通composerから追加分析または改稿を依頼できる | 根拠panel／来歴Inspector | reviewまたはpublish |
 | Publish preview | artifact選択 | 公開予定の固定revision | diff、検証、権限、公開先 | publish |
 | Embedded preview | artifact選択 | customer viewの固定published revision | brand、locale、identity、RLS、expiry。authoring controlは置かない | preview終了 |
 
@@ -544,7 +547,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-17 | draft、review、preview、published、supersededを視覚・URL・APIで区別し、review失敗revisionをpublishできない | MAIN-014、OVR-007 | state machine E2E |
 | AC-18 | filter変更後の過去回答に「以前のfilter」を表示し、明示的な費用確認なしに再queryしない | INS-011、§9.4 | browser＋billing E2E |
 | AC-19 | customer previewがbrand、locale、identity、expiryを表示し、期限切れ／越境identity／通常共有linkへの流用を拒否する | MAIN-015、OVR-008、NFR-004 | authorization E2E |
-| AC-20 | 製品主ナビに単一グラフと自由layout canvasがなく、検索、分析対話、Insight、管理済み成果物の責務が混在しない | NAV-004、MAIN-016 | navigation review |
+| AC-20 | 左paneが成果物treeと分析スレッドtreeを分離し、単一グラフと自由layout canvasをpeer modeとして置かず、未保存グラフを右Artifact Previewへ表示する | NAV-004、MAIN-004、MAIN-016 | navigation review |
 | AC-21 | 分析対話で右paneをArtifact PreviewからInspectorへ切り替えても会話位置とdraft revisionを維持し、tablet以下ではoverlay／sheetとして復帰できる | APP-006、INS-012、§6.7 | viewport E2E |
 | AC-22 | embedded customer viewはpublished revisionだけを表示し、URL直打ちを含めSQL編集、panel構成、branch、publishへ到達できない。編集者は別authoring routeでのみ修正できる | C-6、MAIN-017、NFR-004 | role別authorization E2E |
 | AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |

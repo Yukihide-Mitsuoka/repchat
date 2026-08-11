@@ -162,6 +162,74 @@ HTML = HTML.replace(
     1,
 )
 
+# Present one analysis conversation instead of four peer modes. Saved and draft
+# outputs remain addressable as artifacts in the navigation tree, while the
+# shared composer below the main surface chooses the next explicit action.
+_sidebar_body_pattern = re.compile(
+    r'<p class="sidebar-label">分析ワークスペース</p>.*?</aside>', re.DOTALL
+)
+_sidebar_body = r"""
+<button id="new-analysis" class="new-analysis" type="button">新しい分析</button>
+<p class="sidebar-label">成果物</p>
+<nav class="workspace-nav artifact-tree" aria-label="分析成果物">
+<button id="view-dashboard" type="button"><span>ダッシュボード</span><small>2021年1月 購入成果改善</small></button>
+<button id="view-graph" type="button"><span>インサイト</span><small>未保存の単一グラフ</small></button>
+<button id="view-report" type="button"><span>会議報告</span><small>根拠付き下書き</small></button>
+</nav>
+<p class="sidebar-label">分析スレッド</p>
+<nav class="workspace-nav thread-tree" aria-label="分析スレッド">
+<button id="view-build" class="selected" type="button" aria-current="page"><span>購入成果を改善する</span><small>現在の対話</small></button>
+</nav>
+<div class="sidebar-account"><span class="account-avatar">デ</span><span><strong>デモ組織</strong><small>EC月次分析</small></span></div>
+</aside>"""
+HTML, _sidebar_count = _sidebar_body_pattern.subn(_sidebar_body, HTML, count=1)
+if _sidebar_count != 1:  # pragma: no cover - static template invariant
+    raise RuntimeError("live demo sidebar markup is missing")
+
+_composer_markup = r"""
+<section id="analysis-composer" class="analysis-composer" aria-label="分析アシスタントへの指示">
+<div class="composer-context">
+<span id="composer-target" class="composer-target">対象: 現在の分析スレッド</span>
+<div class="composer-actions" role="group" aria-label="実行する操作">
+<button type="button" class="selected" data-composer-action="dashboard">ダッシュボード</button>
+<button type="button" data-composer-action="insight">インサイト</button>
+<button type="button" data-composer-action="report">会議報告</button>
+</div>
+<select id="composer-profile" class="hidden" aria-label="分析対象データ">
+<option value="ga4">GA4 ECサイト</option><option value="bitcoin">Bitcoin取引</option>
+</select>
+</div>
+<textarea id="composer-input" rows="2" aria-label="分析したい内容">2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って</textarea>
+<div class="composer-footer"><span id="composer-message">操作と対象を確認して送信してください。</span><button id="composer-submit" type="button" aria-label="分析指示を送信">↑</button></div>
+</section>
+"""
+HTML = HTML.replace(
+    '<p class="lead local-note">', _composer_markup + '<p class="lead local-note">', 1
+)
+
+_artifact_preview_markup = r"""
+<section id="artifact-preview" class="artifact-preview hidden" aria-label="インサイトのプレビュー">
+<div class="artifact-preview-heading"><span class="draft-badge">未保存</span><strong>単一グラフのインサイト</strong></div>
+<p id="artifact-preview-empty" class="inspector-empty">中央下部の入力欄からインサイトを依頼すると、グラフ・取得データ・SQLをここに表示します。</p>
+<div id="artifact-preview-host"></div>
+</section>
+"""
+HTML = HTML.replace(
+    '<p id="inspector-empty"', _artifact_preview_markup + '<p id="inspector-empty"', 1
+)
+HTML = HTML.replace('<p class="eyebrow">Panel inspector</p>', '<p class="eyebrow">Artifact</p>', 1)
+HTML = HTML.replace('<h2 id="inspector-title">パネル詳細</h2>', '<h2 id="inspector-title">成果物の詳細</h2>', 1)
+HTML = HTML.replace(
+    '<p id="inspector-subtitle">グラフを選択すると根拠を確認できます。</p>',
+    '<p id="inspector-subtitle">プレビュー、データ、SQL、来歴を確認できます。</p>',
+    1,
+)
+HTML = HTML.replace(
+    'build:["ダッシュボードを作成・編集","AIと分析目的を相談し、確認した仕様だけをbuildします。","相談・build"]',
+    'build:["購入成果を改善する","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"]',
+    1,
+)
+
 # A static or proxy error page is commonly HTML. Never parse it as JSON or expose
 # its markup; explain that the browser is not connected to the live API instead.
 HTML = HTML.replace(
@@ -279,7 +347,7 @@ dialog{border:0;border-radius:12px;box-shadow:0 24px 70px #10182838}
 :root{--header-height:44px;--icon-button-size:32px;--splitter-hit-area:8px;--splitter-line:1px}
 body{font-size:13px;font-weight:400}
 .app-shell{grid-template-rows:44px minmax(0,1fr);min-height:100vh}
-.app-header{grid-column:3;grid-row:1;position:sticky;top:0;z-index:30;height:var(--header-height);min-width:0;padding:0 12px;border-bottom:var(--splitter-line) solid #e8e8e8;box-shadow:none;background:#fff;backdrop-filter:none}
+.app-header{grid-column:3;grid-row:1;position:sticky;top:0;z-index:30;height:var(--header-height);min-width:0;padding:0 48px;border-bottom:var(--splitter-line) solid #e8e8e8;box-shadow:none;background:#fff;backdrop-filter:none}
 .header-context{gap:8px;min-width:0}
 .header-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#343541;font-size:12px;font-weight:500}
 .header-context strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500}
@@ -341,7 +409,7 @@ h2,.dashboard-card h3{font-weight:600}
 .dashboard-card:nth-child(2),.dashboard-card:nth-child(3),.dashboard-card:nth-child(4),.dashboard-card:nth-child(5){grid-column:span 6}
 }
 @media(max-width:760px){
-.app-header{padding:0 12px;gap:8px}
+.app-header{padding:0 48px;gap:8px}
 .app-header .header-context:first-child>span:last-child,.app-header .header-context:last-child>strong{display:none}
 #inspector-toggle{display:inline-flex}
 .workspace{padding:20px 16px 44px}
@@ -363,10 +431,63 @@ h1{font-size:22px}
 @media(prefers-reduced-motion:reduce){
 *,*::before,*::after{scroll-behavior:auto!important;transition-duration:0s!important;animation-duration:0s!important}
 }
+
+/* Issue #352: one conversation, an artifact tree, and a stable artifact pane. */
+#sidebar-toggle,#inspector-toggle{position:fixed;top:6px;z-index:70;display:grid;place-items:center}
+#sidebar-toggle{left:8px}#inspector-toggle{right:8px}
+.pane-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
+.pane-icon .pane-fill{fill:currentColor;stroke:none;opacity:.18}
+.sidebar-chrome{padding-left:42px;border-bottom:1px solid #e7e7e8}
+.workspace-inspector{padding-top:52px}
+.workspace{height:calc(100vh - var(--header-height));overflow:auto;padding-bottom:150px}
+.workspace-sidebar .new-analysis{width:100%;justify-content:flex-start;margin:10px 0 2px;border:0;background:transparent;color:#202123;text-align:left}
+.workspace-sidebar .new-analysis::before{content:"＋";margin-right:9px;font-size:17px}
+.artifact-tree button,.thread-tree button{grid-template-rows:auto auto}
+.artifact-tree button span,.thread-tree button span{grid-column:2;line-height:1.25}
+.artifact-tree button small,.thread-tree button small{grid-column:2;color:#8a8a91;font-size:10px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-account{display:flex;align-items:center;gap:9px;margin-top:auto;padding:10px 8px 2px;border-top:1px solid #e7e7e8;color:#343541}
+.sidebar-account>span:last-child{display:grid;min-width:0}.sidebar-account strong{font-size:12px;font-weight:500}.sidebar-account small{color:#85858b;font-size:10px}
+.account-avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e4e4e7;font-size:11px}
+.analysis-composer{position:fixed;z-index:60;left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip))/2);bottom:14px;width:calc(100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip) - 48px);margin:0;padding:9px 11px 10px;transform:translateX(-50%);border:1px solid #d9d9df;border-radius:16px;background:#fff;box-shadow:0 8px 28px #10182817}
+.composer-context,.composer-footer{display:flex;align-items:center;gap:8px}.composer-context{flex-wrap:wrap;margin-bottom:5px}.composer-footer{justify-content:space-between;color:#85858b;font-size:10px}
+.composer-target{padding:3px 7px;border-radius:999px;background:#f1f1f3;color:#5f5f66;font-size:10px}
+.composer-actions{display:flex;gap:2px}.composer-actions button{min-height:24px;padding:3px 7px;border:0;border-radius:6px;background:transparent;color:#6b6b72;font-size:10px}.composer-actions button.selected{background:#ececf1;color:#202123}
+#composer-profile{min-height:26px;margin:0;padding:3px 22px 3px 7px;border-color:#dedee3;font-size:10px}
+#composer-input{min-height:52px;max-height:150px;padding:7px 4px;border:0;border-radius:0;resize:none;box-shadow:none;font-size:13px}#composer-input:focus{border:0;outline:0}
+#composer-submit{display:grid;place-items:center;width:28px;height:28px;min-height:28px;padding:0;border:0;border-radius:50%;background:#202123;font-size:16px}
+#build-studio-view .query-panel,#graph-workspace>.query-panel{display:none}
+.artifact-preview-heading{display:flex;align-items:center;gap:8px;margin-bottom:10px}.artifact-preview-heading strong{font-size:12px;font-weight:500}
+#artifact-preview-host #output>.grid{grid-template-columns:1fr}#artifact-preview-host #output .panel{margin-top:10px;padding:13px;border-radius:8px;box-shadow:none}
+#artifact-preview-host #output h2{font-size:13px}#artifact-preview-host .chart svg{min-width:620px}#artifact-preview-host .sql{font-size:10px;max-height:320px}
+.workspace-inspector.artifact-active #inspector-empty,.workspace-inspector.artifact-active #inspector-content{display:none}
+@media(max-width:1180px){.analysis-composer{left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip))/2);width:calc(100vw - var(--nav-column) - var(--nav-grip) - 48px)}}
+@media(max-width:960px){.analysis-composer{left:50%;bottom:8px;width:calc(100vw - 24px)}.workspace{padding-bottom:140px}.workspace-inspector{padding-top:52px}}
+@media(max-width:640px){.composer-target{display:none}.composer-actions{width:100%}.composer-actions button{flex:1}.analysis-composer{width:calc(100% - 16px)}.workspace{padding-left:12px;padding-right:12px}}
 """
 HTML = HTML.replace("</style>", WORKSPACE_POLISH_CSS + "\n</style>")
 
 WORKSPACE_POLISH_SCRIPT = r"""
+function paneIcon(side,expanded){const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg"),frame=document.createElementNS(ns,"rect"),divider=document.createElementNS(ns,"path");svg.setAttribute("class","pane-icon");svg.setAttribute("viewBox","0 0 18 18");svg.setAttribute("aria-hidden","true");for(const[name,value]of Object.entries({x:"2.5",y:"2.5",width:"13",height:"13",rx:"2"}))frame.setAttribute(name,value);divider.setAttribute("d",side==="left"?"M7 3v12":"M11 3v12");svg.append(frame);if(expanded){const fill=document.createElementNS(ns,"rect");for(const[name,value]of Object.entries({class:"pane-fill",x:side==="left"?"2.5":"11",y:"2.5",width:"4.5",height:"13",rx:"1"}))fill.setAttribute(name,value);svg.append(fill)}svg.append(divider);return svg}
+function updatePaneButton(id,side,expanded,label){const button=$(id);button.dataset.state=expanded?"open":"closed";button.replaceChildren(paneIcon(side,expanded));button.setAttribute("aria-expanded",String(expanded));button.setAttribute("aria-label",label);button.title=label}
+function toggleSidebar(){const collapsed=$("app-shell").classList.toggle("sidebar-collapsed");updatePaneButton("sidebar-toggle","left",!collapsed,collapsed?"ナビゲーションを展開":"ナビゲーションを折りたたむ")}
+function toggleInspector(){const collapsed=$("app-shell").classList.toggle("inspector-collapsed");updatePaneButton("inspector-toggle","right",!collapsed,collapsed?"成果物パネルを展開":"成果物パネルを折りたたむ")}
+function showInsightArtifact(hasResult=false){const pane=$("panel-inspector");pane.classList.add("artifact-active");$("artifact-preview").className="artifact-preview";$("artifact-preview-empty").className=hasResult?"hidden":"inspector-empty";$("inspector-title").textContent="インサイト";$("inspector-subtitle").textContent="未保存の分析結果";if($("app-shell").classList.contains("inspector-collapsed"))toggleInspector()}
+function hideInsightArtifact(){const pane=$("panel-inspector");pane.classList.remove("artifact-active");$("artifact-preview").className="artifact-preview hidden"}
+function setComposerAction(action,copyInput=true){document.querySelectorAll("[data-composer-action]").forEach(button=>button.classList.toggle("selected",button.dataset.composerAction===action));$("analysis-composer").dataset.action=action;$("composer-profile").className=action==="insight"?"":"hidden";const input=$("composer-input");if(copyInput)input.value=action==="dashboard"?$("dashboard-question").value:action==="insight"?$("question").value:"このダッシュボードの結果から、会議で判断すべき論点と次のアクションを報告案にして";$("composer-target").textContent=action==="dashboard"?"対象: 現在の分析スレッド":action==="insight"?"対象: 未保存のインサイト":"対象: 最新ダッシュボード"}
+function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
+const originalQueryHandler=handle;handle=e=>{if(["sql","result","refusal"].includes(e.type))showInsightArtifact(true);originalQueryHandler(e)};
+const originalPanelInspector=openPanelInspector;openPanelInspector=panelId=>{hideInsightArtifact();originalPanelInspector(panelId)};
+$("artifact-preview-host").appendChild($("output"));
+document.querySelectorAll("[data-composer-action]").forEach(button=>button.onclick=()=>setComposerAction(button.dataset.composerAction));
+$("composer-profile").onchange=()=>$("dataset-profile").value=$("composer-profile").value;
+$("composer-submit").onclick=submitComposer;$("composer-input").onkeydown=event=>{if((event.metaKey||event.ctrlKey)&&event.key==="Enter")submitComposer()};
+$("new-analysis").onclick=()=>{selectWorkspace("build");setComposerAction("dashboard");$("composer-input").focus()};
+$("view-dashboard").onclick=()=>{hideInsightArtifact();selectWorkspace("dashboard");setComposerAction("dashboard",false)};
+$("view-build").onclick=()=>{hideInsightArtifact();selectWorkspace("build");setComposerAction("dashboard",false)};
+$("view-report").onclick=()=>{hideInsightArtifact();selectWorkspace("report");setComposerAction("report",false)};
+$("view-graph").onclick=()=>{selectWorkspace("graph");setComposerAction("insight",false);showInsightArtifact(!$("output").classList.contains("hidden"))};
+updatePaneButton("sidebar-toggle","left",!$("app-shell").classList.contains("sidebar-collapsed"),$("app-shell").classList.contains("sidebar-collapsed")?"ナビゲーションを展開":"ナビゲーションを折りたたむ");updatePaneButton("inspector-toggle","right",!$("app-shell").classList.contains("inspector-collapsed"),$("app-shell").classList.contains("inspector-collapsed")?"成果物パネルを展開":"成果物パネルを折りたたむ");
+selectWorkspace("build");setComposerAction("dashboard",false);
 if(window.innerWidth<=1180 && $("inspector-toggle").getAttribute("aria-expanded")==="true")toggleInspector();
 if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==="true")toggleSidebar();
 """
