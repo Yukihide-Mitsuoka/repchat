@@ -1307,6 +1307,34 @@ print(json.dumps({
   });
 });
 
+test('analysis workspace visual hierarchy protects charts and the main surface', () => {
+  const result = python(`
+html=m.HTML
+print(json.dumps({
+ "tokens":all(value in html for value in ["--radius-card:12px","--shadow-card:","--color-background:"]),
+ "hierarchy":all(value in html for value in [".dashboard-card:nth-child(1){grid-column:span 6}",".dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}"]),
+ "overflow":all(value in html for value in ["body{overflow-x:hidden", ".dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:0}"]),
+ "responsive":all(value in html for value in ["@media(max-width:1180px)","position:fixed","@media(max-width:960px)","@media(max-width:760px)"]),
+ "accessible":all(value in html for value in [":focus-visible","prefers-reduced-motion:reduce","outline:3px solid var(--color-focus)"]),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    tokens: true,
+    hierarchy: true,
+    overflow: true,
+    responsive: true,
+    accessible: true,
+  });
+});
+
+test('analysis workspace starts with overlays closed on narrow viewports', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /window\.innerWidth<=1180/);
+  assert.match(rendered.stdout, /window\.innerWidth<=960/);
+});
+
 test('workspace transitions reveal completed artifacts without mixing build and report views', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);

@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-08-10
+updated: 2026-08-11
 ---
 
 # 実装状況サマリー
@@ -30,12 +30,11 @@ updated: 2026-08-10
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #314](https://github.com/Yukihide-Mitsuoka/repchat/issues/314)。
-[PR #312](https://github.com/Yukihide-Mitsuoka/repchat/pull/312)で会議報告の`MAX_TOKENS`対策をmainへ取り込んだ。
-ライブデモの既定モデルをGemini 3.6 Flashへ変更し、公式のtext input $1.50・text output $7.50/100万tokensへ
-費用計算を更新する。Gemini 3.6では任意`temperature`設定が非対応のため、SQL生成、分析計画、会議報告から除去する。
-実Vertex AI・BigQueryは呼ばず、固定応答と無料の品質gateで検証する。3.5 Flashの既存実測は歴史記録として保持し、
-3.6 Flashの品質・実費は未検証である。
+**現在の作業スレッド**: [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)。
+デザインパートナーへ見せる前に、ライブデモを「機能が並ぶ検証画面」から、中央のダッシュボードを主役にした
+分析ワークスペースへ洗練する。KPIの優先順位、カード配置、左右paneの開閉、1100px以下でのoverlay、
+960px以下の初期折りたたみ、720pxの一列表示を固定応答で確認する。実Vertex AI・BigQueryは呼ばない。
+製品UIへの移植、永続履歴、Git連携、公開workflowを実装済みのようには見せない。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
 同じ作業中の先行doctorは成功していたが、再実行で成功扱いにせず、[Issue #315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)へ分離した。
