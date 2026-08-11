@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-10
-last_reviewed: 2026-08-10
+updated: 2026-08-11
+last_reviewed: 2026-08-11
 ---
 
 # プロジェクトロードマップ
@@ -85,6 +85,11 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 - Issue #179/#180のrevision契約と非同期buildが確定した後、版管理されたpanelをSQL workspaceで新規作成・
   forkし、AI生成原本を変更せず派生dashboardへ合成する（Issue #308、ADR-0022 proposed）。利用者SQLは
   untrusted inputとして検証し、design partnerの調整頻度が確認できるまで任意codeや自由layoutへ広げない。
+- Issue #160が`proceed`となり、#179/#180のrevision・build契約と#188のschema品質境界が安定した後、
+  日本語で分析主体、起点・復帰event、retention方式、期間、timezoneを確定し、未成熟期間を0にしない
+  統制されたコホート分析を公開GA4からpilotする（[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)、
+  [要件](requirements/governed-cohort-analysis.md)）。Amplitudeのpredictive cohort、実験配信、session replayは
+  初期範囲に含めず、Evidence Cloudとの差は描画componentでなく定義確認、費用、根拠、会議workflowで測る。
 - 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
 - 基本の生成・統制・配信が安定した後、根拠付き報告を最大3件の意思決定、担当付きアクション、次回の
   効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。

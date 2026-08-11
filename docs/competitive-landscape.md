@@ -145,21 +145,52 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 結論は、**2026-08-11時点の製品完成度と機能範囲はEvidence Cloudが優位**です。RepChatに固有の候補はありますが、
 ローカルデモまたは設計段階であり、顧客比較による製品優位はまだ実証されていません。
 
-| 比較軸 | Evidence Cloud | RepChat | 現在の判定 |
-|--------|----------------|---------|------------|
-| report authoring | Studio editor、AI diff、SQL Console、inline SQL、Git branchを提供 | AI対話とSQL workspace／panel合成を設計。製品未実装 | Evidence Cloud優位 |
-| Analytics Agent | page／filter context、Insight保存、custom context／skills、Slack／MCPを提供 | 各要件とADRはあるが、製品channel／memoryは未実装 | Evidence Cloud優位 |
-| publish／embed／security product | page access、SSO、RLS、white label、Embedded APIをplan別に提供 | security coreは実装中、artifact配信と本番認証は未統合 | Evidence Cloud優位 |
-| 日本語の分析計画 | 公式にはskillsで確認質問・分析手順を構成可能 | 目的分解→KPI・比較軸・panel提案→利用者確認のローカルデモあり | RepChat固有workflowだが優位未検証 |
-| 実行前費用確認 | 公式資料でqueryごとの事前確認は確認できない | Vertex AI見積とBigQuery上限を実行前に表示するローカルデモあり | RepChatの現在の具体的な差。購買価値は未検証 |
-| 根拠付き会議報告 | source付き回答とboard prepを提供 | 根拠外数値を拒否するstrict validatorのローカルデモあり | RepChatの検証方式に差がある。品質優位は未検証 |
-| 会議後の意思決定loop | 公式資料で同等の決定・owner・次回検証loopは確認できない | 将来要件のみ | 現在の優位ではない |
-| 日本の代理店向け運用 | 横断的BI、multi-tenancy、Enterprise supportを提供 | 小規模代理店の複数顧客運用、日本語導入支援、接続主体の退職耐性に集中 | 市場特化の候補。デザインパートナー検証前 |
-| 顧客成果物の所有 | managed repoまたは利用者のGitHub repoでversion管理可能 | 顧客Git配送をaccepted設計としたが製品未実装 | 現在はEvidence Cloud優位。顧客所有だけでは差別化にならない |
+| 領域 | 現在の優位 | 評価 |
+|------|------------|------|
+| dashboard描画・UI品質 | Evidence Cloud | RepChatのローカルdemoはEvidence OSSを描画基盤にしており、描画component自体では競争しない |
+| Git・Analytics as Code | Evidence Cloud | version control、review、branch preview、publishを製品化済み |
+| RLS・page access・SSO | Evidence Cloud | RepChatも多層認可を実証済みだが、認証から配信までの製品完成度ではEvidence Cloudが優位 |
+| Embedded・theme・多言語 | Evidence Cloud | theme、iframe／API、顧客別RLS、language指定を製品化済み |
+| 自然言語分析・Insight保存 | Evidence Cloud | page／filterの理解、chart／query／source、Insight保存を製品化済み |
+| Slack・MCP | Evidence Cloud | Slack、Claude Desktop、ChatGPTを含むMCP client対応を公式掲載済み |
+| 日本語での分析計画 | RepChat候補 | 目的をKPI、比較軸、期間、複数panelへ分解して確認するローカルdemoがある。比較検証前 |
+| 実行前の費用確認 | RepChat | Vertex AIとBigQueryを別段階で見積もり、上限を承認してから実行する。thought tokenも費用に含める |
+| 会議報告の根拠検証 | RepChat候補 | 根拠外数値を拒否し、妥当な項目だけを残すstrict validatorをローカルdemoへ実装済み。品質優位は未検証 |
+| 日本企業向け運用 | RepChat候補 | 日本語説明、初期接続支援、請求書払い方針、担当者退職に耐える接続設計。design partner検証前 |
+| 顧客固有memoryの統制 | RepChat設計のみ | 組織・部門・利用者scope、承認、revision、期限、取消を設計済み。製品未実装 |
+| 会議から施策・次回検証へ | RepChat将来要件 | 意思決定、担当付きaction、次回効果検証を同じrevision chainへ接続する。製品未実装 |
+| 顧客成果物の所有 | Evidence Cloud | managed repoまたは利用者GitHub repoを提供済み。RepChatは顧客Git配送をaccepted設計としたが未実装 |
 
 RepChatが「Evidence Cloudより優れている」と説明できる条件は、日本語の同一課題を両製品で実行し、分析計画の
 確認回数、既知値の正答率、dashboard完成時間、根拠追跡率、会議action採用率で再現可能な差が出ることです。
 現状の説明は「日本の代理店workflowへ特化して検証中」であり、「総合的に優位」ではありません。
+
+#### コホート分析で競う境界
+
+Amplitudeはbehavioral cohortの定義、複数chartでの再利用、retention、cohort比較、used-by、母集団推移を
+製品化しています。したがってheatmapを一枚追加するだけではAmplitudeへの対抗になりません。
+
+Evidence CloudもSQL、agent skills、custom componentでcohort reportを構成できます。Evidence Labsには
+実験的なCohort Analysis componentがあり、未完期間を除外・空欄表示しないこと、列名制約、error handling不足を
+未解決事項として明記しています。これはEvidence Cloudにcohort分析能力が無いことを意味しません。
+RepChatが検証する差は次のworkflowです。
+
+1. 日本語の目的から分析主体、起点event、復帰event、retention方式、期間、timezone、比較cohortを提案する。
+2. 曖昧な意味を利用者が確認し、不変なcohort specification revisionとしてfreezeする。
+3. Vertex AIとBigQueryの費用を分離して承認し、version付き定義からSQLを生成する。
+4. 未成熟期間を0にせず、cohort size、retained count、rate、SQL、集計data、根拠を同じ結果へ結び付ける。
+5. 結果をdashboard、Insight、会議の意思決定と次回検証へ接続する。
+
+詳細な範囲、受入条件、Amplitude／Evidence Cloudとの同一課題benchmarkは
+[統制されたコホート分析要件](requirements/governed-cohort-analysis.md)と
+[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)を正本とします。predictive cohort、実験配信、
+session replayを初期範囲へ含めず、Issue #160が`proceed`になるまで製品実装しません。
+
+参照: [Amplitude Cohort Analysis](https://www.amplitude.com/explore/analytics/cohort-analysis)、
+[Behavioral Cohorts API](https://www.amplitude.com/docs/apis/analytics/behavioral-cohorts)、
+[Retention calculation](https://amplitude.com/docs/analytics/charts/retention-analysis/retention-analysis-calculation)、
+[Evidence Cloud](https://evidence.dev/)、
+[Evidence Labs Cohort Analysis](https://labs.evidence.dev/cohort-analysis)
 
 ### 3. 席数課金そのものへの逆風
 
