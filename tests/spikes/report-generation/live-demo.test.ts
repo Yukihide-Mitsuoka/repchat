@@ -1415,6 +1415,8 @@ test('pane splitters keep an accessible hit area without visible layout gaps', (
     rendered.stdout,
     /\.navigation-resizer::after,\.inspector-resizer::after\{left:50%;transform:translateX\(-50%\)\}/,
   );
+  assert.match(rendered.stdout, /\.sidebar-chrome\{[^}]*margin:0 -4px/);
+  assert.match(rendered.stdout, /\.sidebar-account\{[^}]*margin-right:-4px;margin-left:-4px/);
 });
 
 test('analysis workspace visual hierarchy protects charts and the main surface', () => {

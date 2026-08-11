@@ -456,7 +456,7 @@ h1{font-size:22px}
 #sidebar-toggle{left:8px}#inspector-toggle{right:8px}
 .pane-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6}
 .pane-icon .pane-fill{fill:currentColor;stroke:none;opacity:.18}
-.sidebar-chrome{gap:5px;padding:0 4px 0 40px;border-bottom:1px solid #e7e7e8}
+.sidebar-chrome{gap:5px;margin:0 -4px;padding:0 8px 0 44px;border-bottom:1px solid #e7e7e8}
 .workspace-inspector{padding-top:52px}
 .workspace{height:calc(100vh - var(--header-height));overflow:auto;padding-bottom:150px}
 .workspace-topbar{display:none}
@@ -469,7 +469,7 @@ h1{font-size:22px}
 @keyframes sidebar-title-marquee{0%,18%{transform:translateX(0)}82%,100%{transform:translateX(calc(-100% + 100cqw))}}
 @media(prefers-reduced-motion:reduce){.workspace-nav button:hover .sidebar-title>span,.workspace-nav button:focus-visible .sidebar-title>span{animation:none}}
 .artifact-tree button small,.thread-tree button small{grid-column:2;color:#8a8a91;font-size:10px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sidebar-account{display:flex;align-items:center;gap:6px;margin-top:auto;padding:8px 4px 0;border-top:1px solid #e7e7e8;color:#343541}
+.sidebar-account{display:flex;align-items:center;gap:6px;margin-top:auto;margin-right:-4px;margin-left:-4px;padding:8px 8px 0;border-top:1px solid #e7e7e8;color:#343541}
 .sidebar-account>span:last-child{display:grid;min-width:0}.sidebar-account strong{font-size:12px;font-weight:500}.sidebar-account small{color:#85858b;font-size:10px}
 .account-avatar{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#e4e4e7;font-size:11px}
 .analysis-composer{position:fixed;z-index:60;left:calc(var(--nav-column) + var(--nav-grip) + (100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip))/2);bottom:14px;width:min(960px,calc(100vw - var(--nav-column) - var(--nav-grip) - var(--inspector-column) - var(--inspector-grip) - 48px));margin:0;padding:9px 11px 10px;transform:translateX(-50%);border:1px solid #d9d9df;border-radius:22px;background:#fff;box-shadow:0 8px 28px #10182817}
