@@ -101,6 +101,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-17 | Official | ChatGPTのProjectsはsidebarから作成・選択し、project内へchatとfileをまとめ、chatをprojectへ移動できる | [Projects in ChatGPT](https://help.openai.com/en/articles/10169521-using-projects-in-chatgpt) |
 | SRC-18 | Official | ChatGPT Canvasはchatとは別の右側workspaceを開き、本文を直接編集しながら会話で修正できる | [Canvas in ChatGPT](https://help.openai.com/en/articles/9930697-what-is-the-canvas-feature-in-chatgpt) |
 | SRC-19 | Owner-provided observation | 2026-08-11のChatGPTデスクトップ画像では、左paneがviewport上端から下端までを所有し、中央headerは左paneの右から始まる。pane境界は細い線、上部操作は小型で、階層は余白・濃淡・選択背景を中心に表現される | この依頼の添付画像 |
+| SRC-20 | Owner-provided observation | 2026-08-11のChatGPTデスクトップ画像では、左treeの選択中thread名と中央compact headerの文言が一致し、同じthread名を中央本文の大型見出しとして繰り返さない | この依頼の添付画像 |
 
 ### 4.2 証拠の扱い
 
@@ -159,7 +160,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | ID | 要件 | 目的 | 優先度 | 根拠 |
 |----|------|------|--------|------|
 | APP-001 | app shellは全高の`PrimaryNavigationPane`、`MainColumn`、全高の`SecondaryPane`、`OverlayHost`を兄弟領域として持つ。`MainHeader`は`MainColumn`内に置き、左右paneの上を横断しない | 文脈保持 | Must | SRC-18、SRC-19 |
-| APP-002 | `MainHeader`は高さ44pxでstickyとし、現在の成果物、組織／分析コレクション、状態を置く。製品名、検索、projectは左paneの`NavigationHeader`へ置き、左右toggleはAPP-008の固定`ChromeAnchorLayer`が所有する | 発見性 | Must | SRC-17、SRC-19、RepChat decision |
+| APP-002 | `MainHeader`は高さ44pxでstickyとし、左treeで選択中の成果物／threadと同じtitle、組織／分析コレクション、状態を置く。同じtitleを本文上部の大型見出しとして反復しない。製品名、検索、projectは左paneの`NavigationHeader`へ置き、左右toggleはAPP-008の固定`ChromeAnchorLayer`が所有する | 発見性 | Must | SRC-17、SRC-19、SRC-20、RepChat decision |
 | APP-003 | 左右paneがpush状態でも`MainSurface`をDOM上の明示的な中央grid列に保ち、閉じたpaneは0pxにする | レイアウト安定性 | Must | PR #332 |
 | APP-004 | route、選択panel、表示revisionをURLで表現し、再読込、back、forward、共有linkで復元する | 文脈保持 | Must | Issue #179 |
 | APP-005 | viewer、editor、adminで利用不能な機能は、存在を隠すか理由付きdisabledにする。クリック後に権限エラーを初めて出さない | 安全性 | Must | C-3 |
@@ -551,7 +552,8 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-21 | 分析対話で右paneをArtifact PreviewからInspectorへ切り替えても会話位置とdraft revisionを維持し、tablet以下ではoverlay／sheetとして復帰できる | APP-006、INS-012、§6.7 | viewport E2E |
 | AC-22 | embedded customer viewはpublished revisionだけを表示し、URL直打ちを含めSQL編集、panel構成、branch、publishへ到達できない。編集者は別authoring routeでのみ修正できる | C-6、MAIN-017、NFR-004 | role別authorization E2E |
 | AC-23 | visible splitterは1px、drag hit areaは8px、header iconは32px角、navigation rowは36px以上、通常文字weightは400〜600であり、太い境界や大型buttonで階層を代用しない | APP-002、§7 | computed style＋visual regression |
-| AC-24 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
+| AC-24 | 左treeの選択titleと44px header titleが一致し、本文上部に同じ大型title／説明blockがない | APP-002 | viewport E2E＋navigation review |
+| AC-25 | APIがHTMLまたは空bodyを返してもJSON parser例外やHTML断片を表示せず、操作可能なlive serverへの接続案内を表示する | MAIN-008 | endpoint contract test |
 
 ## 15. リスク
 

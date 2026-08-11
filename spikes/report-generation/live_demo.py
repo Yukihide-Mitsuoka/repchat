@@ -150,7 +150,7 @@ if _GLOBAL_HEADER is None:  # pragma: no cover - static template invariant
 _original_header_markup = _GLOBAL_HEADER.group(0)
 _header_markup = _original_header_markup.replace(
     '<span class="brand">RepChat</span><span>Live analysis demo</span>',
-    '<span class="header-title">分析ワークスペース</span>',
+    '<span id="compact-title" class="header-title">分析ワークスペース</span>',
 )
 HTML = HTML.replace(_original_header_markup, "", 1)
 HTML = HTML.replace('<main id="workspace-main"', _header_markup + '<main id="workspace-main"', 1)
@@ -172,8 +172,8 @@ _sidebar_body = r"""
 <button id="new-analysis" class="new-analysis" type="button">新しい分析</button>
 <p class="sidebar-label">成果物</p>
 <nav class="workspace-nav artifact-tree" aria-label="分析成果物">
-<button id="view-dashboard" type="button"><span>ダッシュボード</span><small>2021年1月 購入成果改善</small></button>
-<button id="view-graph" type="button"><span>インサイト</span><small>未保存の単一グラフ</small></button>
+<button id="view-dashboard" type="button"><span>購入成果改善ダッシュボード</span><small>2021年1月</small></button>
+<button id="view-graph" type="button"><span>未保存のインサイト</span><small>単一グラフ</small></button>
 <button id="view-report" type="button"><span>会議報告</span><small>根拠付き下書き</small></button>
 </nav>
 <p class="sidebar-label">分析スレッド</p>
@@ -227,6 +227,11 @@ HTML = HTML.replace(
 HTML = HTML.replace(
     'build:["ダッシュボードを作成・編集","AIと分析目的を相談し、確認した仕様だけをbuildします。","相談・build"]',
     'build:["購入成果を改善する","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"]',
+    1,
+)
+HTML = HTML.replace(
+    'graph:["単一グラフを生成","日本語からSQL生成・安全検査・BigQuery実行・可視化までを確認します。","ライブ実行"]',
+    'graph:["未保存のインサイト","日本語からSQL生成・安全検査・BigQuery実行・可視化までを確認します。","ライブ実行"]',
     1,
 )
 
@@ -440,6 +445,7 @@ h1{font-size:22px}
 .sidebar-chrome{padding-left:42px;border-bottom:1px solid #e7e7e8}
 .workspace-inspector{padding-top:52px}
 .workspace{height:calc(100vh - var(--header-height));overflow:auto;padding-bottom:150px}
+.workspace-topbar{display:none}
 .workspace-sidebar .new-analysis{width:100%;justify-content:flex-start;margin:10px 0 2px;border:0;background:transparent;color:#202123;text-align:left}
 .workspace-sidebar .new-analysis::before{content:"＋";margin-right:9px;font-size:17px}
 .artifact-tree button,.thread-tree button{grid-template-rows:auto auto}
@@ -474,6 +480,8 @@ function toggleInspector(){const collapsed=$("app-shell").classList.toggle("insp
 function showInsightArtifact(hasResult=false){const pane=$("panel-inspector");pane.classList.add("artifact-active");$("artifact-preview").className="artifact-preview";$("artifact-preview-empty").className=hasResult?"hidden":"inspector-empty";$("inspector-title").textContent="インサイト";$("inspector-subtitle").textContent="未保存の分析結果";if($("app-shell").classList.contains("inspector-collapsed"))toggleInspector()}
 function hideInsightArtifact(){const pane=$("panel-inspector");pane.classList.remove("artifact-active");$("artifact-preview").className="artifact-preview hidden"}
 function setComposerAction(action,copyInput=true){document.querySelectorAll("[data-composer-action]").forEach(button=>button.classList.toggle("selected",button.dataset.composerAction===action));$("analysis-composer").dataset.action=action;$("composer-profile").className=action==="insight"?"":"hidden";const input=$("composer-input");if(copyInput)input.value=action==="dashboard"?$("dashboard-question").value:action==="insight"?$("question").value:"このダッシュボードの結果から、会議で判断すべき論点と次のアクションを報告案にして";$("composer-target").textContent=action==="dashboard"?"対象: 現在の分析スレッド":action==="insight"?"対象: 未保存のインサイト":"対象: 最新ダッシュボード"}
+const baseSelectWorkspace=selectWorkspace;
+selectWorkspace=view=>{baseSelectWorkspace(view);$("compact-title").textContent=$("page-title").textContent};
 function submitComposer(){const action=$("analysis-composer").dataset.action||"dashboard",question=$("composer-input").value.trim();if(!question){$("composer-message").textContent="分析したい内容を入力してください。";return}$("composer-message").textContent="費用と実行範囲を確認します。";if(action==="insight"){selectWorkspace("graph");$("question").value=question;$("dataset-profile").value=$("composer-profile").value;selectProfile($("composer-profile").value);showInsightArtifact();showCost("graph");return}$("dashboard-question").value=question;if(action==="report"){if(!latestBuildRevision){$("composer-message").textContent="先にダッシュボードをbuildしてください。";return}showCost("report");return}currentAnswers={};currentPlan=null;pendingPlan=null;dashboardStage();showCost("dashboard-plan")}
 const originalQueryHandler=handle;handle=e=>{if(["sql","result","refusal"].includes(e.type))showInsightArtifact(true);originalQueryHandler(e)};
 const originalPanelInspector=openPanelInspector;openPanelInspector=panelId=>{hideInsightArtifact();originalPanelInspector(panelId)};
@@ -487,6 +495,7 @@ $("view-build").onclick=()=>{hideInsightArtifact();selectWorkspace("build");setC
 $("view-report").onclick=()=>{hideInsightArtifact();selectWorkspace("report");setComposerAction("report",false)};
 $("view-graph").onclick=()=>{selectWorkspace("graph");setComposerAction("insight",false);showInsightArtifact(!$("output").classList.contains("hidden"))};
 updatePaneButton("sidebar-toggle","left",!$("app-shell").classList.contains("sidebar-collapsed"),$("app-shell").classList.contains("sidebar-collapsed")?"ナビゲーションを展開":"ナビゲーションを折りたたむ");updatePaneButton("inspector-toggle","right",!$("app-shell").classList.contains("inspector-collapsed"),$("app-shell").classList.contains("inspector-collapsed")?"成果物パネルを展開":"成果物パネルを折りたたむ");
+const headerMeta=document.querySelector(".app-header .header-context:last-child");headerMeta.insertBefore($("workspace-state"),headerMeta.querySelector(".draft-badge"));
 selectWorkspace("build");setComposerAction("dashboard",false);
 if(window.innerWidth<=1180 && $("inspector-toggle").getAttribute("aria-expanded")==="true")toggleInspector();
 if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==="true")toggleSidebar();
