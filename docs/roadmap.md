@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-11
-last_reviewed: 2026-08-11
+updated: 2026-08-12
+last_reviewed: 2026-08-12
 ---
 
 # プロジェクトロードマップ
@@ -88,7 +88,9 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
   datasetの書き込み権限は既定で増やさず、Issue #160の`proceed`とADR承認前に実装しない。
 - Issue #179/#180のrevision契約と非同期buildが確定した後、版管理されたpanelをSQL workspaceで新規作成・
   forkし、AI生成原本を変更せず派生dashboardへ合成する（Issue #308、ADR-0022 proposed）。利用者SQLは
-  untrusted inputとして検証し、design partnerの調整頻度が確認できるまで任意codeや自由layoutへ広げない。
+  untrusted inputとして検証する。構造化された行と相対幅は共有layout revisionとして保存・公開できるように
+  する（[Issue #371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)）。design partnerの調整頻度が
+  確認できるまで任意code、自由配置、個人layoutの永続化へ広げない。
 - Issue #160が`proceed`となり、#179/#180のrevision・build契約と#188のschema品質境界が安定した後、
   日本語で分析主体、起点・復帰event、retention方式、期間、timezoneを確定し、未成熟期間を0にしない
   統制されたコホート分析を公開GA4からpilotする（[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)、

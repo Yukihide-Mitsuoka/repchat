@@ -2,7 +2,7 @@
 id: analysis-workspace-ui-requirements
 title: 要件定義 — 分析ワークスペースUI
 status: draft
-updated: 2026-08-11
+updated: 2026-08-12
 ---
 
 # 要件定義 — 分析ワークスペースUI
@@ -10,6 +10,7 @@ updated: 2026-08-11
 この文書は、ChatGPT系デスクトップUIを参考にしながら、RepChatの分析相談、ダッシュボード閲覧、
 SQL来歴確認、会議報告を一つの再現可能なワークスペースへ配置する製品要件を定義します。
 [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の情報設計成果を所有し、
+共有layout revisionの将来実装は[Issue #371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)で追跡し、
 ローカルデモの現状説明は[デモ手順](../demo.md)を正本とします。
 
 ## 1. 用語
@@ -23,6 +24,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | インスペクター | 選択中のパネルに従属する理由、定義・検証、SQL、取得データ、来歴を表示する右側の二次領域 |
 | アーティファクトプレビュー | 対話を中央に残したまま、生成中または保存前のInsight、dashboard、reportを確認する右側の成果物領域 |
 | パネル | KPI、グラフ、表の一つと、そのSQL・定義・検証・revisionを結び付けた成果物 |
+| dashboard layout revision | dashboard revisionに属する不変の配置情報。行、panel revision、同一行内の相対weight、responsive policy、親revisionを保持し、SQL・query result・端末固有pane幅を含めない |
 | 分析スレッド | 一つの分析目的について、質問、回答、分析仕様revision、buildを結ぶ対話単位 |
 | インサイト | 一つの質問への回答、可視化、query、source、filter、prompt、実装メモを固定revisionとして保存した再利用可能な成果物 |
 | 分析コレクション | 関連するダッシュボードと分析スレッドを整理する利用者向けディレクトリ。GCP projectやtenantではない |
@@ -61,6 +63,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
   | 会話文脈の透明性 | AIへ送る前に、利用企業、成果物revision、filter、選択panel、追加contextを100%確認・解除できる | context contract E2E |
   | 回答の再利用 | 根拠付き回答を再queryせず3操作以内でインサイトとして保存し、派生ダッシュボードへ追加できる | user task＋revision E2E |
   | レイアウト安定性 | 対象viewportと左右状態の全組合せで、主見出しが縦書き化せず、横方向の意図しないoverflowが0件 | §8の状態行列を自動撮影 |
+  | 共有レイアウト再現 | 保存・公開したdashboardを別利用者が同じviewport区分で開いた場合、行、panel順、相対幅が100%一致する | revision contract E2E |
   | キーボード操作 | 開閉、移動、リサイズ、タブ切替、復帰をマウスなしで完了 | アクセシビリティE2E |
 
 - **対象:** app shell、左ナビゲーション、メインサーフェス、右セカンダリpane、overlay、状態、responsive、
@@ -102,6 +105,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | SRC-18 | Official | ChatGPT Canvasはchatとは別の右側workspaceを開き、本文を直接編集しながら会話で修正できる | [Canvas in ChatGPT](https://help.openai.com/en/articles/9930697-what-is-the-canvas-feature-in-chatgpt) |
 | SRC-19 | Owner-provided observation | 2026-08-11のChatGPTデスクトップ画像では、左paneがviewport上端から下端までを所有し、中央headerは左paneの右から始まる。pane境界は細い線、上部操作は小型で、階層は余白・濃淡・選択背景を中心に表現される | この依頼の添付画像 |
 | SRC-20 | Owner-provided observation | 2026-08-11のChatGPTデスクトップ画像では、左treeの選択中thread名と中央compact headerの文言が一致し、同じthread名を中央本文の大型見出しとして繰り返さない | この依頼の添付画像 |
+| SRC-21 | Owner intent | 調整したdashboard card幅を保存・共有し、共有相手が同じdashboardを開いたときに同じ配置を閲覧できるようにする | Issue #371 |
 
 ### 4.2 証拠の扱い
 
@@ -248,6 +252,7 @@ AppShell
 | MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。相談用AIへdata profile、定義済み指標、利用可能期間、目的、同一threadの履歴を渡し、固定候補の検索・並べ替えではなく、仮説、指標、切り口、比較、可視化、理由、実行用日本語仕様を新規に考察させる。利用可能な描画型、schema、metric、安全・費用境界だけを固定し、分析内容をhardcodeしない。利用者発言とAI回答は追記型で表示し、送信時にcomposerを空にし、失敗・cancel時だけ下書きを復元する。「他にない」等のfollow-upでは履歴を渡して既出提案を避ける。提案選択はcomposerへ実行仕様を反映するだけで実行せず、別の費用確認を承認した後だけSQL生成・BigQuery実行へ進む。client bypassでもquery APIが同じ相談文を拒否する | Must |
 | MAIN-022 | dashboard plannerも固定の分析候補を選ばせず、対象schema・metric・目的・確認回答からpanel分析仕様を新規に作る。初回提案数とrevision上限は管理者が変更できる費用・画面密度ポリシーとし、デモ既定値を6件／20件とする。利用者は同じ対話で追加、変更、削除を依頼でき、AIは明示されていない既存panelを維持しながら設定上限まで現在案を更新する。件数ポリシーは分析テーマ、KPI、比較軸、chart typeを決めない。確定revisionはAIが作った各panelの意味と実行用日本語仕様を保持し、buildはその仕様からSQLを生成する。旧分析fixtureは回帰試験・旧デモ互換に限定し、planner promptへ候補一覧として渡さない。plannerが選択できる可視化は[可視化カバレッジ](evidence-cloud-visualization-coverage.md)でend-to-end対応済みまたは明示した部分対応の型だけに制限する | Must |
 | MAIN-021 | dashboard build成功時は閲覧を優先し、右セカンダリpaneを閉じ、共通composerを下書きとactionを保持した小型の「AIに相談」ランチャーへ縮小する。ランチャーはbuttonとしてkeyboard focusとaccessible nameを持ち、明示操作で同じcomposerを復帰する。pointer接近だけでは表示状態を変えない。相談、build、error、dashboard以外のsurfaceでは自動縮小しない | Must |
+| MAIN-023 | MAIN-019の幅変更は保存前のlayout draftとして扱い、編集者または許可された管理者の明示操作で新しいdashboard layout revisionへ保存する。公開済みrevisionを直接上書きせず、review／publish後の共有linkは固定revisionを参照する。同じviewport区分では行、panel順、相対weightを再現し、狭いviewportでは単列化しても保存weightを変更せず、広いviewportへ戻すと復元する。閲覧者と未保存編集の一時変更は共有状態へ反映しない。保存時は基準revisionの不一致を検出して無言の上書きを拒否し、AI生成、SQL変更、BigQuery実行、result revision更新を行わない | Should |
 
 ### 6.4 右セカンダリpane
 
@@ -435,6 +440,12 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
     "panel_revision_id": "panel-rev-1",
     "inspector_tab": "reason"
   },
+  "dashboard_layout": {
+    "revision_id": "layout-rev-1",
+    "state": "saved",
+    "rows": [{"id": "row-1", "panels": [{"panel_revision_id": "panel-rev-1", "weight": 2}]}],
+    "responsive_policy": "structured-v1"
+  },
   "composer": {"state": "collapsed", "draft_preserved": true},
   "artifact": {"kind": "dashboard", "status": "published", "revision_id": "dashboard-rev-1"},
   "job": {"id": null, "state": "idle"}
@@ -443,6 +454,7 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 
 - `tenant_id`とpermissionはserverが解決し、URL、local storage、AI出力を信用しません。
 - pane幅、開閉、最後のinspector tabは利用者端末の表示設定です。分析メモリーへ保存しません。
+- dashboard cardの行、順序、相対weightはdashboard layout revisionへ保存し、pane幅やviewportのpx値と分離します。
 - route、artifact revision、panel selectionはURLへ保存します。
 - build／report jobはserverのjob IDから復元し、画面移動で失いません。
 
@@ -467,6 +479,7 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 | 承認済み会議報告 | 可 | 可 | 可 |
 | 分析相談／build | 不可 | 可 | 可 |
 | Insight保存／派生dashboardへ追加 | 不可 | 可 | 可 |
+| 共有dashboard layoutの保存／公開 | 不可。一時調整だけ可 | permission次第 | 可 |
 | inspector理由・定義・来歴 | 可。ただし認可scope内 | 可 | 可 |
 | SQL／取得データ | 個別permission | 個別permission | 可 |
 | publish／fork | 不可 | permission次第 | 可 |
@@ -502,12 +515,14 @@ separatorは`role="separator"`、`aria-orientation="vertical"`、`aria-valuemin`
 | NFR-009 | 追跡可能性 | quick answer、Insight、dashboard、report、publishを不変revision chainで辿れる | link欠落0件 | provenance contract test | Must |
 | NFR-010 | 一貫性 | Web、Slack、MCP、embeddedの各入口が同じ認可済みartifact revisionを参照する | channel間の値・status差異0件 | adapter contract test | Should |
 | NFR-011 | 性能効率 | 保存済みInsight表示とdashboard閲覧はAI再生成を要求しない | 初期表示時AI呼出し0回 | network／billing test | Must |
+| NFR-012 | 一貫性 | 同じpublished dashboard revisionとviewport区分は利用者・端末によらず同じ共有layoutを返す | 行、順序、相対weightの差異0件 | cross-browser revision E2E | Should |
 
 ## 11. データ要件
 
 | 項目 | 仕様 |
 |------|------|
-| 業務entity | workspace、collection、analysis thread、analysis specification revision、insight revision、dashboard revision、panel revision、result revision、report revision、publication revision |
+| 業務entity | workspace、collection、analysis thread、analysis specification revision、insight revision、dashboard revision、dashboard layout revision、panel revision、result revision、report revision、publication revision |
+| Dashboard layout metadata | dashboard revision、親layout revision、行ID、panel revision、相対weight、responsive policy、作成者、作成日時を保持する。pane幅、viewportのpx値、SQL、result値を含めない |
 | UI設定 | left/right open、幅、直近inspector tab、theme。端末localで保持し、reset可能にする |
 | URL状態 | workspace、artifact、revision、panel、inspector tab。秘密情報、SQL、result値を入れない |
 | 検索index | 認可済みtitle、種別、更新日時、owner、status、collectionだけを初期対象にする。SQL、result値、非公開prompt本文をindexへ入れない |
@@ -576,6 +591,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
 | AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
 | AC-30 | dashboard build成功時だけ右paneが閉じ、composerが34px以上の「AIに相談」ランチャーへ縮小する。ランチャーと縮小buttonはkeyboardで操作でき、手動縮小後はランチャーへfocusを移し、復帰後も入力下書きとactionを保持する。相談中、build中、error時は自動縮小しない | MAIN-007、MAIN-021、INS-009 | DOM＋keyboard／viewport E2E |
+| AC-31 | 編集者がcard幅を保存・publishしたdashboard revisionを別利用者／別browserで開くと、同じdesktop viewport区分では行、panel順、相対weightが一致する。narrow viewportでは単列化し、desktopへ戻すと保存weightを復元する。閲覧者の一時変更と未保存draftは共有revisionへ影響せず、layout保存はAI・BigQueryを呼ばない。古い基準revisionからの保存は競合として停止する | MAIN-023、NFR-012 | revision contract＋cross-browser／network E2E |
 
 ## 15. リスク
 
@@ -592,6 +608,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | R-9 | quick answerを無制限に保存してInsightが検索不能になる | 中 | 中 | collection、status、archive、参照先を必須metadataにし、retentionをQ-2で決める |
 | R-10 | customer previewがtenant impersonationまたは共有linkの抜け道になる | 低 | 高 | admin限定identity切替、短期server session、通常共有linkとの分離 |
 | R-11 | 埋め込みをcustom dashboard editorと誤認し、顧客向け閲覧経路へauthoring権限を混在させる | 中 | 高 | C-6、MAIN-017、AC-22でrouteとpermissionを分離する |
+| R-12 | 個人の一時調整または同時編集が共有layoutを無言で上書きし、閲覧者ごとに配置が異なる | 中 | 高 | MAIN-023、基準revision照合、publish済み固定revision、AC-31で防ぐ |
 
 ## 16. milestone
 
@@ -600,7 +617,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | M0 文書・fixture | 全要件、状態行列、fixture定義 | この文書のreview |
 | M1 shell prototype | APP、NAV、INS、responsive、a11y | Issue #160が`proceed`、Issue #179のprototype承認 |
 | M2 product routing | deep link、permission、artifact API、job復元、可視context bar | 本番role・認証とrevision contract確定 |
-| M3 Insight lifecycle | quick answer保存、methodology／来歴、派生dashboard、review／publish | Issue #180のspecification revisionとIssue #308のpanel composition確定 |
+| M3 Insight／dashboard composition lifecycle | quick answer保存、methodology／来歴、派生dashboard、共有layout revision、review／publish | Issue #180のspecification revisionとIssue #308のpanel composition確定 |
 | M4 history／search／settings | NAV-003、NAV-005〜NAV-011、OVR-003 | retention、search scope、Git UIの別Issue承認 |
 | M5 embedded preview | brand、locale、customer identity、expiry、公開revision | design partner需要、本番認証、edge／origin protection確定 |
 
