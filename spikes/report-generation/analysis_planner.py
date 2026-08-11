@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
 
 ORGANIZATION_CONTEXT = {
@@ -56,7 +57,38 @@ PANEL_CATALOG = {
 }
 
 CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
-PURCHASE_IMPROVEMENT_PANEL_IDS = tuple(PANEL_CATALOG)
+DASHBOARD_CHARTS = ("scorecard", "bar", "line", "table", "sankey")
+DEFAULT_INITIAL_PANEL_COUNT = 6
+DEFAULT_MAX_PANEL_COUNT = 20
+DYNAMIC_PANEL_FIELDS = (
+    "title", "kpi", "chart", "decision", "reason", "execution_prompt"
+)
+
+
+def _positive_count_setting(name: str, default: int) -> int:
+    """Read one admin-owned positive count without selecting analysis content."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer") from error
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+MAX_PANEL_COUNT = _positive_count_setting(
+    "ANALYSIS_MAX_PANEL_COUNT", DEFAULT_MAX_PANEL_COUNT
+)
+INITIAL_PANEL_COUNT = _positive_count_setting(
+    "ANALYSIS_INITIAL_PANEL_COUNT", min(DEFAULT_INITIAL_PANEL_COUNT, MAX_PANEL_COUNT)
+)
+if INITIAL_PANEL_COUNT > MAX_PANEL_COUNT:
+    raise ValueError(
+        "ANALYSIS_INITIAL_PANEL_COUNT must not exceed ANALYSIS_MAX_PANEL_COUNT"
+    )
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -99,6 +131,29 @@ PLAN_SCHEMA = {
     ],
 }
 
+DYNAMIC_PLAN_SCHEMA = copy.deepcopy(PLAN_SCHEMA)
+DYNAMIC_PLAN_SCHEMA["properties"]["panels"] = {
+    "type": "array",
+    "minItems": INITIAL_PANEL_COUNT,
+    "maxItems": INITIAL_PANEL_COUNT,
+    "items": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "kpi": {"type": "string"},
+            "chart": {
+                "type": "string",
+                "format": "enum",
+                "enum": list(DASHBOARD_CHARTS),
+            },
+            "decision": {"type": "string"},
+            "reason": {"type": "string"},
+            "execution_prompt": {"type": "string"},
+        },
+        "required": list(DYNAMIC_PANEL_FIELDS),
+    },
+}
+
 
 class PlannerError(ValueError):
     """A planner contract violation safe to show in the local UI."""
@@ -116,6 +171,15 @@ def _response_schema(answers: dict[str, str]) -> dict:
         field_schema = clarifications["items"]["properties"]["field"]
         field_schema["format"] = "enum"
         field_schema["enum"] = unanswered
+    return schema
+
+
+def _dashboard_response_schema(answers: dict[str, str]) -> dict:
+    """Constrain an initial AI-authored dashboard to the configured panel count."""
+    schema = _response_schema(answers)
+    schema["properties"]["panels"] = copy.deepcopy(
+        DYNAMIC_PLAN_SCHEMA["properties"]["panels"]
+    )
     return schema
 
 
@@ -150,6 +214,41 @@ def planning_request(
 """
 
 
+def dashboard_planning_request(
+    objective: str, period: dict[str, str], metrics: str, answers: dict[str, str]
+) -> str:
+    """Build an initial request that asks the model to author panel specifications."""
+    answered = json.dumps(answers, ensure_ascii=False, sort_keys=True)
+    return f"""次の依頼から、月次ECサイト分析ダッシュボードを計画する。
+
+依頼: {objective}
+対象期間: {period['label']}
+読者回答: {answered}
+組織コンテキスト: {json.dumps(ORGANIZATION_CONTEXT, ensure_ascii=False)}
+スキーマ・指標定義:
+{metrics}
+
+利用できる可視化形式:
+- scorecard: 1つの成果指標
+- bar: 1つの区分軸と1つの数値
+- line: 日付と1つの数値
+- table: 意思決定に必要な最小限の列
+- sankey: source、target、sessionsで表せる段階付きフロー
+
+規則:
+- 目的を意思決定へ言い換え、検証可能な仮説を最大3件にする。
+- 固定済みの分析候補から選ばず、目的と仮説から分析仕様そのものを新規に考える。
+- 最初から大量に列挙せず、今回の目的に適したパネルを{INITIAL_PANEL_COUNT}件提案する。
+- 可視化は慣例で決めず、比較、構成比、時系列、偏り、フローのどれを判断するかに合わせて選ぶ。
+- 各パネルにはtitle、kpi、chart、decision、reasonと、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
+- execution_promptにはSQLを書かない。対象期間、指標、軸、比較、必要な出力列が分かる仕様にする。
+- KPI・グラフの選択理由をパネルごとに日本語で説明する。
+- 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
+- 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。
+- 利用できない指標や因果関係を捏造しない。
+"""
+
+
 def _text(value, label: str) -> str:
     normalized = str(value or "").strip()
     if not normalized:
@@ -157,15 +256,19 @@ def _text(value, label: str) -> str:
     return normalized
 
 
-def normalize_plan(
+def _plan_panel_text(value, label: str, limit: int = 300) -> str:
+    text = " ".join(_text(value, label).split())
+    if len(text) > limit:
+        raise PlannerError(f"分析計画の{label}が長すぎます。")
+    return text
+
+
+def _normalize_plan_header(
     raw: dict,
     objective: str,
     period: dict[str, str],
-    answers: dict[str, str] | None = None,
-    *,
-    complete_purchase_recommendations: bool = False,
+    answers: dict[str, str] | None,
 ) -> dict:
-    """Validate model output and produce a deterministic proposed revision."""
     answers = answers or {}
     if not isinstance(raw, dict):
         raise PlannerError("分析計画がJSON objectではありません。")
@@ -178,11 +281,10 @@ def normalize_plan(
     if not 1 <= len(hypotheses) <= 3:
         raise PlannerError("分析計画の仮説は1〜3件にしてください。")
     clarifications = []
-    allowed_fields = set(CLARIFICATION_FIELDS)
     for item in raw.get("clarifications", []):
         field = item.get("field") if isinstance(item, dict) else None
         diagnostic = json.dumps(field, ensure_ascii=False)
-        if field not in allowed_fields:
+        if field not in CLARIFICATION_FIELDS:
             raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
         if field in answers:
             raise PlannerError(f"確認事項のfieldは回答済みです: {diagnostic}")
@@ -197,33 +299,7 @@ def normalize_plan(
         )
     if len(clarifications) > 3 or (not answers and not clarifications):
         raise PlannerError("初回の確認事項は1〜3件にしてください。")
-    panel_reasons, seen = {}, set()
-    for item in raw.get("panels", []):
-        panel_id = item.get("id") if isinstance(item, dict) else None
-        if panel_id not in PANEL_CATALOG or panel_id in seen:
-            raise PlannerError("分析計画に未登録または重複したパネルがあります。")
-        seen.add(panel_id)
-        panel_reasons[panel_id] = _text(item.get("reason"), "パネル選択理由")
-    if not 4 <= len(panel_reasons) <= 6:
-        raise PlannerError("分析計画のパネルは4〜6件にしてください。")
-    compact_objective = "".join(objective.split())
-    broad_purchase_improvement = (
-        "購入" in compact_objective
-        and "改善" in compact_objective
-        and any(word in compact_objective for word in ("課題", "優先施策"))
-    )
-    if complete_purchase_recommendations and broad_purchase_improvement:
-        for panel_id in PURCHASE_IMPROVEMENT_PANEL_IDS:
-            panel_reasons.setdefault(
-                panel_id,
-                f"{PANEL_CATALOG[panel_id]['decision']}ため",
-            )
-    panels = [
-        {"id": panel_id, **item, "reason": panel_reasons[panel_id]}
-        for panel_id, item in PANEL_CATALOG.items()
-        if panel_id in panel_reasons
-    ]
-    plan = {
+    return {
         "status": "proposed",
         "objective": _text(objective, "目的"),
         "objective_summary": _text(raw.get("objective_summary"), "目的要約"),
@@ -234,11 +310,90 @@ def normalize_plan(
         "clarifications": clarifications,
         "answers": answers,
         "organization_context_revision": ORGANIZATION_CONTEXT["revision"],
-        "panels": panels,
     }
+
+
+def _revisioned_plan(plan: dict) -> dict:
     canonical = json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     plan["revision"] = "plan-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
     return plan
+
+
+def normalize_plan(
+    raw: dict,
+    objective: str,
+    period: dict[str, str],
+    answers: dict[str, str] | None = None,
+    *,
+    complete_purchase_recommendations: bool = False,
+) -> dict:
+    """Validate the fixed-catalog fixture contract used by the current demo."""
+    plan = _normalize_plan_header(raw, objective, period, answers)
+    panel_reasons, seen = {}, set()
+    for item in raw.get("panels", []):
+        panel_id = item.get("id") if isinstance(item, dict) else None
+        if panel_id not in PANEL_CATALOG or panel_id in seen:
+            raise PlannerError("分析計画に未登録または重複したパネルがあります。")
+        seen.add(panel_id)
+        panel_reasons[panel_id] = _text(item.get("reason"), "パネル選択理由")
+    if not 4 <= len(panel_reasons) <= 6:
+        raise PlannerError("分析計画のパネルは4〜6件にしてください。")
+    compact_objective = "".join(objective.split())
+    if (
+        complete_purchase_recommendations
+        and "購入" in compact_objective
+        and "改善" in compact_objective
+        and any(word in compact_objective for word in ("課題", "優先施策"))
+    ):
+        for panel_id, item in PANEL_CATALOG.items():
+            panel_reasons.setdefault(panel_id, f"{item['decision']}ため")
+    plan["panels"] = [
+        {"id": panel_id, **item, "reason": panel_reasons[panel_id]}
+        for panel_id, item in PANEL_CATALOG.items()
+        if panel_id in panel_reasons
+    ]
+    return _revisioned_plan(plan)
+
+
+def normalize_dashboard_plan(
+    raw: dict,
+    objective: str,
+    period: dict[str, str],
+    answers: dict[str, str] | None = None,
+) -> dict:
+    """Validate model output and produce a deterministic proposed revision."""
+    plan = _normalize_plan_header(raw, objective, period, answers)
+    raw_panels = raw.get("panels", [])
+    if not isinstance(raw_panels, list) or not 1 <= len(raw_panels) <= MAX_PANEL_COUNT:
+        raise PlannerError(f"分析計画のパネルは1〜{MAX_PANEL_COUNT}件にしてください。")
+    panels, seen_prompts = [], set()
+    for index, item in enumerate(raw_panels, start=1):
+        if not isinstance(item, dict):
+            raise PlannerError("分析計画のパネルがobjectではありません。")
+        panel = {
+            field: _plan_panel_text(
+                item.get(field),
+                "パネル選択理由" if field == "reason" else field,
+                80 if field in {"title", "kpi", "chart"} else 300,
+            )
+            for field in DYNAMIC_PANEL_FIELDS
+        }
+        if panel["chart"] not in DASHBOARD_CHARTS:
+            raise PlannerError("分析計画の可視化種別が未対応です。")
+        prompt = panel["execution_prompt"]
+        if re.search(
+            r"(?:```|`|\b(?:SELECT|WITH|FROM|GROUP\s+BY)\b)",
+            prompt,
+            flags=re.IGNORECASE,
+        ):
+            raise PlannerError("分析計画の実行仕様にはSQLを書けません。")
+        prompt_key = "".join(prompt.lower().split())
+        if prompt_key in seen_prompts:
+            raise PlannerError("分析計画に重複した実行仕様があります。")
+        seen_prompts.add(prompt_key)
+        panels.append({"id": f"P{index}", **panel})
+    plan["panels"] = panels
+    return _revisioned_plan(plan)
 
 
 def propose(client, model: str, objective: str, period: dict, metrics: str, answers: dict):
@@ -264,13 +419,28 @@ def propose(client, model: str, objective: str, period: dict, metrics: str, answ
     ), token_counts(response.usage_metadata)
 
 
-CONSULTATION_CHARTS = (
-    "scorecard",
-    "bar",
-    "line",
-    "table",
-    "sankey",
-)
+def propose_dashboard(
+    client, model: str, objective: str, period: dict, metrics: str, answers: dict
+):
+    """Ask Vertex AI to author bounded dashboard panel specifications."""
+    from google.genai import types
+    from vertex_usage import token_counts
+
+    response = client.models.generate_content(
+        model=model,
+        contents=dashboard_planning_request(objective, period, metrics, answers),
+        config=types.GenerateContentConfig(
+            system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
+            response_mime_type="application/json",
+            response_schema=_dashboard_response_schema(answers),
+        ),
+    )
+    return normalize_dashboard_plan(
+        json.loads(response.text), objective, period, answers
+    ), token_counts(response.usage_metadata)
+
+
+CONSULTATION_CHARTS = DASHBOARD_CHARTS
 CONSULTATION_FIELDS = (
     "title",
     "objective",
@@ -473,3 +643,37 @@ def confirm_plan(plan: dict) -> dict:
     )
     confirmed["revision"] = "plan-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
     return confirmed
+
+
+def confirm_dashboard_plan(plan: dict) -> dict:
+    """Revalidate an edited AI-authored proposal and freeze its full specification."""
+    answers = plan.get("answers", {})
+    if not isinstance(answers, dict):
+        raise PlannerError("確認事項の回答がobjectではありません。")
+    clarifications = plan.get("clarifications", [])
+    if not isinstance(clarifications, list):
+        raise PlannerError("確認事項が配列ではありません。")
+    for item in clarifications:
+        field = item.get("field") if isinstance(item, dict) else None
+        if field not in CLARIFICATION_FIELDS:
+            diagnostic = json.dumps(field, ensure_ascii=False)
+            raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
+        answer = answers.get(field)
+        if not isinstance(answer, str) or not answer.strip():
+            raise PlannerError(f"確認事項{field}の回答が空です。")
+    raw = {
+        key: plan.get(key)
+        for key in ("objective_summary", "audience", "comparison", "hypotheses")
+    }
+    raw["clarifications"] = []
+    raw["panels"] = [
+        {field: item.get(field) for field in DYNAMIC_PANEL_FIELDS}
+        for item in plan.get("panels", [])
+    ]
+    confirmed = normalize_dashboard_plan(
+        raw, plan.get("objective", ""), plan.get("period", {}), answers
+    )
+    if confirmed["clarifications"]:
+        raise PlannerError("未回答の確認事項があります。")
+    confirmed["status"] = "confirmed"
+    return _revisioned_plan(confirmed)

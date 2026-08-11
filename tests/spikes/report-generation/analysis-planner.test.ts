@@ -7,39 +7,52 @@ import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PLANNER = path.join(ROOT, 'spikes/report-generation/analysis_planner.py');
 
-test('analysis planner creates a bounded revision and requires clarification', () => {
+test('analysis planner validates and freezes AI-authored panel specifications', () => {
   const result = spawnSync(
     'python3',
     [
       '-c',
-      `import importlib.util,json
+      `import importlib.util,json,sys,types
+sys.path.insert(0,${JSON.stringify(path.dirname(PLANNER))})
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
 period={"from":"20210101","to":"20210131","label":"2021年1月"}
+def panel(index,chart="bar"):
+ return {"title":f"分析{index}","kpi":f"指標{index}","chart":chart,"decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を区分別に出して"}
 base={
  "objective_summary":"購入成果の阻害箇所を特定して優先施策を決める",
  "audience":"月次マーケティング会議",
  "comparison":"月内の日次推移とファネル段階",
  "hypotheses":["商品閲覧からカート追加への減少が大きい"],
  "clarifications":[{"field":"audience","question":"主な読者は誰ですか","recommended_answer":"マーケティング責任者"}],
- "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R9","R16","R17"]],
+ "panels":[panel(index) for index in range(1,7)],
 }
-first=p.normalize_plan(base,"2021年1月の購入成果を改善するダッシュボードを作って",period,{})
+class Models:
+ def generate_content(self,**_kwargs):return types.SimpleNamespace(text=json.dumps(base,ensure_ascii=False),usage_metadata=types.SimpleNamespace(prompt_token_count=1,candidates_token_count=1))
+client=types.SimpleNamespace(models=Models())
+first,_usage=p.propose_dashboard(client,"test-model","2021年1月の購入成果を改善するダッシュボードを作って",period,"指標定義",{})
 answered={**base,"clarifications":[],"audience":"マーケティング責任者"}
-second=p.normalize_plan(answered,first["objective"],period,{"audience":"マーケティング責任者"})
-confirmed=p.confirm_plan(second)
+second=p.normalize_dashboard_plan(answered,first["objective"],period,{"audience":"マーケティング責任者"})
+confirmed=p.confirm_dashboard_plan(second)
 errors=[]
 for changed in [
- {**base,"panels":base["panels"][:3]},
- {**base,"panels":[*base["panels"][:3],{"id":"UNKNOWN","reason":"x"}]},
+ {**base,"panels":[]},
+ {**base,"panels":[*base["panels"][:5],base["panels"][0]]},
+ {**base,"panels":[*base["panels"][:5],{**panel(6),"execution_prompt":"SELECT * FROM events"}]},
 ]:
- try:p.normalize_plan(changed,first["objective"],period,{})
+ try:p.normalize_dashboard_plan(changed,first["objective"],period,{})
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps({
  "first_status":first["status"],"question_count":len(first["clarifications"]),
- "revision_stable":first["revision"]==p.normalize_plan(base,first["objective"],period,{})["revision"],
+ "revision_stable":first["revision"]==p.normalize_dashboard_plan(base,first["objective"],period,{})["revision"],
  "confirmed_status":confirmed["status"],"revision_changed":confirmed["revision"]!=first["revision"],
  "context":confirmed["organization_context_revision"],"panel_ids":[item["id"] for item in confirmed["panels"]],
+ "frozen_prompt":confirmed["panels"][0]["execution_prompt"],
  "errors":errors,
 },ensure_ascii=False))`,
     ],
@@ -53,15 +66,17 @@ print(json.dumps({
     confirmed_status: 'confirmed',
     revision_changed: true,
     context: 'demo-org-ec-v1',
-    panel_ids: ['R4', 'R9', 'R16', 'R17'],
+    panel_ids: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
+    frozen_prompt: '2021年1月の定義済み指標1を区分別に出して',
     errors: [
-      '分析計画のパネルは4〜6件にしてください。',
-      '分析計画に未登録または重複したパネルがあります。',
+      '分析計画のパネルは1〜20件にしてください。',
+      '分析計画に重複した実行仕様があります。',
+      '分析計画の実行仕様にはSQLを書けません。',
     ],
   });
 });
 
-test('planner prompt is bounded to declared context, metrics, and panel catalog', () => {
+test('planner prompt requests new specifications without exposing fixed analyses', () => {
   const result = spawnSync(
     'python3',
     [
@@ -69,8 +84,9 @@ test('planner prompt is bounded to declared context, metrics, and panel catalog'
       `import importlib.util,json
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
-request=p.planning_request("目的",{"label":"2021年1月"},"指標定義",{})
-print(json.dumps({"context":p.ORGANIZATION_CONTEXT["revision"] in request,"metrics":"指標定義" in request,"catalog":all(panel_id in request for panel_id in p.PANEL_CATALOG),"questions":"確認を1〜3件" in request},ensure_ascii=False))`,
+request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
+panels=p._dashboard_response_schema({})["properties"]["panels"]
+print(json.dumps({"context":p.ORGANIZATION_CONTEXT["revision"] in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in p.PANEL_CATALOG),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8' },
   );
@@ -78,12 +94,14 @@ print(json.dumps({"context":p.ORGANIZATION_CONTEXT["revision"] in request,"metri
   assert.deepEqual(JSON.parse(result.stdout), {
     context: true,
     metrics: true,
-    catalog: true,
+    new_specs: true,
+    fixed_ids: false,
+    count: [6, 6],
     questions: true,
   });
 });
 
-test('broad purchase improvement recommends all six panels but preserves explicit removal', () => {
+test('dashboard panel counts are administrator policy rather than analysis hardcodes', () => {
   const result = spawnSync(
     'python3',
     [
@@ -91,28 +109,41 @@ test('broad purchase improvement recommends all six panels but preserves explici
       `import importlib.util,json
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
-period={"from":"20210101","to":"20210131","label":"2021年1月"}
-raw={
- "objective_summary":"購入成果の阻害箇所を特定して優先施策を決める",
- "audience":"月次マーケティング会議",
- "comparison":"月内の日次推移とファネル段階",
- "hypotheses":["購入導線に課題がある"],
- "clarifications":[],
- "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R11","R9","R16","R17"]],
-}
-objective="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
-recommended=p.normalize_plan(raw,objective,period,{"audience":"月次マーケティング会議"},complete_purchase_recommendations=True)
-edited={**recommended,"panels":[panel for panel in recommended["panels"] if panel["id"]!="R12"]}
-confirmed=p.confirm_plan(edited)
-print(json.dumps({"recommended":[panel["id"] for panel in recommended["panels"]],"confirmed":[panel["id"] for panel in confirmed["panels"]]},ensure_ascii=False))`,
+panels=p._dashboard_response_schema({})["properties"]["panels"]
+print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"schema":[panels["minItems"],panels["maxItems"]]},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ANALYSIS_INITIAL_PANEL_COUNT: '5',
+        ANALYSIS_MAX_PANEL_COUNT: '15',
+      },
+    },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    recommended: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    confirmed: ['R4', 'R11', 'R9', 'R16', 'R17'],
+    initial: 5,
+    maximum: 15,
+    schema: [5, 5],
   });
+  for (const [initial, maximum, error] of [
+    ['0', '20', 'ANALYSIS_INITIAL_PANEL_COUNT must be a positive integer'],
+    ['6', '5', 'ANALYSIS_INITIAL_PANEL_COUNT must not exceed ANALYSIS_MAX_PANEL_COUNT'],
+  ] as const) {
+    const invalid = spawnSync('python3', ['-c', `exec(open(${JSON.stringify(PLANNER)}).read())`], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ANALYSIS_INITIAL_PANEL_COUNT: initial,
+        ANALYSIS_MAX_PANEL_COUNT: maximum,
+      },
+    });
+    assert.notEqual(invalid.status, 0);
+    assert.match(invalid.stderr, new RegExp(error));
+  }
 });
 
 test('analysis consultation creates new executable specifications from context and history', () => {
