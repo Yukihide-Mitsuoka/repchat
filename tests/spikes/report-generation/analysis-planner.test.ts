@@ -109,8 +109,9 @@ test('dashboard panel counts are administrator policy rather than analysis hardc
       `import importlib.util,json
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
-panels=p._dashboard_response_schema({})["properties"]["panels"]
-print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"schema":[panels["minItems"],panels["maxItems"]]},ensure_ascii=False))`,
+initial=p._dashboard_response_schema({})["properties"]["panels"]
+revision=p._dashboard_response_schema({},revising=True)["properties"]["panels"]
+print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"initial_schema":[initial["minItems"],initial["maxItems"]],"revision_schema":[revision["minItems"],revision["maxItems"]]},ensure_ascii=False))`,
     ],
     {
       cwd: ROOT,
@@ -126,7 +127,8 @@ print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"s
   assert.deepEqual(JSON.parse(result.stdout), {
     initial: 5,
     maximum: 15,
-    schema: [5, 5],
+    initial_schema: [5, 5],
+    revision_schema: [1, 15],
   });
   for (const [initial, maximum, error] of [
     ['0', '20', 'ANALYSIS_INITIAL_PANEL_COUNT must be a positive integer'],
@@ -144,6 +146,53 @@ print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"s
     assert.notEqual(invalid.status, 0);
     assert.match(invalid.stderr, new RegExp(error));
   }
+});
+
+test('dashboard revisions preserve current specifications and accept add/change/delete instructions', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json,sys,types
+sys.path.insert(0,${JSON.stringify(path.dirname(PLANNER))})
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[panel(index) for index in range(1,7)]}
+plan=p.normalize_dashboard_plan(raw,"2021年1月の購入課題を分析するダッシュボードを作って",period,{"audience":"責任者"})
+request=p.dashboard_planning_request(plan["objective"],period,"指標定義",plan["answers"],current_plan=plan,instruction="流入別パネルを追加し、分析2を変更して分析3を削除して")
+errors=[]
+for current,instruction in [(plan,None),(None,"追加して")]:
+ try:p.dashboard_planning_request(plan["objective"],period,"指標定義",plan["answers"],current_plan=current,instruction=instruction)
+ except p.PlannerError as error:errors.append(str(error))
+class Models:
+ def generate_content(self,**_kwargs):return types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),usage_metadata=types.SimpleNamespace(prompt_token_count=1,candidates_token_count=1))
+try:p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model",plan["objective"],period,"指標定義",plan["answers"],current_plan=plan,instruction="流入別パネルを追加して")
+except p.PlannerError as error:errors.append(str(error))
+mixed,_usage=p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model",plan["objective"],period,"指標定義",plan["answers"],current_plan=plan,instruction="流入別を追加して分析3を削除して")
+print(json.dumps({"current_specs":all(value in request for value in ["現在の分析仕様","分析1","2021年1月の指標1を区分別に出して"]),"instruction":"流入別パネルを追加" in request,"operations":all(value in request for value in ["追加・変更・削除相談","明示されていない既存パネルは維持","1〜20件"]),"fixed_ids":any(panel_id in request for panel_id in p.PANEL_CATALOG),"mixed_allowed":len(mixed["panels"])==6,"errors":errors},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    current_specs: true,
+    instruction: true,
+    operations: true,
+    fixed_ids: false,
+    mixed_allowed: true,
+    errors: [
+      '現在案と変更依頼は一緒に指定してください。',
+      '現在案と変更依頼は一緒に指定してください。',
+      '追加依頼に対して分析パネルが追加されませんでした。',
+    ],
+  });
 });
 
 test('analysis consultation creates new executable specifications from context and history', () => {

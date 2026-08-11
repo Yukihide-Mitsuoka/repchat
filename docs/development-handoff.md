@@ -87,8 +87,8 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-12）
 
-1. **現在:** [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で、固定候補を通常plannerへ渡さず、AIが作る任意のdashboard分析仕様をreview、freeze、SQL生成、描画まで保持することを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
-2. **UI確認後:** ローカルデモを最新修正から再起動し、動的panel仕様、件数境界、可視化別layout、結果形状不一致の拒否を確認する。
+1. **現在:** [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で、AIが作る任意のdashboard分析仕様をreview、追加・変更・削除、freeze、SQL生成、描画まで保持することを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
+2. **UI確認後:** ローカルデモを最新修正から再起動し、現在案を保った再提案、件数境界、可視化別layout、結果形状不一致の拒否を確認する。
 3. **オーナー承認後:** Vertex AIだけを使う相談を「どんな分析をしたらいい？」→「他にない？」の2 turnで確認し、既出案の固定反復ではないことを評価する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
