@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352) — 4つのpeer modeを一つの分析対話、成果物tree、中央下端composer、右Artifact／Inspector paneへ統合する |
-| デモ実行状態 | [PR #351](https://github.com/Yukihide-Mitsuoka/repchat/pull/351)はmerge済み。Issue #352／PR #353で成果物tree、共通composer、compact headerを固定応答で検証中。実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [PR #351](https://github.com/Yukihide-Mitsuoka/repchat/pull/351)の非JSON応答・pane所有構造修正、[PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348)のデモ視覚階層、[PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界はmerge済み |
+| 作業 | [Issue #355](https://github.com/Yukihide-Mitsuoka/repchat/issues/355) — 共通composerの幅・角丸、dashboardの行内連動resize、左paneの一行title・hover marquee・compact spacingを整える |
+| デモ実行状態 | [PR #354](https://github.com/Yukihide-Mitsuoka/repchat/pull/354)はmerge済み。Issue #355でcomposer幅・角丸と、順序を変えない行単位resizeを固定応答で検証中。実Vertex AIとBigQueryは再実行していない |
+| 直近完了 | [PR #354](https://github.com/Yukihide-Mitsuoka/repchat/pull/354)のcompact title、[PR #353](https://github.com/Yukihide-Mitsuoka/repchat/pull/353)の統合workspace、[PR #351](https://github.com/Yukihide-Mitsuoka/repchat/pull/351)の非JSON応答・pane所有構造修正はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #352を`spikes/report-generation`内で仕上げ、成果物tree、compact header、左右pane、responsive、keyboard focus、既存品質gateを固定応答で検証する。製品UIへ移植せず、有料queryを実行しない |
+| AIができること | Issue #355を`spikes/report-generation`内で仕上げ、composerの上限幅・角丸、行単位card resize、左paneの密度・marquee、responsive、keyboard focus、既存品質gateを固定応答で検証する。製品UIへ移植せず、有料queryを実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -56,6 +56,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 直近のデモUX | [#352 unified analysis workspace](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。4つのpeer modeを成果物treeと分析スレッドへ変え、中央下端の共通composerからdashboard／Insight／reportを明示選択する。単一グラフは右Artifact Preview、dashboard／reportは中央の成果物pageとし、既存の費用gate・SQL検査・根拠検証を維持する。左右toggleはviewport端へ固定して開閉時に座標を変えない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockを廃止する。履歴操作はブラウザへ委ね、永続履歴・保存・Git連携は未実装 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
+| 作業中のデモ調整 | [#355 composer and dashboard row resize](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)。composerは中央列へ追従しつつ960pxで上限、22px角丸とする。dashboardは同じ行の全境界を操作可能にし、隣接cardだけを連動させる。左paneは一行title、hover／focus marquee、16px icon列、4px gap／paddingへ圧縮する。順序変更、自由配置、永続化はしない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に上位12経路を選ぶSQLと、指定depth未満の結果を拒否する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
@@ -82,7 +83,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)で、成果物tree、共通composer、右Artifact／Inspector pane、compact headerを固定応答で検証する。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockは置かない。実Vertex AI・BigQueryは実行しない。
+1. **現在:** [Issue #355](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)で、共通composerの最大幅・角丸、同じ行のdashboard cardが連動するresize、左paneの一行titleとcompact spacingを固定応答で検証する。並び順変更と自由配置は実装せず、実Vertex AI・BigQueryも実行しない。
 2. **UI確認後:** ローカルデモを最新mainから再起動し、オーナーがダッシュボード、作成・編集、会議報告、単一グラフの見た目と操作を確認する。必要ならデザインパートナーへ見せる前の改善をIssueへ分ける。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。

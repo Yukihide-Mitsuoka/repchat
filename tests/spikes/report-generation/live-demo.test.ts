@@ -1332,9 +1332,91 @@ test('shared composer routes explicit actions through the existing cost gates', 
   assert.ok(script.includes('selectWorkspace("build");setComposerAction("dashboard",false)'));
   assert.match(
     rendered.stdout,
-    /width:calc\(100vw - var\(--nav-column\) - var\(--nav-grip\) - var\(--inspector-column\) - var\(--inspector-grip\) - 48px\)/,
+    /width:min\(960px,calc\(100vw - var\(--nav-column\) - var\(--nav-grip\) - var\(--inspector-column\) - var\(--inspector-grip\) - 48px\)\)/,
   );
-  assert.doesNotMatch(rendered.stdout, /\.analysis-composer\{[^}]*width:min\(760px/);
+  assert.match(rendered.stdout, /\.analysis-composer\{[^}]*border-radius:22px/);
+  assert.match(
+    rendered.stdout,
+    /@media\(max-width:960px\)\{\.analysis-composer\{[^}]*width:calc\(100vw - 24px\)/,
+  );
+});
+
+test('dashboard resizes every shared row without free rearrangement', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.ok(script.includes('function groupDashboardPanelRow(ids,initialShares)'));
+  assert.ok(script.includes('groupDashboardPanelRow(["R4","R11","R12"],[50,25,25])'));
+  assert.ok(script.includes('groupDashboardPanelRow(["R9","R17"],[40,60])'));
+  assert.ok(script.includes('groupDashboardPanelRows();'));
+  assert.ok(script.includes('separator.setAttribute("role","separator")'));
+  assert.ok(script.includes('separator.setAttribute("aria-valuemin"'));
+  assert.ok(script.includes('separator.setAttribute("aria-valuemax"'));
+  assert.ok(script.includes('separator.setAttribute("aria-valuenow"'));
+  assert.ok(script.includes('separator.onpointerdown='));
+  assert.ok(script.includes('separator.onpointermove='));
+  assert.ok(script.includes('separator.onkeydown='));
+  assert.match(rendered.stdout, /\.dashboard-layout-row\{[^}]*display:grid/);
+  assert.match(rendered.stdout, /\.dashboard-grid\{[^}]*container-type:inline-size/);
+  assert.match(rendered.stdout, /\.dashboard-card-resizer\{[^}]*cursor:col-resize/);
+  assert.match(
+    rendered.stdout,
+    /@container \(max-width:900px\)\{\.dashboard-layout-row\{grid-template-columns:minmax\(0,1fr\)!important;gap:14px\}\.dashboard-layout-row>\.dashboard-card\{grid-column:1!important/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-layout-row\{grid-column:1;grid-template-columns:minmax\(0,1fr\)!important;gap:14px\}/,
+  );
+  assert.doesNotMatch(script, /draggable\s*=|ondragstart|Sortable/);
+});
+
+test('left navigation stays compact and scrolls long titles only on interaction', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /class="sidebar-title"><span>購入成果改善ダッシュボード<\/span>/);
+  assert.match(
+    rendered.stdout,
+    /class="sidebar-chrome"><span class="brand">RepChat<\/span><\/div>/,
+  );
+  assert.doesNotMatch(rendered.stdout, /<span>Analysis workspace<\/span>/);
+  assert.match(rendered.stdout, /\.workspace-sidebar\{[^}]*padding:0 4px 8px/);
+  assert.match(
+    rendered.stdout,
+    /\.workspace-nav button\{[^}]*grid-template-columns:16px minmax\(0,1fr\);column-gap:4px[^}]*padding:6px 4px[^}]*overflow:hidden/,
+  );
+  assert.match(rendered.stdout, /\.sidebar-label\{margin:12px 5px 4px/);
+  assert.match(
+    rendered.stdout,
+    /\.sidebar-title>span\{[^}]*width:max-content[^}]*white-space:nowrap/,
+  );
+  assert.match(rendered.stdout, /@keyframes sidebar-title-marquee/);
+  assert.match(
+    rendered.stdout,
+    /\.workspace-nav button:focus-visible\{outline:2px solid #7fa2c2;outline-offset:-2px\}/,
+  );
+  assert.match(
+    rendered.stdout,
+    /button:hover \.sidebar-title>span,\.workspace-nav button:focus-visible \.sidebar-title>span\{animation:sidebar-title-marquee/,
+  );
+});
+
+test('pane splitters keep an accessible hit area without visible layout gaps', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(
+    rendered.stdout,
+    /--nav-grip:1px;--inspector-column:var\(--inspector-width\);--inspector-grip:1px/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.navigation-resizer,\.inspector-resizer\{[^}]*width:var\(--splitter-hit-area\)[^}]*justify-self:center/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.navigation-resizer::after,\.inspector-resizer::after\{left:50%;transform:translateX\(-50%\)\}/,
+  );
+  assert.match(rendered.stdout, /\.sidebar-chrome\{[^}]*margin:0 -4px/);
+  assert.match(rendered.stdout, /\.sidebar-account\{[^}]*margin-right:-4px;margin-left:-4px/);
 });
 
 test('analysis workspace visual hierarchy protects charts and the main surface', () => {
