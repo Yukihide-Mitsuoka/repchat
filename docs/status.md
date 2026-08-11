@@ -30,13 +30,13 @@ updated: 2026-08-11
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #350](https://github.com/Yukihide-Mitsuoka/repchat/issues/350)。
-[PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348)の視覚階層改修はmerge済みだが、固定表示用serverを
-操作可能なlive demoとして案内したため、生成操作がHTML error pageをJSONとして解釈して失敗した。また全体headerが
-左右paneの上を横断し、ChatGPTの添付観測と異なる所有構造、太い境界、大型controlが残った。Issue #350では
-固定表示とlive serverを分離し、非JSON応答を安全に案内し、左右paneをviewport全高、中央headerを中央列だけへ置く。
-1pxの境界と8pxのdrag領域を分離し、32px icon control、36px navigation行、400〜600のfont weightを検証する。
-実Vertex AI・BigQueryは呼ばない。製品UIへの移植、永続履歴、Git連携、公開workflowを実装済みのようには見せない。
+**現在の作業スレッド**: [Issue #352](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。
+Issue #350／PR #351で非JSON応答、pane所有構造、hairline、control密度を修正済み。次に、4つのpeer modeを
+成果物treeと分析スレッドへ置き換え、中央下端の一つのcomposerからdashboard、未保存Insight、会議報告を
+明示選択する。単一グラフの結果は右Artifact Preview、dashboard／reportは中央成果物pageへ置く。左右toggleは
+viewport端に固定し、pane開閉・resizeで座標を変えず、iconとaccessible nameで状態を示す。既存の費用gate、
+SQL検査、根拠検証は変更しない。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
+製品UIへの移植、永続履歴、成果物保存、Git連携、公開workflowは未実装である。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
 同じ作業中の先行doctorは成功していたが、再実行で成功扱いにせず、[Issue #315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)へ分離した。
