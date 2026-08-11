@@ -1338,13 +1338,13 @@ test('broad analysis requests stop at a selectable consultation before paid exec
 test('consultation prompt detection is bounded to advice requests', () => {
   const result = python(`
 print(json.dumps({
- "broad":[m.requires_analysis_consultation(value) for value in ["どんな分析をしたらいい？","何を分析すればいい？","おすすめの分析を教えて"]],
+ "broad":[m.requires_analysis_consultation(value) for value in ["どんな分析をしたらいい？","何を分析すればいい？","おすすめの分析を教えて","どんな分析をしたらいい" + "！" * 1000]],
  "concrete":[m.requires_analysis_consultation(value) for value in ["2021年1月のセッション数を出して","2021年1月のWebサイト回遊を分析して","2024年1月のBitcoin取引の受取アドレス数帯別の取引数を出して"]]
 }))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    broad: [true, true, true],
+    broad: [true, true, true, true],
     concrete: [false, false, false],
   });
 });

@@ -43,13 +43,6 @@ def running_in_demo_venv() -> bool:
     return Path(sys.prefix).resolve() == VENV_DIR.resolve()
 
 
-_ANALYSIS_CONSULTATION_PATTERNS = (
-    re.compile(r"^(?:どんな|何を|何の|どういう).*分析.*(?:したら|すれば|できる).*(?:いい|よい)?$"),
-    re.compile(r"^(?:おすすめ|推奨).*分析.*(?:教えて|提案して|知りたい)$"),
-    re.compile(r"^分析.*相談(?:したい|させて|して)?$"),
-)
-
-
 def requires_analysis_consultation(question: str) -> bool:
     """Return whether a prompt asks for advice rather than a runnable analysis.
 
@@ -57,9 +50,19 @@ def requires_analysis_consultation(question: str) -> bool:
     existing cost gate, while common Japanese discovery questions cannot fall
     through to a default SQL template and unexpectedly spend money.
     """
-    compact = re.sub(r"\s+", "", question.strip())
-    compact = re.sub(r"[?？!！。]+$", "", compact)
-    return any(pattern.fullmatch(compact) for pattern in _ANALYSIS_CONSULTATION_PATTERNS)
+    compact = "".join(question.split()).rstrip("?？!！。")
+    discovery = (
+        compact.startswith(("どんな", "何を", "何の", "どういう"))
+        and "分析" in compact
+        and any(word in compact for word in ("したら", "すれば", "できる"))
+    )
+    recommendation = (
+        compact.startswith(("おすすめ", "推奨"))
+        and "分析" in compact
+        and compact.endswith(("教えて", "提案して", "知りたい"))
+    )
+    consultation = compact.startswith("分析") and "相談" in compact
+    return discovery or recommendation or consultation
 
 HTML = r"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
@@ -548,7 +551,7 @@ const analysisRecommendations={ga4:[
 ],bitcoin:[
 {title:"受取アドレス数帯別の取引数",decision:"取引ごとの受取先の複雑度を分布で確認する",chart:"棒グラフ",keywords:["受取","アドレス","複雑","取引"],prompt:"2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して"}
 ]};
-function isConsultationPrompt(question){const compact=question.trim().replace(/\s+/g,"").replace(/[?？!！。]+$/,"");return[/^(?:どんな|何を|何の|どういう).*分析.*(?:したら|すれば|できる).*(?:いい|よい)?$/,/^(?:おすすめ|推奨).*分析.*(?:教えて|提案して|知りたい)$/,/^分析.*相談(?:したい|させて|して)?$/].some(pattern=>pattern.test(compact))}
+function isConsultationPrompt(question){let compact=[...question.trim()].filter(character=>![" ","　","\t","\n","\r"].includes(character)).join("");while("?？!！。".includes(compact.at(-1)))compact=compact.slice(0,-1);const discovery=["どんな","何を","何の","どういう"].some(prefix=>compact.startsWith(prefix))&&compact.includes("分析")&&["したら","すれば","できる"].some(word=>compact.includes(word)),recommendation=["おすすめ","推奨"].some(prefix=>compact.startsWith(prefix))&&compact.includes("分析")&&["教えて","提案して","知りたい"].some(suffix=>compact.endsWith(suffix)),consultation=compact.startsWith("分析")&&compact.includes("相談");return discovery||recommendation||consultation}
 function recommendationScore(recommendation,question){const normalized=question.toLowerCase();return recommendation.keywords.reduce((score,keyword)=>score+(normalized.includes(keyword)?1:0),0)}
 function selectAnalysisRecommendation(recommendation){document.querySelectorAll(".recommendation-card").forEach(card=>{const selected=card.dataset.prompt===recommendation.prompt;card.classList.toggle("selected",selected);card.setAttribute("aria-pressed",String(selected))});setComposerAction("insight",false);$("composer-input").value=recommendation.prompt;$("consultation-status").textContent=`「${recommendation.title}」を依頼文へ反映しました。必要なら編集し、もう一度送信すると費用確認へ進みます。`;$("composer-message").textContent="候補を反映しました。まだSQL生成・BigQuery実行はしていません。";$("inspector-title").textContent=recommendation.title;$("inspector-subtitle").textContent="分析候補・未実行";$("inspector-empty").textContent=`${recommendation.decision}ための候補です。依頼文を確認し、費用確認後に実行します。`;$("composer-input").focus()}
 function showAnalysisConsultation(question,profile){hideInsightArtifact();selectWorkspace("consult");setComposerAction("consult",false);$("inspector-title").textContent="分析候補";$("inspector-subtitle").textContent="まだ実行していません";$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";$("inspector-empty").textContent="候補を選ぶと、支える判断と実行前の状態をここで確認できます。SQLや取得データは費用確認後だけ表示します。";$("consultation-question").textContent=question;const recommendations=[...analysisRecommendations[profile]].sort((a,b)=>recommendationScore(b,question)-recommendationScore(a,question));$("consultation-introduction").textContent=profile==="bitcoin"?"Bitcoinデモは現在、検証済みの1分析だけを提案します。対応外の分析を実行可能と見せません。":"検証済みの候補を、入力した目的に近い順で提示します。選択後も依頼文を編集できます。";const host=$("consultation-recommendations");host.replaceChildren();recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=recommendation.chart;decision.textContent=`判断: ${recommendation.decision}`;prompt.textContent=`依頼例: ${recommendation.prompt}`;card.dataset.prompt=recommendation.prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)});$("consultation-status").textContent="候補を選ぶか、下の入力欄で目的を追加してください。";$("composer-message").textContent="相談中です。候補選択までは無料です。"}
