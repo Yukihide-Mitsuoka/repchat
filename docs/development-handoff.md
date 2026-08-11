@@ -15,7 +15,7 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341) — Amplitudeに対抗し、Evidence Cloudと描画以外で差を検証する統制されたコホート分析の要件、競合境界、実装順序を記録する |
+| 作業 | [Issue #341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)／[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342) — Amplitudeに対抗し、Evidence Cloudと描画以外で差を検証する統制されたコホート分析の要件、競合境界、実装順序をreviewする |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
 | 直近完了 | [PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較、[PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339)の競合資料更新、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence Cloud UI mappingはmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
