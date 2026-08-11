@@ -91,9 +91,9 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 
 ### 2. Evidence Cloudは機能の直接競合です
 
-2026-08-11時点の公式情報では、EvidenceはRepChatが検討している主要な機構を既に製品化しています。
+2026-08-11時点の公式情報では、Evidence CloudはRepChatが検討している主要な機構を既に製品化しています。
 
-| 領域 | Evidenceの公式仕様 | RepChatへの含意 |
+| 領域 | Evidence Cloudの公式仕様 | RepChatへの含意 |
 |------|--------------------|-----------------|
 | 分析agent | 現在のpageとfilterを文脈にし、chart、query、source付き回答を作り、Insightとして保存する | 自然言語質問と根拠表示だけでは差別化にならない |
 | channel | SlackとMCP client（Claude Desktop、ChatGPTを含む）から利用できる | SlackをUIにすること自体は差別化にならない |
@@ -103,7 +103,7 @@ Amplitude は**変数を切り分ける自然実験**になっており、残る
 
 #### Embedded Analyticsは編集機能ではない
 
-EvidenceのEmbedded Analyticsは、**作成済み・公開済みのpageを顧客の製品内へ安全に配信する機能**です。
+Evidence CloudのEmbedded Analyticsは、**作成済み・公開済みのpageを顧客の製品内へ安全に配信する機能**です。
 顧客側backendが認証済み利用者のembed URLを発行し、frontendがiframeで表示します。URLは一回限りで
 2分以内に使用し、開いた後のsessionは指定TTLに従います。利用者属性はJWEで暗号化され、RLSへ渡されます。
 
@@ -119,7 +119,7 @@ Web SQL workspaceに最も近い機能ですが、SQL Console単体をcustom rep
 2026-08-11に確認した公式文書からは、Consoleのqueryを一操作でreportへ昇格する契約までは確認できません。
 
 custom reportの作成面はEvidence StudioのReport Editorです。pageはMarkdown、SQL、componentで構成され、
-Evidence Agentが生成または編集する場合もdiffを利用者がaccept／rejectします。accept後のreport sourceは
+Evidence StudioのAgentが生成または編集する場合もdiffを利用者がaccept／rejectします。accept後のreport sourceは
 Developer／AdminがeditorまたはGit／CLIで編集できます。Viewer／Org Viewerはeditorへアクセスできません。
 
 ただし「全graphに編集可能な生成SQLが一つずつ存在する」とは限りません。Evidence Studioのcomponentは
@@ -129,7 +129,7 @@ data sourceと集計式を直接参照でき、page内inline SQLやstandalone SQ
 公式料金ページの2026-08-11表示では、Teamは$15/人・月、Proは$25/人・月、Enterpriseは個別見積です。
 Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機能表は契約時に再確認します。
 
-参照: [Evidence](https://evidence.dev/)、
+参照: [Evidence Cloud](https://evidence.dev/)、
 [Analytics Agent](https://evidence.dev/product/analytics-agent)、
 [Pricing](https://evidence.dev/pricing)、
 [Evidence Studio editing](https://docs.evidence.studio/editing)、
@@ -140,6 +140,27 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 [Embedded Analytics](https://docs.evidence.studio/features/embedded)、
 [Slack分析インターフェース要件](requirements/slack-analysis-interface.md)
 
+#### Evidence CloudとRepChatの現在の優位性
+
+結論は、**2026-08-11時点の製品完成度と機能範囲はEvidence Cloudが優位**です。RepChatに固有の候補はありますが、
+ローカルデモまたは設計段階であり、顧客比較による製品優位はまだ実証されていません。
+
+| 比較軸 | Evidence Cloud | RepChat | 現在の判定 |
+|--------|----------------|---------|------------|
+| report authoring | Studio editor、AI diff、SQL Console、inline SQL、Git branchを提供 | AI対話とSQL workspace／panel合成を設計。製品未実装 | Evidence Cloud優位 |
+| Analytics Agent | page／filter context、Insight保存、custom context／skills、Slack／MCPを提供 | 各要件とADRはあるが、製品channel／memoryは未実装 | Evidence Cloud優位 |
+| publish／embed／security product | page access、SSO、RLS、white label、Embedded APIをplan別に提供 | security coreは実装中、artifact配信と本番認証は未統合 | Evidence Cloud優位 |
+| 日本語の分析計画 | 公式にはskillsで確認質問・分析手順を構成可能 | 目的分解→KPI・比較軸・panel提案→利用者確認のローカルデモあり | RepChat固有workflowだが優位未検証 |
+| 実行前費用確認 | 公式資料でqueryごとの事前確認は確認できない | Vertex AI見積とBigQuery上限を実行前に表示するローカルデモあり | RepChatの現在の具体的な差。購買価値は未検証 |
+| 根拠付き会議報告 | source付き回答とboard prepを提供 | 根拠外数値を拒否するstrict validatorのローカルデモあり | RepChatの検証方式に差がある。品質優位は未検証 |
+| 会議後の意思決定loop | 公式資料で同等の決定・owner・次回検証loopは確認できない | 将来要件のみ | 現在の優位ではない |
+| 日本の代理店向け運用 | 横断的BI、multi-tenancy、Enterprise supportを提供 | 小規模代理店の複数顧客運用、日本語導入支援、接続主体の退職耐性に集中 | 市場特化の候補。デザインパートナー検証前 |
+| 顧客成果物の所有 | managed repoまたは利用者のGitHub repoでversion管理可能 | 顧客Git配送をaccepted設計としたが製品未実装 | 現在はEvidence Cloud優位。顧客所有だけでは差別化にならない |
+
+RepChatが「Evidence Cloudより優れている」と説明できる条件は、日本語の同一課題を両製品で実行し、分析計画の
+確認回数、既知値の正答率、dashboard完成時間、根拠追跡率、会議action採用率で再現可能な差が出ることです。
+現状の説明は「日本の代理店workflowへ特化して検証中」であり、「総合的に優位」ではありません。
+
 ### 3. 席数課金そのものへの逆風
 
 **Lightdash は $3,000/月の定額で席数無制限**、OSS版は無料。**Metabaseも定額＋従量の混合**です。
@@ -149,7 +170,7 @@ Embedded、white labeling、RLS、multi-regionはEnterpriseです。価格と機
 
 ### 4. 「何を見ればいいか」の支援も機能名だけでは差になりません
 
-Evidenceはcustom skillsで確認質問や分析手順を定義でき、公式ページはhealth check、churn調査、board prep
+Evidence Cloudはcustom skillsで確認質問や分析手順を定義でき、公式ページはhealth check、churn調査、board prep
 などを利用例に挙げています。したがって「何を見ればよいか分からない人への対応が競合にない」という
 旧仮説は、2026-08-11時点では事実として使えません。
 
@@ -166,7 +187,7 @@ Evidenceはcustom skillsで確認質問や分析手順を定義でき、公式�
 分析目的を複数の判断可能なKPIとpanelへ分解し、利用者の確認を経て固定成果物へ変える一連の操作です。
 チャットは作成時の入口、ダッシュボードは継続利用の入口として役割を分けます。
 
-Evidenceも回答をInsightへ保存し、管理対象pageへ昇格できます。永続する成果物、Insight保存、
+Evidence Cloudも回答をInsightへ保存し、管理対象pageへ昇格できます。永続する成果物、Insight保存、
 dashboardへの追加もRepChat固有ではありません。比較すべき対象は、成果物の有無ではなく、分析計画の
 合意、費用確認、根拠検証、顧客別の認可、会議actionまでのworkflowです。
 
@@ -180,7 +201,7 @@ dashboardへの追加もRepChat固有ではありません。比較すべき対�
 業務文脈であり、それは業種ごとに異なります。**横断的に薄く当てるより、業種を絞る方が成立しやすい**
 可能性がありますが、これも未検証です。
 
-EvidenceとZenlyticはいずれも近い位置にいます。定期配信、会議用要約、確認質問、分析playbookは
+Evidence CloudとZenlyticはいずれも近い位置にいます。定期配信、会議用要約、確認質問、分析playbookは
 競合が追加できるため、個別機能を恒久的な優位として扱いません。
 
 ## それでも残りうる差別化
@@ -196,7 +217,7 @@ EvidenceとZenlyticはいずれも近い位置にいます。定期配信、会�
 | 日本語の導入支援、請求、説明責任 | 提供方針。競合の国内契約実務は未確認 | 営業比較が必要 |
 
 自然言語SQL、セマンティック層、Git管理、Insight保存、Slack／MCP、custom context／skills、RLS、
-埋め込みはEvidenceを含む競合が提供しているため、単独の差別化として使いません。
+埋め込みはEvidence Cloudを含む競合が提供しているため、単独の差別化として使いません。
 
 ## この文書が示唆する行動
 
@@ -216,9 +237,9 @@ Metabase を使っていないのか」**です。これは机上では答えが
 
 補助として「何を使っていますか」「なぜそれを選びましたか」。**説明ではなく質問だけで済みます。**
 
-Evidenceとの機能比較は公開ページの読解で終えません。同じ日本語の分析目的、同じschema、同じ既知値を使い、
+Evidence Cloudとの機能比較は公開ページの読解で終えません。同じ日本語の分析目的、同じschema、同じ既知値を使い、
 分析計画の確認回数、正答率、dashboard完成時間、根拠追跡、会議actionの採用率を測定します。RepChatが
-Evidenceを上回ったと主張できるのは、この比較で差が再現された後です。
+Evidence Cloudを上回ったと主張できるのは、この比較で差が再現された後です。
 
 ## 関連
 
