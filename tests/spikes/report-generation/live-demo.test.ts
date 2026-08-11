@@ -1360,7 +1360,7 @@ test('workspace pane controls stay viewport-anchored and expose their state visu
   assert.match(rendered.stdout, /成果物パネルを展開/);
 });
 
-test('shared composer routes explicit actions through the existing cost gates', () => {
+test('shared composer stays readable, grows upward, and routes through cost gates', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
@@ -1372,12 +1372,16 @@ test('shared composer routes explicit actions through the existing cost gates', 
   assert.ok(script.includes('selectWorkspace("build");setComposerAction("dashboard",false)'));
   assert.match(
     rendered.stdout,
-    /width:min\(960px,calc\(100vw - var\(--nav-column\) - var\(--nav-grip\) - var\(--inspector-column\) - var\(--inspector-grip\) - 48px\)\)/,
+    /width:min\(768px,calc\(100vw - var\(--nav-column\) - var\(--nav-grip\) - var\(--inspector-column\) - var\(--inspector-grip\) - 48px\)\)/,
   );
   assert.match(rendered.stdout, /\.analysis-composer\{[^}]*border-radius:22px/);
+  assert.match(rendered.stdout, /#composer-input\{[^}]*max-height:none[^}]*overflow-y:hidden/);
+  assert.ok(script.includes('function resizeComposerInput()'));
+  assert.ok(script.includes('input.style.height=`${input.scrollHeight}px`'));
+  assert.ok(script.includes('$("composer-input").addEventListener("input",resizeComposerInput)'));
   assert.match(
     rendered.stdout,
-    /@media\(max-width:960px\)\{\.analysis-composer\{[^}]*width:calc\(100vw - 24px\)/,
+    /@media\(max-width:960px\)\{\.analysis-composer\{[^}]*width:min\(768px,calc\(100vw - 24px\)\)/,
   );
 });
 
