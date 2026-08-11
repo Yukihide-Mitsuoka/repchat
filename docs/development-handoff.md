@@ -15,11 +15,11 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338) — Evidenceの現行公式仕様に合わせて競合比較、ポジショニング、authoring／publishing／embedded deliveryのUI境界を更新する |
+| 作業 | [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)／[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340) — Evidence CloudとRepChatの現在の優位性を明示し、競合製品名とauthoring／publishing／embedded deliveryの境界表記を統一する |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
-| 直近完了 | [PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence UI mappingと[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)のthought token費用計上はmerge済み |
+| 直近完了 | [PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339)の競合資料更新、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence Cloud UI mapping、[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)のthought token費用計上はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #338の文書をreview可能にし、Evidence公式料金・製品・Studio文書の出典、競合比較、RepChatの実装／設計／将来構想の区分、埋め込みと編集の権限境界を検証する。製品実装は開始しない |
+| AIができること | Issue #338の文書をreview可能にし、Evidence Cloud公式料金・製品・Evidence Studio文書の出典、競合比較、RepChatの実装／設計／将来構想の区分、埋め込みと編集の権限境界を検証する。製品実装は開始しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
 
@@ -49,7 +49,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 | 条件 | 次の作業 | 先に読む正本 |
 |------|----------|--------------|
-| 現在の競合・配信境界整理 | [#338 Evidence positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
+| 現在の競合・配信境界整理 | [#338 Evidence Cloud positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence Cloud公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
 | 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 直近のデモUX | [#328 analysis workspace shell](https://github.com/Yukihide-Mitsuoka/repchat/issues/328)／[PR #330](https://github.com/Yukihide-Mitsuoka/repchat/pull/330)。ダッシュボード、作成・編集、会議報告、単一グラフを分離し、左右ペインを個別に開閉・リサイズ可能にする。永続対話履歴とGit連携は将来機能と明記する | [デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
@@ -79,7 +79,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-11）
 
-1. **現在:** [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)で、Evidenceの機能を競合事実として更新し、RepChatの差別化仮説とauthoring／publishing／embedded deliveryの境界をreviewする。製品実装は開始しない。
+1. **現在:** [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)で、Evidence Cloudの機能を競合事実として更新し、RepChatの差別化仮説とauthoring／publishing／embedded deliveryの境界をreviewする。製品実装は開始しない。
 2. **デモ確認:** PR #297 merge後のローカルデモはHTTP 200を確認済み。会議報告の実再生成はVertex AI費用（Gemini 3.6 Flashの画面上限目安約¥25）を再提示し、承認後に1回だけ確認する。
 3. **オーナー承認後:** 実Vertex AI相談を1回確認する。成功後、別の費用確認を経てダッシュボードbuildを実行し、連続同一ページ統合後のR17参照値、色、リンク値、2ページ目終了注記、取得データを確認する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
