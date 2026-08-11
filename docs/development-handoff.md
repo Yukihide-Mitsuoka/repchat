@@ -15,8 +15,8 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347) — デザインパートナーへ見せる前に、ライブデモの視覚階層、カード配置、左右pane、responsiveを固定応答で洗練する |
-| デモ実行状態 | 左右paneを持つローカルprototypeを、中央ダッシュボードが主役になるvisual hierarchyへ改修中。広い画面・1100px・900px・720pxを固定データで確認し、実Vertex AIとBigQueryは再実行しない |
+| 作業 | [Issue #347](https://github.com/Yukihide-Mitsuoka/repchat/issues/347)／[PR #348](https://github.com/Yukihide-Mitsuoka/repchat/pull/348) — デザインパートナーへ見せる前に、ライブデモの視覚階層、カード配置、左右pane、responsiveを固定応答で洗練する |
+| デモ実行状態 | 左右paneを持つローカルprototypeを、中央ダッシュボードが主役になるvisual hierarchyへ改修。広い画面・1100px・900px・720pxを固定データで確認済み。実Vertex AIとBigQueryは再実行していない |
 | 直近完了 | [PR #344](https://github.com/Yukihide-Mitsuoka/repchat/pull/344)のGA4/GTM計測支援境界、[PR #342](https://github.com/Yukihide-Mitsuoka/repchat/pull/342)の統制されたcohort分析要件、[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340)のEvidence Cloud優位性比較はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #347を`spikes/report-generation`内で仕上げ、固定応答、paneの4状態、responsive、keyboard focus、既存品質gateを検証する。製品UIへ移植せず、外部APIも実装しない |
