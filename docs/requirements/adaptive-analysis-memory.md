@@ -29,6 +29,7 @@ updated: 2026-08-09
 | 組織単位 | tenantまたは分析対象組織の中で、部門固有の文脈を所有・承認する任意の一階層。すべての顧客に作成を要求しない |
 | コンテキストコンパイラー | 認証済みscope、有効revision、用途、schema版から、AI呼出しへ渡す必要最小限の構造化文脈と適用manifestを決定するserver-side component |
 | コンテキストmanifest | AI呼出しへ適用したrevision ID、scope、schema版、選定理由、除外理由、token数を記録した監査用の構造データ |
+| 可視化選定skill | 分析目的とデータ形状からchart候補を理由付きで比較する製品共通のversioned knowledge。顧客固有メモリーとは分離し、詳細契約は[可視化カバレッジ](evidence-cloud-visualization-coverage.md#8-将来の可視化選定skill)を正本とする |
 
 ## 2. 前提と制約
 
@@ -47,6 +48,7 @@ updated: 2026-08-09
 | C-8 | 制約 | 永続scopeは`tenant → analysis subject → optional org unit → user`とし、sessionは永続revisionを変更しない一時overrideに限る | analysis subjectを省略して代理店配下の別顧客へ誤適用しない |
 | C-9 | 制約 | Phase 1の組織単位は任意の一階層までとし、任意深度の組織treeを作らない | 所有者、継承、承認の曖昧さと初期実装量を抑える |
 | C-10 | 制約 | security、データソース契約、指標定義など正確性に必須の文脈は自動適用し、利用者の読み込み操作へ依存させない | ボタンの押し忘れで安全性またはSQLの正しさを変えない |
+| C-11 | 制約 | 製品共通の可視化選定skillと、tenant・分析対象・user固有の表示嗜好を別revisionとして管理する | 一顧客の修正を他顧客へ暗黙適用せず、共通知識と個別最適化を独立評価する |
 
 ## 3. 目的と範囲
 
@@ -100,6 +102,7 @@ updated: 2026-08-09
 | FR-022 | コンテキストコンパイラーはSQL生成、分析計画、会議報告ごとに必要なrevisionだけを選び、hard token budgetと選定理由を持つmanifestを生成する | token・遅延抑制 | Must | 全履歴・全方針を毎回promptへ入れない |
 | FR-023 | UIは「今回適用するコンテキスト」をscope・revision・理由付きで表示する。正確性に必須の文脈は自動適用し、recipeと個人嗜好だけを方針で許された場合に限り「今回は使わない」にできる | 透明性・安全性 | Must | 文脈読み込みを利用者の記憶へ依存させない |
 | FR-024 | 利用者の修正は既定でsession-onlyとし、永続化時は自分、org unit、analysis subject、tenant標準の候補scopeと影響を提示する。広いscopeほど権限者承認を要求する | 無断学習防止 | Must | 修正を安全に次回へ反映する |
+| FR-025 | コンテキストコンパイラーは、分析計画へ適用する可視化選定skill revisionとscope付き表示嗜好revisionを別々に選び、優先関係と選定理由をmanifestへ記録する | 誤適用0件、説明可能性 | Must | 製品共通知識と顧客固有要望の分離 |
 
 ### 4.1 ユースケース
 
@@ -250,6 +253,7 @@ scope、revision set hash、schema版をkeyにした再構築可能な派生inde
 | AC-13 | custom dimension候補はschema・型検査、dry runまたは参照値検証、承認がそろうまでSQL生成へ適用されない | FR-018、FR-019 | state transition・integration test |
 | AC-14 | SQL生成、分析計画、会議報告で異なる最小文脈が選ばれ、4,000 tokenを越えず、manifestからrevisionと理由を再現できる | FR-022、NFR-009、NFR-010 | fixture・token budget test |
 | AC-15 | 「文脈を読み取る」を押さなくても必須文脈が適用され、任意文脈だけを今回外せる | FR-023 | UI・E2E test |
+| AC-16 | 可視化提案から共通skill revisionと個別表示嗜好revisionを個別に追跡でき、顧客修正が共通skillを自動更新しない | FR-025、C-11 | manifest、scope境界、状態遷移test |
 
 ## 11. リスク
 

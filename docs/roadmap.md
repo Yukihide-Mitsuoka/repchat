@@ -53,9 +53,13 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 - 🧪 **Issue #188の最初の非GA4縦切り:** Bitcoin公開取引の`outputs`と内側の`addresses`を
   二段階で展開する単一グラフ経路を追加した。基準SQLのdry runは約2.91GiB。実値照合、独立レビュー、
   未知・非公開相当2種類の反復評価は未完了であり、任意schema対応とは表明しない。
-- 🧪 **Issue #180のローカル対話プロトタイプ:** 目的から最大3件の確認、仮説、KPI、グラフ候補と理由を
-  提案し、編集した仕様をrevisionとしてfreezeした後だけ別費用確認とbuildへ進む。候補は実測済み6件、
-  組織コンテキストはfixture、buildは同期であり、Issueの製品受入条件を完了した扱いにはしない。
+- 🧪 **Issue #180のローカル対話プロトタイプ:** 目的から最大3件の確認、仮説、KPI、比較軸、可視化、
+  実行用日本語仕様をAIが新規に設計する。初回提案数とrevision上限は変更可能な管理者ポリシーで、
+  デモ既定値は6件／20件とする。同じ対話で既存案を維持しながら追加、変更、削除したpanel仕様を
+  revisionとしてfreezeした後だけ別費用確認とbuildへ進む。件数ポリシーは分析内容を選ばない。
+  固定候補は旧fixture互換に限定し、plannerへ渡さない。組織コンテキストはfixture、履歴はbrowser
+  session内、buildは同期であり、Issueの製品受入条件を完了した扱いにはしない。可視化の対応範囲は
+  [Evidence Cloud可視化カバレッジ](requirements/evidence-cloud-visualization-coverage.md)で管理する。
 
 ## 次：デザインパートナー1社でのPhase 1本番運用
 

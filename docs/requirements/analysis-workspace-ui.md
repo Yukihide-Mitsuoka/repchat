@@ -126,13 +126,16 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | Inspector | 選択panelの理由、定義、SQL、data、lineage | 理由、SQL、data、来歴の4タブ | INS-001〜INS-007 |
 | Canvas-like secondary work area | 対話を残してdraft成果物またはpanel詳細を開く抽象pane | 現在はpanel inspectorだけ | APP-006、INS-012、SRC-18 |
 | Settings | account、表示、data source、members、Git接続 | 未実装 | NAV-008、OVR-003 |
-| Dashboard planning | 意思決定からKPI階層とpanel構成を決める | 最大6panelの対話prototype | MAIN-002、SRC-02 |
+| Dashboard planning | 意思決定からKPI階層とpanel構成を決める | 初回6panel、対話修正で最大20panelのprototype | MAIN-002、SRC-02 |
 | Analytics request scoping | 曖昧さを確認してanalysis specificationをfreezeする | 確認事項とrevisionを表示 | MAIN-002、SRC-03 |
 | KPI root-cause brief | 観測、解釈、仮説、反証、次の検証を分ける | 会議報告prototypeの一部 | MAIN-003、SRC-04 |
 | Business review | 根拠付き会議報告とowner action | 未承認案を生成 | MAIN-003、SRC-05、Issue #181 |
 | Measurement and action handoff | 計測設計から分析、会議、施策exportまで同じworkspace文脈で移動する | 未実装 | APP-007、MAIN-018、ADR-0023 |
 
 ### 5.1 Evidence Cloudとの機能対応
+
+可視化componentごとの公式一覧と現在のend-to-end対応は
+[Evidence Cloud可視化カバレッジ](evidence-cloud-visualization-coverage.md)を正本とする。
 
 | Evidence Cloud公式ページ上の責務 | RepChatで採用する責務 | 採用しない短絡 | 製品要件 |
 |----------------------------|------------------------|----------------|----------|
@@ -224,7 +227,7 @@ AppShell
 | ID | 要件 | 優先度 |
 |----|------|--------|
 | MAIN-001 | 既定routeは完成または直近成功revisionのダッシュボードとし、未生成時は作成・編集への単一primary actionを示す | Must |
-| MAIN-002 | 作成・編集は、分析目的、AI対話、推奨回答、KPI・panel候補、仕様revision、費用確認、build progressを一つの分析スレッドとして表示する | Must |
+| MAIN-002 | 作成・編集は、分析目的、AI対話、推奨回答、AIが新規に設計したKPI・panel仕様、仕様revision、費用確認、build progressを一つの分析スレッドとして表示する。panel仕様は固定候補IDの選択ではなく、title、KPI、比較軸、可視化、支える判断、実行用の日本語仕様を持つ | Must |
 | MAIN-003 | 会議報告は、要約、観測、解釈、仮説、反証または不足情報、owner付きaction、根拠link、承認状態を表示する | Must |
 | MAIN-004 | 単一グラフは共通composerの「インサイト」actionから生成し、保存前は右`Artifact Preview`へ表示する。保存時に固定Insight revisionとなり、通常利用の独立modeにはしない | Should |
 | MAIN-005 | ダッシュボードはgraphと必要なtableを主表示し、SQLを常時展開しない。panel選択でINS-001を開く | Must |
@@ -242,7 +245,8 @@ AppShell
 | MAIN-017 | embedded customer viewはpublished revisionのfilter、input、drilldownだけを許可し、SQL編集、panel構成変更、AI差分承認、branch、publish操作を表示しない。編集権限を持つ利用者が修正する場合も、別のauthoring routeへ移動する | Must |
 | MAIN-018 | 承認済みactionからAction Packageを発行するsurfaceは、根拠、KPI、承認、期限、export状態を表示し、広告操作・予算変更・決済controlを表示しない | Should |
 | MAIN-019 | dashboardはカードを明示的な行へ配置し、同じ行の境界をdragまたはkeyboardで変更できる。境界変更は隣接カードの幅だけを連動させ、行の合計幅、カード順、SQL・result revisionを変更しない。選択パネルが減った行は残存カードの比率を合計100%へ正規化し、単独行は常に利用可能幅の100%を使う。単独行とdashboardの利用可能幅900px未満ではresizeを無効にして単列化し、自由な並べ替えを提供しない | Should |
-| MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。data profileの検証済み範囲から、分析title、支える判断、可視化、具体的な依頼例を選択cardで示す。選択はcomposerへ依頼文を反映するだけで実行せず、利用者が編集して再送信し、費用確認を承認した後だけVertex AI・BigQueryを実行する。client bypassでもquery APIが同じ相談文を拒否する | Must |
+| MAIN-020 | 「どんな分析をしたらいい」等の探索的な問いは、SQL生成へfallbackせず相談状態へ進める。相談用AIへdata profile、定義済み指標、利用可能期間、目的、同一threadの履歴を渡し、固定候補の検索・並べ替えではなく、仮説、指標、切り口、比較、可視化、理由、実行用日本語仕様を新規に考察させる。利用可能な描画型、schema、metric、安全・費用境界だけを固定し、分析内容をhardcodeしない。利用者発言とAI回答は追記型で表示し、送信時にcomposerを空にし、失敗・cancel時だけ下書きを復元する。「他にない」等のfollow-upでは履歴を渡して既出提案を避ける。提案選択はcomposerへ実行仕様を反映するだけで実行せず、別の費用確認を承認した後だけSQL生成・BigQuery実行へ進む。client bypassでもquery APIが同じ相談文を拒否する | Must |
+| MAIN-022 | dashboard plannerも固定の分析候補を選ばせず、対象schema・metric・目的・確認回答からpanel分析仕様を新規に作る。初回提案数とrevision上限は管理者が変更できる費用・画面密度ポリシーとし、デモ既定値を6件／20件とする。利用者は同じ対話で追加、変更、削除を依頼でき、AIは明示されていない既存panelを維持しながら設定上限まで現在案を更新する。件数ポリシーは分析テーマ、KPI、比較軸、chart typeを決めない。確定revisionはAIが作った各panelの意味と実行用日本語仕様を保持し、buildはその仕様からSQLを生成する。旧分析fixtureは回帰試験・旧デモ互換に限定し、planner promptへ候補一覧として渡さない。plannerが選択できる可視化は[可視化カバレッジ](evidence-cloud-visualization-coverage.md)でend-to-end対応済みまたは明示した部分対応の型だけに制限する | Must |
 | MAIN-021 | dashboard build成功時は閲覧を優先し、右セカンダリpaneを閉じ、共通composerを下書きとactionを保持した小型の「AIに相談」ランチャーへ縮小する。ランチャーはbuttonとしてkeyboard focusとaccessible nameを持ち、明示操作で同じcomposerを復帰する。pointer接近だけでは表示状態を変えない。相談、build、error、dashboard以外のsurfaceでは自動縮小しない | Must |
 
 ### 6.4 右セカンダリpane
