@@ -254,11 +254,11 @@ AppShell
 | ID | 要件 | 優先度 |
 |----|------|--------|
 | INS-001 | panelの「詳細を確認」または選択操作で開き、panel title、purpose、revisionをheaderに固定する | Must |
-| INS-002 | desktopで既定330px、最小280px、最大560pxとし、開閉とdrag resizeを提供する | Must |
+| INS-002 | desktopで既定330px、最小280pxとし、開閉とdrag resizeを提供する。上限はviewportの75%と「左pane・境界線を除いた中央paneを最低360px残す幅」の小さい方とする。左paneの開閉・resizeまたはviewport変更時に再計算し、利用者が設定した幅を新しい上限へclampする | Must |
 | INS-003 | Inspectorのタブ順を「理由」「定義・検証」「SQL」「データ」「方法」「来歴」とする | Must |
 | INS-004 | 初回は「理由」を開き、同一panelへ戻った場合はsession中の最後のタブを復元する | Should |
 | INS-005 | SQLタブは権限がある利用者だけに表示し、整形済みSQL、copy、query hash、実行／単独再現用の区別を示す | Must |
-| INS-006 | データタブは描画へ渡した列と行、件数、truncate状態、result revisionを示す。raw source全体を暗黙に表示しない | Must |
+| INS-006 | データタブは描画へ渡した列と行、件数、truncate状態、result revisionを示す。raw source全体を暗黙に表示しない。表は12px、上下6px、line-height 1.35のcompact densityを既定とし、値が折り返す行だけ内容に応じて高くする | Must |
 | INS-007 | 来歴タブはanalysis specification、panel、result、dashboard、build、publishのrevision chainと検証状態を表示する | Must |
 | INS-008 | panelを切り替えてもメインのscroll位置を変えず、選択中panelへ明示的なfocus／borderを付ける | Must |
 | INS-009 | inspectorを閉じても選択panelを維持し、再度開いたときに同じpanelとタブへ戻す | Must |
@@ -329,9 +329,9 @@ tablet以下ではArtifact Previewをoverlay／全幅sheetへ変え、閉じる�
 | `nav-width-default` | 220px | 1181px以上 |
 | `nav-width-min` / `max` | 180px / 360px | drag範囲 |
 | `inspector-width-default` | 330px | 1181px以上 |
-| `inspector-width-min` / `max` | 280px / 560px | drag範囲 |
-| `artifact-preview-width-default` | 480px | 1181px以上の分析対話 |
-| `artifact-preview-width-min` / `max` | 420px / 720px | drag範囲。中央min-widthを侵害する場合はoverlayへ切替 |
+| `inspector-width-min` / `max` | 280px / `min(75vw, viewport - nav pane - active boundaries - 360px)` | drag範囲。左paneを閉じたdesktopでは画面幅の最大75%まで拡張できる |
+| `artifact-preview-width-default` | inspectorの330pxを継承 | 1181px以上の分析対話 |
+| `artifact-preview-width-min` / `max` | inspectorの動的min／maxを継承 | 右paneの内容種別で異なるresize規則を持たせない |
 | `splitter-hit-area` | 8px | pointer hit領域とfocus領域。見える境界線の太さではない |
 | `splitter-line` | 1px | pane境界の可視線 |
 | `resize-key-step` | 20px | 左右矢印1回 |
