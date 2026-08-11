@@ -15,9 +15,9 @@ updated: 2026-08-11
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)／[PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339) — Evidence Cloudの現行公式仕様に合わせて競合比較、ポジショニング、authoring／publishing／embedded deliveryのUI境界を更新する |
+| 作業 | [Issue #338](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)／[PR #340](https://github.com/Yukihide-Mitsuoka/repchat/pull/340) — Evidence CloudとRepChatの現在の優位性を明示し、競合製品名とauthoring／publishing／embedded deliveryの境界表記を統一する |
 | デモ実行状態 | v1.16.0で左右paneを持つローカルprototypeまで実装済み。新しい要件文書は製品UIの設計成果であり、実装済み能力を増やさない。実Vertex AIとBigQueryは再実行しない |
-| 直近完了 | [PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence Cloud UI mappingと[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)のthought token費用計上はmerge済み |
+| 直近完了 | [PR #339](https://github.com/Yukihide-Mitsuoka/repchat/pull/339)の競合資料更新、[PR #336](https://github.com/Yukihide-Mitsuoka/repchat/pull/336)のEvidence Cloud UI mapping、[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)のthought token費用計上はmerge済み |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #338の文書をreview可能にし、Evidence Cloud公式料金・製品・Evidence Studio文書の出典、競合比較、RepChatの実装／設計／将来構想の区分、埋め込みと編集の権限境界を検証する。製品実装は開始しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
