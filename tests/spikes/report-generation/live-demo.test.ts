@@ -1291,7 +1291,7 @@ print(json.dumps({
  "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
  "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
  "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="dashboard"','data-composer-action="insight"','data-composer-action="report"']),
- "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','未保存の単一グラフ','aria-label="分析スレッド"','現在の対話']),
+ "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','購入成果改善ダッシュボード','未保存のインサイト','aria-label="分析スレッド"','購入成果を改善する','現在の対話']),
  "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
  "artifact_preview":all(value in html for value in ['id="artifact-preview"','id="artifact-preview-host"','単一グラフのインサイト']),
 }))
@@ -1381,8 +1381,23 @@ test('workspace panes own the full height while the header belongs to the main c
   assert.match(html, /\.workspace-inspector\{grid-column:5;grid-row:1\/3/);
   assert.match(html, /\.app-header\{grid-column:3;grid-row:1/);
   assert.match(html, /class="sidebar-chrome"><span class="brand">RepChat/);
-  assert.match(html, /class="header-title">分析ワークスペース/);
+  assert.match(html, /id="compact-title" class="header-title">分析ワークスペース/);
   assert.doesNotMatch(html, /<span class="brand">RepChat<\/span><span>Live analysis demo/);
+});
+
+test('selected workspace title is compact and not repeated above the main content', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /\.workspace-topbar\{display:none\}/);
+  assert.match(
+    rendered.stdout,
+    /selectWorkspace=view=>\{baseSelectWorkspace\(view\);\$\("compact-title"\)\.textContent=\$\("page-title"\)\.textContent\}/,
+  );
+  assert.match(
+    rendered.stdout,
+    /build:\["購入成果を改善する","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"\]/,
+  );
+  assert.doesNotMatch(rendered.stdout, /id="workspace-back"|id="workspace-forward"/);
 });
 
 test('workspace chrome uses compact controls and separates splitter hit area from its hairline', () => {

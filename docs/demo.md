@@ -97,6 +97,11 @@ JSON以外を返した場合はHTML断片やJSON parser例外を表示せず、�
 右のArtifact／Inspector paneで確認します。actionと対象を画面に表示したうえで、従来どおり費用確認dialogを
 通過しなければVertex AIとBigQueryを呼びません。
 
+選択中の成果物／分析スレッド名は、左treeの選択行と中央列の44px headerに同じ文言で表示します。中央本文の
+上部には同じtitleや説明を大型blockとして繰り返さず、成果物、進行状況、共通入力欄へ縦の領域を使います。
+製品版の画面履歴はURLで表現してブラウザの戻る／進むを使う方針です。現在のデモにもワークスペース固有の
+重複buttonは置きません。
+
 左ナビゲーションと右の成果物paneは、viewport左右上端の小型ボタンで個別に開閉できます。ボタン座標は
 paneの開閉や幅変更で動かず、icon、ラベル、`aria-expanded`が開閉状態に合わせて変わります。
 左右paneはviewportの上端から下端までを所有し、中央headerは左右paneの上を横断しません。デスクトップ幅では
@@ -117,6 +122,7 @@ paneの開閉や幅変更で動かず、icon、ラベル、`aria-expanded`が開
 - 左右paneが画面全高を所有し、44pxの中央headerがpaneの上を横断しない
 - 1pxの可視境界と8pxのdrag hit areaを分離し、header iconを32px角、navigation行を36px以上にする
 - pane開閉前後で左右toggleの座標が変わらず、iconとaccessible nameだけが状態に合わせて変わる
+- 左treeの選択titleと中央のcompact headerが一致し、本文上部に同じ大型title／説明blockを置かない
 - 共通入力欄が中央列下端に残り、actionごとに既存の費用確認へ接続する
 - 単一グラフの生成物が右Artifact Previewへ移り、取得データとSQLを同じ成果物内で確認できる
 - 左右paneを両方開く、片方だけ開く、両方閉じる、の各状態で中央が横にはみ出さない

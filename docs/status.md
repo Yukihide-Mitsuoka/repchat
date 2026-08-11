@@ -35,7 +35,8 @@ Issue #350／PR #351で非JSON応答、pane所有構造、hairline、control密�
 成果物treeと分析スレッドへ置き換え、中央下端の一つのcomposerからdashboard、未保存Insight、会議報告を
 明示選択する。単一グラフの結果は右Artifact Preview、dashboard／reportは中央成果物pageへ置く。左右toggleは
 viewport端に固定し、pane開閉・resizeで座標を変えず、iconとaccessible nameで状態を示す。既存の費用gate、
-SQL検査、根拠検証は変更しない。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
+SQL検査、根拠検証は変更しない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockをなくす。
+製品版の履歴操作はURL化してブラウザへ委ねる。固定応答・静的ブラウザ検査だけを行い、実Vertex AI・BigQueryは呼ばない。
 製品UIへの移植、永続履歴、成果物保存、Git連携、公開workflowは未実装である。
 
 `make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
