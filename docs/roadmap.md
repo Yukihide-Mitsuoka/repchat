@@ -88,8 +88,14 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 - Issue #160が`proceed`となり、#179/#180のrevision・build契約と#188のschema品質境界が安定した後、
   日本語で分析主体、起点・復帰event、retention方式、期間、timezoneを確定し、未成熟期間を0にしない
   統制されたコホート分析を公開GA4からpilotする（[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)、
-  [要件](requirements/governed-cohort-analysis.md)）。Amplitudeのpredictive cohort、実験配信、session replayは
-  初期範囲に含めず、Evidence Cloudとの差は描画componentでなく定義確認、費用、根拠、会議workflowで測る。
+  [要件](requirements/governed-cohort-analysis.md)）。最初はAmplitude代替ではなく、acquisition cohort、
+  exact-period、未成熟期間、heatmap・table、SQL・data・根拠に限定した日本語の定型分析として、汎用BIより
+  準備が少ないかを測る。predictive cohort、実験配信、session replayは初期範囲に含めない。
+- 同じく#160が`proceed`となり、design partnerから現行のGA4/GTM設計例を3社分得られた後、分析目的から
+  GA4 recommended event、dataLayer、code、GTM構成、import成果物、QA・rollback手順を作るDesign Modeを
+  pilotする（[#343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)、
+  [要件](requirements/measurement-implementation-assistant.md)）。後続Apply Modeも公式GTM APIによる隔離workspace、
+  sync・conflict、quick previewまでとし、browser操作と本番publishを製品範囲に含めない。
 - 事例と売上が成立した後に、pentest、SOC 2準備、SLA商品化を検討する。
 - 基本の生成・統制・配信が安定した後、根拠付き報告を最大3件の意思決定、担当付きアクション、次回の
   効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。
