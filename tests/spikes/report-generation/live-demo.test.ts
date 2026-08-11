@@ -1089,18 +1089,18 @@ def request(analysis_plan):
 try:
  bounded,bounded_req=request(plan("理由"*250))
  accepted=json.loads(urllib.request.urlopen(bounded_req).read().decode())["accepted"]
- oversized,oversized_req=request(plan("理由"*1000))
+ oversized,oversized_req=request(plan("理由"*9000))
  oversized_status=0
  try:urllib.request.urlopen(oversized_req)
  except urllib.error.HTTPError as error:oversized_status=error.code
- print(json.dumps({"bounded_bytes":len(bounded),"oversized_bytes":len(oversized),"accepted":accepted,"oversized_status":oversized_status}))
+ print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"bounded_bytes":len(bounded),"oversized_bytes":len(oversized),"accepted":accepted,"oversized_status":oversized_status}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
   const observed = JSON.parse(result.stdout.split('\n').at(-2) ?? '');
   assert.ok(observed.bounded_bytes > 4096, observed);
-  assert.ok(observed.bounded_bytes <= 16384, observed);
-  assert.ok(observed.oversized_bytes > 16384, observed);
+  assert.ok(observed.bounded_bytes <= observed.limit, observed);
+  assert.ok(observed.oversized_bytes > observed.limit, observed);
   assert.equal(observed.accepted, true);
   assert.equal(observed.oversized_status, 400);
 });
@@ -1264,26 +1264,86 @@ print(json.dumps({
   });
 });
 
-test('planning calls Vertex only and a confirmed plan narrows dashboard panels', () => {
+test('planning calls Vertex only and preserves AI-authored dashboard panels', () => {
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
-raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[{"id":panel_id,**m.planner.PANEL_CATALOG[panel_id],"reason":"理由"} for panel_id in ["R4","R9","R16","R17"]],"revision":"plan-test"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して"}
+raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
-m.planner.propose=lambda *_args:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
+m.planner.propose_dashboard=lambda *_args:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
 events=[];e.plan(raw["objective"],raw["answers"],events.append)
-spec=json.loads((m.HERE/"report.json").read_text());period,sections=m.dashboard_sections(spec,raw["objective"],["R4","R9","R16","R17"])
-confirmed=m.planner.confirm_plan(raw)
+confirmed=m.planner.confirm_dashboard_plan(raw)
+period,sections=m.dashboard_sections_for_plan(raw["objective"],confirmed)
 print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"ids":[section["id"] for section in sections],"period":period["label"],"confirmed":confirmed["status"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     calls: ['vertex'],
     events: ['plan_stage', 'plan'],
-    ids: ['R4', 'R9', 'R16', 'R17'],
+    ids: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
     period: '2021年1月',
     confirmed: 'confirmed',
   });
+});
+
+test('a confirmed dynamic dashboard plan builds its authored specifications', () => {
+  const result = python(`
+def panel(title,chart,prompt):return {"title":title,"kpi":"定義済み指標","chart":chart,"decision":"意思決定","reason":"目的に必要","execution_prompt":prompt}
+question="2021年1月の購入課題を分析するダッシュボードを作って"
+raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"軸間比較","hypotheses":["差がある"],"clarifications":[],"panels":[
+ panel("流入別購入","bar","2021年1月の購入件数をmedium別に出して"),
+ panel("日別購入","line","2021年1月の日別購入件数を出して"),
+ panel("デバイス別購入","bar","2021年1月の購入件数をデバイス別に出して"),
+ panel("購入規模","scorecard","2021年1月の購入件数を出して"),
+]}
+plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
+confirmed=m.planner.confirm_dashboard_plan(plan)
+period,sections=m.dashboard_sections_for_plan(question,confirmed)
+print(json.dumps({"period":period["label"],"ids":[item["id"] for item in sections],"titles":[item["title"] for item in sections],"prompts":[item["text"] for item in sections],"layouts":m.dashboard_layout_rows_for_plan(confirmed["panels"])},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    period: '2021年1月',
+    ids: ['P1', 'P2', 'P3', 'P4'],
+    titles: ['流入別購入', '日別購入', 'デバイス別購入', '購入規模'],
+    prompts: [
+      '2021年1月の購入件数をmedium別に出して',
+      '2021年1月の日別購入件数を出して',
+      '2021年1月の購入件数をデバイス別に出して',
+      '2021年1月の購入件数を出して',
+    ],
+    layouts: [
+      { panel_ids: ['P1', 'P2'], shares: [50, 50] },
+      { panel_ids: ['P3', 'P4'], shares: [60, 40] },
+    ],
+  });
+});
+
+test('an AI-authored table remains a table even when its result could be plotted', () => {
+  const result = python(`
+section={"title":"流入別の比較表","component":"table","planned_visualization":"table"}
+rows=[("organic",120),("cpc",80)]
+print(json.dumps({
+ "planned":m.dashboard_visualization(section,rows,["medium","sessions"]),
+ "automatic":m.visualization_for_result(rows,["medium","sessions"]),
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    planned: 'table',
+    automatic: 'bar',
+  });
+});
+
+test('dashboard rendering rejects a result shape that differs from the AI specification', () => {
+  const result = python(`
+section={"title":"購入規模","component":"table","planned_visualization":"scorecard"}
+try:m.dashboard_visualization(section,[("organic",120)],["medium","sessions"])
+except m.LiveDemoError as error:print(str(error))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /結果形状がAI分析仕様のscorecardと一致しない/);
 });
 
 test('dashboard UI separates consultation from confirmed paid build', () => {
@@ -1292,7 +1352,7 @@ html=m.HTML
 print(json.dumps({
  "copy":all(value in html for value in ["AIと分析計画を相談","仕様を確定するまでBigQueryは実行しません","この仕様を確定してbuild"]),
  "review":all(value in html for value in ['id="plan-review"','id="plan-clarifications"','id="plan-panels"','id="plan-revision"']),
- "flow":all(value in html for value in ['/api/plan','answers:currentAnswers','analysis_plan:pendingPlan','selected.size<4']),
+ "flow":all(value in html for value in ['/api/plan','answers:currentAnswers','analysis_plan:pendingPlan','selected.size<1']),
  "memory":all(value in html for value in ["organization_context_revision","ローカルデモfixture・本番メモリー未接続"]),
 }))
 `);
@@ -1302,6 +1362,54 @@ print(json.dumps({
     review: true,
     flow: true,
     memory: true,
+  });
+});
+
+test('dashboard UI reflects configurable panel-count policy', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import json,sys
+sys.path.insert(0,${JSON.stringify(path.dirname(LIVE))})
+import live_demo as m
+print(json.dumps({"initial":m.planner.INITIAL_PANEL_COUNT,"maximum":m.planner.MAX_PANEL_COUNT,"copy":"初回は原則5件" in m.HTML and "最大15件" in m.HTML,"guard":"selected.size>15" in m.HTML,"placeholders":"__INITIAL_PANEL_COUNT__" in m.HTML or "__MAX_PANEL_COUNT__" in m.HTML},ensure_ascii=False))`,
+    ],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        ANALYSIS_INITIAL_PANEL_COUNT: '5',
+        ANALYSIS_MAX_PANEL_COUNT: '15',
+      },
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    initial: 5,
+    maximum: 15,
+    copy: true,
+    guard: true,
+    placeholders: false,
+  });
+});
+
+test('an AI-authored dashboard supports twenty panels without hardcoded topics', () => {
+  const result = python(`
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を1行で出して"}
+question="2021年1月の購入課題を分析するダッシュボードを作って"
+plan={"period":m.period_for_question(question),"panels":[panel(index) for index in range(1,21)]}
+period,sections=m.dashboard_sections_for_plan(question,plan)
+layout=m.dashboard_layout_rows_for_plan(plan["panels"])
+print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"sections":len(sections),"rows":len(layout),"all_full":all(len(row["panel_ids"])==2 and sum(row["shares"])==100 for row in layout)},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    limit: 98304,
+    sections: 20,
+    rows: 10,
+    all_full: true,
   });
 });
 
@@ -1855,7 +1963,7 @@ print(json.dumps({
  "captures_defaults":"currentAnswers[item.field]=input.value.trim()" in html,
  "syncs_edits":"input.oninput=syncClarificationAnswers" in html,
  "build_collects":'collectAnswers();pendingPlan=selectedPlan();showCost("dashboard-build")' in html,
- "minimal_panels":"map(panel=>({id:panel.id,reason:panel.reason}))" in html,
+ "preserves_specs":'plan.panels=plan.panels.filter(panel=>selected.has(panel.id));' in html and "map(panel=>({id:panel.id,reason:panel.reason}))" not in html,
  "not_length_blocked":"plan.clarifications.length>0" not in html,
 }))
 `);
@@ -1865,7 +1973,7 @@ print(json.dumps({
     captures_defaults: true,
     syncs_edits: true,
     build_collects: true,
-    minimal_panels: true,
+    preserves_specs: true,
     not_length_blocked: true,
   });
 });

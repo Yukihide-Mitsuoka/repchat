@@ -24,7 +24,8 @@ import run_report as report
 from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
-MAX_BODY_BYTES, MAX_DASHBOARD_BODY_BYTES, MAX_RESULT_ROWS = 4096, 16384, 100
+MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
+MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
 DASHBOARD_SECTION_IDS = report.SHOWCASE_IDS
@@ -63,6 +64,36 @@ def dashboard_layout_rows(panel_ids: list[str]) -> list[dict]:
         covered.update(row_ids)
     if covered != requested:
         raise LiveDemoError("ダッシュボード行に配置できないパネルがあります。")
+    return rows
+
+
+def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
+    """Lay out AI-authored panels without encoding any analysis topic."""
+    if not panels:
+        raise LiveDemoError("ダッシュボード計画にパネルがありません。")
+    rows: list[dict] = []
+    index = 0
+    weights = {"scorecard": 40, "bar": 60, "line": 60, "table": 60, "sankey": 100}
+    while index < len(panels):
+        panel = panels[index]
+        if panel.get("chart") == "sankey":
+            group = [panel]
+            index += 1
+        else:
+            group = panels[index : index + 2]
+            if len(group) == 2 and group[1].get("chart") == "sankey":
+                group = group[:1]
+            index += len(group)
+        raw_shares = [weights.get(item.get("chart"), 60) for item in group]
+        total = sum(raw_shares)
+        shares = [round(value * 100 / total, 4) for value in raw_shares]
+        shares[-1] = round(100 - sum(shares[:-1]), 4)
+        rows.append(
+            {
+                "panel_ids": [item["id"] for item in group],
+                "shares": shares,
+            }
+        )
     return rows
 
 
@@ -125,7 +156,7 @@ label{font-size:14px;font-weight:700;display:block;margin-bottom:9px}select{bord
 <section id="build-studio-view" class="workspace-view hidden"><div id="dashboard-workspace"><section class="panel query-panel"><label for="dashboard-question">分析して決めたいこと</label><textarea id="dashboard-question">2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って</textarea>
 <p class="lead">AIが目的を分解し、確認事項、仮説、KPI、グラフ候補と理由を提案します。仕様を確定するまでBigQueryは実行しません。</p><div class="actions"><button id="dashboard-submit">AIと分析計画を相談</button><span class="cost">相談はVertex AIだけを使用し、build費用は仕様確定後に別途確認します。</span></div></section>
 <section class="panel" aria-labelledby="dashboard-progress-title"><div class="progress-head"><h2 id="dashboard-progress-title">相談・buildの進行状況</h2><span id="dashboard-status" class="status-pill">相談前</span></div><p id="dashboard-message" class="notice" aria-live="polite">分析目的を確認し、相談を開始してください。</p><div id="dashboard-plan" class="plan-list"><div id="dashboard-step-plan" class="plan-item"><strong>1. 目的を分解</strong><span>意思決定と仮説を言語化</span></div><div id="dashboard-step-review" class="plan-item"><strong>2. 仕様を確認</strong><span>KPI・比較・読者・パネルを編集</span></div><div id="dashboard-step-build" class="plan-item"><strong>3. 確定してbuild</strong><span>費用確認後にSQLを生成</span></div></div></section>
-<section id="plan-review" class="panel hidden"><div class="progress-head"><h2>AIが提案した分析仕様</h2><span id="plan-revision" class="status-pill"></span></div><p id="plan-summary" class="lead"></p><p id="plan-context" class="notice warning"></p><div class="plan-list"><label class="plan-item" for="plan-audience">主な読者<input id="plan-audience"></label><label class="plan-item" for="plan-comparison">比較の考え方<input id="plan-comparison"></label></div><h3>検証する仮説</h3><div id="plan-hypotheses"></div><div id="plan-clarifications"></div><h3>ダッシュボードへ含めるパネル</h3><p class="lead">4件以上を選択してください。左上から成果、説明、診断の順にbuildします。</p><div id="plan-panels"></div><div class="actions"><button id="plan-revise" class="secondary" type="button">回答を反映してAIに再提案（任意）</button><button id="plan-build" type="button">この仕様を確定してbuild</button></div></section>
+<section id="plan-review" class="panel hidden"><div class="progress-head"><h2>AIが提案した分析仕様</h2><span id="plan-revision" class="status-pill"></span></div><p id="plan-summary" class="lead"></p><p id="plan-context" class="notice warning"></p><div class="plan-list"><label class="plan-item" for="plan-audience">主な読者<input id="plan-audience"></label><label class="plan-item" for="plan-comparison">比較の考え方<input id="plan-comparison"></label></div><h3>検証する仮説</h3><div id="plan-hypotheses"></div><div id="plan-clarifications"></div><h3>ダッシュボードへ含めるパネル</h3><p class="lead">初回は原則__INITIAL_PANEL_COUNT__件です。管理者設定の最大__MAX_PANEL_COUNT__件まで確定できます。</p><div id="plan-panels"></div><div class="actions"><button id="plan-revise" class="secondary" type="button">回答を反映してAIに再提案（任意）</button><button id="plan-build" type="button">この仕様を確定してbuild</button></div></section>
 </div></section><section id="meeting-report-view" class="workspace-view hidden"><section class="panel" aria-labelledby="report-progress-title"><div class="progress-head"><h2 id="report-progress-title">会議報告の生成状況</h2><span id="report-status" class="status-pill">報告案なし</span></div><p id="report-message" class="notice" aria-live="polite">build済みダッシュボードから会議報告案を生成してください。</p></section><section id="report-empty" class="panel empty-state"><p class="eyebrow">Meeting report</p><h2>会議報告案はまだありません</h2><p class="lead">build済みダッシュボードの根拠bundleから、観測・解釈・仮説・アクションを分けた未承認案を生成します。</p><button id="back-to-dashboard" class="secondary" type="button">ダッシュボードへ戻る</button></section><section id="report-output" class="panel hidden report-home"><div class="progress-head"><h2>会議報告アシスト</h2><span id="report-revision" class="status-pill"></span></div><p class="approval">AIが作成した未承認案です。外部共有前に人間が根拠と表現を確認してください。</p><p id="report-warning" class="notice warning hidden"></p><div id="report-summary" class="lead"></div><div id="report-sections"></div></section></section>
 <div id="graph-workspace" class="workspace-view hidden"><section class="panel query-panel"><label for="dataset-profile">分析対象データ</label><select id="dataset-profile"><option value="ga4">GA4 ECサイト（既知のnestedスキーマ）</option><option value="bitcoin">Bitcoin取引（非GA4のnested/repeated検証）</option></select><label for="question">日本語の問い合わせ</label><textarea id="question">2021年1月のセッション数を流入チャネル（medium）別に、多い順で出して</textarea><p id="profile-note" class="lead">公開GA4サンプルの2020年11月〜2021年1月を分析します。</p>
 <div class="examples"><button data-profile="ga4" data-q="2021年1月のセッション数を出して">セッション数</button><button data-profile="ga4" data-q="2021年1月のセッション数を流入チャネル（medium）別に、多い順で出して">チャネル別</button><button data-profile="ga4" data-q="2021年1月の日別セッション数を、日付の昇順で出して">日別推移</button><button data-profile="ga4" data-q="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して">サイト回遊</button><button data-profile="ga4" data-q="2021年1月の直帰率を出して">未定義語の拒否</button><button data-profile="bitcoin" data-q="2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して">Bitcoin受取先の複雑度</button></div>
@@ -166,7 +197,7 @@ function renderAnalysisPlan(event){const plan=event.plan;currentPlan=plan;dashbo
 const hypotheses=document.createElement("ul");plan.hypotheses.forEach(value=>hypotheses.appendChild(Object.assign(document.createElement("li"),{textContent:value})));$("plan-hypotheses").replaceChildren(hypotheses);const questions=[];plan.clarifications.forEach(item=>{const box=Object.assign(document.createElement("div"),{className:"clarification"}),label=document.createElement("label"),input=document.createElement("input"),status=document.createElement("small");label.textContent=item.question;input.value=item.recommended_answer;input.dataset.answerField=item.field;input.dataset.recommendedAnswer=item.recommended_answer;input.answerStatus=status;input.oninput=syncClarificationAnswers;currentAnswers[item.field]=input.value.trim();box.append(label,input,status);questions.push(box)});$("plan-clarifications").replaceChildren(...questions);syncClarificationAnswers();
 const choices=[];plan.panels.forEach(panel=>{const row=Object.assign(document.createElement("div"),{className:"plan-choice"}),input=Object.assign(document.createElement("input"),{type:"checkbox",checked:true}),label=document.createElement("label"),detail=document.createElement("small");input.dataset.panelId=panel.id;label.textContent=`${panel.title} — ${panel.chart}`;detail.textContent=`${panel.reason} 判断用途: ${panel.decision}`;label.append(detail);row.append(input,label);choices.push(row)});$("plan-panels").replaceChildren(...choices);$("plan-revise").className=plan.clarifications.length?"secondary":"hidden";$("dashboard-status").textContent="提案済み";$("dashboard-message").textContent=plan.clarifications.length?"推奨回答を採用済みです。そのままbuildするか、編集後に任意でAIへ再提案できます。":`分析仕様を確認し、必要なパネルを選んでbuildしてください。Vertex AI推定 ¥${event.cost_jpy}`}
 function collectAnswers(){syncClarificationAnswers();if($("plan-build").disabled)throw new Error("すべての確認事項へ回答してください。")}
-function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<4)throw new Error("ダッシュボードには4件以上のパネルを選択してください。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id)).map(panel=>({id:panel.id,reason:panel.reason}));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
+function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<1)throw new Error("ダッシュボードには1件以上のパネルを選択してください。");if(selected.size>__MAX_PANEL_COUNT__)throw new Error("ダッシュボードのパネルは最大__MAX_PANEL_COUNT__件です。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
 function citedItem(item,suffix=""){const row=document.createElement("p");row.appendChild(document.createTextNode(item.text+suffix));item.evidence_refs.forEach(ref=>row.appendChild(Object.assign(document.createElement("span"),{className:"citation",textContent:`根拠 ${ref.panel_id} / ${ref.result_revision} / SQL ${ref.sql_sha256}`})));return row}
 function renderMeetingReport(event){const report=event.report;$("report-empty").className="hidden";$("report-output").className="panel report-home";$("report-revision").textContent=report.report_revision;const warnings=report.generation_warnings||[];$("report-warning").className=warnings.length?"notice warning":"hidden";$("report-warning").textContent=warnings.join(" ");$("report-summary").replaceChildren(citedItem(report.executive_summary));const content=[];for(const [title,name,suffix]of[["観測","observations",""],["解釈","interpretations",""],["未検証の仮説","hypotheses",""],["推奨アクション","actions",""]]){const section=Object.assign(document.createElement("section"),{className:"report-section"}),heading=Object.assign(document.createElement("h3"),{textContent:title});section.append(heading);report[name].forEach(item=>{let detail=suffix;if(name==="interpretations")detail=`（不確実性: ${item.uncertainty}）`;if(name==="hypotheses")detail=`（検証: ${item.validation}）`;if(name==="actions")detail=`（期待効果: ${item.expected_impact} / 担当: ${item.owner} / 緊急度: ${item.urgency} / 次: ${item.next_step} / 成功指標: ${item.success_metric}）`;section.append(citedItem(item,detail))});content.push(section)}const limits=Object.assign(document.createElement("section"),{className:"report-section"}),limitTitle=Object.assign(document.createElement("h3"),{textContent:"限界・不足情報"}),list=document.createElement("ul");report.limitations.forEach(value=>list.appendChild(Object.assign(document.createElement("li"),{textContent:value})));limits.append(limitTitle,list);content.push(limits);$("report-sections").replaceChildren(...content)}
 function sankey(svg,rows,w,h,detail,requestedDepth){
@@ -645,6 +676,8 @@ if(window.innerWidth<=1180 && $("inspector-toggle").getAttribute("aria-expanded"
 if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==="true")toggleSidebar();
 """
 HTML = HTML.replace("</script></body>", WORKSPACE_POLISH_SCRIPT + "\n</script></body>")
+HTML = HTML.replace("__INITIAL_PANEL_COUNT__", str(planner.INITIAL_PANEL_COUNT))
+HTML = HTML.replace("__MAX_PANEL_COUNT__", str(planner.MAX_PANEL_COUNT))
 
 class LiveDemoError(RuntimeError):
     """A local-demo failure that is safe to show in the browser."""
@@ -766,6 +799,69 @@ def dashboard_sections(
         if period["from"] != "20210101" or period["to"] != "20210131":
             section["verification"] = "execution"
     return period, sections
+
+
+def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
+    """Turn AI-authored analysis specifications into guarded generation sections."""
+    if "ダッシュボード" not in question:
+        raise LiveDemoError("依頼に「ダッシュボード」を含めてください。")
+    period = period_for_question(question)
+    if plan.get("period") != period:
+        raise LiveDemoError("確定した分析仕様の対象期間が依頼文と一致しません。")
+    component_for_chart = {
+        "scorecard": "table",
+        "bar": "table",
+        "line": "line",
+        "table": "table",
+        "sankey": "sankey",
+    }
+    sections = []
+    for panel in plan.get("panels", []):
+        chart = panel.get("chart")
+        if chart not in component_for_chart:
+            raise LiveDemoError("確定した分析仕様の可視化種別が未対応です。")
+        section = {
+            "id": panel["id"],
+            "title": panel["title"],
+            "text": panel["execution_prompt"],
+            "compare": "execution",
+            "component": component_for_chart[chart],
+            "planned_visualization": chart,
+            "verification": "execution",
+            "purpose": panel["decision"],
+        }
+        if chart == "scorecard":
+            section["shape"] = {"rows": "1行", "columns": [panel["kpi"]]}
+        elif chart == "bar":
+            section["shape"] = {"rows": "区分ごとに1行", "columns": ["区分", "値"]}
+        elif chart == "line":
+            section["shape"] = {"rows": "日付ごとに1行", "columns": ["日付", "値"]}
+        elif chart == "sankey":
+            section["shape"] = {
+                "rows": "隣接する段階間の遷移ごとに1行",
+                "columns": ["source", "target", "sessions"],
+            }
+            section["generation_requirements"] = [
+                "最終列のASCII別名はsource、target、sessionsにする",
+                "sourceとtargetは段階が判別できる接頭辞を付ける",
+                "同一sourceとtargetの組はSUMして1行に集約する",
+            ]
+        sections.append(section)
+    if not 1 <= len(sections) <= planner.MAX_PANEL_COUNT:
+        raise LiveDemoError(
+            f"確定した分析パネルは1〜{planner.MAX_PANEL_COUNT}件にしてください。"
+        )
+    return period, sections
+
+
+def confirm_dashboard_analysis_plan(plan: dict) -> dict:
+    """Freeze dynamic plans while preserving the fixed demo fixture contract."""
+    panels = plan.get("panels", []) if isinstance(plan, dict) else []
+    if panels and all(
+        isinstance(panel, dict) and "execution_prompt" in panel for panel in panels
+    ):
+        return planner.confirm_dashboard_plan(plan)
+    return planner.confirm_plan(plan)
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -972,6 +1068,18 @@ def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> 
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
     """Validate a planned panel's result shape before choosing its renderer."""
     component = section["component"]
+    planned = section.get("planned_visualization")
+    if planned:
+        if planned == "table":
+            return "table"
+        observed = visualization_for_result(rows, columns)
+        expected = {"scorecard": "scalar"}.get(planned, planned)
+        if observed != expected:
+            raise LiveDemoError(
+                f"{section['title']}の結果形状がAI分析仕様の{planned}と一致しないため"
+                "描画しません。"
+            )
+        return observed
     numeric = (int, float, Decimal)
     valid = True
     if component == "kpi_pair":
@@ -1094,18 +1202,31 @@ class LiveQueryEngine:
             self.latest_dashboard = None
             try:
                 confirmed = (
-                    planner.confirm_plan(analysis_plan) if analysis_plan else None
+                    confirm_dashboard_analysis_plan(analysis_plan) if analysis_plan else None
                 )
             except planner.PlannerError as error:
                 raise LiveDemoError(str(error)) from error
-            panel_ids = (
-                [panel["id"] for panel in confirmed["panels"]]
-                if confirmed
-                else None
+            dynamic_plan = bool(
+                confirmed
+                and all("execution_prompt" in panel for panel in confirmed["panels"])
             )
-            period, sections = dashboard_sections(self.spec, question, panel_ids)
-            if confirmed and confirmed["period"] != period:
-                raise LiveDemoError("確定した分析仕様の対象期間が依頼文と一致しません。")
+            if dynamic_plan:
+                period, sections = dashboard_sections_for_plan(question, confirmed)
+                layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
+            else:
+                panel_ids = (
+                    [panel["id"] for panel in confirmed["panels"]]
+                    if confirmed
+                    else None
+                )
+                period, sections = dashboard_sections(self.spec, question, panel_ids)
+                layout_rows = dashboard_layout_rows(
+                    [section["id"] for section in sections]
+                )
+                if confirmed and confirmed["period"] != period:
+                    raise LiveDemoError(
+                        "確定した分析仕様の対象期間が依頼文と一致しません。"
+                    )
             emit(
                 {
                     "type": "dashboard_plan",
@@ -1121,12 +1242,11 @@ class LiveQueryEngine:
                             "id": section["id"],
                             "title": section["title"],
                             "purpose": section["purpose"],
+                            "chart": section.get("planned_visualization"),
                         }
                         for section in sections
                     ],
-                    "layout_rows": dashboard_layout_rows(
-                        [section["id"] for section in sections]
-                    ),
+                    "layout_rows": layout_rows,
                 }
             )
             total_cost = 0.0
@@ -1238,8 +1358,13 @@ class LiveQueryEngine:
         try:
             period = period_for_question(question)
             emit({"type": "plan_stage", "message": "分析目的と指標定義を照合中です。"})
-            plan, usage = planner.propose(
-                self.client, self.model, question, period, self.metrics, answers
+            plan, usage = planner.propose_dashboard(
+                self.client,
+                self.model,
+                question,
+                period,
+                analysis_consultation_context(self.metrics, "ga4"),
+                answers,
             )
             cost = (
                 usage["input_tokens"] * report.PRICING[self.model][0]
@@ -1432,8 +1557,8 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("content-length", "0"))
             max_body_bytes = (
-                MAX_DASHBOARD_BODY_BYTES
-                if self.path == "/api/dashboard"
+                MAX_PLAN_BODY_BYTES
+                if self.path in {"/api/dashboard", "/api/plan"}
                 else MAX_BODY_BYTES
             )
             if length <= 0 or length > max_body_bytes:
@@ -1492,14 +1617,23 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/dashboard":
                 if profile != "ga4":
                     raise ValueError("dashboard mode currently supports only ga4")
-                confirmed = planner.confirm_plan(analysis_plan) if analysis_plan else None
-                dashboard_sections(
-                    self.engine.spec,
-                    question,
-                    [panel["id"] for panel in confirmed["panels"]]
-                    if confirmed
-                    else None,
+                confirmed = (
+                    confirm_dashboard_analysis_plan(analysis_plan)
+                    if analysis_plan
+                    else None
                 )
+                if confirmed and all(
+                    "execution_prompt" in panel for panel in confirmed["panels"]
+                ):
+                    dashboard_sections_for_plan(question, confirmed)
+                else:
+                    dashboard_sections(
+                        self.engine.spec,
+                        question,
+                        [panel["id"] for panel in confirmed["panels"]]
+                        if confirmed
+                        else None,
+                    )
             elif requires_analysis_consultation(question):
                 raise ValueError(
                     "分析内容が具体化されていません。相談から分析候補を選び、"
