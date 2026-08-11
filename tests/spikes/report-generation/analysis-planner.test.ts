@@ -101,7 +101,7 @@ raw={
  "panels":[{"id":panel_id,"reason":"目的に必要"} for panel_id in ["R4","R11","R9","R16","R17"]],
 }
 objective="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
-recommended=p.normalize_plan(raw,objective,period,{},complete_purchase_recommendations=True)
+recommended=p.normalize_plan(raw,objective,period,{"audience":"月次マーケティング会議"},complete_purchase_recommendations=True)
 edited={**recommended,"panels":[panel for panel in recommended["panels"] if panel["id"]!="R12"]}
 confirmed=p.confirm_plan(edited)
 print(json.dumps({"recommended":[panel["id"] for panel in recommended["panels"]],"confirmed":[panel["id"] for panel in confirmed["panels"]]},ensure_ascii=False))`,
