@@ -40,7 +40,7 @@ class LocalWorkflowActionsTest(unittest.TestCase):
             "implementation": "crazy-max/ghaction-github-labeler@",
             "pinned_action": (
                 "crazy-max/ghaction-github-labeler@"
-                "24d110aa46a59976b8a7f35518cb7f14f434c916"
+                "548a7c3603594ec17c819e1239f281a3b801ab4d"
             ),
         },
     }
