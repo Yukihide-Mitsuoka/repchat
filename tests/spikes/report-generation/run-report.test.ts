@@ -206,6 +206,52 @@ print(json.dumps({
   });
 });
 
+test('SQL repair keeps the confirmed analysis contract and warehouse diagnostic', () => {
+  const result = loadRunReport(`
+section = {
+    "title": "主要ページ間回遊フロー",
+    "text": "2021年1月の主要ページ間回遊を集計する",
+    "compare": "execution",
+    "component": "sankey",
+    "shape": {"rows": "遷移ごとに1行", "columns": ["遷移元", "遷移先", "件数"]},
+    "source_columns": ["source", "target", "metric_value"],
+    "generation_requirements": ["ORDER BY metric_value DESC LIMIT 100を明示する"],
+}
+period = {"from": "20210101", "to": "20210131"}
+request = module["repair_request"](
+    module["generation_request"](section, period),
+    "SELECT broken AS source FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
+    "Correlated subqueries that reference other tables are not supported",
+)
+rules = module["prompt_rules"]("")
+print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.request, /分析内容、対象期間、出力列の数・順序・別名.*変更せず/);
+  assert.match(output.request, /Correlated subqueries that reference other tables/);
+  assert.match(output.request, /source、target、metric_value/);
+  assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
+  assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
+});
+
+test('only BigQuery compiler BadRequest diagnostics are repairable', () => {
+  const result = loadRunReport(`
+predicate = module["repairable_dry_run_error"]
+print(json.dumps({
+    "compiler": predicate("bq dry-run error: BadRequest: Correlated subqueries are not supported"),
+    "credentials": predicate("bq dry-run error: RefreshError: credentials expired"),
+    "transport": predicate("bq dry-run error: ServiceUnavailable: backend unavailable"),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    compiler: true,
+    credentials: false,
+    transport: false,
+  });
+});
+
 test('warehouse SQL is formatted for display without changing its source text', () => {
   const result = loadRunReport(`
 raw = "SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY users DESC"
@@ -425,71 +471,6 @@ print(page)
   assert.match(result.stdout, /実行済み・参照値未照合/);
   assert.match(result.stdout, /select category, users from ga4\.q1/);
   assert.doesNotMatch(result.stdout, /select \*/i);
-});
-
-test('showcase keeps each question, visualization, SQL, and aggregate data in one tab set', () => {
-  const result = loadRunReport(`
-base = {
-    "question": "日本語の問い合わせ",
-    "sql": "SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
-    "columns": ["value"],
-    "ok": True,
-    "detail": "matched",
-    "undefined_terms": [],
-    "reason": "定義に従って集計しました。",
-    "verification": "reference",
-}
-results = [
-    {**base, "id": "R4", "title": "購入件数と売上", "component": "kpi_pair",
-     "columns": ["purchases", "revenue"]},
-    {**base, "id": "R11", "title": "リピートユーザー率", "component": "big_value",
-     "columns": ["repeat_user_pct"]},
-    {**base, "id": "R12", "title": "平均エンゲージメント時間", "component": "big_value",
-     "columns": ["avg_engagement_time_seconds"]},
-    {**base, "id": "R9", "title": "購入までのファネル", "component": "funnel",
-     "columns": ["view_item", "add_to_cart", "purchase"]},
-    {**base, "id": "R16", "title": "セッションの7日移動平均", "component": "trend",
-     "columns": ["day", "sessions", "sessions_7d_avg"]},
-    {**base, "id": "R17", "title": "入口から3ページ目までの回遊", "component": "sankey",
-     "columns": ["source", "target", "sessions"]},
-]
-print(module["evidence_page"](spec, results))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal((result.stdout.match(/<BigValue /g) ?? []).length, 4);
-  assert.equal((result.stdout.match(/<FunnelChart /g) ?? []).length, 1);
-  assert.equal((result.stdout.match(/<LineChart /g) ?? []).length, 1);
-  assert.equal((result.stdout.match(/<SankeyDiagram /g) ?? []).length, 1);
-  assert.equal((result.stdout.match(/<Tabs id=/g) ?? []).length, 6);
-  assert.equal((result.stdout.match(/label="分析結果"/g) ?? []).length, 6);
-  assert.equal((result.stdout.match(/label="生成プロセス・SQL"/g) ?? []).length, 6);
-  assert.equal((result.stdout.match(/label="集計データ"/g) ?? []).length, 6);
-  assert.equal((result.stdout.match(/<DataTable data=\{/g) ?? []).length, 6);
-  assert.match(
-    result.stdout,
-    /## 1\. 購入件数と売上[\s\S]*?<Tab label="集計データ">[\s\S]*?```sql r4/,
-  );
-  assert.match(result.stdout, /```sql r4[\s\S]*?<DataTable data=\{r4\}\/\>/);
-  assert.match(
-    result.stdout,
-    /## 4\. 購入までのファネル[\s\S]*?<Tab label="集計データ">[\s\S]*?```sql r9[\s\S]*?```sql r9_chart/,
-  );
-  assert.ok(
-    result.stdout.indexOf('```sql r4') > result.stdout.indexOf('## 1. 購入件数と売上'),
-    'the first aggregate query must not appear above its analysis',
-  );
-  assert.match(result.stdout, /series=metric/);
-  assert.match(result.stdout, /7日移動平均/);
-  assert.match(result.stdout, /nameCol=stage valueCol=sessions/);
-  assert.match(result.stdout, /sourceCol=source targetCol=target valueCol=sessions/);
-  assert.match(result.stdout, /title="入口から3ページ目までの主要回遊"/);
-  assert.match(result.stdout, /value=repeat_user_pct title="リピートユーザー率（%）" fmt=num2/);
-  assert.match(
-    result.stdout,
-    /value=avg_engagement_time_seconds title="平均エンゲージメント時間（秒）" fmt=num1/,
-  );
-  assert.match(result.stdout, /value=revenue title="購入金額（USD）" fmt=usd0/);
-  assert.match(result.stdout, /自動生成ダッシュボード/);
 });
 
 test('an undefined metric is shown as a refusal without an Evidence query', () => {
