@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Sole dependency-update automation (SEC-030/031). Dependabot version updates are disabled (.github/dependabot.yml is inert); Dependabot security alerts remain on via repository settings, not that file.",
+  "description": "Sole dependency-update automation (SEC-030/031). No Dependabot version-update file is shipped; Dependabot security alerts remain on via repository settings.",
   "extends": [
     "config:best-practices",
     ":semanticCommits",

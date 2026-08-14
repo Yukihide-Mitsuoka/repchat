@@ -332,7 +332,7 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 
 | グループ | ファイル | 除外理由 |
 |----------|----------|----------|
-| ツール/自動化 | `Makefile`, `profiles/*/Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `scripts/*.sh`, `renovate.json`, `.github/dependabot.yml` | 実行インターフェースや強制機構であって挙動の"指示文"ではない（正準ターゲットの契約 = profiles/README.md は §7 に収録） |
+| ツール/自動化 | `Makefile`, `profiles/*/Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `scripts/*.sh`, `renovate.json` | 実行インターフェースや強制機構であって挙動の"指示文"ではない（正準ターゲットの契約 = profiles/README.md は §7 に収録） |
 | 設定 | `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`, `.mdformat.toml`, `.templatesyncignore`, `LICENSE` | 環境・整形・法務の設定 |
 | ガバナンス metadata | `.github/CODEOWNERS`, `labels.yml`, `discussion-categories.md` | レビュー経路・ラベル・カテゴリ定義。AIは使うが指示ではない |
 | 人間向け | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `docs/foundation/guides/usage.md`, `usage.ja.md` | 人間向け。特に `README.md` はAIを「CLAUDE.mdへ」と誘導する側。AI向けセキュリティは `.ai/security.md`（§3収録）が担う |
