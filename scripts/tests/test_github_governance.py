@@ -219,6 +219,14 @@ class GovernancePolicyTest(unittest.TestCase):
             with self.subTest(key=key):
                 self.assert_policy_error(foundation=policy)
 
+    def test_renovate_is_the_only_version_update_configuration(self):
+        self.assertTrue((REPOSITORY_ROOT / "renovate.json").is_file())
+        self.assertFalse(
+            (REPOSITORY_ROOT / ".github" / "dependabot.yml").exists(),
+            "Renovate is authoritative; a Dependabot version-update file creates a "
+            "second provider and must contain a non-empty updates list to be valid",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
