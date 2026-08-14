@@ -206,6 +206,52 @@ print(json.dumps({
   });
 });
 
+test('SQL repair keeps the confirmed analysis contract and warehouse diagnostic', () => {
+  const result = loadRunReport(`
+section = {
+    "title": "主要ページ間回遊フロー",
+    "text": "2021年1月の主要ページ間回遊を集計する",
+    "compare": "execution",
+    "component": "sankey",
+    "shape": {"rows": "遷移ごとに1行", "columns": ["遷移元", "遷移先", "件数"]},
+    "source_columns": ["source", "target", "metric_value"],
+    "generation_requirements": ["ORDER BY metric_value DESC LIMIT 100を明示する"],
+}
+period = {"from": "20210101", "to": "20210131"}
+request = module["repair_request"](
+    module["generation_request"](section, period),
+    "SELECT broken AS source FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
+    "Correlated subqueries that reference other tables are not supported",
+)
+rules = module["prompt_rules"]("")
+print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.request, /分析内容、対象期間、出力列の数・順序・別名.*変更せず/);
+  assert.match(output.request, /Correlated subqueries that reference other tables/);
+  assert.match(output.request, /source、target、metric_value/);
+  assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
+  assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
+});
+
+test('only BigQuery compiler BadRequest diagnostics are repairable', () => {
+  const result = loadRunReport(`
+predicate = module["repairable_dry_run_error"]
+print(json.dumps({
+    "compiler": predicate("bq dry-run error: BadRequest: Correlated subqueries are not supported"),
+    "credentials": predicate("bq dry-run error: RefreshError: credentials expired"),
+    "transport": predicate("bq dry-run error: ServiceUnavailable: backend unavailable"),
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    compiler: true,
+    credentials: false,
+    transport: false,
+  });
+});
+
 test('warehouse SQL is formatted for display without changing its source text', () => {
   const result = loadRunReport(`
 raw = "SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium ORDER BY users DESC"

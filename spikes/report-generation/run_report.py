@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate one monthly report page from a Japanese description + a real GA4 export.
+"""Run the explicit GA4 SQL-generation regression fixture.
 
 The gate this spike exists to test (docs/positioning.md §5) is whether a report
 can be produced without anyone writing SQL. So each section is described the way
@@ -12,9 +12,10 @@ schema a GA4 reseller's customers already have, nested event_params and all.
 That nesting is where §2.8 predicts natural-language SQL will fail; this
 measures whether it does.
 
-Output is an Evidence markdown page built from the MODEL's SQL, because that is
-what the product would ship. Sections whose numbers disagreed with the reference
-are marked in the page rather than hidden.
+This command is a regression measurement, not the natural-language product
+entry point. The live product requires an AI-authored analysis specification
+before SQL generation. Output here is an Evidence markdown page built from the
+model's SQL, and fixture reference values are used only for regression checks.
 
     python3 spikes/report-generation/run_report.py --project <gcp-project>
 """
@@ -24,6 +25,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -125,6 +127,9 @@ def prompt_rules(metrics: str) -> str:
   「商品を見たセッション数」は、セッション数を `event_name = 'view_item'` で絞ったもの）。
   指標の定義式そのものを変えなければ、合成してよい。
 - 定義がある語だけで答えられる場合は `undefined_terms` を空配列にする。
+- `event_params` の値は、その `events_*` を直接読む最初のCTEでスカラー列として抽出する。
+  後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない。BigQueryが相関を
+  de-correlateできない構造になる場合は、先に `UNNEST` して必要なキーを抽出したCTEへ変換する。
 - 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...]}} の形で返す。
   reason は日本語1文。
 """
@@ -164,9 +169,15 @@ def generation_request(section: dict, period: dict) -> str:
     if section.get("shape"):
         sp = section["shape"]
         cols = "、".join(f"「{c}」" for c in sp["columns"])
+        aliases = section.get("source_columns") or []
+        alias_rule = (
+            "SQLの別名は " + "、".join(aliases) + " の順に、この名前で明示すること。"
+            if aliases
+            else "SQLの別名は ASCII の snake_case にする。"
+        )
         shape = (
             f"列は {cols} の順に、この数だけ返すこと。"
-            "これらは表示名なので、SQLの別名は ASCII の snake_case にする。"
+            f"これらは表示名なので、{alias_rule}"
             f"行は {sp['rows']}。"
         )
     else:
@@ -209,11 +220,77 @@ def generate(client, model: str, section: dict, period: dict, rules: str):
     return generate_request(client, model, generation_request(section, period), rules)
 
 
+def repair_request(analysis_request: str, sql: str, diagnostic: str) -> str:
+    """Build one bounded correction request from a pre-execution diagnostic."""
+    return f"""次の確定済み分析仕様に対して生成したSQLが実行前検証に失敗した。
+分析内容、対象期間、出力列の数・順序・別名、ORDER BY、LIMITは変更せず、診断原因だけを修正すること。
+固定SQLや別の分析への置換、指標の代用はしないこと。
+
+確定済み分析仕様:
+{analysis_request}
+
+失敗したSQL:
+{sql}
+
+実行前診断:
+{diagnostic}
+
+修正した完全なSELECT文を `sql` に返すこと。修正できない場合は `sql` を空文字にし、
+推測せず理由を `reason` に返すこと。"""
+
+
+def repair(
+    client,
+    model: str,
+    analysis_request: str,
+    sql: str,
+    diagnostic: str,
+    rules: str,
+):
+    """Ask the SQL role to correct one pre-execution failure without changing analysis."""
+    return generate_request(
+        client,
+        model,
+        repair_request(analysis_request, sql, diagnostic),
+        rules,
+    )
+
+
+def repairable_dry_run_error(error: str) -> bool:
+    """Return true only for SQL compiler failures, never auth or transport failures."""
+    return error.startswith("bq dry-run error: BadRequest:")
+
+
+def inspect_bq_schema(bq, sql: str, allowed_dataset: str = DATASET):
+    """Dry-run a validated query and return its output schema without scanning rows."""
+    from google.cloud import bigquery
+
+    s, validation_error = validate_sql(sql, allowed_dataset)
+    if validation_error:
+        return None, validation_error
+    assert s is not None
+    try:
+        job = bq.query(
+            s,
+            job_config=bigquery.QueryJobConfig(dry_run=True, use_query_cache=False),
+        )
+        return [(field.name, field.field_type) for field in job.schema], None
+    except Exception as error:  # noqa: BLE001 — dry-run diagnostics are user-actionable
+        why = ""
+        errors = getattr(error, "errors", None)
+        if errors and isinstance(errors, list) and isinstance(errors[0], dict):
+            why = errors[0].get("message", "")
+        if not why:
+            why = getattr(error, "message", "") or str(error)
+        return None, f"bq dry-run error: {type(error).__name__}: {why[:220]}"
+
+
 def exec_bq(
     bq,
     sql: str,
     max_results: int | None = None,
     allowed_dataset: str = DATASET,
+    cancel_event=None,
 ):
     """Read-only execution, guarded the same way the executor guards tenant SQL."""
     from google.cloud import bigquery
@@ -229,6 +306,15 @@ def exec_bq(
                 maximum_bytes_billed=MAX_BYTES_BILLED, use_query_cache=True
             ),
         )
+        if cancel_event is not None:
+            deadline = time.monotonic() + 180
+            while not job.done():
+                if cancel_event.wait(0.2):
+                    job.cancel()
+                    return None, "cancelled"
+                if time.monotonic() >= deadline:
+                    job.cancel()
+                    return None, "bq error: TimeoutError: query exceeded 180 seconds"
         it = job.result(timeout=180, max_results=max_results)
         # Column names come off this same job. Re-querying just to read the
         # schema would triple the scan cost of every section.
