@@ -21,7 +21,7 @@ import analysis_planner as planner
 import bitcoin_profile as bitcoin
 import meeting_report as meeting
 import run_report as report
-from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
+from demo_support import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
