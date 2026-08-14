@@ -404,6 +404,65 @@ def _plan_panel_text(value, label: str, limit: int = 300) -> str:
     return text
 
 
+def _panel_terms(
+    value, label: str, *, minimum: int = 0, allow_role_duplicates: bool = False
+) -> list[str]:
+    if not isinstance(value, list) or not minimum <= len(value) <= 4:
+        raise PlannerError(f"分析計画の{label}は{minimum}〜4件にしてください。")
+    terms = [_plan_panel_text(item, label, 80) for item in value]
+    if (
+        not allow_role_duplicates
+        and len({"".join(item.lower().split()) for item in terms}) != len(terms)
+    ):
+        raise PlannerError(f"分析計画の{label}に重複があります。")
+    return terms
+
+
+def _flatten_visualization(item: dict) -> dict:
+    """Flatten the provider-only chart/shape union into the stored panel contract."""
+    visualization = item.get("visualization")
+    if visualization is None:
+        return item
+    if not isinstance(visualization, dict):
+        raise PlannerError("分析仕様のvisualizationがobjectではありません。")
+    if any(field in item for field in ("chart", "dimensions", "measures")):
+        raise PlannerError("分析仕様の可視化指定が重複しています。")
+    return {
+        **item,
+        "chart": visualization.get("chart"),
+        "dimensions": visualization.get("dimensions"),
+        "measures": visualization.get("measures"),
+    }
+
+
+def _validate_chart_shape(chart: str, dimensions: list[str], measures: list[str]) -> None:
+    """Validate semantic fields against one renderer capability contract."""
+    min_dimensions, max_dimensions, min_measures, max_measures = CHART_SHAPE_CONTRACTS[
+        chart
+    ]
+    if not (
+        min_dimensions <= len(dimensions) <= max_dimensions
+        and min_measures <= len(measures) <= max_measures
+    ):
+        if chart == "scorecard":
+            raise PlannerError("scorecardは区分軸なし・指標1件にしてください。")
+        expected_dimensions = (
+            f"{min_dimensions}件"
+            if min_dimensions == max_dimensions
+            else f"{min_dimensions}〜{max_dimensions}件"
+        )
+        expected_measures = (
+            f"{min_measures}件"
+            if min_measures == max_measures
+            else f"{min_measures}〜{max_measures}件"
+        )
+        raise PlannerError(
+            f"AIが生成した{chart}仕様を描画できません。"
+            f"必要なのは区分軸{expected_dimensions}・指標{expected_measures}ですが、"
+            f"AI出力は区分軸{len(dimensions)}件・指標{len(measures)}件でした。"
+        )
+
+
 def _normalize_plan_header(
     raw: dict,
     objective: str,
@@ -611,28 +670,27 @@ def propose_dashboard(
     return plan, token_counts(response.usage_metadata)
 
 
-CONSULTATION_CHARTS = DASHBOARD_CHARTS
-CONSULTATION_FIELDS = (
+CONSULTATION_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+CONSULTATION_TEXT_FIELDS = (
     "title",
     "objective",
-    "metric",
-    "dimension",
     "comparison",
     "chart",
     "execution_prompt",
     "reason",
 )
+CONSULTATION_LIST_FIELDS = ("dimensions", "measures")
+CONSULTATION_FIELDS = CONSULTATION_TEXT_FIELDS + CONSULTATION_LIST_FIELDS
 
 
-def _consultation_schema() -> dict:
+def _consultation_schema(seed: str = "") -> dict:
     recommendation_properties = {
-        field: {"type": "string"} for field in CONSULTATION_FIELDS
+        field: {"type": "string"} for field in CONSULTATION_TEXT_FIELDS
+        if field != "chart"
     }
-    recommendation_properties["chart"] = {
-        "type": "string",
-        "format": "enum",
-        "enum": list(CONSULTATION_CHARTS),
-    }
+    recommendation_properties["visualization"] = _visualization_response_schema(
+        CONSULTATION_CHARTS, seed=seed
+    )
     return {
         "type": "object",
         "properties": {
@@ -644,7 +702,12 @@ def _consultation_schema() -> dict:
                 "items": {
                     "type": "object",
                     "properties": recommendation_properties,
-                    "required": list(CONSULTATION_FIELDS),
+                    "required": [
+                        field
+                        for field in CONSULTATION_TEXT_FIELDS
+                        if field != "chart"
+                    ]
+                    + ["visualization"],
                 },
             },
             "follow_up_question": {"type": "string"},
@@ -681,7 +744,8 @@ def consultation_request(
 規則:
 - 今回の発言と対話履歴を踏まえ、分析担当者として自然な日本語で応答する。
 - 分析仮説を立て、目的に役立つ新しい分析仕様を1〜4件考える。
-- 各仕様には、指標、切り口、比較軸、可視化、選択理由、SQL生成へ渡せる具体的な日本語依頼を書く。
+- 各仕様には、measures、dimensions、比較軸、可視化、選択理由、SQL生成へ渡せる具体的な日本語依頼を書く。
+- 可視化を含む分析内容は今回の目的から考え、選択理由をreasonへ書く。
 - 「他にない」など別案を求められた場合、履歴で既に提示した分析をできる限り避ける。
 - 最後に、分析目的を具体化する短い確認質問を1件だけ書く。
 - 文脈にない指標・列・因果関係・取得済みでない数値を捏造しない。
@@ -699,6 +763,64 @@ def _bounded_consultation_text(value, label: str, limit: int = 500) -> str:
     return text
 
 
+def _consultation_terms(value, label: str, *, minimum: int = 0) -> list[str]:
+    if not isinstance(value, list) or not minimum <= len(value) <= 4:
+        raise PlannerError(f"分析相談の{label}は{minimum}〜4件にしてください。")
+    terms = [_bounded_consultation_text(item, label, 80) for item in value]
+    if len({"".join(item.lower().split()) for item in terms}) != len(terms):
+        raise PlannerError(f"分析相談の{label}に重複があります。")
+    return terms
+
+
+def confirm_analysis_specification(raw: dict) -> dict:
+    """Validate and revision one AI-authored single-insight specification."""
+    if not isinstance(raw, dict):
+        raise PlannerError("分析相談の候補がobjectではありません。")
+    raw = _flatten_visualization(raw)
+    recommendation = {
+        field: _bounded_consultation_text(
+            raw.get(field),
+            "候補理由" if field == "reason" else field,
+            80 if field in {"title", "comparison", "chart"} else 500,
+        )
+        for field in CONSULTATION_TEXT_FIELDS
+    }
+    recommendation["dimensions"] = _consultation_terms(raw.get("dimensions"), "区分軸")
+    recommendation["measures"] = _consultation_terms(
+        raw.get("measures"), "指標", minimum=1
+    )
+    chart = recommendation["chart"]
+    if chart not in CONSULTATION_CHARTS:
+        raise PlannerError("分析相談の可視化種別が未対応です。")
+    dimensions = recommendation["dimensions"]
+    measures = recommendation["measures"]
+    _validate_chart_shape(chart, dimensions, measures)
+    execution_prompt = recommendation["execution_prompt"]
+    if re.search(
+        r"(?:```|`|\b(?:SELECT|WITH|FROM|GROUP\s+BY)\b)",
+        execution_prompt,
+        flags=re.IGNORECASE,
+    ):
+        raise PlannerError("分析相談の実行依頼にはSQLを書けません。")
+    compact_prompt = "".join(execution_prompt.lower().split())
+    missing = [
+        term
+        for term in dimensions + measures
+        if "".join(term.lower().split()) not in compact_prompt
+    ]
+    if missing:
+        raise PlannerError(
+            "分析相談の実行依頼に区分軸・指標がありません: " + "、".join(missing)
+        )
+    canonical = json.dumps(
+        recommendation, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    recommendation["revision"] = (
+        "insight-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
+    )
+    return recommendation
+
+
 def normalize_consultation(raw: dict) -> dict:
     """Validate newly reasoned analysis specifications before SQL generation."""
     if not isinstance(raw, dict):
@@ -711,23 +833,8 @@ def normalize_consultation(raw: dict) -> dict:
     for item in raw_recommendations:
         if not isinstance(item, dict):
             raise PlannerError("分析相談の候補がobjectではありません。")
-        recommendation = {
-            field: _bounded_consultation_text(
-                item.get(field),
-                "候補理由" if field == "reason" else field,
-                80 if field in {"title", "metric", "dimension", "comparison"} else 500,
-            )
-            for field in CONSULTATION_FIELDS
-        }
-        if recommendation["chart"] not in CONSULTATION_CHARTS:
-            raise PlannerError("分析相談の可視化種別が未対応です。")
+        recommendation = confirm_analysis_specification(item)
         execution_prompt = recommendation["execution_prompt"]
-        if re.search(
-            r"(?:```|`|\b(?:SELECT|WITH|FROM|GROUP\s+BY)\b)",
-            execution_prompt,
-            flags=re.IGNORECASE,
-        ):
-            raise PlannerError("分析相談の実行依頼にはSQLを書けません。")
         duplicate_key = "".join(execution_prompt.lower().split())
         if duplicate_key in seen:
             raise PlannerError("分析相談に重複した候補があります。")
@@ -770,7 +877,7 @@ def propose_consultation(
                 "日本語BIアナリスト。"
             ),
             response_mime_type="application/json",
-            response_schema=_consultation_schema(),
+            response_schema=_consultation_schema(seed=f"{profile}\n{question}"),
         ),
     )
     return normalize_consultation(
