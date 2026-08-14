@@ -888,7 +888,6 @@ test('dashboard HTTP boundary accepts a bounded confirmed plan larger than a sim
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- spec=json.loads((m.HERE/"report.json").read_text())
  def dashboard(self,q,emit,plan=None):emit({"type":"dashboard_complete","accepted":plan is not None})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
@@ -921,7 +920,6 @@ test('planning HTTP boundary requires a valid current plan and revision instruct
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- spec=json.loads((m.HERE/"report.json").read_text())
  def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月の購入課題を分析するダッシュボードを作って"
@@ -1135,7 +1133,7 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"id
 test('dashboard build has no fixed-catalog fallback without an AI-authored plan', () => {
   const result = python(`
 import inspect,threading
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="";e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
 m.report.generate=lambda *_args,**_kwargs:({"sql":"","reason":"unused","undefined_terms":["unused"]},{"input_tokens":1,"output_tokens":1})
 events=[];error=""
 try:e.dashboard("2021年1月のECサイト分析ダッシュボードを作って",events.append)
@@ -1511,7 +1509,6 @@ test('consultation HTTP boundary accepts bounded history and rejects invalid tur
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- spec=json.loads((m.HERE/"report.json").read_text())
  calls=[]
  def consult(self,question,history,emit,profile="ga4"):
   self.calls.append({"question":question,"history":history,"profile":profile})
@@ -2052,7 +2049,7 @@ test('confirmed dashboard freezes provenance and meeting report reuses it withou
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.metric_definitions=json.loads((m.HERE/"metrics.json").read_text())
+e.metric_definitions=json.loads((m.HERE/"metrics.json").read_text())
 e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
 panels=[
  {"title":"購入規模","kpi":"購入成果","chart":"table","decision":"購入成果の規模を判断する","reason":"全体規模が必要","execution_prompt":"2021年1月の購入件数と購入金額を集計する","dimensions":[],"measures":["購入件数","購入金額"],"layout_row":1,"layout_weight":1},

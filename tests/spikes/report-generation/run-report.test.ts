@@ -8,7 +8,6 @@ import fs from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const RUN_REPORT = path.join(ROOT, 'spikes/report-generation/run_report.py');
-const REPORT_SPEC = path.join(ROOT, 'spikes/report-generation/report.json');
 
 function python(source: string) {
   return spawnSync('python3', ['-c', source], {
@@ -26,7 +25,10 @@ from datetime import date
 
 sys.path.insert(0, ${JSON.stringify(path.dirname(RUN_REPORT))})
 module = runpy.run_path(${JSON.stringify(RUN_REPORT)})
-spec = json.loads(open(${JSON.stringify(REPORT_SPEC)}, encoding="utf-8").read())
+spec = {
+    "dataset": "example.dataset.events_*",
+    "period": {"from": "20210101", "to": "20210131", "label": "2021年1月"},
+}
 ${body}
 `);
 }
@@ -186,20 +188,20 @@ print(module["format_sql_for_display"](raw))
 
 test('complex display SQL keeps CTE and UNION SELECT clauses on readable lines', () => {
   const result = loadRunReport(`
-section = next(section for section in spec["sections"] if section["id"] == "R17")
-print(module["format_sql_for_display"](section["gold_sql"]))
+raw = "WITH first AS (SELECT source, target, value FROM \`example.dataset.events\` WHERE stage = 1), edges AS (SELECT source, target, value FROM first UNION ALL SELECT target AS source, 'done' AS target, value FROM first) SELECT source, target, value FROM edges ORDER BY value DESC"
+print(module["format_sql_for_display"](raw))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /pageviews AS \(\n\s+SELECT\n\s+CONCAT/);
-  assert.match(result.stdout, /UNION ALL\n\s*SELECT\n\s+CONCAT/);
+  assert.match(result.stdout, /first AS \(\n\s+SELECT\n\s+source/);
+  assert.match(result.stdout, /UNION ALL\n\s*SELECT\n\s+target AS source/);
   assert.match(result.stdout, /\)\nSELECT\n\s+source,/i);
   assert.doesNotMatch(result.stdout, /\n\s*\n\s*\n/);
 });
 
 test('display SQL indents every non-empty line by a multiple of four spaces', () => {
   const result = loadRunReport(`
-section = next(section for section in spec["sections"] if section["id"] == "R17")
-formatted = module["format_sql_for_display"](section["gold_sql"])
+raw = "WITH first AS (SELECT source, target, value FROM \`example.dataset.events\` WHERE stage = 1), edges AS (SELECT source, target, value FROM first UNION ALL SELECT target AS source, 'done' AS target, value FROM first) SELECT source, target, value FROM edges ORDER BY value DESC"
+formatted = module["format_sql_for_display"](raw)
 violations = [{
     "line": index + 1,
     "spaces": len(line) - len(line.lstrip(" ")),

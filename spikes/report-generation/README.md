@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-08-12
+updated: 2026-08-15
 ---
 
 # Spike: レポート生成
@@ -36,40 +36,20 @@ SQLが生成される → 人が承認する」で、**誰もSQLを書かない�
 
 ## 測っていること
 
-8セクションの月次サイトレポート（代理店が毎月 Looker Studio で作っている内容を想定）。
-各セクションは**人が言う形の日本語**で書かれ、モデルがSQLを書きます。
-
-| # | セクション | 罠 |
-|---|---|---|
-| R1 | セッション数 | セッションの行が存在しない |
-| R2 | ユーザー数 | `user_id` はほぼNULL |
-| R3 | ページビュー数 | 行数ではなく `event_name='page_view'` |
-| R4 | 購入件数と売上 | `items` を UNNEST すると二重計上 |
-| R5 | チャネル別セッション数 | R1の数え方 × GROUP BY |
-| R6 | デバイス別ユーザー数 | STRUCT なので UNNEST 不要 |
-| R7 | 閲覧の多いページ | `page_location` は `event_params` の中 |
-| R8 | 日別セッション推移 | `event_date` は文字列 |
+利用者の目的をVertex AIが分析仕様へ分解し、利用者が確定した仕様だけからSQLと可視化を生成できるかを
+測ります。分析テーマ、指標、区分軸、グラフ種別、配置を登録済みの設問やパネル一覧から選びません。
+GA4特有のnested/repeated構造、セッション化、購入金額の二重計上防止も生成SQLの検査対象です。
 
 ## 正しさの確かめ方
 
-各セクションに**手書きの参照SQL**（`gold_sql`）を置き、**モデルのSQLと参照SQLを両方実行して
-結果を比較**します。列名はモデルの自由なので、**値だけ**を比べます。
-
-これは [positioning.md §2.7](../../docs/positioning.md) の
-「**既知の数値1つで照合する**」の spike 版です。本番では**顧客が持っている先月の完成品**が
-この役割を果たします。手作業のレポートを入力にすると、**入力と検証データが同時に手に入る**という
-のがその節の主張で、ここではそれを手書きで代用しています。
-
-参照SQL自体が壊れていれば `REFERENCE BROKEN` として標準エラーに出ます。**参照を疑わずに
-モデルを責めない**ための仕掛けです。
+確定した分析仕様に対して、SQLの読取専用性、対象dataset、対象期間、出力列の別名・型・件数、行数上限を
+BigQuery実行前に検査します。実行後も同じ描画契約で結果形状を検査し、不一致は描画しません。
+手書きの参照SQLや登録済み設問との一致を成功条件にはしません。
 
 ## 出てくるもの
 
-`out/monthly_report.md` — **Evidence のページ1枚**。中身は**モデルが書いたSQL**です
-（製品が出荷するのはそちらなので）。**参照と一致しなかったセクションは、隠さず「未検証」と
-明記して残します。** 見た目が正しくて数字が違うレポートは、無いより悪いためです。
-
-`out/result.json` — セクションごとの合否、生成SQL、コスト。
+ローカル画面に、AIが考察した分析仕様、実際にBigQueryへ送ったSQL、取得データ、可視化、推定費用を
+表示します。固定レポートを生成する実行経路はありません。
 
 ## 実行
 
@@ -80,7 +60,7 @@ gcloud auth application-default login
 ```
 
 ```bash
-GOOGLE_CLOUD_PROJECT=kotonoha-bi-dev spikes/nl2sql-accuracy/.venv/bin/python spikes/report-generation/run_report.py
+make demo-live PROJECT=kotonoha-bi-dev
 ```
 
 スキャン量は `_TABLE_SUFFIX` で1か月に限定し、`maximum_bytes_billed` を 20GiB に設定しています。
@@ -272,14 +252,12 @@ BigQueryとVertex AIを使えるADCです。ADCが未設定なら、最初に一
 gcloud auth application-default login
 ```
 
-前提を満たした後は、リポジトリのルートで実行します。用途ごとのコマンドは次の3つです。
+前提を満たした後は、リポジトリのルートで実行します。
 
 | 用途 | コマンド |
 |---|---|
-| 対面デモ（購入KPI＋ファネル＋移動平均＋回遊Sankey） | `make demo PROJECT=kotonoha-bi-dev SHOWCASE=yes` |
-| 参加者が日本語を入力するライブデモ | `make demo-live PROJECT=kotonoha-bi-dev` |
-| 1問の経路確認 | `make demo PROJECT=kotonoha-bi-dev QUESTION='2021年1月のセッション数を出して'` |
-| 17問の回帰測定 | `make demo PROJECT=kotonoha-bi-dev` |
+| AIが考察するライブデモ | `make demo PROJECT=kotonoha-bi-dev` |
+| 同じライブデモを明示して起動 | `make demo-live PROJECT=kotonoha-bi-dev` |
 
 `demo-live`は`127.0.0.1:8765`だけで待ち受け、ダッシュボード、作成・編集、会議報告、単一グラフを
 左ナビゲーションで切り替える分析ワークスペースを表示します。左ナビゲーションと右のパネル詳細は
@@ -335,23 +313,20 @@ plannerのresponse schemaは`audience`、`comparison`、`business_goal`のうち
 単純問い合わせ、相談、報告のHTTP本文は最大4,096 bytes、確定分析計画は最大98,304 bytesとし、
 正常な複数パネル計画を受け入れながら無制限な本文は許可しません。
 
-`SHOWCASE_IDS`の6分析は旧デモfixtureの互換経路にだけ残し、通常plannerのpromptへ渡しません。
-通常のdashboard buildは確定した動的panel仕様を2件ずつの行へ構成し、Sankeyは全幅にします。
+dashboard buildは確定したAI生成panel仕様とAI生成layoutをそのまま使用します。
 各カードの「詳細を確認」から右のパネル詳細へ生成理由、SQL、検証状態、集計データ、
 来歴を表示するため、グラフとの対応を記憶する必要はありません。宣言されたKPI・ファネル・時系列・
 Sankeyの結果形状と
-列型が一致しなければ描画を拒否します。2021年1月は生成SQL6件と参照SQL最大6件を実行するため、
-費用確認はVertex AI約¥6（SQL生成6回）、BigQuery最大240GiB・約¥228、合計最大約¥234を示します。
-他の公開サンプル月は参照SQLが未登録のため、確定panel数だけ生成SQLを実行し、既知値未照合と表示します。
+列型が一致しなければ描画を拒否します。費用確認は確定panel数に応じたVertex AI生成回数と
+BigQueryのクエリ上限から算出します。
 これはIssue #180のローカル未検証プロトタイプです。本番の永続revision、非同期queue、再開、公開、
 デザインパートナー評価は未実装です。初回提案数は`ANALYSIS_INITIAL_PANEL_COUNT`、上限は
 `ANALYSIS_MAX_PANEL_COUNT`で管理し、既定は6件／20件です。これは費用と画面密度の境界であり、
 分析テーマ、KPI、比較軸、chart typeは固定しません。
 
-Issue #374の準備として、固定候補を渡さずにAIが`title`、`kpi`、`chart`、`decision`、`reason`、
-`execution_prompt`を作る別のplanner契約を追加しています。初回提案数は
-`ANALYSIS_INITIAL_PANEL_COUNT`、上限は`ANALYSIS_MAX_PANEL_COUNT`で管理し、既定は6件／20件です。
-この準備契約は現在のlive endpointから未使用であり、固定候補を置き換えるdashboard連携は後続PRで行います。
+AIは固定候補を受け取らず、`title`、`kpi`、`chart`、`decision`、`reason`、`execution_prompt`を
+利用者の目的から作成します。初回提案数は`ANALYSIS_INITIAL_PANEL_COUNT`、上限は
+`ANALYSIS_MAX_PANEL_COUNT`で管理し、既定は6件／20件です。
 
 単一グラフの「相談」は、Vertex AIへ現在の問いと最大8 turnのbrowser session履歴、対象schema、
 定義済み指標を渡し、1〜4件の分析仕様を新規に作ります。「他にない？」では既出提案を避けます。
@@ -382,24 +357,19 @@ Issue #181の製品受入条件を満たした扱いにはしません。
 同じ画面へ原因を表示します。処理中・警告・エラー・完了状態は左ナビゲーションを往復しても保持します。
 
 単一グラフ生成では、1列1行はBigValue、日付＋数値は折れ線、カテゴリ＋数値は棒グラフ、
-`source`・`target`・`sessions`はセッション数に比例したリンク幅を持つSankey、その他は表として描画します。
+AIが確定したグラフ種別と列契約が一致した場合だけ、そのグラフとして描画します。
 同じ実行結果領域の「グラフ」と「取得データ」を切り替えると、可視化と、その描画に使った列・行を対応づけて
 確認できます。次の問い合わせ、空結果、未定義指標の拒否では前回の表を残しません。
 Sankeyは段階接頭辞を除いたページ種別ごとにカテゴリ色を割り当て、同じページを各段階で同色にし、
-リンクは遷移元色から遷移先色へのグラデーションにします。入口・2ページ目・3ページ目の見出しを表示し、
+リンクは遷移元色から遷移先色へのグラデーションにします。各ページ段階の見出しを表示し、
 各リンクへマウスを重ねるかTabキーでフォーカスすると、遷移元、遷移先、セッション数を確認できます。
-上位12経路内で3ページ目が無いセッションは、架空の離脱ノードを追加せず「2ページ目で終了」として
-合計セッション数を図の下へ注記します。
+途中で終了したセッションに架空の離脱ノードを追加しません。
 通常の回遊は`page_navigation`モードとし、セッション内で連続する同一`page_path`を1回の滞在へ
-統合してから入口・2ページ目・3ページ目を決めます。段階が1→2または2→3でないedge、連続する
-同一ページ、未集約の重複edge、接続しない段階を検出した場合は描画しません。登録済み参照値との
-不一致も正常なグラフとして表示しません。上位12経路はセッション数降順、同数なら入口・2ページ目・
-3ページ目昇順で固定し、この同数時順序を持たない生成SQLはBigQueryへ送る前に拒否します。
-単一グラフで「入口からNページ目まで」と指定した回遊Sankeyは、Nが3〜6なら同じ契約をdepth付きで
-組み立てます。全path列を同数時順序へ含め、1→2から`N-1`→Nまでの隣接edgeを検証します。
-登録済みの3ページ設問だけ参照値を照合し、変更した文言と4〜6ページは既知値未照合です。
-登録済み3ページ設問では途中段階で終了したセッションを注記します。custom depthでは、要求したNページ目へ
-到達したセッションから上位12経路を選びます。最終ページ到達条件が上位抽出より後にある生成SQLはBigQuery前、
+統合してから各段階を決めます。隣接しないedge、連続する同一ページ、未集約の重複edge、接続しない段階を
+検出した場合は描画しません。Sankeyは最大4ページとし、要求したNページ目へ到達したセッションから
+利用者が指定した件数の上位経路を選びます。全path列を安定順序へ含め、1→2から`N-1`→Nまでの
+隣接edgeを検証します。
+最終ページ到達条件が上位抽出より後にある生成SQLはBigQuery前、
 全段階が無い結果または途中で流量が欠ける結果は描画前に拒否します。範囲外depthはクラウド呼出し前に拒否します。
 
 反復行動では遷移の単位を変える必要があります。将来の分析計画では`page_view_occurrence`、
@@ -423,35 +393,19 @@ SQL、生成理由、費用、クエリ結果まで表示されてもグラフ�
 ダッシュボード用と単一グラフ用のSankeyが共存しても、SVGごとにpaint-server IDを分離し、各リンクが
 同じSVG内のgradientを参照することも固定データで検証します。
 
-live endpointは`report.json`、固定例文、登録済み参照SQLを読みません。単一グラフも相談AIが作成した
+live endpointは固定分析fixture、固定例文、登録済み参照SQLを読みません。単一グラフも相談AIが作成した
 `analysis_specification`を選択し、依頼文がその実行仕様と一致する場合だけSQL生成へ進みます。
 グラフ種別は結果形状から推測せず、AIが確定した種別を列別名・型・件数・上限行数と照合します。
 未定義指標を拒否した場合はSQLソースを生成しません。
 
-実Vertex AI（約2円）とBigQuery（1か月、最大20GiB）を使うため、開始前に確認が出ます。
-非対話環境でビルドまで行う場合は明示的に費用を承認します。
-
-```bash
-make demo PROJECT=kotonoha-bi-dev ACCEPT_COST=yes BUILD_ONLY=yes
-```
-
-費用もファイル変更も伴わず、実行予定だけを確かめるには次を使います。
-
-```bash
-make demo PROJECT=example-project DRY_RUN=yes
-```
-
-コマンドは次を順に行います。
+実Vertex AIとBigQueryを使うため、実行前に画面内で費用確認を行います。非対話の固定レポートbuildや
+dry-run経路はありません。
 
 1. `out/.demo/venv` にpin済みPython依存をインストール
-2. pin済みcommitのEvidence公式テンプレートを`out/.demo/evidence-app`へ取得し、plugin設定と
-   sample sourceをBigQueryだけの最小構成へ置換してから、最小lockfileどおり`npm ci`
-3. `npm audit --audit-level=critical`を実行し、critical advisoryがあれば停止
-4. 日本語のレポート定義からSQLを生成し、`SELECT *`・書込み・対象外データセットを拒否してから
-   BigQueryで実行。登録済み設問だけ既知値と照合
-5. 実行SQLの原文を`source`へ保存し、画面表示だけ`sqlparse==0.5.5`で整形
-6. `sources/ga4`と生成ページをEvidenceへ配置し、materializeとbuild
-7. `http://localhost:3000/`でレポートを開く
+2. localhostだけでライブ画面を起動
+3. 利用者の依頼をAIが分析仕様へ分解し、利用者が内容と費用を確定
+4. 確定仕様からSQLを生成し、安全性と描画契約を検査してからBigQueryで実行
+5. 実行結果を再検査し、SQL・取得データ・グラフ・来歴を同じ画面へ表示
 
 `out/.demo/`は使い捨てでgit管理外です。生成器が出す接続設定はADCを使うため、鍵ファイルは置きません。
 デモで話す内容と限界は[5分説明](../../docs/demo.md)にまとめています。
@@ -465,43 +419,7 @@ SQL表示の整形には、Python 3.13対応・BSDライセンスの`sqlparse==0
 `sqlparse`のaligned modeで主要句を改行した後、予約語幅による位置合わせを構文階層ごとの
 0、4、8、12...スペースへ正規化します。SELECT列は対応するSELECTより4スペース深く配置し、
 Evidence標準`CodeBlock`でsyntax highlight、コピー、横スクロールを提供します。
-整形対象は表示文字列だけで、BigQueryへ送るSQLと
-`out/sources/ga4/*.sql`はモデルの原文です。
-
-### 1問モードの実環境確認（2026-07-29）
-
-`QUESTION='2021年1月のセッション数を出して'`で、実Vertex AI生成、BigQuery実行、
-参照SQLとの照合、Evidence materialize/build、ブラウザ表示まで実行しました。
-
-| 確認項目 | 結果 |
-|---|---|
-| 生成・参照値照合 | **1/1**。生成SQLと参照SQLがともに**118,380** |
-| Vertex AI推定費用 | **¥0.154** |
-| BigQuery SQL | 必要列を集計し、`SELECT *`なし |
-| Evidence SQL | `select sessions from ga4.r1` |
-| 描画 | BigValue **118,380**、browser error/warning **0** |
-
-### 高度なショーケースの実環境確認（2026-07-30）
-
-R4/R11/R12/R9/R16/R17の6問で、実Vertex AI生成、BigQuery実行、参照SQLとの照合、Evidence
-materialize/buildを実行しました。
-
-| 確認項目 | 結果 |
-|---|---|
-| 生成・参照値照合 | **6/6** |
-| 主な値 | 購入895件・購入金額57,350、リピートユーザー率14.56%、平均エンゲージメント49.51秒、ファネル23,105→4,537→1,115 |
-| 移動平均 | 日次31行。CTE＋ウィンドウ関数で当日を含む7日移動平均を生成・照合 |
-| 回遊 | 入口から3ページ目までの上位12経路を段階付き12 edgeへ集約。入口`/`→2ページ目`/`は38,913セッション |
-| Vertex AI推定費用 | **¥1.285** |
-| Evidence | r4/r11/r12/r9/r16/r17をmaterializeし、production build成功。ブラウザerror/warning 0 |
-| SQL表示 | タブ文字0。SELECT列は半角スペース4個、58行のR17 SQLも横スクロール可能 |
-
-Evidenceのdevelopment serverは描画用ローカルクエリを検査UIとして露出するため、対面デモは
-production previewで起動します。生成BigQuery SQLは各分析の「生成プロセス・SQL」タブだけに表示します。
-
-R17の初回生成は完全URLと離脱ノードを出して5/6でした。URLパスの定義、対象セッション、上位経路を
-edgeへ分解する順序、段階接頭辞を分析契約に追加して再生成し、手書きSQLへの置換なしで6/6になりました。
-これは自由文だけでは出力意味が揺れ、生成前に分析仕様を確定する必要があることも示しています。
+整形対象は表示文字列だけで、BigQueryへ送るSQLは変更しません。
 
 **任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
 詳しくは後述の「実際に2テナントへ配った」。
