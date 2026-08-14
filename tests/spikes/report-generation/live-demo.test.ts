@@ -1310,6 +1310,39 @@ print(json.dumps({"period":period["label"],"ids":[item["id"] for item in section
   });
 });
 
+test('every supported AI chart becomes an explicit SQL output contract', () => {
+  const result = python(`
+charts={
+ "scorecard":([], ["値"]),"kpi_group":([], ["値1","値2"]),
+ "bar":(["区分"],["値"]),"grouped_bar":(["区分"],["値1","値2"]),
+ "stacked_bar":(["区分"],["値1","値2"]),"line":(["日付"],["値"]),
+ "multi_line":(["日付"],["値1","値2"]),"scatter":(["項目"],["X","Y"]),
+ "bubble":(["項目"],["X","Y","大きさ"]),"funnel":(["段階"],["値"]),
+ "heatmap":(["縦","横"],["値"]),"table":(["区分"],["値"]),
+ "sankey":(["遷移元","遷移先"],["流量"]),
+}
+contracts={}
+for index,(chart,(dimensions,measures)) in enumerate(charts.items(),1):
+ panel={"id":f"P{index}","title":chart,"chart":chart,"decision":"判断","execution_prompt":"2021年1月を分析","dimensions":dimensions,"measures":measures}
+ section=m.planned_analysis_section(panel)
+ contracts[chart]={"columns":section["source_columns"],"limit":section["max_result_rows"]}
+print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({"id":"S","title":"回遊","chart":"sankey","decision":"判断","execution_prompt":"2021年1月を分析","dimensions":["ページ","ページ"],"measures":["流量"]})["max_navigation_pages"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(Object.keys(output.contracts).length, 13);
+  assert.deepEqual(output.contracts.grouped_bar.columns, ['category', 'metric_1', 'metric_2']);
+  assert.deepEqual(output.contracts.bubble.columns, [
+    'category',
+    'x_value',
+    'y_value',
+    'size_value',
+  ]);
+  assert.deepEqual(output.contracts.sankey.columns, ['source', 'target', 'metric_value']);
+  assert.equal(output.max_pages, 4);
+  assert.ok(Object.values(output.contracts).every((contract: any) => contract.limit > 0));
+});
+
 test('an AI-authored table remains a table even when its result could be plotted', () => {
   const result = python(`
 section={"title":"流入別の比較表","component":"table","planned_visualization":"table"}
