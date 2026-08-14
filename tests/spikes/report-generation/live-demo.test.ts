@@ -2045,7 +2045,7 @@ def run_section(section,period,emit,context=None,profile="ga4"):
  emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":section["component"],**context})
  return .1
 e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
-raw={"executive_summary":"追加診断が必要です。","observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
+raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["R4"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
 calls=[]
 m.meeting.generate=lambda _client,_model,current:(calls.append(current["build_revision"]) or (m.meeting.normalize_report(raw,current),{"input_tokens":10,"output_tokens":5}))
 report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)
