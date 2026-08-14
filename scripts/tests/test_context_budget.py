@@ -10,9 +10,32 @@ from scripts import context_budget
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 CANONICAL_GUARDRAILS = ".ai/contracts/foundation/guardrails.md"
+FOUNDATION_README_MARKER = (
+    "<!-- repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation -->"
+)
 
 
 class ContextBudgetTest(unittest.TestCase):
+    def test_foundation_baseline_stays_below_the_soft_budget(self):
+        readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+        if FOUNDATION_README_MARKER not in readme:
+            self.skipTest("Descendant context budgets are reported, not enforced")
+        errors, _, report = context_budget.audit(
+            REPOSITORY_ROOT,
+            enforce_budget=False,
+        )
+        baseline = report["baseline"]
+
+        self.assertEqual([], errors)
+        self.assertLess(
+            baseline.bytes,
+            int(context_budget.BASELINE_BYTE_LIMIT * context_budget.SOFT_BUDGET_RATIO),
+        )
+        self.assertLess(
+            baseline.words,
+            int(context_budget.BASELINE_WORD_LIMIT * context_budget.SOFT_BUDGET_RATIO),
+        )
+
     def test_current_routes_preserve_required_authorities(self):
         errors, _, report = context_budget.audit(
             REPOSITORY_ROOT,
