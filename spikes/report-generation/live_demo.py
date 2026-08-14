@@ -26,6 +26,7 @@ HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
 MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
+MAX_SANKEY_PAGES = planner.MAX_SANKEY_PAGES
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
 def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
@@ -767,6 +768,135 @@ def section_for_question(spec: dict, question: str) -> dict:
     }
 
 
+def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict:
+    """Translate one confirmed AI specification into a guarded render contract."""
+    component_for_chart = {
+        "scorecard": "table",
+        "kpi_group": "kpi_group",
+        "bar": "table",
+        "grouped_bar": "grouped_bar",
+        "stacked_bar": "stacked_bar",
+        "line": "line",
+        "multi_line": "multi_line",
+        "scatter": "scatter",
+        "bubble": "bubble",
+        "funnel": "funnel",
+        "heatmap": "heatmap",
+        "table": "table",
+        "sankey": "sankey",
+    }
+    chart = panel.get("chart")
+    if chart not in component_for_chart:
+        raise LiveDemoError("確定した分析仕様の可視化種別が未対応です。")
+    section = {
+        "id": section_id or panel["id"],
+        "title": panel["title"],
+        "text": panel["execution_prompt"],
+        "compare": "execution",
+        "component": component_for_chart[chart],
+        "planned_visualization": chart,
+        "verification": "execution",
+        "purpose": panel.get("decision", panel.get("objective", "")),
+        "max_result_rows": planner.DASHBOARD_ROW_LIMITS[chart],
+        "dimension_count": len(panel["dimensions"]),
+        "measure_count": len(panel["measures"]),
+    }
+    dimensions = panel["dimensions"]
+    measures = panel["measures"]
+    if chart == "scorecard":
+        section["shape"] = {"rows": "1行", "columns": measures}
+        section["source_columns"] = ["metric_value"]
+    elif chart == "kpi_group":
+        section["shape"] = {"rows": "1行", "columns": measures}
+        section["source_columns"] = [
+            f"metric_{index}" for index in range(1, len(measures) + 1)
+        ]
+    elif chart == "bar":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value"]
+    elif chart in {"grouped_bar", "stacked_bar"}:
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "category",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "line":
+        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["event_date", "metric_value"]
+    elif chart == "multi_line":
+        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "event_date",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart in {"scatter", "bubble"}:
+        value_columns = ["x_value", "y_value"]
+        if chart == "bubble":
+            value_columns.append("size_value")
+        section["shape"] = {"rows": "項目ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", *value_columns]
+    elif chart == "funnel":
+        section["shape"] = {"rows": "段階ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["stage", "metric_value"]
+        section["generation_requirements"] = [
+            "stageには順序が判別できる番号接頭辞を付ける"
+        ]
+    elif chart == "heatmap":
+        section["shape"] = {
+            "rows": "2つの区分の組み合わせごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["x_category", "y_category", "metric_value"]
+    elif chart == "table":
+        section["shape"] = {
+            "rows": "区分または集計単位ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = [
+            *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "sankey":
+        display_dimensions = dimensions
+        if len({"".join(value.lower().split()) for value in dimensions}) == 1:
+            display_dimensions = [f"遷移元{dimensions[0]}", f"遷移先{dimensions[1]}"]
+        section["shape"] = {
+            "rows": "隣接する段階間の遷移ごとに1行",
+            "columns": display_dimensions + measures,
+        }
+        section["source_columns"] = ["source", "target", "metric_value"]
+        section["max_navigation_pages"] = MAX_SANKEY_PAGES
+        section["generation_requirements"] = [
+            "最終列のASCII別名はsource、target、metric_valueにする",
+            f"sourceとtargetには1.〜{MAX_SANKEY_PAGES}.のページ段階が判別できる番号接頭辞を付ける",
+            f"回遊は最初の{MAX_SANKEY_PAGES}ページまでとし、{MAX_SANKEY_PAGES}ページ目より後のnodeやedgeは返さない",
+            f"3〜{MAX_SANKEY_PAGES}ページの回遊もsourceとtargetの隣接edgeとして縦持ちで返す",
+            "同一sourceとtargetの組はSUMして1行に集約する",
+        ]
+    if chart not in {"line", "multi_line", "table"}:
+        nonnull_metric_columns = section["source_columns"][len(dimensions) :]
+        section["nonnull_metric_columns"] = nonnull_metric_columns
+        aliases = "、".join(nonnull_metric_columns)
+        section.setdefault("generation_requirements", []).append(
+            f"{aliases}はNULLを返さない。COUNT/COUNTIF以外の式は最終SELECT式全体を"
+            "COALESCEまたはIFNULLで包む"
+        )
+    if chart not in {"scorecard", "kpi_group"}:
+        max_rows = section["max_result_rows"]
+        if chart in {"line", "multi_line"}:
+            ordering = "event_dateの昇順"
+        elif chart == "sankey":
+            ordering = "metric_valueの降順"
+        elif chart == "funnel":
+            ordering = "stageの昇順"
+        else:
+            ordering = f"{section['source_columns'][-1]}の降順"
+        section.setdefault("generation_requirements", []).append(
+            f"最終SELECTは{ordering}でORDER BYし、LIMIT {max_rows}を明示する"
+        )
+    return section
+
+
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
     """Turn AI-authored analysis specifications into guarded generation sections."""
     if "ダッシュボード" not in question:
@@ -774,45 +904,7 @@ def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[d
     period = period_for_question(question)
     if plan.get("period") != period:
         raise LiveDemoError("確定した分析仕様の対象期間が依頼文と一致しません。")
-    component_for_chart = {
-        "scorecard": "table",
-        "bar": "table",
-        "line": "line",
-        "table": "table",
-        "sankey": "sankey",
-    }
-    sections = []
-    for panel in plan.get("panels", []):
-        chart = panel.get("chart")
-        if chart not in component_for_chart:
-            raise LiveDemoError("確定した分析仕様の可視化種別が未対応です。")
-        section = {
-            "id": panel["id"],
-            "title": panel["title"],
-            "text": panel["execution_prompt"],
-            "compare": "execution",
-            "component": component_for_chart[chart],
-            "planned_visualization": chart,
-            "verification": "execution",
-            "purpose": panel["decision"],
-        }
-        if chart == "scorecard":
-            section["shape"] = {"rows": "1行", "columns": [panel["kpi"]]}
-        elif chart == "bar":
-            section["shape"] = {"rows": "区分ごとに1行", "columns": ["区分", "値"]}
-        elif chart == "line":
-            section["shape"] = {"rows": "日付ごとに1行", "columns": ["日付", "値"]}
-        elif chart == "sankey":
-            section["shape"] = {
-                "rows": "隣接する段階間の遷移ごとに1行",
-                "columns": ["source", "target", "sessions"],
-            }
-            section["generation_requirements"] = [
-                "最終列のASCII別名はsource、target、sessionsにする",
-                "sourceとtargetは段階が判別できる接頭辞を付ける",
-                "同一sourceとtargetの組はSUMして1行に集約する",
-            ]
-        sections.append(section)
+    sections = [planned_analysis_section(panel) for panel in plan.get("panels", [])]
     if not 1 <= len(sections) <= planner.MAX_PANEL_COUNT:
         raise LiveDemoError(
             f"確定した分析パネルは1〜{planner.MAX_PANEL_COUNT}件にしてください。"
