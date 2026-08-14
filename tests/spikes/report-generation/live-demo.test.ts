@@ -1135,7 +1135,7 @@ finally:s.shutdown();s.server_close();t.join()
   });
 });
 
-test('non-GA4 selector exposes the bounded Bitcoin nested-schema demonstration', () => {
+test('non-GA4 selector does not inject a fixed Bitcoin question into the UI', () => {
   const result = python(`
 html=m.HTML
 profile=m.bitcoin
@@ -1148,8 +1148,8 @@ for question in ["2023年12月の受取アドレス別の取引数", "2024年1�
  except ValueError as error:
   errors.append(str(error))
 print(json.dumps({
- "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"','Bitcoin受取先の複雑度']),
- "cost":all(value in html for value in ["BigQuery dry run 約2.91 GiB","上限20 GiB","参照値照合なし","通常約¥5・最大約¥20"]),
+ "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"']) and "Bitcoin受取先の複雑度" not in html,
+ "cost":all(value in html for value in ["BigQuery 最大20 GiB","生成SQL 1クエリ","合計最大約¥20"]),
  "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
  "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
  "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
@@ -1863,7 +1863,7 @@ test('meeting report owns persistent processing and error state across workspace
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.ok(rendered.stdout.includes('id="report-status"'));
   assert.ok(rendered.stdout.includes('id="report-message"'));
-  assert.ok(rendered.stdout.includes('id="report-warning"'));
+  assert.ok(!rendered.stdout.includes('id="report-warning"'));
   assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
   assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
   assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
