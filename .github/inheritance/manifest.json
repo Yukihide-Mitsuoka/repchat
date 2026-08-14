@@ -48,7 +48,6 @@
     "scripts/template_inheritance.py",
     "scripts/tests/test_agent_contract_profile.py",
     "scripts/tests/test_context_budget.py",
-    "scripts/tests/test_dependency_update_automation.py",
     "scripts/tests/test_expand_phase_compatibility.py",
     "scripts/tests/test_foundation_docs_portability.py",
     "scripts/tests/test_foundation_document_language.py",
