@@ -25,6 +25,7 @@ from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
+MAX_QUESTION_CHARS = 500
 MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
 MAX_SANKEY_PAGES = planner.MAX_SANKEY_PAGES
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
@@ -1770,7 +1771,7 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                     total_history_chars += len(turn["content"])
                 if total_history_chars > 3000:
                     raise ValueError("history is too large")
-                if not question.strip() or len(question) > report.MAX_QUESTION_CHARS:
+                if not question.strip() or len(question) > MAX_QUESTION_CHARS:
                     raise ValueError("consultation question is invalid")
             elif self.path == "/api/report":
                 if not isinstance(build_revision, str) or not re.fullmatch(

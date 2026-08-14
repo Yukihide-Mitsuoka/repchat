@@ -71,12 +71,7 @@ doctor: ## Self-check the template: metadata invariants + guard-hook tests (foun
 	@bash scripts/tests/pr-size-policy.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
 
-demo: ## Generate, verify, build, and open the report demo (uses paid Vertex/BigQuery)
-	python3 spikes/report-generation/demo.py \
-		$(if $(PROJECT),--project "$(PROJECT)") \
-		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
-		$(if $(filter yes,$(BUILD_ONLY)),--build-only) \
-		$(if $(filter yes,$(DRY_RUN)),--dry-run)
+demo: demo-live ## Open the AI-planned live demo
 
 demo-live: ## Open the live Japanese prompt → graph/dashboard demo (each run is paid)
 	python3 spikes/report-generation/live_demo.py \
