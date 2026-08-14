@@ -92,10 +92,10 @@ test('live prompt uses an accessible in-page cost dialog before sending the requ
   const result = python(`
 html=m.HTML
 print(json.dumps({
- "copy":all(x in html for x in ["Vertex AI 約¥1","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
+ "copy":all(x in html for x in ["Vertex AI 最大約¥2","BigQuery 最大20 GiB","最大約¥19","合計最大約¥21","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
- "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*40","count*39"]),
+ "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*20","count*21"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","問い合わせを入力し、生成ボタンを押してください。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -1006,9 +1006,9 @@ import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  query_count=0
- def query(self,q,emit):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
- def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
- def meeting_report(self,revision,emit):emit({"type":"meeting_report","build_revision":revision})
+ def query(self,q,emit,**_kwargs):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ def dashboard(self,q,emit,*_args,**_kwargs):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
+ def meeting_report(self,revision,emit,**_kwargs):emit({"type":"meeting_report","build_revision":revision})
 engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
@@ -1501,14 +1501,14 @@ test('broad analysis requests use paid, stateful AI consultation before paid exe
   assert.match(rendered.stdout, /id="consultation-thread"/);
   assert.match(rendered.stdout, /id="consultation-recommendations"/);
   assert.match(rendered.stdout, /相談ではVertex AIを使用し、BigQueryは実行しません/);
-  assert.ok(script.includes('function isConsultationPrompt(question)'));
+  assert.ok(!script.includes('function isConsultationPrompt(question)'));
   assert.ok(script.includes('function beginAnalysisConsultation(question,profile)'));
   assert.ok(script.includes('async function runAnalysisConsultation()'));
   assert.ok(script.includes('consultationHistory'));
   assert.ok(script.includes('consultationHistory.slice(-8)'));
   assert.ok(script.includes('stream("/api/consult"'));
   assert.ok(script.includes('function selectAnalysisRecommendation(recommendation)'));
-  assert.ok(script.includes('if(action==="consult"||isConsultationPrompt(question))'));
+  assert.ok(script.includes('if(action==="consult"){beginAnalysisConsultation'));
   assert.ok(script.includes('selectWorkspace("consult");setComposerAction("consult",false)'));
   assert.ok(script.includes('setComposerAction("insight",false)'));
   assert.ok(script.includes('$("composer-input").value=""'));
@@ -1516,7 +1516,7 @@ test('broad analysis requests use paid, stateful AI consultation before paid exe
   const submit =
     script.match(/function submitComposer\(\)\{.*?\}\nconst originalQueryHandler/s)?.[0] ?? '';
   assert.ok(
-    submit.indexOf('if(action==="consult"||isConsultationPrompt(question))') <
+    submit.indexOf('if(action==="consult"){beginAnalysisConsultation') <
       submit.indexOf('showCost("graph")'),
   );
 });
