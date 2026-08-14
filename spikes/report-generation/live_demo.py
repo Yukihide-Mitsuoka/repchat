@@ -11,6 +11,7 @@ import re
 import shutil
 import sys
 import threading
+import traceback
 import webbrowser
 from datetime import date, datetime
 from decimal import Decimal
@@ -25,68 +26,39 @@ from demo import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
+MAX_QUESTION_CHARS = 500
 MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
+MAX_SANKEY_PAGES = planner.MAX_SANKEY_PAGES
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
-DASHBOARD_SECTION_IDS = report.SHOWCASE_IDS
-DASHBOARD_PURPOSES = {
-    "R4": "購入成果の規模を最初に確認する",
-    "R11": "単発訪問だけでなく、ユーザーが定着しているかを確認する",
-    "R12": "訪問中に十分な関与が生まれているかを確認する",
-    "R9": "閲覧から購入までのどこで減少しているかを特定する",
-    "R16": "日々の変動と7日間の基調を分けて確認する",
-    "R17": "主要なページ遷移から回遊上の特徴を確認する",
-}
-DASHBOARD_ROW_TEMPLATES = (
-    (("R4", 50), ("R11", 25), ("R12", 25)),
-    (("R9", 40), ("R17", 60)),
-    (("R16", 100),),
-)
-
-
-def dashboard_layout_rows(panel_ids: list[str]) -> list[dict]:
-    """Return complete rows whose shares always consume the available width."""
-    requested = set(panel_ids)
-    known = {panel_id for row in DASHBOARD_ROW_TEMPLATES for panel_id, _ in row}
-    if len(requested) != len(panel_ids) or not requested <= known:
-        raise LiveDemoError("ダッシュボード行へ未登録または重複したパネルがあります。")
-    rows = []
-    covered = set()
-    for template in DASHBOARD_ROW_TEMPLATES:
-        present = [(panel_id, share) for panel_id, share in template if panel_id in requested]
-        if not present:
-            continue
-        total = sum(share for _, share in present)
-        shares = [round(share * 100 / total, 4) for _, share in present]
-        shares[-1] = round(100 - sum(shares[:-1]), 4)
-        row_ids = [panel_id for panel_id, _ in present]
-        rows.append({"panel_ids": row_ids, "shares": shares})
-        covered.update(row_ids)
-    if covered != requested:
-        raise LiveDemoError("ダッシュボード行に配置できないパネルがあります。")
-    return rows
-
-
 def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
-    """Lay out AI-authored panels without encoding any analysis topic."""
+    """Render only the row and relative-width decisions authored by the AI."""
     if not panels:
         raise LiveDemoError("ダッシュボード計画にパネルがありません。")
+    grouped: dict[int, list[dict]] = {}
+    for panel in panels:
+        row = panel.get("layout_row")
+        weight = panel.get("layout_weight")
+        if (
+            isinstance(row, bool)
+            or not isinstance(row, int)
+            or row < 1
+            or isinstance(weight, bool)
+            or not isinstance(weight, int)
+            or not 1 <= weight <= 100
+        ):
+            raise LiveDemoError("AIが考察したダッシュボード配置がありません。")
+        grouped.setdefault(row, []).append(panel)
+    row_numbers = list(grouped)
+    if row_numbers != sorted(row_numbers) or any(
+        len(group) > 4 for group in grouped.values()
+    ):
+        raise LiveDemoError("AIが考察したダッシュボード行が描画仕様と一致しません。")
     rows: list[dict] = []
-    index = 0
-    weights = {"scorecard": 40, "bar": 60, "line": 60, "table": 60, "sankey": 100}
-    while index < len(panels):
-        panel = panels[index]
-        if panel.get("chart") == "sankey":
-            group = [panel]
-            index += 1
-        else:
-            group = panels[index : index + 2]
-            if len(group) == 2 and group[1].get("chart") == "sankey":
-                group = group[:1]
-            index += len(group)
-        raw_shares = [weights.get(item.get("chart"), 60) for item in group]
-        total = sum(raw_shares)
-        shares = [round(value * 100 / total, 4) for value in raw_shares]
+    for row_number in row_numbers:
+        group = grouped[row_number]
+        total = sum(item["layout_weight"] for item in group)
+        shares = [round(item["layout_weight"] * 100 / total, 4) for item in group]
         shares[-1] = round(100 - sum(shares[:-1]), 4)
         rows.append(
             {
@@ -100,28 +72,6 @@ def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
 def running_in_demo_venv() -> bool:
     """Return whether this process is using the demo virtual environment."""
     return Path(sys.prefix).resolve() == VENV_DIR.resolve()
-
-
-def requires_analysis_consultation(question: str) -> bool:
-    """Return whether a prompt asks for advice rather than a runnable analysis.
-
-    This guard is intentionally narrow. Concrete prompts remain eligible for the
-    existing cost gate, while common Japanese discovery questions cannot fall
-    through to a default SQL template and unexpectedly spend money.
-    """
-    compact = "".join(question.split()).rstrip("?？!！。")
-    discovery = (
-        compact.startswith(("どんな", "何を", "何の", "どういう"))
-        and "分析" in compact
-        and any(word in compact for word in ("したら", "すれば", "できる"))
-    )
-    recommendation = (
-        compact.startswith(("おすすめ", "推奨"))
-        and "分析" in compact
-        and compact.endswith(("教えて", "提案して", "知りたい"))
-    )
-    consultation = compact.startswith("分析") and "相談" in compact
-    return discovery or recommendation or consultation
 
 
 def analysis_consultation_context(metrics: str, profile: str) -> str:
@@ -192,50 +142,72 @@ function populateResult(result){graph(result);$("result-data").replaceChildren(t
 function clearResult(){$("chart").replaceChildren();$("result-data").replaceChildren();selectResultTab("chart")}
 function syncClarificationAnswers(event){const inputs=event?[event.target]:[...document.querySelectorAll("[data-answer-field]")];inputs.forEach(input=>{const field=input.dataset.answerField,value=input.value.trim(),status=input.answerStatus;if(value){currentAnswers[field]=value;input.parentElement.classList.add("accepted");status.textContent=value===input.dataset.recommendedAnswer?"推奨回答を採用済み（編集可）":"編集した回答を採用（さらに編集可）";if(field==="audience")$("plan-audience").value=value;if(field==="comparison")$("plan-comparison").value=value}else{delete currentAnswers[field];input.parentElement.classList.remove("accepted");status.textContent="回答を入力するとbuildできます。"}});$("plan-build").disabled=[...document.querySelectorAll("[data-answer-field]")].some(input=>!input.value.trim())}
 function syncPlanFieldAnswer(field,value){const input=document.querySelector(`[data-answer-field="${field}"]`);if(input){input.value=value;syncClarificationAnswers({target:input})}}
-function renderAnalysisPlan(event){const plan=event.plan;currentPlan=plan;pendingPlanBase=null;pendingPlanInstruction=null;$("plan-revision-instruction").value="";dashboardStage("review");$("plan-review").className="panel";$("plan-revision").textContent=plan.revision;$("plan-summary").textContent=plan.objective_summary;$("plan-audience").value=plan.audience;$("plan-comparison").value=plan.comparison;$("plan-context").textContent=`組織コンテキスト ${plan.organization_context_revision}（ローカルデモfixture・本番メモリー未接続）`;
+function clearPlanCorrection(){$("plan-correction").className="notice warning hidden";$("plan-correction-text").textContent=""}
+function showPlanCorrection(instruction){$("plan-correction-text").textContent=instruction;$("plan-correction").className="notice warning"}
+function renderAnalysisPlan(event){const plan=event.plan;currentPlan=plan;pendingPlanBase=null;pendingPlanInstruction=null;$("plan-revision-instruction").value="";clearPlanCorrection();dashboardStage("review");$("plan-review").className="panel";$("plan-revision").textContent=plan.revision;$("plan-summary").textContent=plan.objective_summary;$("plan-audience").value=plan.audience;$("plan-comparison").value=plan.comparison;$("plan-context").textContent=`依頼と確認回答から生成したコンテキスト ${plan.organization_context_revision}`;
 const hypotheses=document.createElement("ul");plan.hypotheses.forEach(value=>hypotheses.appendChild(Object.assign(document.createElement("li"),{textContent:value})));$("plan-hypotheses").replaceChildren(hypotheses);const questions=[];plan.clarifications.forEach(item=>{const box=Object.assign(document.createElement("div"),{className:"clarification"}),label=document.createElement("label"),input=document.createElement("input"),status=document.createElement("small");label.textContent=item.question;input.value=item.recommended_answer;input.dataset.answerField=item.field;input.dataset.recommendedAnswer=item.recommended_answer;input.answerStatus=status;input.oninput=syncClarificationAnswers;currentAnswers[item.field]=input.value.trim();box.append(label,input,status);questions.push(box)});$("plan-clarifications").replaceChildren(...questions);syncClarificationAnswers();
-const choices=[];plan.panels.forEach(panel=>{const row=Object.assign(document.createElement("div"),{className:"plan-choice"}),input=Object.assign(document.createElement("input"),{type:"checkbox",checked:true}),label=document.createElement("label"),detail=document.createElement("small");input.dataset.panelId=panel.id;label.textContent=`${panel.title} — ${panel.chart}`;detail.textContent=`${panel.reason} 判断用途: ${panel.decision}`;label.append(detail);row.append(input,label);choices.push(row)});$("plan-panels").replaceChildren(...choices);$("plan-revise").className="secondary";$("dashboard-status").textContent="提案済み";$("dashboard-message").textContent=plan.clarifications.length?"推奨回答を採用済みです。そのままbuildするか、変更依頼を添えてAIへ再提案できます。":`分析仕様を確認し、必要なら追加・変更・削除を依頼できます。Vertex AI推定 ¥${event.cost_jpy}`}
+const choices=[];plan.panels.forEach(panel=>{const row=Object.assign(document.createElement("div"),{className:"plan-choice"}),input=Object.assign(document.createElement("input"),{type:"checkbox",checked:true}),label=document.createElement("label"),detail=document.createElement("small");input.dataset.panelId=panel.id;label.textContent=`${panel.title} — ${panel.chart}`;detail.textContent=`${panel.reason} 判断用途: ${panel.decision} AIレイアウト: 行${panel.layout_row}・相対幅${panel.layout_weight}`;label.append(detail);row.append(input,label);choices.push(row)});$("plan-panels").replaceChildren(...choices);$("plan-revise").className="secondary";$("dashboard-status").textContent="提案済み";$("dashboard-message").textContent=plan.clarifications.length?"推奨回答を採用済みです。そのままbuildするか、変更依頼を添えてAIへ再提案できます。":`分析仕様を確認し、必要なら追加・変更・削除を依頼できます。Vertex AI推定 ¥${event.cost_jpy}`}
 function collectAnswers(){syncClarificationAnswers();if($("plan-build").disabled)throw new Error("すべての確認事項へ回答してください。")}
 function selectedPlan(){const selected=new Set([...document.querySelectorAll("[data-panel-id]:checked")].map(input=>input.dataset.panelId));if(selected.size<1)throw new Error("ダッシュボードには1件以上のパネルを選択してください。");if(selected.size>__MAX_PANEL_COUNT__)throw new Error("ダッシュボードのパネルは最大__MAX_PANEL_COUNT__件です。");const plan=JSON.parse(JSON.stringify(currentPlan));plan.panels=plan.panels.filter(panel=>selected.has(panel.id));plan.audience=$("plan-audience").value.trim();plan.comparison=$("plan-comparison").value.trim();if(!plan.audience||!plan.comparison)throw new Error("主な読者と比較の考え方を入力してください。");plan.answers=currentAnswers;return plan}
 function citedItem(item,suffix=""){const row=document.createElement("p");row.appendChild(document.createTextNode(item.text+suffix));item.evidence_refs.forEach(ref=>row.appendChild(Object.assign(document.createElement("span"),{className:"citation",textContent:`根拠 ${ref.panel_id} / ${ref.result_revision} / SQL ${ref.sql_sha256}`})));return row}
-function renderMeetingReport(event){const report=event.report;$("report-empty").className="hidden";$("report-output").className="panel report-home";$("report-revision").textContent=report.report_revision;const warnings=report.generation_warnings||[];$("report-warning").className=warnings.length?"notice warning":"hidden";$("report-warning").textContent=warnings.join(" ");$("report-summary").replaceChildren(citedItem(report.executive_summary));const content=[];for(const [title,name,suffix]of[["観測","observations",""],["解釈","interpretations",""],["未検証の仮説","hypotheses",""],["推奨アクション","actions",""]]){const section=Object.assign(document.createElement("section"),{className:"report-section"}),heading=Object.assign(document.createElement("h3"),{textContent:title});section.append(heading);report[name].forEach(item=>{let detail=suffix;if(name==="interpretations")detail=`（不確実性: ${item.uncertainty}）`;if(name==="hypotheses")detail=`（検証: ${item.validation}）`;if(name==="actions")detail=`（期待効果: ${item.expected_impact} / 担当: ${item.owner} / 緊急度: ${item.urgency} / 次: ${item.next_step} / 成功指標: ${item.success_metric}）`;section.append(citedItem(item,detail))});content.push(section)}const limits=Object.assign(document.createElement("section"),{className:"report-section"}),limitTitle=Object.assign(document.createElement("h3"),{textContent:"限界・不足情報"}),list=document.createElement("ul");report.limitations.forEach(value=>list.appendChild(Object.assign(document.createElement("li"),{textContent:value})));limits.append(limitTitle,list);content.push(limits);$("report-sections").replaceChildren(...content)}
-function sankey(svg,rows,w,h,detail,requestedDepth){
-const instanceId="sankey-"+(sankey.instanceSequence=(sankey.instanceSequence||0)+1),palette=["#4e79a7","#f28e2b","#59a14f","#e15759","#b07aa1","#76b7b2","#edc948","#ff9da7","#9c755f","#bab0ab"],canonical=name=>name.replace(/^\d+\.\s*(入口:\s*)?/,""),links=rows.map(row=>({source:String(row[0]),target:String(row[1]),value:Math.max(0,Number(row[2]))})).filter(link=>Number.isFinite(link.value)&&link.value>0),incoming=new Map(),outgoing=new Map(),values=new Map(),levels=new Map(),colors=new Map();
-for(const link of links){outgoing.set(link.source,(outgoing.get(link.source)||0)+link.value);incoming.set(link.target,(incoming.get(link.target)||0)+link.value);for(const [name,fallback]of[[link.source,1],[link.target,2]]){const match=name.match(/^(\d+)\./);levels.set(name,match?Number(match[1]):fallback);const category=canonical(name);if(!colors.has(category))colors.set(category,palette[colors.size%palette.length])}}
+function renderMeetingReport(event){const report=event.report;$("report-empty").className="hidden";$("report-output").className="panel report-home";$("report-revision").textContent=report.report_revision;$("report-summary").replaceChildren(citedItem(report.executive_summary));const content=[];for(const [title,name,suffix]of[["観測","observations",""],["解釈","interpretations",""],["未検証の仮説","hypotheses",""],["推奨アクション","actions",""]]){const section=Object.assign(document.createElement("section"),{className:"report-section"}),heading=Object.assign(document.createElement("h3"),{textContent:title});section.append(heading);report[name].forEach(item=>{let detail=suffix;if(name==="interpretations")detail=`（不確実性: ${item.uncertainty}）`;if(name==="hypotheses")detail=`（検証: ${item.validation}）`;if(name==="actions")detail=`（期待効果: ${item.expected_impact} / 担当: ${item.owner} / 緊急度: ${item.urgency} / 次: ${item.next_step} / 成功指標: ${item.success_metric}）`;section.append(citedItem(item,detail))});content.push(section)}const limits=Object.assign(document.createElement("section"),{className:"report-section"}),limitTitle=Object.assign(document.createElement("h3"),{textContent:"限界・不足情報"}),list=document.createElement("ul");report.limitations.forEach(value=>list.appendChild(Object.assign(document.createElement("li"),{textContent:value})));limits.append(limitTitle,list);content.push(limits);$("report-sections").replaceChildren(...content)}
+function sankey(svg,rows,w,h,detail,valueLabel){
+const maxPages=__MAX_SANKEY_PAGES__,instanceId="sankey-"+(sankey.instanceSequence=(sankey.instanceSequence||0)+1),palette=["#4e79a7","#f28e2b","#59a14f","#e15759","#b07aa1","#76b7b2","#edc948","#ff9da7","#9c755f","#bab0ab"],canonical=name=>name.replace(/^\d+\.\s*(入口:\s*)?/,""),stage=(name,fallback)=>{const match=String(name).match(/^(\d+)\./);return match?Number(match[1]):fallback},links=rows.map(row=>({source:String(row[0]),target:String(row[1]),value:Math.max(0,Number(row[2]))})).filter(link=>{const sourceStage=stage(link.source,1),targetStage=stage(link.target,2);return Number.isFinite(link.value)&&link.value>0&&sourceStage>=1&&sourceStage<maxPages&&targetStage>sourceStage&&targetStage<=maxPages}),incoming=new Map(),outgoing=new Map(),values=new Map(),levels=new Map(),colors=new Map();
+if(!links.length){detail.textContent=`${maxPages}ページ以内の遷移はありませんでした。`;return}
+for(const link of links){outgoing.set(link.source,(outgoing.get(link.source)||0)+link.value);incoming.set(link.target,(incoming.get(link.target)||0)+link.value);for(const [name,inferredLevel]of[[link.source,1],[link.target,2]]){levels.set(name,stage(name,inferredLevel));const category=canonical(name);if(!colors.has(category))colors.set(category,palette[colors.size%palette.length])}}
 for(const name of levels.keys())values.set(name,Math.max(incoming.get(name)||0,outgoing.get(name)||0));
 const color=name=>colors.get(canonical(name)),stageNumbers=[...new Set(levels.values())].sort((a,b)=>a-b),groups=new Map(stageNumbers.map(stage=>[stage,[]]));
 for(const name of values.keys())groups.get(levels.get(name)).push(name);
 for(const names of groups.values())names.sort();
 const largest=Math.max(...stageNumbers.map(stage=>groups.get(stage).reduce((sum,name)=>sum+values.get(name),0)),1),maxGaps=Math.max(...stageNumbers.map(stage=>Math.max(0,groups.get(stage).length-1)),0),gap=14,scale=Math.min(1.15,(h-54-gap*maxGaps)/largest),positions=new Map();
 stageNumbers.forEach((stage,index)=>{const names=groups.get(stage),height=names.reduce((sum,name)=>sum+Math.max(10,values.get(name)*scale),0)+gap*Math.max(0,names.length-1),x=30+index*(w-150)/Math.max(stageNumbers.length-1,1);let y=(h-height)/2;for(const name of names){const nodeHeight=Math.max(10,values.get(name)*scale);positions.set(name,{x,y,height:nodeHeight,out:0,into:0});y+=nodeHeight+gap}});
-const defs=node("defs");svg.append(defs);svg.appendChild(node("title")).textContent=`入口から${stageNumbers[stageNumbers.length-1]}ページ目までの主要回遊`;
-const stageLabels={1:"入口",2:"2ページ目",3:"3ページ目"};stageNumbers.forEach((stage,index)=>{const heading=svg.appendChild(node("text",{x:30+index*(w-150)/Math.max(stageNumbers.length-1,1),y:18,class:"sankey-stage"}));heading.textContent=stageLabels[stage]||`${stage}ページ目`});
-const defaultDetail="線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・セッション数を確認できます。";
-links.forEach((link,index)=>{const source=positions.get(link.source),target=positions.get(link.target),width=Math.max(2,link.value*scale),y1=source.y+source.out+width/2,y2=target.y+target.into+width/2,x1=source.x+12,x2=target.x,gradientId=instanceId+"-link-"+index,gradient=node("linearGradient",{id:gradientId,gradientUnits:"userSpaceOnUse",x1,y1,x2,y2});gradient.append(node("stop",{offset:"0%","stop-color":color(link.source)}),node("stop",{offset:"100%","stop-color":color(link.target)}));defs.append(gradient);source.out+=width;target.into+=width;const description=`${canonical(link.source)} → ${canonical(link.target)}: ${chartValue(link.value,"sessions",true)}セッション`,path=node("path",{class:"sankey-link",d:"M "+x1+" "+y1+" C "+((x1+x2)/2)+" "+y1+", "+((x1+x2)/2)+" "+y2+", "+x2+" "+y2,fill:"none",stroke:"url(#"+gradientId+")","stroke-opacity":.58,"stroke-width":width,tabindex:0,"aria-label":description});path.appendChild(node("title")).textContent=description;path.onmouseenter=path.onfocus=()=>detail.textContent=description;path.onmouseleave=path.onblur=()=>detail.textContent=defaultDetail;svg.append(path)});
+const defs=node("defs");svg.append(defs);svg.appendChild(node("title")).textContent="段階間の主要な流れ";
+stageNumbers.forEach((stage,index)=>{const heading=svg.appendChild(node("text",{x:30+index*(w-150)/Math.max(stageNumbers.length-1,1),y:18,class:"sankey-stage"}));heading.textContent=`段階${stage}`});
+const defaultDetail=`線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・${valueLabel}を確認できます。`;
+links.forEach((link,index)=>{const source=positions.get(link.source),target=positions.get(link.target),width=Math.max(2,link.value*scale),y1=source.y+source.out+width/2,y2=target.y+target.into+width/2,x1=source.x+12,x2=target.x,gradientId=instanceId+"-link-"+index,gradient=node("linearGradient",{id:gradientId,gradientUnits:"userSpaceOnUse",x1,y1,x2,y2});gradient.append(node("stop",{offset:"0%","stop-color":color(link.source)}),node("stop",{offset:"100%","stop-color":color(link.target)}));defs.append(gradient);source.out+=width;target.into+=width;const description=`${canonical(link.source)} → ${canonical(link.target)}: ${chartValue(link.value,valueLabel)} ${valueLabel}`,path=node("path",{class:"sankey-link",d:"M "+x1+" "+y1+" C "+((x1+x2)/2)+" "+y1+", "+((x1+x2)/2)+" "+y2+", "+x2+" "+y2,fill:"none",stroke:"url(#"+gradientId+")","stroke-opacity":.58,"stroke-width":width,tabindex:0,"aria-label":description});path.appendChild(node("title")).textContent=description;path.onmouseenter=path.onfocus=()=>detail.textContent=description;path.onmouseleave=path.onblur=()=>detail.textContent=defaultDetail;svg.append(path)});
 for(const [name,pos]of positions){svg.append(node("rect",{x:pos.x,y:pos.y,width:12,height:pos.height,rx:2,fill:color(name)}));const label=svg.appendChild(node("text",{x:pos.x+18,y:pos.y+Math.min(16,pos.height/2+4)}));label.textContent=canonical(name).slice(0,32)}
-return {terminalByStage:Array.from({length:Math.max(0,requestedDepth-2)},(_,index)=>index+2).map(stage=>({stage,sessions:[...(groups.get(stage)||[])].reduce((sum,name)=>sum+Math.max(0,(incoming.get(name)||0)-(outgoing.get(name)||0)),0)})).filter(item=>item.sessions>0)}
 }
+const chartPalette=["#3973c6","#d39b2a","#2f855a","#b45f86"];
+function chartLegend(svg,columns,w,y){columns.forEach((column,index)=>{svg.append(node("rect",{x:45+index*170,y:y-7,width:14,height:4,fill:chartPalette[index%chartPalette.length]}));svg.appendChild(node("text",{x:65+index*170,y})).textContent=column})}
+function kpiGroup(r,box){const group=Object.assign(document.createElement("div"),{className:"kpi-pair"});r.columns.forEach((column,index)=>{const item=document.createElement("div"),value=document.createElement("strong"),label=document.createElement("span");value.textContent=chartValue(r.rows[0][index],column);label.textContent=column;item.append(value,label);group.append(item)});box.append(group)}
+function barChart(r,box,mode="single"){
+const rows=r.rows,columns=r.columns||["category","metric_value"],seriesCount=columns.length-1,rowHeight=mode==="grouped"?Math.max(38,seriesCount*13+15):38,w=820,h=Math.max(260,rows.length*rowHeight+55),svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${columns[0]}別の${columns.slice(1).join("・")}`}),plotWidth=w-280;
+box.append(svg);const max=Math.max(1,...rows.map(row=>mode==="stacked"?row.slice(1).reduce((sum,value)=>sum+Number(value),0):Math.max(...row.slice(1).map(Number))));
+rows.forEach((row,rowIndex)=>{const y=18+rowIndex*rowHeight;svg.appendChild(node("text",{x:4,y:y+16})).textContent=String(row[0]).slice(0,28);if(mode==="stacked"){let x=205;row.slice(1).forEach((value,seriesIndex)=>{const width=plotWidth*Number(value)/max,rect=node("rect",{x,y,width,height:24,fill:chartPalette[seriesIndex%chartPalette.length]});rect.appendChild(node("title")).textContent=`${row[0]} / ${columns[seriesIndex+1]}: ${chartValue(value,columns[seriesIndex+1])}`;svg.append(rect);x+=width})}else{row.slice(1).forEach((value,seriesIndex)=>{const barHeight=mode==="grouped"?10:24,barY=mode==="grouped"?y+seriesIndex*12:y,width=plotWidth*Number(value)/max,rect=node("rect",{x:205,y:barY,width,height:barHeight,rx:3,fill:chartPalette[seriesIndex%chartPalette.length]});rect.appendChild(node("title")).textContent=`${row[0]} / ${columns[seriesIndex+1]}: ${chartValue(value,columns[seriesIndex+1])}`;svg.append(rect);if(mode==="single")svg.appendChild(node("text",{x:215+width,y:y+16})).textContent=chartValue(value,columns[1])})}});if(seriesCount>1)chartLegend(svg,columns.slice(1),w,h-16)
+}
+function lineChart(r,box){
+const w=820,h=360,seriesCount=r.columns.length-1,seriesValues=Array.from({length:seriesCount},(_unused,seriesIndex)=>r.rows.map(row=>row[seriesIndex+1]===null||row[seriesIndex+1]===undefined||row[seriesIndex+1]===""?NaN:Number(row[seriesIndex+1])).filter(Number.isFinite));if(!seriesValues.some(values=>values.length)){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"数値が取得できる日付はありませんでした。"}));return}const scaleFor=values=>{const min=Math.min(...values),max=Math.max(...values);return{min,max,span:max-min||1}},magnitudes=seriesValues.map(values=>Math.max(0,...values.map(Math.abs))).filter(value=>value>0),independent=seriesCount>1&&magnitudes.length>1&&Math.max(...magnitudes)/Math.min(...magnitudes)>=100,globalScale=scaleFor(seriesValues.flat()),scales=independent?seriesValues.map(scaleFor):seriesValues.map(()=>globalScale),svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}ごとの${r.columns.slice(1).join("・")}推移${independent?"（系列ごとの独立スケール）":""}`});box.append(svg);
+for(let seriesIndex=0;seriesIndex<seriesCount;seriesIndex++){const scale=scales[seriesIndex],points=r.rows.map((row,index)=>{const value=row[seriesIndex+1]===null||row[seriesIndex+1]===undefined||row[seriesIndex+1]===""?NaN:Number(row[seriesIndex+1]);return Number.isFinite(value)?[45+index*(w-80)/Math.max(r.rows.length-1,1),25+(scale.max-value)*(h-75)/scale.span,value,row[0]]:null}),draw=segment=>{if(segment.length>1)svg.append(node("polyline",{points:segment.map(point=>point.slice(0,2).join(",")).join(" "),fill:"none",stroke:chartPalette[seriesIndex%chartPalette.length],"stroke-width":3}));segment.forEach(point=>{const circle=node("circle",{cx:point[0],cy:point[1],r:4,fill:chartPalette[seriesIndex%chartPalette.length]});circle.appendChild(node("title")).textContent=`${point[3]} / ${r.columns[seriesIndex+1]}: ${chartValue(point[2],r.columns[seriesIndex+1])}`;svg.append(circle)})};let segment=[];for(const point of [...points,null]){if(point)segment.push(point);else if(segment.length){draw(segment);segment=[]}}}if(seriesCount>1)chartLegend(svg,r.columns.slice(1),w,h-18);if(independent)box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption multi-line-scale-note",textContent:"系列の最大絶対値が100倍以上異なるため、系列ごとに独立した縦軸スケールで推移を描画しています。各点の値はマウス操作で確認できます。"}))
+}
+function scatterChart(r,box,isBubble){
+const w=820,h=390,xValues=r.rows.map(row=>Number(row[1])),yValues=r.rows.map(row=>Number(row[2])),xMin=Math.min(...xValues),xMax=Math.max(...xValues),yMin=Math.min(...yValues),yMax=Math.max(...yValues),xSpan=xMax-xMin||1,ySpan=yMax-yMin||1,sizes=isBubble?r.rows.map(row=>Math.max(0,Number(row[3]))):[],sizeMax=Math.max(...sizes,1),svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[1]}と${r.columns[2]}の関係`});box.append(svg);svg.append(node("line",{x1:55,y1:h-48,x2:w-25,y2:h-48,stroke:"#98a2b3"}),node("line",{x1:55,y1:20,x2:55,y2:h-48,stroke:"#98a2b3"}));svg.appendChild(node("text",{x:w/2-40,y:h-16})).textContent=r.columns[1];svg.appendChild(node("text",{x:8,y:18})).textContent=r.columns[2];r.rows.forEach((row,index)=>{const x=55+(Number(row[1])-xMin)*(w-90)/xSpan,y=20+(yMax-Number(row[2]))*(h-68)/ySpan,radius=isBubble?5+18*Math.sqrt(sizes[index]/sizeMax):6,description=`${row[0]}: ${r.columns[1]} ${chartValue(row[1],r.columns[1])} / ${r.columns[2]} ${chartValue(row[2],r.columns[2])}${isBubble?` / ${r.columns[3]} ${chartValue(row[3],r.columns[3])}`:""}`,circle=node("circle",{cx:x,cy:y,r:radius,fill:"#3973c6","fill-opacity":.62,stroke:"#1f4e79",tabindex:0,"aria-label":description});circle.appendChild(node("title")).textContent=description;svg.append(circle);if(index<12)svg.appendChild(node("text",{x:x+radius+3,y:y+4})).textContent=String(row[0]).slice(0,18)})
+}
+function funnelChart(r,box){const funnel=Object.assign(document.createElement("div"),{className:"funnel"}),max=Math.max(...r.rows.map(row=>Number(row[1])),1);r.rows.forEach(row=>{const step=Object.assign(document.createElement("div"),{className:"funnel-step"});step.style.width=Math.max(24,Number(row[1])/max*100)+"%";step.append(document.createTextNode(String(row[0])),Object.assign(document.createElement("strong"),{textContent:chartValue(row[1],r.columns[1],true)}));funnel.append(step)});box.append(funnel)}
+function heatmapChart(r,box){const xs=[...new Set(r.rows.map(row=>String(row[0])))],ys=[...new Set(r.rows.map(row=>String(row[1])))],w=Math.max(620,90+xs.length*72),h=Math.max(260,70+ys.length*40),values=r.rows.map(row=>Number(row[2])),min=Math.min(...values),max=Math.max(...values),span=max-min||1,svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}と${r.columns[1]}による${r.columns[2]}のヒートマップ`}),lookup=new Map(r.rows.map(row=>[`${row[0]}\u0000${row[1]}`,Number(row[2])]));box.append(svg);xs.forEach((value,index)=>{svg.appendChild(node("text",{x:95+index*72,y:22})).textContent=value.slice(0,10)});ys.forEach((yValue,rowIndex)=>{svg.appendChild(node("text",{x:4,y:52+rowIndex*40})).textContent=yValue.slice(0,13);xs.forEach((xValue,columnIndex)=>{const metricValue=lookup.get(`${xValue}\u0000${yValue}`),opacity=metricValue===undefined?.05:.16+.84*(metricValue-min)/span,rect=node("rect",{x:90+columnIndex*72,y:30+rowIndex*40,width:68,height:34,rx:3,fill:"#3973c6","fill-opacity":opacity});rect.appendChild(node("title")).textContent=metricValue===undefined?`${xValue} / ${yValue}: データなし`:`${xValue} / ${yValue}: ${chartValue(metricValue,r.columns[2])}`;svg.append(rect)})})}
+function renderResultTable(r,box){const scroll=Object.assign(document.createElement("div"),{className:"chart-table-scroll"});scroll.appendChild(table(r.columns,r.rows));box.appendChild(scroll)}
 function graph(r,box=$("chart")){
-box.replaceChildren();
-if(!r.rows.length){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"該当する行はありませんでした。"}));return}
+box.replaceChildren();if(!r.rows.length){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"該当する行はありませんでした。"}));return}
 if(r.visualization==="scalar"){box.appendChild(Object.assign(document.createElement("div"),{className:"metric",textContent:chartValue(r.rows[0][0],r.columns[0],true)}));return}
-if(r.visualization==="kpi_pair"){const pair=Object.assign(document.createElement("div"),{className:"kpi-pair"});r.columns.forEach((column,index)=>{const item=document.createElement("div"),value=document.createElement("strong"),label=document.createElement("span");value.textContent=chartValue(r.rows[0][index],column);label.textContent=column;item.append(value,label);pair.append(item)});box.append(pair);return}
-if(r.visualization==="funnel"){const funnel=Object.assign(document.createElement("div"),{className:"funnel"}),max=Math.max(...r.rows[0].map(Number),1);r.columns.forEach((column,index)=>{const step=Object.assign(document.createElement("div"),{className:"funnel-step"}),value=Number(r.rows[0][index]);step.style.width=Math.max(34,value/max*100)+"%";step.append(document.createTextNode(column),Object.assign(document.createElement("strong"),{textContent:chartValue(r.rows[0][index],column,true)}));funnel.append(step)});box.append(funnel);return}
-if(r.visualization==="trend"){
-const w=820,h=360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`}),series=[{index:1,color:"#3973c6"},{index:2,color:"#d39b2a"}],vals=series.flatMap(s=>r.rows.map(x=>Number(x[s.index]))),min=Math.min(...vals),max=Math.max(...vals),span=max-min||1;
-box.append(svg);
-series.forEach(s=>{const pts=r.rows.map((x,i)=>[45+i*(w-80)/Math.max(r.rows.length-1,1),25+(max-Number(x[s.index]))*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:s.color,"stroke-width":3}));pts.forEach(p=>{svg.append(node("circle",{cx:p[0],cy:p[1],r:3,fill:s.color}))})});
-r.columns.slice(1,3).forEach((column,index)=>{svg.append(node("rect",{x:55+index*170,y:h-30,width:14,height:4,fill:series[index].color}));svg.appendChild(node("text",{x:75+index*170,y:h-24})).textContent=column});return}
-if(r.visualization==="sankey"){const depth=r.navigation_depth||Math.max(...r.rows.flatMap(row=>[row[0],row[1]]).map(value=>Number(String(value).match(/^(\d+)\./)?.[1])||1)),svg=node("svg",{viewBox:"0 0 980 460",role:"img","aria-label":`入口から${depth}ページ目までの主要回遊`}),detail=Object.assign(document.createElement("p"),{className:"chart-caption sankey-detail",textContent:"線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・セッション数を確認できます。"});box.append(svg,detail);const summary=sankey(svg,r.rows,980,460,detail,depth),terminalParts=summary.terminalByStage.map(item=>`${item.stage}ページ目で終了: ${chartValue(item.sessions,"sessions",true)}セッション`),terminalText=terminalParts.length?terminalParts.join("、")+"（上位12経路内。離脱ノードは描画していません）":`上位12経路はすべて${depth}ページ目まで到達しています。`;box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption sankey-terminal",textContent:terminalText}));box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption",textContent:"連続する同一ページビューは1回の滞在として統合しています。色はページ種別を示し、リンクは遷移元から遷移先の色へ変化します。"}));return}
-if(!["bar","line"].includes(r.visualization)){box.appendChild(table(r.columns,r.rows));return}
-const rows=r.rows,w=820,h=r.visualization==="bar"?Math.max(260,rows.length*38+45):360,svg=node("svg",{viewBox:`0 0 ${w} ${h}`});box.appendChild(svg);if(r.visualization==="bar"){const vals=rows.map(x=>Number(x[1])),max=Math.max(...vals,1);rows.forEach((x,i)=>{const y=20+i*38,bw=(w-260)*vals[i]/max;svg.appendChild(node("text",{x:4,y:y+16})).textContent=String(x[0]).slice(0,28);svg.append(node("rect",{x:205,y,width:bw,height:24,rx:4,fill:"#3973c6"}));svg.appendChild(node("text",{x:215+bw,y:y+16})).textContent=chartValue(x[1],r.columns?.[1]??"")})}else{const vals=rows.map(x=>Number(x[1])),min=Math.min(...vals),max=Math.max(...vals),span=max-min||1,pts=vals.map((v,i)=>[45+i*(w-80)/Math.max(rows.length-1,1),25+(max-v)*(h-75)/span]);svg.append(node("polyline",{points:pts.map(p=>p.join(",")).join(" "),fill:"none",stroke:"#3973c6","stroke-width":3}));pts.forEach(p=>svg.append(node("circle",{cx:p[0],cy:p[1],r:4,fill:"#185adb"})))}}
+if(r.visualization==="kpi_group"){kpiGroup(r,box);return}
+if(r.visualization==="bar"){barChart(r,box);return}
+if(r.visualization==="grouped_bar"){barChart(r,box,"grouped");return}
+if(r.visualization==="stacked_bar"){barChart(r,box,"stacked");return}
+if(["line","multi_line"].includes(r.visualization)){lineChart(r,box);return}
+if(r.visualization==="scatter"){scatterChart(r,box,false);return}
+if(r.visualization==="bubble"){scatterChart(r,box,true);return}
+if(r.visualization==="funnel"){funnelChart(r,box);return}
+if(r.visualization==="heatmap"){heatmapChart(r,box);return}
+if(r.visualization==="sankey"){const valueLabel=r.columns?.[2]||"値",svg=node("svg",{viewBox:"0 0 980 460",role:"img","aria-label":`${r.columns?.[0]||"source"}から${r.columns?.[1]||"target"}への主要な流れ`}),detail=Object.assign(document.createElement("p"),{className:"chart-caption sankey-detail",textContent:`線にマウスを重ねるか、Tabキーで選ぶと遷移元・遷移先・${valueLabel}を確認できます。`});box.append(svg,detail);sankey(svg,r.rows,980,460,detail,valueLabel);box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption",textContent:"色は項目を示し、リンク幅は値の大きさを示します。"}));return}
+if(r.visualization==="table"){renderResultTable(r,box);return}
+throw new Error(`未対応の可視化形式です: ${r.visualization}`)
+}
 function finish(status){$("run-status").textContent=status;stages.forEach(s=>$("s-"+s).removeAttribute("aria-current"))}
 function handle(e){if(e.type==="stage"){stage(e.stage);$("message").textContent=e.message}else if(e.type==="sql"){stage("validate");$("output").className="";renderSql($("sql"),e.sql);$("reason").textContent=e.reason}else if(e.type==="result"){stage("render");$("output").className="";$("verification").className=e.verification==="matched"?"notice":"notice warning";$("verification").textContent=e.verification_label;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}（BigQuery利用料は別）`;populateResult(e);$("message").textContent="生成・実行・描画が完了しました。";stages.forEach(s=>$("s-"+s).className="done");finish("完了")}else if(e.type==="refusal"){stage("render");$("output").className="";renderSql($("sql"),"");$("reason").textContent=e.reason;$("verification").className="notice warning";$("verification").textContent=`未定義のため生成しません: ${e.undefined_terms.join("、")}`;$("cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;clearResult();$("message").textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;finish("停止")}else if(e.type==="error")throw new Error(e.message)}
-function createDashboardCard(panel){const card=Object.assign(document.createElement("section"),{className:"dashboard-card"+(panel.id==="R17"?" full":panel.id==="R9"||panel.id==="R16"?" wide":"" )}),head=document.createElement("div"),title=document.createElement("h3"),state=Object.assign(document.createElement("span"),{className:"panel-state",textContent:"待機中"}),purpose=Object.assign(document.createElement("p"),{className:"purpose",textContent:panel.purpose}),chart=Object.assign(document.createElement("div"),{className:"chart"}),inspect=Object.assign(document.createElement("button"),{className:"inspect-panel",type:"button",textContent:"詳細を確認"}),reason=document.createElement("p"),verification=Object.assign(document.createElement("p"),{className:"notice",textContent:"未実行"}),sql=Object.assign(document.createElement("pre"),{className:"sql"}),data=document.createElement("div");card.dataset.panelId=panel.id;title.textContent=panel.title;head.append(title,state);inspect.onclick=()=>openPanelInspector(panel.id);card.append(head,purpose,chart,inspect);$("dashboard-grid").append(card);dashboardPanels.set(panel.id,{card,title:panel.title,purpose:panel.purpose,state,chart,reason,verification,sql,data})}
-function renderDashboardRow(row,cards,separators,shares){const columns=[];cards.forEach((card,index)=>{columns.push(`minmax(${card.dataset.panelId==="R17"?420:card.dataset.panelId==="R9"?260:150}px,${shares[index]}fr)`);if(index<separators.length)columns.push("10px")});row.style.gridTemplateColumns=columns.join(" ");separators.forEach((separator,index)=>{const before=shares.slice(0,index).reduce((total,value)=>total+value,0),combined=shares[index]+shares[index+1],position=Math.round(before+shares[index]);separator.setAttribute("aria-valuemin",String(Math.round(before+15)));separator.setAttribute("aria-valuemax",String(Math.round(before+combined-15)));separator.setAttribute("aria-valuenow",String(position));separator.setAttribute("aria-valuetext",`${cards[index].querySelector("h3").textContent} ${Math.round(shares[index])}%、${cards[index+1].querySelector("h3").textContent} ${Math.round(shares[index+1])}%`)})}
+function createDashboardCard(panel){const card=Object.assign(document.createElement("section"),{className:"dashboard-card"}),head=document.createElement("div"),title=document.createElement("h3"),state=Object.assign(document.createElement("span"),{className:"panel-state",textContent:"待機中"}),purpose=Object.assign(document.createElement("p"),{className:"purpose",textContent:panel.purpose}),chart=Object.assign(document.createElement("div"),{className:"chart"}),inspect=Object.assign(document.createElement("button"),{className:"inspect-panel",type:"button",textContent:"詳細を確認"}),reason=document.createElement("p"),verification=Object.assign(document.createElement("p"),{className:"notice",textContent:"未実行"}),sql=Object.assign(document.createElement("pre"),{className:"sql"}),data=document.createElement("div");card.dataset.panelId=panel.id;card.dataset.chart=panel.chart;title.textContent=panel.title;head.append(title,state);inspect.onclick=()=>openPanelInspector(panel.id);card.append(head,purpose,chart,inspect);$("dashboard-grid").append(card);dashboardPanels.set(panel.id,{card,title:panel.title,purpose:panel.purpose,state,chart,reason,verification,sql,data})}
+function renderDashboardRow(row,cards,separators,shares){const columns=[];cards.forEach((_card,index)=>{columns.push(`minmax(0,${shares[index]}fr)`);if(index<separators.length)columns.push("10px")});row.style.gridTemplateColumns=columns.join(" ");separators.forEach((separator,index)=>{const before=shares.slice(0,index).reduce((total,value)=>total+value,0),combined=shares[index]+shares[index+1],position=Math.round(before+shares[index]);separator.setAttribute("aria-valuemin",String(Math.round(before+15)));separator.setAttribute("aria-valuemax",String(Math.round(before+combined-15)));separator.setAttribute("aria-valuenow",String(position));separator.setAttribute("aria-valuetext",`${cards[index].querySelector("h3").textContent} ${Math.round(shares[index])}%、${cards[index+1].querySelector("h3").textContent} ${Math.round(shares[index+1])}%`)})}
 function groupDashboardPanelRow(ids,initialShares){const cards=ids.map(id=>dashboardPanels.get(id)?.card);if(cards.some(card=>!card))return;const grid=$("dashboard-grid"),row=Object.assign(document.createElement("section"),{className:"dashboard-layout-row"}),shares=[...initialShares],separators=[];grid.insertBefore(row,cards[0]);cards.forEach((card,index)=>{row.append(card);if(index===cards.length-1)return;const separator=Object.assign(document.createElement("div"),{className:"dashboard-card-resizer",tabIndex:0,title:`${dashboardPanels.get(ids[index]).title}と${dashboardPanels.get(ids[index+1]).title}の幅を調整`});separator.setAttribute("role","separator");separator.setAttribute("aria-label",separator.title);separator.setAttribute("aria-orientation","vertical");row.append(separator);separators.push(separator)});const resize=(index,event)=>{const bounds=row.getBoundingClientRect(),usable=Math.max(bounds.width-separators.length*10,1),before=shares.slice(0,index).reduce((total,value)=>total+value,0),combined=shares[index]+shares[index+1],desired=(event.clientX-bounds.left-index*10)/usable*100-before,minLeft=15,minRight=15,left=Math.max(minLeft,Math.min(combined-minRight,desired));shares[index]=left;shares[index+1]=combined-left;renderDashboardRow(row,cards,separators,shares)};separators.forEach((separator,index)=>{const stop=event=>{separator.classList.remove("dragging");if(separator.hasPointerCapture(event.pointerId))separator.releasePointerCapture(event.pointerId)};separator.onpointerdown=event=>{separator.classList.add("dragging");separator.setPointerCapture(event.pointerId);resize(index,event)};separator.onpointermove=event=>{if(separator.classList.contains("dragging"))resize(index,event)};separator.onpointerup=stop;separator.onpointercancel=stop;separator.onkeydown=event=>{if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;event.preventDefault();const combined=shares[index]+shares[index+1],left=event.key==="Home"?15:event.key==="End"?combined-15:event.key==="ArrowLeft"?shares[index]-5:shares[index]+5,next=Math.max(15,Math.min(combined-15,left));shares[index]=next;shares[index+1]=combined-next;renderDashboardRow(row,cards,separators,shares)}});renderDashboardRow(row,cards,separators,shares)}
-function handleDashboard(e){if(e.type==="dashboard_plan"){$("dashboard-empty").className="hidden";$("dashboard-output").className="";$("dashboard-title").textContent=e.period+" 月次ECサイト分析";$("dashboard-provenance").textContent=`分析仕様 ${e.plan_revision} / 組織コンテキスト ${e.organization_context_revision}。左上の成果から右下の診断へ読み進めます。`;$("dashboard-grid").replaceChildren();dashboardPanels.clear();activePanelId=null;$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";e.panels.forEach(createDashboardCard);e.layout_rows.forEach(row=>groupDashboardPanelRow(row.panel_ids,row.shares));$("dashboard-message").textContent=`${e.panels.length}件の分析へ分解しました。順番にSQLを生成します。`;return}const panel=dashboardPanels.get(e.panel_id);if(e.type==="stage"&&panel){panel.state.textContent=`${e.panel_index}/${e.panel_count} ${e.stage==="generate"?"SQL生成中":"BigQuery実行中"}`;$("dashboard-message").textContent=`${e.title}: ${e.message}`;if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="sql"&&panel){renderSql(panel.sql,e.sql);panel.reason.textContent=e.reason;panel.state.textContent="SQL検査済み";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="result"&&panel){graph(e,panel.chart);panel.data.replaceChildren(table(e.columns,e.rows));panel.verification.className=e.verification==="matched"?"notice":"notice warning";panel.verification.textContent=e.verification_label;panel.state.textContent="描画完了";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="refusal"&&panel){panel.reason.textContent=e.reason;panel.verification.className="notice warning";panel.verification.textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;panel.state.textContent="停止";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="dashboard_complete"){if(e.panel_count!==dashboardPanels.size)throw new Error(`確定した${dashboardPanels.size}件のうち${e.panel_count}件しか完了していません。`);dashboardStage("complete");$("dashboard-status").textContent="完了";$("dashboard-cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;$("dashboard-message").textContent=`${e.panel_count}件のSQL生成・実行・描画が完了しました。`;latestBuildRevision=e.build_revision;$("report-submit").className=latestBuildRevision?"":"hidden";selectWorkspace("dashboard");enterDashboardReadingMode();return}if(e.type==="error")throw new Error(e.message)}
-function handlePlan(e){if(e.type==="plan_stage"){$("dashboard-status").textContent="相談中";$("dashboard-message").textContent=e.message}else if(e.type==="plan")renderAnalysisPlan(e);else if(e.type==="error")throw new Error(e.message)}
+function handleDashboard(e){if(e.type==="dashboard_plan"){$("dashboard-empty").className="hidden";$("dashboard-output").className="";$("dashboard-title").textContent=e.period+" 分析ダッシュボード";$("dashboard-provenance").textContent=`分析仕様 ${e.plan_revision} / 組織コンテキスト ${e.organization_context_revision}。AIが提案した分析順に表示します。`;$("dashboard-grid").replaceChildren();dashboardPanels.clear();activePanelId=null;$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";e.panels.forEach(createDashboardCard);e.layout_rows.forEach(row=>groupDashboardPanelRow(row.panel_ids,row.shares));$("dashboard-message").textContent=`${e.panels.length}件の分析へ分解しました。順番にSQLを生成します。`;return}const panel=dashboardPanels.get(e.panel_id);if(e.type==="stage"&&panel){const stageLabel=e.stage==="generate"?"SQL生成中":e.stage==="validate"?"出力検証中":e.stage==="repair"?"SQL修正中":"BigQuery実行中";panel.state.textContent=`${e.panel_index}/${e.panel_count} ${stageLabel}`;$("dashboard-message").textContent=`${e.title}: ${e.message}`;if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="sql"&&panel){renderSql(panel.sql,e.sql);panel.reason.textContent=e.reason;panel.state.textContent="SQL検査済み";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="result"&&panel){graph(e,panel.chart);panel.data.replaceChildren(table(e.columns,e.rows));panel.verification.className=e.verification==="matched"?"notice":"notice warning";panel.verification.textContent=e.verification_label;panel.state.textContent=e.visualization==="table"?"表を表示":["scalar","kpi_group"].includes(e.visualization)?"KPI表示完了":"グラフ描画完了";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="refusal"&&panel){panel.reason.textContent=e.reason;panel.verification.className="notice warning";panel.verification.textContent=`未定義のため停止: ${e.undefined_terms.join("、")}`;panel.state.textContent="停止";if(activePanelId===e.panel_id)openPanelInspector(e.panel_id);return}if(e.type==="dashboard_complete"){if(e.panel_count!==dashboardPanels.size)throw new Error(`確定した${dashboardPanels.size}件のうち${e.panel_count}件しか完了していません。`);dashboardStage("complete");$("dashboard-status").textContent="完了";$("dashboard-cost").textContent=`Vertex AI推定 ¥${e.cost_jpy}`;$("dashboard-message").textContent=`${e.panel_count}件のSQL生成・実行・描画が完了しました。`;latestBuildRevision=e.build_revision;$("report-submit").className=latestBuildRevision?"":"hidden";selectWorkspace("dashboard");enterDashboardReadingMode();return}if(e.type==="error")throw new Error(e.message)}
+function handlePlan(e){if(e.type==="plan_stage"){$("dashboard-status").textContent="相談中";$("dashboard-message").textContent=e.message}else if(e.type==="plan")renderAnalysisPlan(e);else if(e.type==="error"){if(e.suggested_instruction)showPlanCorrection(e.suggested_instruction);throw new Error(e.message)}}
 function handleMeetingReport(e){if(e.type==="report_stage"){selectWorkspace("report");setReportState("生成中",e.message)}else if(e.type==="meeting_report"){renderMeetingReport(e);setReportState("要承認",`根拠付き会議報告案を生成しました。Vertex AI推定 ¥${e.cost_jpy}`);selectWorkspace("report")}else if(e.type==="error")throw new Error(e.message)}
 function startActiveRequest(){if(activeRequest)throw new Error("実行中の処理を停止してから再送してください。");const random=Math.floor(Math.random()*0xffffffff).toString(16).padStart(8,"0"),operation={requestId:`request-${Date.now()}-${random}`,controller:new AbortController(),stopping:false};activeRequest=operation;$("analysis-composer").setAttribute("aria-busy","true");$("composer-submit").textContent="■";$("composer-submit").setAttribute("aria-label","実行中の処理を停止");$("composer-input").disabled=true;$("composer-profile").disabled=true;document.querySelectorAll("[data-composer-action]").forEach(button=>button.disabled=true);return operation}
 function finishActiveRequest(operation,force=false){if(activeRequest!==operation||operation.stopping&&!force)return;activeRequest=null;$("analysis-composer").removeAttribute("aria-busy");$("composer-submit").disabled=false;$("composer-submit").textContent="↑";$("composer-submit").setAttribute("aria-label","分析指示を送信");$("composer-input").disabled=false;$("composer-profile").disabled=false;document.querySelectorAll("[data-composer-action]").forEach(button=>button.disabled=false)}
@@ -297,15 +269,15 @@ _sidebar_body = r"""
 <button id="new-analysis" class="new-analysis" type="button">新しい分析</button>
 <p class="sidebar-label">成果物</p>
 <nav class="workspace-nav artifact-tree" aria-label="分析成果物">
-<button id="view-dashboard" type="button" title="購入成果改善ダッシュボード"><span class="sidebar-title"><span>購入成果改善ダッシュボード</span></span><small>2021年1月</small></button>
+<button id="view-dashboard" type="button" title="ダッシュボード"><span class="sidebar-title"><span>ダッシュボード</span></span><small>未作成</small></button>
 <button id="view-graph" type="button" title="未保存のインサイト"><span class="sidebar-title"><span>未保存のインサイト</span></span><small>単一グラフ</small></button>
 <button id="view-report" type="button" title="会議報告"><span class="sidebar-title"><span>会議報告</span></span><small>根拠付き下書き</small></button>
 </nav>
 <p class="sidebar-label">分析スレッド</p>
 <nav class="workspace-nav thread-tree" aria-label="分析スレッド">
-<button id="view-build" class="selected" type="button" aria-current="page" title="購入成果を改善する"><span class="sidebar-title"><span>購入成果を改善する</span></span><small>現在の対話</small></button>
+<button id="view-build" class="selected" type="button" aria-current="page" title="新しい分析"><span class="sidebar-title"><span>新しい分析</span></span><small>現在の対話</small></button>
 </nav>
-<div class="sidebar-account"><span class="account-avatar">デ</span><span><strong>デモ組織</strong><small>EC月次分析</small></span></div>
+<div class="sidebar-account"><span class="account-avatar">デ</span><span><strong>デモ組織</strong><small>分析ワークスペース</small></span></div>
 </aside>"""
 HTML, _sidebar_count = _sidebar_body_pattern.subn(_sidebar_body, HTML, count=1)
 if _sidebar_count != 1:  # pragma: no cover - static template invariant
@@ -319,14 +291,13 @@ _composer_markup = r"""
 <button type="button" data-composer-action="consult">相談</button>
 <button type="button" class="selected" data-composer-action="dashboard">ダッシュボード</button>
 <button type="button" data-composer-action="insight">インサイト</button>
-<button type="button" data-composer-action="report">会議報告</button>
 </div>
 <select id="composer-profile" class="hidden" aria-label="分析対象データ">
 <option value="ga4">GA4 ECサイト</option><option value="bitcoin">Bitcoin取引</option>
 </select>
 <button id="composer-collapse" class="composer-collapse" type="button" aria-label="相談入力を小さくする">⌄</button>
 </div>
-<textarea id="composer-input" rows="2" aria-label="分析したい内容">2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って</textarea>
+<textarea id="composer-input" rows="2" aria-label="分析したい内容" placeholder="分析して決めたいことを入力してください"></textarea>
 <div class="composer-footer"><span id="composer-message">操作と対象を確認して送信してください。</span><button id="composer-submit" type="button" aria-label="分析指示を送信">↑</button></div>
 <button id="composer-launcher" class="composer-launcher" type="button" aria-label="AIへの相談入力を開く" aria-expanded="true" aria-controls="composer-input"><span aria-hidden="true">✦</span> AIに相談</button>
 </section>
@@ -373,7 +344,7 @@ HTML = HTML.replace(
 )
 HTML = HTML.replace(
     'build:["ダッシュボードを作成・編集","AIと分析目的を相談し、確認した仕様だけをbuildします。","相談・build"]',
-    'build:["購入成果を改善する","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"]',
+    'build:["新しい分析","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"]',
     1,
 )
 HTML = HTML.replace(
@@ -385,13 +356,13 @@ HTML = HTML.replace(
 # A static or proxy error page is commonly HTML. Never parse it as JSON or expose
 # its markup; explain that the browser is not connected to the live API instead.
 HTML = HTML.replace(
-    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={}){",
+    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={},operation){",
     "async function responseError(res){const type=res.headers.get(\"content-type\")||\"\";"
     "if(type.includes(\"application/json\")){try{const body=await res.json();"
     "if(body&&body.error)return body.error}catch(_error){}}"
     "return `操作可能なライブデモへ接続できません（HTTP ${res.status}）。"
     "固定表示ではなくdemo-liveを起動してください。`}"
-    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={}){",
+    "async function stream(endpoint,question,eventHandler,profile=\"ga4\",extra={},operation){",
     1,
 )
 HTML = HTML.replace(
@@ -463,23 +434,21 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-grid{gap:14px;margin-top:14px;align-items:stretch;container-type:inline-size}
 .dashboard-card{display:flex;flex-direction:column;grid-column:span 4;min-width:0;min-height:268px;padding:18px 18px 16px;border-color:#dde3ea;border-radius:var(--radius-card);box-shadow:var(--shadow-card);overflow:hidden;transition:border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}
 .dashboard-card:hover{border-color:#bcc9d5;box-shadow:0 2px 4px #1018280d,0 14px 34px #10182812;transform:translateY(-1px)}
-.dashboard-card:nth-child(1){grid-column:span 6}
-.dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}
-.dashboard-card:nth-child(4),.dashboard-card:nth-child(5){grid-column:span 6;min-height:390px}
-.dashboard-card:nth-child(6){grid-column:1/-1;min-height:470px}
 .dashboard-layout-row{grid-column:1/-1;display:grid;align-items:stretch;min-width:0}
-.dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:390px;margin:0}
-.dashboard-layout-row:first-child>.dashboard-card{min-height:268px}
-.dashboard-card-resizer{position:relative;z-index:2;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
+.dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:268px;margin:0}
+.dashboard-card-resizer{position:relative;z-index:2;align-self:stretch;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
 .dashboard-card-resizer::after{content:"";position:absolute;top:12px;bottom:12px;left:calc(50% - .5px);width:1px;border-radius:999px;background:#dfe4ea;transition:background 120ms ease,box-shadow 120ms ease}
 .dashboard-card-resizer:hover::after,.dashboard-card-resizer:focus-visible::after,.dashboard-card-resizer.dragging::after{background:#4b84b4;box-shadow:0 0 0 3px #4b84b426}
-@container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-card-resizer{display:none}}
+.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}
+@container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:visible}.dashboard-card-resizer{display:none}}
 .dashboard-card h3{font-size:15px;line-height:1.45;letter-spacing:-.01em}
 .dashboard-card .purpose{min-height:0;margin:9px 0 16px;color:#687386;font-size:11px}
 .panel-state{display:inline-flex;align-items:center;min-height:23px;padding:3px 7px;border-radius:999px;background:var(--color-success-soft);color:var(--color-success);font-size:10px;white-space:nowrap}
-.dashboard-card .chart{min-width:0;flex:1;display:grid;align-items:center;overflow:hidden}
+.dashboard-card .chart{min-width:0;display:grid;align-items:start;overflow:visible;flex:1}
 .dashboard-card .chart svg{display:block;min-width:0;width:100%;max-width:100%}
-.dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:0}
+.chart-table-scroll{align-self:start;width:100%;max-height:360px;overflow:auto}
+.chart-table-scroll table{width:max-content;min-width:100%;margin-top:0}
+.chart-table-scroll th,.chart-table-scroll td{max-width:320px;overflow-wrap:anywhere;vertical-align:top}
 .metric{align-self:center;padding:20px 6px;font-size:48px;letter-spacing:-.04em}
 .kpi-pair{gap:10px;align-self:center;width:100%}
 .kpi-pair div{padding:17px 16px;border:1px solid #edf0f3;border-radius:9px;background:#f7f9fb}
@@ -653,9 +622,9 @@ function showInsightArtifact(hasResult=false){const pane=$("panel-inspector");pa
 function hideInsightArtifact(){const pane=$("panel-inspector");pane.classList.remove("artifact-active");$("artifact-preview").className="artifact-preview hidden"}
 const consultationHistory=[];let pendingConsultation=null,consultationProfile=null;
 function appendConsultationMessage(role,text){const message=Object.assign(document.createElement("p"),{className:`consultation-message ${role}`,textContent:text});$("consultation-thread").append(message);message.scrollIntoView({block:"nearest"});return message}
-function resetConsultation(profile){consultationHistory.splice(0);$("consultation-thread").replaceChildren();$("consultation-recommendations").replaceChildren();consultationProfile=profile}
+function resetConsultation(profile){consultationHistory.splice(0);pendingInsightSpecification=null;$("consultation-thread").replaceChildren();$("consultation-recommendations").replaceChildren();consultationProfile=profile}
 function rollbackPendingConsultation(){if(!pendingConsultation)return;const pending=pendingConsultation,last=consultationHistory.at(-1);if(last?.role==="user"&&last.content===pending.question)consultationHistory.pop();pending.message.remove();$("composer-input").value=pending.question;resizeComposerInput();$("consultation-status").textContent="相談を実行しませんでした。発言を編集して再送信できます。";pendingConsultation=null;$("composer-input").focus()}
-function renderAnalysisRecommendations(recommendations){const host=$("consultation-recommendations");host.replaceChildren();const chartLabels={scorecard:"スコアカード",bar:"棒グラフ",line:"折れ線",table:"テーブル",sankey:"サンキー"};recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),definition=document.createElement("span"),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=chartLabels[recommendation.chart]||recommendation.chart;decision.textContent=`判断: ${recommendation.objective}`;definition.textContent=`指標: ${recommendation.metric} / 軸: ${recommendation.dimension} / 比較: ${recommendation.comparison}`;prompt.textContent=`AIが定義した実行仕様: ${recommendation.execution_prompt}`;card.dataset.prompt=recommendation.execution_prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,definition,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)})}
+function renderAnalysisRecommendations(recommendations){const host=$("consultation-recommendations");host.replaceChildren();const chartLabels={scorecard:"スコアカード",bar:"棒グラフ",line:"折れ線",table:"テーブル",sankey:"サンキー"};recommendations.forEach(recommendation=>{const card=Object.assign(document.createElement("button"),{className:"recommendation-card",type:"button"}),title=document.createElement("strong"),chart=Object.assign(document.createElement("span"),{className:"recommendation-chart"}),decision=Object.assign(document.createElement("span"),{className:"recommendation-decision"}),definition=document.createElement("span"),prompt=document.createElement("span");title.textContent=recommendation.title;chart.textContent=chartLabels[recommendation.chart]||recommendation.chart;decision.textContent=`判断: ${recommendation.objective}`;definition.textContent=`指標: ${recommendation.measures.join("、")} / 軸: ${recommendation.dimensions.join("、")||"なし"} / 比較: ${recommendation.comparison}`;prompt.textContent=`AIが定義した実行仕様: ${recommendation.execution_prompt}`;card.dataset.prompt=recommendation.execution_prompt;card.setAttribute("aria-pressed","false");card.append(title,chart,decision,definition,prompt);card.onclick=()=>selectAnalysisRecommendation(recommendation);host.append(card)})}
 function handleAnalysisConsultation(event){if(event.type==="consultation_stage"){$("consultation-status").textContent=event.message;return}if(event.type==="error")throw new Error(event.message);if(event.type!=="consultation")return;appendConsultationMessage("assistant",`${event.assistant_message}\n\n${event.follow_up_question}`);consultationHistory.push({role:"assistant",content:event.history_message});renderAnalysisRecommendations(event.recommendations);$("consultation-status").textContent=`AIが${event.recommendations.length}件の分析仕様を考察しました。Vertex AI推定 ¥${event.cost_jpy}。候補を選ぶか、下から追加相談できます。`;$("composer-message").textContent="相談結果を確認してください。BigQueryはまだ実行していません。";pendingConsultation=null}
 function beginAnalysisConsultation(question,profile){pendingInsightSpecification=null;hideInsightArtifact();selectWorkspace("consult");setComposerAction("consult",false);if(consultationProfile!==profile)resetConsultation(profile);$("inspector-title").textContent="分析相談";$("inspector-subtitle").textContent="BigQuery未実行";$("inspector-empty").className="inspector-empty";$("inspector-content").className="hidden";$("inspector-empty").textContent="AIが目的、指標、軸、比較、可視化を考察します。選択後にSQL生成費用を別途確認します。";const history=consultationHistory.slice(-8),message=appendConsultationMessage("user",question);consultationHistory.push({role:"user",content:question});pendingConsultation={question,profile,history,message};$("composer-input").value="";resizeComposerInput();$("consultation-status").textContent="費用確認後にVertex AIへ相談します。BigQueryは実行しません。";$("composer-message").textContent="相談費用を確認してください。";try{showCost("analysis-consult")}catch(error){rollbackPendingConsultation();$("consultation-status").textContent=error.message}}
 async function runAnalysisConsultation(){const pending=pendingConsultation;if(!pending)return;const operation=startActiveRequest();$("cost-dialog").close();$("consultation-status").textContent="AIが分析目的と利用可能なデータを照合しています。";try{await stream("/api/consult",pending.question,handleAnalysisConsultation,pending.profile,{history:pending.history},operation)}catch(error){if(error.name!=="AbortError"){rollbackPendingConsultation();$("consultation-status").textContent=error.message}}finally{finishActiveRequest(operation)}}
@@ -681,13 +650,14 @@ let composerInputWidth=0;new ResizeObserver(([entry])=>{if(entry.contentRect.wid
 setInspectorWidth(currentInspectorWidth());
 inspectorResizer.onkeydown=event=>{if(!["ArrowLeft","ArrowRight"].includes(event.key))return;event.preventDefault();setInspectorWidth(event.key==="ArrowLeft"?currentInspectorWidth()+20:currentInspectorWidth()-20)};
 window.addEventListener("resize",()=>{if(window.innerWidth>1180)setInspectorWidth(currentInspectorWidth());resizeComposerInput()});
+$("plan-correction-apply").onclick=()=>{$("plan-revision-instruction").value=$("plan-correction-text").textContent;$("plan-revision-instruction").focus()};
 $("composer-submit").onclick=submitComposer;$("composer-input").onkeydown=event=>{if((event.metaKey||event.ctrlKey)&&event.key==="Enter")submitComposer()};
 $("composer-launcher").onclick=()=>expandComposer();
 $("composer-collapse").onclick=collapseComposerFromControl;
 $("new-analysis").onclick=()=>{selectWorkspace("consult");setComposerAction("consult");$("composer-input").focus()};
 $("view-dashboard").onclick=()=>{hideInsightArtifact();selectWorkspace("dashboard");setComposerAction("dashboard",false);if(latestBuildRevision)enterDashboardReadingMode()};
 $("view-build").onclick=()=>{hideInsightArtifact();selectWorkspace("build");setComposerAction("dashboard",false)};
-$("view-report").onclick=()=>{hideInsightArtifact();selectWorkspace("report");setComposerAction("report",false)};
+$("view-report").onclick=()=>{hideInsightArtifact();selectWorkspace("report")};
 $("view-graph").onclick=()=>{selectWorkspace("graph");setComposerAction("insight",false);showInsightArtifact(!$("output").classList.contains("hidden"))};
 updatePaneButton("sidebar-toggle","left",!$("app-shell").classList.contains("sidebar-collapsed"),$("app-shell").classList.contains("sidebar-collapsed")?"ナビゲーションを展開":"ナビゲーションを折りたたむ");updatePaneButton("inspector-toggle","right",!$("app-shell").classList.contains("inspector-collapsed"),$("app-shell").classList.contains("inspector-collapsed")?"成果物パネルを展開":"成果物パネルを折りたたむ");
 const headerMeta=document.querySelector(".app-header .header-context:last-child");headerMeta.insertBefore($("workspace-state"),headerMeta.querySelector(".draft-badge"));
@@ -698,6 +668,7 @@ if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==
 HTML = HTML.replace("</script></body>", WORKSPACE_POLISH_SCRIPT + "\n</script></body>")
 HTML = HTML.replace("__INITIAL_PANEL_COUNT__", str(planner.INITIAL_PANEL_COUNT))
 HTML = HTML.replace("__MAX_PANEL_COUNT__", str(planner.MAX_PANEL_COUNT))
+HTML = HTML.replace("__MAX_SANKEY_PAGES__", str(MAX_SANKEY_PAGES))
 
 class LiveDemoError(RuntimeError):
     """A local-demo failure that is safe to show in the browser."""
@@ -731,6 +702,23 @@ def google_auth_recovery_message(error: Exception) -> str | None:
     return None
 
 
+def vertex_ai_error_message(error: Exception) -> str | None:
+    """Return a safe, actionable message for Google Gen AI provider failures."""
+    if not type(error).__module__.startswith("google.genai.errors"):
+        return None
+    code = getattr(error, "code", None)
+    status = getattr(error, "status", None)
+    diagnostic = " ".join(str(value) for value in (code, status) if value)
+    suffix = f"（{diagnostic}）" if diagnostic else ""
+    if code == 429:
+        reason = "Vertex AIの利用上限または同時実行制限に達しました"
+    elif isinstance(code, int) and code >= 500:
+        reason = "Vertex AIで一時的なサービス障害が発生しました"
+    else:
+        reason = "Vertex AIが生成リクエストを受理できませんでした"
+    return f"{reason}{suffix}。現在案は保持し、自動再実行していません。"
+
+
 def period_for_question(question: str) -> dict[str, str]:
     """Return the explicit month in a question, bounded by the demo dataset."""
     match = re.search(r"(?P<year>\d{4})年\s*(?P<month>\d{1,2})月", question)
@@ -751,82 +739,171 @@ def period_for_question(question: str) -> dict[str, str]:
     }
 
 
-def navigation_generation_requirements(depth: int) -> list[str]:
-    """Build the bounded staged-path contract for a requested Sankey depth."""
-    page_names = ["入口", *(f"{stage}ページ目" for stage in range(2, depth + 1))]
-    path_names = "・".join(page_names)
-    hops = "、".join(f"{stage}→{stage + 1}" for stage in range(1, depth))
-    prefixes = "、".join(
-        "`1. 入口: `" if stage == 1 else f"`{stage}. `"
-        for stage in range(1, depth + 1)
-    )
-    return [
-        "page_pathはpage_locationのURLからホスト・クエリ・フラグメントを除いたパスとし、"
-        "空なら`/`にする。完全なURLをsource/targetへ出さない",
-        "セッション内をevent_timestamp順、同時刻ならpage_path順に並べ、連続する同一page_pathは"
-        f"1回の滞在へ統合する。その後の最初の{depth}件を{path_names}にする",
-        f"各段階のパスはp1〜p{depth}のASCII別名にする。{depth}ページ目が存在する"
-        f"セッションだけを対象にし、上位12経路を抽出する前にp{depth} IS NOT NULLで絞る。"
-        "`(exit)`などの離脱ノードは作らない",
-        f"まず{path_names}の組ごとにセッション数を数え、セッション数降順、同数なら{path_names}昇順で"
-        f"上位12経路を確定してから、{hops}のedgeへ分割して同一edgeをSUMする",
-        f"source/targetの段階接頭辞は正確に{prefixes}とし、最終列のASCII別名は"
-        "source、target、sessionsにする",
-    ]
-
-
-def section_for_question(spec: dict, question: str) -> dict:
-    """Keep a bounded navigation contract when only the requested depth changes."""
-    selected = report.select_sections(spec, question)[0]
-    match = re.search(r"入口から(?P<depth>\d+)ページ目まで", question)
-    is_navigation = "Webサイト回遊" in question and "サンキー" in question
-    if match is None or not is_navigation:
-        return selected
-    depth = int(match.group("depth"))
-    if not 3 <= depth <= 6:
-        raise LiveDemoError("回遊Sankeyで指定できるのは入口から3〜6ページ目までです。")
-    base = next(section for section in spec["sections"] if section["id"] == "R17")
-    if selected["id"] == "R17" and depth == 3:
-        return {**selected, "navigation_depth": 3}
-    return {
-        **base,
-        "id": "Q1",
-        "title": f"入口から{depth}ページ目までの主要回遊",
-        "text": question.strip(),
-        "verification": "execution",
-        "navigation_depth": depth,
-        "require_full_navigation_depth": True,
-        "generation_requirements": navigation_generation_requirements(depth),
+def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict:
+    """Translate one confirmed AI specification into a guarded render contract."""
+    component_for_chart = {
+        "scorecard": "table",
+        "kpi_group": "kpi_group",
+        "bar": "table",
+        "grouped_bar": "grouped_bar",
+        "stacked_bar": "stacked_bar",
+        "line": "line",
+        "multi_line": "multi_line",
+        "scatter": "scatter",
+        "bubble": "bubble",
+        "funnel": "funnel",
+        "heatmap": "heatmap",
+        "table": "table",
+        "sankey": "sankey",
     }
+    chart = panel.get("chart")
+    if chart not in component_for_chart:
+        raise LiveDemoError("確定した分析仕様の可視化種別が未対応です。")
+    section = {
+        "id": section_id or panel["id"],
+        "title": panel["title"],
+        "text": panel["execution_prompt"],
+        "compare": "execution",
+        "component": component_for_chart[chart],
+        "planned_visualization": chart,
+        "verification": "execution",
+        "purpose": panel.get("decision", panel.get("objective", "")),
+        "max_result_rows": planner.DASHBOARD_ROW_LIMITS[chart],
+        "dimension_count": len(panel["dimensions"]),
+        "measure_count": len(panel["measures"]),
+    }
+    dimensions = panel["dimensions"]
+    measures = panel["measures"]
+    if chart == "scorecard":
+        section["shape"] = {"rows": "1行", "columns": measures}
+        section["source_columns"] = ["metric_value"]
+    elif chart == "kpi_group":
+        section["shape"] = {"rows": "1行", "columns": measures}
+        section["source_columns"] = [
+            f"metric_{index}" for index in range(1, len(measures) + 1)
+        ]
+    elif chart == "bar":
+        section["shape"] = {
+            "rows": "区分ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["category", "metric_value"]
+    elif chart in {"grouped_bar", "stacked_bar"}:
+        section["shape"] = {
+            "rows": "区分ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = [
+            "category",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "line":
+        section["shape"] = {
+            "rows": "日付ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["event_date", "metric_value"]
+    elif chart == "multi_line":
+        section["shape"] = {
+            "rows": "日付ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = [
+            "event_date",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart in {"scatter", "bubble"}:
+        value_columns = ["x_value", "y_value"]
+        if chart == "bubble":
+            value_columns.append("size_value")
+        section["shape"] = {
+            "rows": "項目ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["category", *value_columns]
+    elif chart == "funnel":
+        section["shape"] = {
+            "rows": "段階ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["stage", "metric_value"]
+        section["generation_requirements"] = [
+            "stageには順序が判別できる番号接頭辞を付ける",
+        ]
+    elif chart == "heatmap":
+        section["shape"] = {
+            "rows": "2つの区分の組み合わせごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["x_category", "y_category", "metric_value"]
+    elif chart == "table":
+        section["shape"] = {
+            "rows": "区分または集計単位ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = [
+            *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "sankey":
+        display_dimensions = dimensions
+        if len({"".join(value.lower().split()) for value in dimensions}) == 1:
+            display_dimensions = [
+                f"遷移元{dimensions[0]}",
+                f"遷移先{dimensions[1]}",
+            ]
+        section["shape"] = {
+            "rows": "隣接する段階間の遷移ごとに1行",
+            "columns": display_dimensions + measures,
+        }
+        section["source_columns"] = ["source", "target", "metric_value"]
+        section["max_navigation_pages"] = MAX_SANKEY_PAGES
+        section["generation_requirements"] = [
+            "最終列のASCII別名はsource、target、metric_valueにする",
+            f"sourceとtargetには1.〜{MAX_SANKEY_PAGES}.のページ段階が判別できる番号接頭辞を付ける",
+            f"回遊は最初の{MAX_SANKEY_PAGES}ページまでとし、{MAX_SANKEY_PAGES}ページ目より後のnodeやedgeは返さない",
+            f"3〜{MAX_SANKEY_PAGES}ページの回遊もsourceとtargetの隣接edgeとして縦持ちで返す",
+            "同一sourceとtargetの組はSUMして1行に集約する",
+        ]
+    if chart not in {"line", "multi_line", "table"}:
+        nonnull_metric_columns = section["source_columns"][len(dimensions) :]
+        section["nonnull_metric_columns"] = nonnull_metric_columns
+        aliases = "、".join(nonnull_metric_columns)
+        section.setdefault("generation_requirements", []).append(
+            f"{aliases}はNULLを返さない。COUNT/COUNTIF以外の式は最終SELECT式全体を"
+            "COALESCEまたはIFNULLで包む"
+        )
+    if chart not in {"scorecard", "kpi_group"}:
+        max_rows = section["max_result_rows"]
+        if chart in {"line", "multi_line"}:
+            ordering = "event_dateの昇順"
+        elif chart == "sankey":
+            ordering = "metric_valueの降順"
+        elif chart == "funnel":
+            ordering = "stageの昇順"
+        else:
+            ordering = f"{section['source_columns'][-1]}の降順"
+        section.setdefault("generation_requirements", []).append(
+            f"最終SELECTは{ordering}でORDER BYし、LIMIT {max_rows}を明示する"
+        )
+    return section
 
 
-def dashboard_sections(
-    spec: dict, question: str, panel_ids: list[str] | None = None
-) -> tuple[dict[str, str], list[dict]]:
-    """Expand one concrete dashboard request into the validated showcase analyses."""
-    report.select_sections(spec, question)
-    if "ダッシュボード" not in question:
-        raise LiveDemoError("依頼に「ダッシュボード」を含めてください。")
-    period = period_for_question(question)
-    sections = report.select_sections(spec, None, showcase=True)
-    if tuple(section["id"] for section in sections) != DASHBOARD_SECTION_IDS:
-        raise LiveDemoError("ダッシュボード分析定義の構成が一致しません。")
-    if panel_ids is not None:
-        if len(panel_ids) != len(set(panel_ids)) or not 4 <= len(panel_ids) <= 6:
-            raise LiveDemoError("確定した分析パネルは重複なしの4〜6件にしてください。")
-        by_id = {section["id"]: section for section in sections}
-        if any(panel_id not in by_id for panel_id in panel_ids):
-            raise LiveDemoError("確定した分析計画に未登録のパネルがあります。")
-        sections = [by_id[panel_id] for panel_id in panel_ids]
-    month_pattern = re.compile(r"\d{4}年\s*\d{1,2}月")
-    for section in sections:
-        section["text"] = month_pattern.sub(period["label"], section["text"], count=1)
-        section["purpose"] = DASHBOARD_PURPOSES[section["id"]]
-        # Registered reference SQL is fixed to January 2021. Other available
-        # sample months can execute, but cannot be labelled reference-verified.
-        if period["from"] != "20210101" or period["to"] != "20210131":
-            section["verification"] = "execution"
-    return period, sections
+def analysis_section_for_specification(
+    question: str, analysis_specification: dict, profile: str
+) -> tuple[dict, dict]:
+    """Freeze one selected AI proposal before SQL generation."""
+    confirmed = planner.confirm_analysis_specification(analysis_specification)
+    if question.strip() != confirmed["execution_prompt"]:
+        raise LiveDemoError(
+            "分析依頼がAIの分析仕様から変更されています。変更内容を再度相談してください。"
+        )
+    period = (
+        bitcoin.period_for_question(question)
+        if profile == "bitcoin"
+        else period_for_question(question)
+    )
+    return period, planned_analysis_section(confirmed, "I1")
 
 
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
@@ -836,60 +913,12 @@ def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[d
     period = period_for_question(question)
     if plan.get("period") != period:
         raise LiveDemoError("確定した分析仕様の対象期間が依頼文と一致しません。")
-    component_for_chart = {
-        "scorecard": "table",
-        "bar": "table",
-        "line": "line",
-        "table": "table",
-        "sankey": "sankey",
-    }
-    sections = []
-    for panel in plan.get("panels", []):
-        chart = panel.get("chart")
-        if chart not in component_for_chart:
-            raise LiveDemoError("確定した分析仕様の可視化種別が未対応です。")
-        section = {
-            "id": panel["id"],
-            "title": panel["title"],
-            "text": panel["execution_prompt"],
-            "compare": "execution",
-            "component": component_for_chart[chart],
-            "planned_visualization": chart,
-            "verification": "execution",
-            "purpose": panel["decision"],
-        }
-        if chart == "scorecard":
-            section["shape"] = {"rows": "1行", "columns": [panel["kpi"]]}
-        elif chart == "bar":
-            section["shape"] = {"rows": "区分ごとに1行", "columns": ["区分", "値"]}
-        elif chart == "line":
-            section["shape"] = {"rows": "日付ごとに1行", "columns": ["日付", "値"]}
-        elif chart == "sankey":
-            section["shape"] = {
-                "rows": "隣接する段階間の遷移ごとに1行",
-                "columns": ["source", "target", "sessions"],
-            }
-            section["generation_requirements"] = [
-                "最終列のASCII別名はsource、target、sessionsにする",
-                "sourceとtargetは段階が判別できる接頭辞を付ける",
-                "同一sourceとtargetの組はSUMして1行に集約する",
-            ]
-        sections.append(section)
+    sections = [planned_analysis_section(panel) for panel in plan.get("panels", [])]
     if not 1 <= len(sections) <= planner.MAX_PANEL_COUNT:
         raise LiveDemoError(
             f"確定した分析パネルは1〜{planner.MAX_PANEL_COUNT}件にしてください。"
         )
     return period, sections
-
-
-def confirm_dashboard_analysis_plan(plan: dict) -> dict:
-    """Freeze dynamic plans while preserving the fixed demo fixture contract."""
-    panels = plan.get("panels", []) if isinstance(plan, dict) else []
-    if panels and all(
-        isinstance(panel, dict) and "execution_prompt" in panel for panel in panels
-    ):
-        return planner.confirm_dashboard_plan(plan)
-    return planner.confirm_plan(plan)
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -906,252 +935,272 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         )
 
 
-def require_deterministic_navigation_order(sql: str, navigation_depth: int = 3) -> None:
-    """Require a stable top-12 journey order before executing navigation SQL."""
-
-    def order_terms(clause: str) -> list[str]:
-        terms: list[str] = []
-        start = depth = 0
-        quote: str | None = None
-        index = 0
-        while index < len(clause):
-            char = clause[index]
-            if quote:
-                if char == quote:
-                    if index + 1 < len(clause) and clause[index + 1] == quote:
-                        index += 1
-                    else:
-                        quote = None
-            elif char in "'\"`":
-                quote = char
-            elif char == "(":
-                depth += 1
-            elif char == ")":
-                depth = max(0, depth - 1)
-            elif char == "," and depth == 0:
-                terms.append(clause[start:index].strip())
-                start = index + 1
-            index += 1
-        terms.append(clause[start:].strip())
-        return [term for term in terms if term]
-
-    for limit in re.finditer(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE):
-        prefix = sql[: limit.start()]
-        order_matches = list(
-            re.finditer(r"\bORDER\s+BY\b", prefix, flags=re.IGNORECASE)
-        )
-        if not order_matches:
-            continue
-        clause = prefix[order_matches[-1].end() :]
-        terms = order_terms(clause)
-        tie_terms = terms[1 : navigation_depth + 1]
-        tie_terms_are_ascending = len(tie_terms) == navigation_depth and not any(
-            re.search(r"\bDESC\b", term, re.IGNORECASE) for term in tie_terms
-        )
-        if (
-            len(terms) >= navigation_depth + 1
-            and re.search(r"\bDESC\b", terms[0], re.IGNORECASE)
-            and tie_terms_are_ascending
-        ):
-            return
-    raise LiveDemoError(
-        "回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。"
-    )
-
-
-def require_complete_navigation_depth(sql: str, navigation_depth: int) -> None:
-    """Require the requested final page before selecting the bounded top paths."""
-    limit = re.search(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE)
-    prefix = sql[: limit.start()] if limit else ""
-    without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", prefix, flags=re.S)
-    without_literals = re.sub(r"'(?:''|[^'])*'", "''", without_comments)
-    final_page = f"p{navigation_depth}"
-    if not re.search(
-        rf"\b(?:WHERE|HAVING)\b"
-        rf"(?:(?!\b(?:GROUP\s+BY|ORDER\s+BY|LIMIT|UNION)\b)[\s\S])*?"
-        rf"\b{final_page}\s+IS\s+NOT\s+NULL\b",
-        without_literals,
-        flags=re.IGNORECASE,
-    ):
-        raise LiveDemoError(
-            f"回遊の上位12経路が{navigation_depth}ページ目到達前に抽出されるため"
-            "BigQueryへ送信しません。"
-        )
-
-
 def json_value(value):
     if isinstance(value, (date, datetime)):
         return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
     return value if value is None or isinstance(value, (str, int, float, bool)) else str(value)
-def visualization_for_result(rows: list[tuple], columns: list[str]) -> str:
-    if len(rows) == 1 and len(columns) == 1:
-        return "scalar"
-    numeric = (int, float, Decimal)
+
+
+def _top_level_select_expressions(sql: str) -> tuple[list[str], str]:
+    """Return the final SELECT expressions and its top-level suffix."""
+    structure = re.sub(
+        r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|--[^\n]*|/\*[\s\S]*?\*/",
+        lambda match: " " * len(match.group(0)),
+        sql,
+    )
+    depth = 0
+    depths = []
+    for char in structure:
+        depths.append(depth)
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth = max(0, depth - 1)
+    tokens = [
+        (match.group(0).upper(), match.start(), match.end())
+        for match in re.finditer(r"\b[A-Za-z_][A-Za-z0-9_]*\b", structure)
+        if depths[match.start()] == 0
+    ]
+    selects = [token for token in tokens if token[0] == "SELECT"]
+    if not selects:
+        raise LiveDemoError("生成SQLの最終SELECTを解析できないためBigQueryへ送信しません。")
+    select = selects[-1]
+    following = [token for token in tokens if token[1] > select[2]]
+    boundary = next(
+        (token for token in following if token[0] in {"FROM", "UNION"}),
+        ("END", len(sql), len(sql)),
+    )
+    clause = sql[select[2] : boundary[1]]
+    expressions, start, nested = [], 0, 0
+    for index, char in enumerate(structure[select[2] : boundary[1]]):
+        if char == "(":
+            nested += 1
+        elif char == ")":
+            nested = max(0, nested - 1)
+        elif char == "," and nested == 0:
+            expressions.append(clause[start:index].strip())
+            start = index + 1
+    expressions.append(clause[start:].strip())
+    suffix_chars, nested = [], 0
+    for char in structure[boundary[1] :]:
+        if char == "(":
+            nested += 1
+            suffix_chars.append(" ")
+        elif char == ")":
+            nested = max(0, nested - 1)
+            suffix_chars.append(" ")
+        else:
+            suffix_chars.append(char if nested == 0 else " ")
+    return [expression for expression in expressions if expression], "".join(suffix_chars)
+
+
+def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
+    """Reject SQL that cannot satisfy the confirmed renderer before BigQuery runs."""
+    planned = section.get("planned_visualization")
+    expected = section.get("source_columns")
+    if not planned or not expected:
+        return
+    expressions, suffix = _top_level_select_expressions(sql)
+    aliases = []
+    for expression in expressions:
+        match = re.search(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", expression, re.I)
+        aliases.append(match.group(1).lower() if match else "")
     if (
-        rows
-        and [column.lower() for column in columns] == ["source", "target", "sessions"]
-        and all(
-            len(row) == 3
-            and isinstance(row[0], str)
-            and isinstance(row[1], str)
-            and isinstance(row[2], numeric)
-            and math.isfinite(float(row[2]))
-            for row in rows
+        len(aliases) != len(expected)
+        or any(not alias for alias in aliases)
+        or len(set(aliases)) != len(aliases)
+    ):
+        observed = "、".join(alias or "別名なし" for alias in aliases)
+        raise LiveDemoError(
+            f"{section['title']}のSQL出力列（{observed}）は、{planned}に必要な"
+            f"{len(expected)}列の一意なASCII別名を満たさないためBigQueryへ送信しません。"
         )
-    ):
-        return "sankey"
-    if rows and len(columns) == 2 and all(
-        isinstance(row[0], (date, datetime)) and isinstance(row[1], numeric) for row in rows
-    ):
-        return "line"
-    if rows and len(columns) == 2 and len(rows) <= 30 and all(
-        isinstance(row[1], numeric) and math.isfinite(float(row[1])) for row in rows
-    ):
-        return "bar"
-    return "table"
+    nonnull_columns = section.get("nonnull_metric_columns", [])
+    unsafe_columns = []
+    for column in nonnull_columns:
+        index = expected.index(column)
+        expression = re.sub(
+            r"\bAS\s+[A-Za-z_][A-Za-z0-9_]*\s*$", "", expressions[index], flags=re.I
+        ).strip()
+        if not re.match(
+            r"^(?:(?:COUNT|COUNTIF|COALESCE|IFNULL)\s*\(|"
+            r"(?:CAST|SAFE_CAST)\s*\(\s*(?:COUNT|COUNTIF)\s*\()",
+            expression,
+            re.I,
+        ):
+            unsafe_columns.append(column)
+    if unsafe_columns:
+        raise LiveDemoError(
+            f"{section['title']}のSQL指標列（{'、'.join(unsafe_columns)}）がNULLを"
+            "返し得るためBigQueryへ送信しません。COUNT/COUNTIFを使うか、"
+            "最終SELECT式全体をCOALESCEまたはIFNULLで包んでください。"
+        )
+    max_rows = section.get("max_result_rows")
+    if planned not in {"scorecard", "kpi_group"} and isinstance(max_rows, int):
+        limit = re.search(r"\bLIMIT\s+([0-9]+)\b", suffix, re.I)
+        if (
+            not re.search(r"\bORDER\s+BY\b", suffix, re.I)
+            or not limit
+            or not 1 <= int(limit.group(1)) <= max_rows
+        ):
+            raise LiveDemoError(
+                f"{section['title']}のSQLに{planned}用のORDER BYとLIMIT "
+                f"{max_rows}以下がないためBigQueryへ送信しません。"
+            )
+    if planned in {"scorecard", "kpi_group"}:
+        aggregate_pattern = re.compile(
+            r"\b(?:COUNT|COUNTIF|SUM|AVG|MIN|MAX|ANY_VALUE|LOGICAL_AND|LOGICAL_OR|APPROX_[A-Z_]+)\s*\(",
+            re.I,
+        )
+        has_aggregate = all(aggregate_pattern.search(expression) for expression in expressions)
+        if (
+            not has_aggregate
+            or re.search(r"\bGROUP\s+BY\b", suffix, re.I)
+            or any(re.search(r"\bOVER\s*\(", expression, re.I) for expression in expressions)
+        ):
+            raise LiveDemoError(
+                f"{section['title']}のSQLが{planned}用の単一集計行になっていないため"
+                "BigQueryへ送信しません。"
+            )
 
 
-def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> None:
-    """Reject edges that do not represent collapsed adjacent page transitions."""
-    patterns = {1: re.compile(r"^1\. 入口: (.+)$")}
-    patterns.update(
-        {
-            stage: re.compile(rf"^{stage}\. (.+)$")
-            for stage in range(2, navigation_depth + 1)
-        }
+def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str]]) -> None:
+    """Check BigQuery's cost-free dry-run schema against the confirmed renderer."""
+    planned = section.get("planned_visualization")
+    expected = section.get("source_columns")
+    if not planned or not expected:
+        return
+    names = [name.lower() for name, _field_type in schema]
+    types = [field_type.upper() for _name, field_type in schema]
+    numeric = {"INTEGER", "INT64", "FLOAT", "FLOAT64", "NUMERIC", "BIGNUMERIC"}
+    valid = (
+        len(names) == len(expected)
+        and all(names)
+        and len(set(names)) == len(names)
     )
-    sources = {stage: set() for stage in range(1, navigation_depth)}
-    targets = {stage: set() for stage in range(1, navigation_depth)}
-    outgoing: dict[tuple[int, str], Decimal] = {}
-    incoming: dict[tuple[int, str], Decimal] = {}
-    seen_edges: set[tuple[str, str]] = set()
-    for source, target, _sessions in rows:
-        source_stage = next(
-            (
-                stage
-                for stage in range(1, navigation_depth)
-                if patterns[stage].fullmatch(source)
-            ),
-            None,
+    if planned == "scorecard":
+        valid = valid and types[0] in numeric
+    elif planned == "kpi_group":
+        valid = valid and all(field_type in numeric for field_type in types)
+    elif planned == "bar":
+        valid = valid and types[1] in numeric
+    elif planned in {"grouped_bar", "stacked_bar"}:
+        valid = valid and all(field_type in numeric for field_type in types[1:])
+    elif planned == "line":
+        valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
+    elif planned == "multi_line":
+        valid = (
+            valid
+            and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
+            and all(field_type in numeric for field_type in types[1:])
         )
-        source_match = patterns[source_stage].fullmatch(source) if source_stage else None
-        target_match = (
-            patterns[source_stage + 1].fullmatch(target) if source_stage else None
+    elif planned in {"scatter", "bubble"}:
+        valid = valid and all(field_type in numeric for field_type in types[1:])
+    elif planned == "funnel":
+        valid = valid and types[1] in numeric
+    elif planned == "heatmap":
+        valid = valid and types[2] in numeric
+    elif planned == "sankey":
+        valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
+    elif planned == "table":
+        dimension_count = section.get("dimension_count", 0)
+        valid = valid and all(
+            field_type in numeric
+            for field_type in types[dimension_count:]
         )
-        if source_match is None or target_match is None:
-            allowed = "または".join(
-                f"{stage}→{stage + 1}" for stage in range(1, navigation_depth)
-            )
-            raise LiveDemoError(
-                f"回遊の段階が{allowed}になっていないため描画しません。"
-            )
-        source_page, target_page = source_match.group(1), target_match.group(1)
-        if source_page == target_page:
-            raise LiveDemoError(
-                "回遊の連続する同一ページが遷移として含まれるため描画しません。"
-            )
-        edge = (source, target)
-        if edge in seen_edges:
-            raise LiveDemoError("回遊に未集約の重複edgeが含まれるため描画しません。")
-        seen_edges.add(edge)
-        sources[source_stage].add(source_page)
-        targets[source_stage].add(target_page)
-        sessions = Decimal(str(_sessions))
-        outgoing[(source_stage, source_page)] = outgoing.get(
-            (source_stage, source_page), Decimal(0)
-        ) + sessions
-        incoming[(source_stage + 1, target_page)] = incoming.get(
-            (source_stage + 1, target_page), Decimal(0)
-        ) + sessions
-    connected = bool(sources[1]) and all(
-        not sources[stage] or sources[stage].issubset(targets[stage - 1])
-        for stage in range(2, navigation_depth)
+    if not valid:
+        observed = "、".join(f"{name}:{field_type}" for name, field_type in schema)
+        raise LiveDemoError(
+            f"{section['title']}のdry run出力（{observed}）が{planned}の描画仕様と"
+            "一致しないためBigQueryを実行しません。"
+        )
+
+
+def valid_sankey_result(rows: list[tuple]) -> bool:
+    """Validate Sankey rows without inferring a visualization from their shape."""
+    numeric = (int, float, Decimal)
+
+    def stage(value: str) -> int | None:
+        match = re.match(r"^(\d+)\.", value.strip())
+        return int(match.group(1)) if match else None
+
+    return bool(rows) and all(
+        len(row) == 3
+        and isinstance(row[0], str)
+        and isinstance(row[1], str)
+        and isinstance(row[2], numeric)
+        and math.isfinite(float(row[2]))
+        and row[2] >= 0
+        and stage(row[0]) is not None
+        and stage(row[1]) == stage(row[0]) + 1
+        and stage(row[1]) <= MAX_SANKEY_PAGES
+        for row in rows
     )
-    if not connected:
-        message = (
-            "回遊の1段目と2段目が接続しないため描画しません。"
-            if navigation_depth == 3
-            else "回遊の段階間が接続しないため描画しません。"
-        )
-        raise LiveDemoError(message)
-    if navigation_depth > 3:
-        has_every_hop = all(sources[stage] for stage in range(1, navigation_depth))
-        conserves_flow = all(
-            sources[stage] == targets[stage - 1]
-            and all(
-                incoming.get((stage, page), Decimal(0))
-                == outgoing.get((stage, page), Decimal(0))
-                for page in sources[stage]
-            )
-            for stage in range(2, navigation_depth)
-        )
-        if not has_every_hop or not conserves_flow:
-            raise LiveDemoError(
-                f"回遊が要求された{navigation_depth}ページ目まで到達しないため描画しません。"
-            )
 
 
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
     """Validate a planned panel's result shape before choosing its renderer."""
-    component = section["component"]
     planned = section.get("planned_visualization")
-    if planned:
-        if planned == "table":
-            return "table"
-        observed = visualization_for_result(rows, columns)
-        expected = {"scorecard": "scalar"}.get(planned, planned)
-        if observed != expected:
-            raise LiveDemoError(
-                f"{section['title']}の結果形状がAI分析仕様の{planned}と一致しないため"
-                "描画しません。"
-            )
-        return observed
+    if not planned:
+        raise LiveDemoError(
+            f"{section['title']}にAIが確定した描画仕様がないため実行しません。"
+        )
     numeric = (int, float, Decimal)
-    valid = True
-    if component == "kpi_pair":
-        valid = (
-            len(rows) == 1
-            and len(columns) == 2
-            and len(rows[0]) == 2
-            and all(isinstance(value, numeric) for value in rows[0])
+    finite = lambda value: isinstance(value, numeric) and math.isfinite(float(value))
+    nullable_finite = lambda value: value is None or finite(value)
+    width = len(columns)
+    valid = all(len(row) == width for row in rows)
+    if planned == "scorecard":
+        valid = valid and width == 1 and (not rows or len(rows) == 1 and finite(rows[0][0]))
+    elif planned == "kpi_group":
+        valid = valid and 2 <= width <= 4 and (
+            not rows or len(rows) == 1 and all(finite(value) for value in rows[0])
         )
-    elif component == "funnel":
-        valid = (
-            len(rows) == 1
-            and len(columns) == 3
-            and len(rows[0]) == 3
-            and all(
-                isinstance(value, numeric) and math.isfinite(float(value)) and value >= 0
-                for value in rows[0]
-            )
+    elif planned == "bar":
+        valid = valid and width == 2 and all(
+            finite(row[1]) and row[1] >= 0 for row in rows
         )
-    elif component == "trend":
-        valid = (
-            bool(rows)
-            and len(columns) == 3
-            and all(
-                len(row) == 3
-                and isinstance(row[0], (date, datetime))
-                and all(
-                    isinstance(value, numeric) and math.isfinite(float(value))
-                    for value in row[1:]
-                )
-                for row in rows
-            )
+    elif planned in {"grouped_bar", "stacked_bar"}:
+        valid = valid and 3 <= width <= 5 and all(
+            all(finite(value) and value >= 0 for value in row[1:]) for row in rows
         )
-    elif component == "sankey":
-        valid = visualization_for_result(rows, columns) == "sankey"
+    elif planned == "line":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
+        )
+    elif planned == "multi_line":
+        valid = valid and 3 <= width <= 5 and all(
+            isinstance(row[0], (date, datetime))
+            and all(nullable_finite(value) for value in row[1:])
+            for row in rows
+        )
+    elif planned == "scatter":
+        valid = valid and width == 3 and all(
+            finite(row[1]) and finite(row[2]) for row in rows
+        )
+    elif planned == "bubble":
+        valid = valid and width == 4 and all(
+            finite(row[1]) and finite(row[2]) and finite(row[3]) and row[3] >= 0
+            for row in rows
+        )
+    elif planned == "funnel":
+        valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
+    elif planned == "heatmap":
+        valid = valid and width == 3 and all(finite(row[2]) for row in rows)
+    elif planned == "table":
+        valid = valid and width >= 1
+    elif planned == "sankey":
+        valid = valid and (not rows or valid_sankey_result(rows))
+    else:
+        valid = False
     if not valid:
         raise LiveDemoError(
-            f"{section['title']}の結果形状がダッシュボード仕様と一致しないため描画しません。"
+            f"{section['title']}の結果形状がAI分析仕様の{planned}と一致しないため"
+            "描画しません。"
         )
-    if component == "sankey" and section.get("transition_mode") == "page_navigation":
-        validate_navigation_sankey(rows, section.get("navigation_depth", 3))
-    if component in {"kpi_pair", "funnel", "trend", "sankey"}:
-        return component
-    return visualization_for_result(rows, columns)
+    return "scalar" if planned == "scorecard" else planned
 
 
 class LiveQueryEngine:
@@ -1159,7 +1208,6 @@ class LiveQueryEngine:
         from google import genai
         from google.cloud import bigquery
         self.model = model
-        self.spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
         self.metric_definitions = json.loads(
             (HERE / "metrics.json").read_text(encoding="utf-8")
         )
@@ -1228,13 +1276,20 @@ class LiveQueryEngine:
     ) -> None:
         cancel_event = self._begin_operation(request_id)
         try:
-            if profile == "bitcoin":
-                section = bitcoin.section(question)
-                period = bitcoin.period_for_question(question)
+            if analysis_specification is not None:
+                try:
+                    period, section = analysis_section_for_specification(
+                        question, analysis_specification, profile
+                    )
+                except (ValueError, planner.PlannerError) as error:
+                    raise LiveDemoError(str(error)) from error
             else:
-                section = section_for_question(self.spec, question)
-                period = period_for_question(question)
-            self._run_section(section, period, emit, profile=profile)
+                raise LiveDemoError(
+                    "AIが作成した分析仕様を選択してからbuildしてください。"
+                )
+            self._run_section(
+                section, period, emit, profile=profile, cancel_event=cancel_event
+            )
         finally:
             self._finish_operation()
 
@@ -1285,43 +1340,24 @@ class LiveQueryEngine:
         cancel_event = self._begin_operation(request_id)
         try:
             self.latest_dashboard = None
-            try:
-                confirmed = (
-                    confirm_dashboard_analysis_plan(analysis_plan) if analysis_plan else None
+            if analysis_plan is None:
+                raise LiveDemoError(
+                    "AIが作成した分析仕様を確定してからbuildしてください。"
                 )
+            try:
+                confirmed = planner.confirm_dashboard_plan(analysis_plan)
             except planner.PlannerError as error:
                 raise LiveDemoError(str(error)) from error
-            dynamic_plan = bool(
-                confirmed
-                and all("execution_prompt" in panel for panel in confirmed["panels"])
-            )
-            if dynamic_plan:
-                period, sections = dashboard_sections_for_plan(question, confirmed)
-                layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
-            else:
-                panel_ids = (
-                    [panel["id"] for panel in confirmed["panels"]]
-                    if confirmed
-                    else None
-                )
-                period, sections = dashboard_sections(self.spec, question, panel_ids)
-                layout_rows = dashboard_layout_rows(
-                    [section["id"] for section in sections]
-                )
-                if confirmed and confirmed["period"] != period:
-                    raise LiveDemoError(
-                        "確定した分析仕様の対象期間が依頼文と一致しません。"
-                    )
+            period, sections = dashboard_sections_for_plan(question, confirmed)
+            layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
             emit(
                 {
                     "type": "dashboard_plan",
                     "period": period["label"],
-                    "plan_revision": confirmed["revision"] if confirmed else "legacy-demo",
-                    "organization_context_revision": (
-                        confirmed["organization_context_revision"]
-                        if confirmed
-                        else "not-attached"
-                    ),
+                    "plan_revision": confirmed["revision"],
+                    "organization_context_revision": confirmed[
+                        "organization_context_revision"
+                    ],
                     "panels": [
                         {
                             "id": section["id"],
@@ -1380,36 +1416,34 @@ class LiveQueryEngine:
                         + hashlib.sha256(result_canonical.encode()).hexdigest()[:12]
                     )
                     evidence_panels.append(evidence)
-            bundle = None
-            if confirmed:
-                bundle = {
-                    "plan_revision": confirmed["revision"],
-                    "organization_context_revision": confirmed[
-                        "organization_context_revision"
-                    ],
-                    "organization_context": planner.ORGANIZATION_CONTEXT,
-                    "analysis_specification": {
-                        "revision": confirmed["revision"],
-                        "objective": confirmed["objective_summary"],
-                        "audience": confirmed["audience"],
-                        "comparison": confirmed["comparison"],
-                        "period": confirmed["period"],
-                        "hypotheses": confirmed["hypotheses"],
-                    },
-                    "metric_definitions": self.metric_definitions,
-                    "panels": evidence_panels,
-                }
-                canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)
-                bundle["build_revision"] = (
-                    "build-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
-                )
-                self.latest_dashboard = bundle
+            bundle = {
+                "plan_revision": confirmed["revision"],
+                "organization_context_revision": confirmed[
+                    "organization_context_revision"
+                ],
+                "organization_context": confirmed["organization_context"],
+                "analysis_specification": {
+                    "revision": confirmed["revision"],
+                    "objective": confirmed["objective_summary"],
+                    "audience": confirmed["audience"],
+                    "comparison": confirmed["comparison"],
+                    "period": confirmed["period"],
+                    "hypotheses": confirmed["hypotheses"],
+                },
+                "metric_definitions": self.metric_definitions,
+                "panels": evidence_panels,
+            }
+            canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)
+            bundle["build_revision"] = (
+                "build-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
+            )
+            self.latest_dashboard = bundle
             emit(
                 {
                     "type": "dashboard_complete",
                     "panel_count": len(sections),
                     "cost_jpy": round(total_cost, 3),
-                    "build_revision": bundle["build_revision"] if bundle else None,
+                    "build_revision": bundle["build_revision"],
                 }
             )
         finally:
@@ -1494,6 +1528,15 @@ class LiveQueryEngine:
     ) -> float:
         """Generate, validate, execute, and optionally verify one panel."""
         extra = context or {}
+        if not section.get("planned_visualization"):
+            raise LiveDemoError(
+                f"{section['title']}にAIが確定した描画仕様がないため実行しません。"
+            )
+        cancel_event = (
+            cancel_event
+            or getattr(self, "active_cancel_event", None)
+            or threading.Event()
+        )
 
         def send(event: dict) -> None:
             emit({**event, **extra})
@@ -1518,6 +1561,7 @@ class LiveQueryEngine:
                 self.client, self.model, section, period, self.rules
             )
             allowed_dataset = report.DATASET
+        self._check_cancelled(cancel_event)
         cost = (
             usage["input_tokens"] * report.PRICING[self.model][0]
             + usage["output_tokens"] * report.PRICING[self.model][1]
@@ -1542,20 +1586,102 @@ class LiveQueryEngine:
         assert normalized is not None
         try:
             if profile == "bitcoin":
-                normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
+                bitcoin.require_quoted_hash(normalized)
                 bitcoin.require_sql_period(normalized, period)
             else:
                 require_sql_period(normalized, period)
-                if section.get("transition_mode") == "page_navigation":
-                    require_deterministic_navigation_order(
-                        normalized, section.get("navigation_depth", 3)
-                    )
-                    if section.get("require_full_navigation_depth"):
-                        require_complete_navigation_depth(
-                            normalized, section["navigation_depth"]
-                        )
         except ValueError as error:
             raise LiveDemoError(str(error)) from error
+        self._check_cancelled(cancel_event)
+        send(
+            {
+                "type": "stage",
+                "stage": "validate",
+                "message": "描画仕様とBigQuery dry runの出力schemaを照合中です。",
+            }
+        )
+        analysis_request = (
+            bitcoin.generation_request(section, period)
+            if profile == "bitcoin"
+            else report.generation_request(section, period)
+        )
+        repair_used = False
+        dry_schema = None
+        while True:
+            diagnostic = ""
+            try:
+                validate_generated_dashboard_sql(section, normalized)
+            except LiveDemoError as validation_error:
+                diagnostic = str(validation_error)
+            if not diagnostic:
+                dry_schema, error = report.inspect_bq_schema(
+                    self.bq, normalized, allowed_dataset=allowed_dataset
+                )
+                if error:
+                    if not report.repairable_dry_run_error(error):
+                        raise LiveDemoError(f"BigQuery dry runに失敗しました: {error}")
+                    diagnostic = error
+                else:
+                    assert dry_schema is not None
+                    try:
+                        validate_dashboard_dry_run_schema(section, dry_schema)
+                    except LiveDemoError as validation_error:
+                        diagnostic = str(validation_error)
+            if not diagnostic:
+                break
+            if repair_used:
+                raise LiveDemoError(
+                    "SQL担当AIで1回修正しましたが、実行前診断を解消できなかったため"
+                    f"実行しません: {diagnostic}"
+                )
+            send(
+                {
+                    "type": "stage",
+                    "stage": "repair",
+                    "message": "実行前診断をもとにSQLを1回修正中です。",
+                }
+            )
+            repaired, repair_usage = report.repair(
+                self.client,
+                self.model,
+                analysis_request,
+                normalized,
+                diagnostic,
+                self.bitcoin_rules if profile == "bitcoin" else self.rules,
+            )
+            cost += (
+                repair_usage["input_tokens"] * report.PRICING[self.model][0]
+                + repair_usage["output_tokens"] * report.PRICING[self.model][1]
+            ) / 1e6 * report.USD_JPY
+            self._check_cancelled(cancel_event)
+            repaired_sql = (repaired.get("sql") or "").strip()
+            if not repaired_sql:
+                reason = (repaired.get("reason") or "").strip()
+                detail = f" 理由: {reason}" if reason else ""
+                raise LiveDemoError(
+                    "SQL担当AIが実行前診断を解消できなかったため実行しません。"
+                    + detail
+                )
+            normalized, validation_error = report.validate_sql(
+                repaired_sql, allowed_dataset
+            )
+            if validation_error:
+                raise LiveDemoError(
+                    f"修正SQLを安全検査で拒否しました: {validation_error}"
+                )
+            assert normalized is not None
+            try:
+                if profile == "bitcoin":
+                    bitcoin.require_quoted_hash(normalized)
+                    bitcoin.require_sql_period(normalized, period)
+                else:
+                    require_sql_period(normalized, period)
+            except ValueError as repair_error:
+                raise LiveDemoError(str(repair_error)) from repair_error
+            answer = repaired
+            repair_used = True
+        assert dry_schema is not None
+        self._check_cancelled(cancel_event)
         send(
             {
                 "type": "sql",
@@ -1571,58 +1697,31 @@ class LiveQueryEngine:
                 "message": "BigQueryで読み取り実行中です。",
             }
         )
+        max_result_rows = section.get("max_result_rows", MAX_RESULT_ROWS)
         result, error = report.exec_bq(
             self.bq,
             normalized,
-            max_results=MAX_RESULT_ROWS + 1,
+            max_results=max_result_rows + 1,
             allowed_dataset=allowed_dataset,
+            cancel_event=cancel_event,
         )
+        if error == "cancelled":
+            raise LiveDemoCancelled("処理を停止しました。")
         if error:
             raise LiveDemoError(f"BigQuery実行に失敗しました: {error}")
         assert result is not None
         rows, columns = result
-        if len(rows) > MAX_RESULT_ROWS:
+        if len(rows) > max_result_rows:
             raise LiveDemoError(
-                f"結果が{MAX_RESULT_ROWS}行を超えたため描画しません。集計条件を追加してください。"
+                f"結果が{max_result_rows}行を超えたため描画しません。"
+                "集計条件を追加してください。"
             )
         verification, label = "unverified", "実行済み・既知値未照合"
-        if section["verification"] == "reference":
-            wanted, error = report.exec_bq(
-                self.bq, section["gold_sql"], allowed_dataset=allowed_dataset
-            )
-            if error:
-                raise LiveDemoError("登録済み参照SQLの実行に失敗しました。")
-            assert wanted is not None
-            matches, detail = report.compare(section["compare"], rows, wanted[0])
-            verification = "matched" if matches else "mismatch"
-            label = (
-                "実行・参照値照合済み"
-                if matches
-                else f"参照値と不一致: {detail}"
-            )
-            if not matches:
-                raise LiveDemoError(
-                    f"{section['title']}の結果が登録済み参照値と一致しないため描画しません。"
-                )
-        if not context and section.get("transition_mode") == "page_navigation":
-            if visualization_for_result(rows, columns) != "sankey":
-                raise LiveDemoError(
-                    f"{section['title']}の結果形状が回遊仕様と一致しないため描画しません。"
-                )
-            validate_navigation_sankey(rows, section.get("navigation_depth", 3))
-        visualization = (
-            dashboard_visualization(section, rows, columns)
-            if context
-            else visualization_for_result(rows, columns)
-        )
+        visualization = dashboard_visualization(section, rows, columns)
         send(
             {
                 "type": "result",
-                "columns": (
-                    section.get("shape", {}).get("columns", columns)
-                    if context
-                    else columns
-                ),
+                "columns": section.get("shape", {}).get("columns", columns),
                 "source_columns": columns,
                 "rows": [[json_value(value) for value in row] for row in rows],
                 "visualization": visualization,
@@ -1738,7 +1837,7 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                     total_history_chars += len(turn["content"])
                 if total_history_chars > 3000:
                     raise ValueError("history is too large")
-                if not question.strip() or len(question) > report.MAX_QUESTION_CHARS:
+                if not question.strip() or len(question) > MAX_QUESTION_CHARS:
                     raise ValueError("consultation question is invalid")
             elif self.path == "/api/report":
                 if not isinstance(build_revision, str) or not re.fullmatch(
@@ -1752,41 +1851,34 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                     raise ValueError(
                         "analysis_plan and revision_instruction must be provided together"
                     )
-                report.select_sections(self.engine.spec, question)
                 period_for_question(question)
                 if analysis_plan is not None:
                     planner.confirm_dashboard_plan(analysis_plan)
             elif self.path == "/api/dashboard":
                 if profile != "ga4":
                     raise ValueError("dashboard mode currently supports only ga4")
-                confirmed = (
-                    confirm_dashboard_analysis_plan(analysis_plan)
-                    if analysis_plan
-                    else None
-                )
-                if confirmed and all(
-                    "execution_prompt" in panel for panel in confirmed["panels"]
-                ):
-                    dashboard_sections_for_plan(question, confirmed)
-                else:
-                    dashboard_sections(
-                        self.engine.spec,
-                        question,
-                        [panel["id"] for panel in confirmed["panels"]]
-                        if confirmed
-                        else None,
+                if analysis_plan is None:
+                    raise ValueError(
+                        "AIが作成した分析仕様を確定してからbuildしてください。"
                     )
-            elif requires_analysis_consultation(question):
+                confirmed = planner.confirm_dashboard_plan(analysis_plan)
+                dashboard_sections_for_plan(question, confirmed)
+            elif analysis_specification is None:
                 raise ValueError(
-                    "分析内容が具体化されていません。相談から分析候補を選び、"
-                    "期間・指標・比較軸を確定してください。"
+                    "AIが作成した分析仕様を選択してからbuildしてください。"
                 )
             elif profile == "bitcoin":
-                bitcoin.section(question)
-                bitcoin.period_for_question(question)
-            else:
-                section_for_question(self.engine.spec, question)
-                period_for_question(question)
+                confirmed = planner.confirm_analysis_specification(
+                    analysis_specification
+                )
+                analysis_section_for_specification(question, confirmed, profile)
+                analysis_specification = confirmed
+            elif analysis_specification is not None:
+                confirmed = planner.confirm_analysis_specification(
+                    analysis_specification
+                )
+                analysis_section_for_specification(question, confirmed, profile)
+                analysis_specification = confirmed
         except (ValueError, json.JSONDecodeError, LiveDemoError, planner.PlannerError) as error:
             self._send_json(400, {"error": str(error)})
             return
@@ -1845,7 +1937,22 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                 print("live query failed: Google authentication expired", flush=True)
                 emit({"type": "error", "message": recovery_message})
                 return
-            print(f"live query failed: {type(error).__name__}", flush=True)
+            provider_message = vertex_ai_error_message(error)
+            if provider_message:
+                provider_detail = " ".join(
+                    str(getattr(error, "message", "") or "").split()
+                )[:500]
+                print(
+                    "live query failed: "
+                    f"{type(error).__name__} code={getattr(error, 'code', None)} "
+                    f"status={getattr(error, 'status', None)} "
+                    f"message={provider_detail or '-'}",
+                    flush=True,
+                )
+                emit({"type": "error", "message": provider_message})
+                return
+            print("live query failed with an unexpected exception:", flush=True)
+            traceback.print_exc()
             emit({"type": "error", "message": "生成または実行に失敗しました。端末ログを確認してください。"})
     def _headers(self, content_type: str) -> None:
         self.send_header("content-type", content_type)

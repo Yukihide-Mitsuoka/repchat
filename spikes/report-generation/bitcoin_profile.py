@@ -1,9 +1,4 @@
-"""Bounded non-GA4 profile for the live nested-schema demonstration.
-
-This is the first public-schema slice of Issue #188, not evidence that arbitrary
-private schemas work.  The profile deliberately supplies only inspected schema
-metadata and explicit metric semantics to the model.
-"""
+"""Inspected Bitcoin schema and safety rules for non-GA4 NL-to-SQL analysis."""
 
 from __future__ import annotations
 
@@ -15,37 +10,6 @@ DATASET = "bigquery-public-data.crypto_bitcoin"
 TABLE = f"{DATASET}.transactions"
 FIRST_MONTH = date(2024, 1, 1)
 LAST_MONTH = date(2024, 12, 1)
-EXAMPLE_QUESTION = (
-    "2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、"
-    "1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して"
-)
-REFERENCE_SQL = f"""WITH per_transaction AS (
-    SELECT
-        t.`hash`,
-        COUNT(DISTINCT address) AS address_count
-    FROM
-        `{TABLE}` AS t
-        CROSS JOIN UNNEST(t.outputs) AS output
-        CROSS JOIN UNNEST(output.addresses) AS address
-    WHERE
-        t.block_timestamp_month = DATE '2024-01-01'
-    GROUP BY
-        t.`hash`
-)
-SELECT
-    CASE
-        WHEN address_count = 1 THEN '1件'
-        WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件'
-        WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件'
-        ELSE '10件以上'
-    END AS address_count_band,
-    COUNT(1) AS transaction_count
-FROM
-    per_transaction
-GROUP BY
-    address_count_band
-ORDER BY
-    transaction_count DESC"""
 
 SCHEMA_DDL = f"""
 -- BigQuery public dataset; block_timestamp_month is the partition column.
@@ -73,23 +37,22 @@ CREATE TABLE `{TABLE}` (
 
 
 def prompt_rules() -> str:
-    """Return the inspected schema and the smallest explicit semantic contract."""
+    """Return inspected schema semantics and SQL safety constraints."""
     return f"""あなたは BigQuery 標準SQLで分析用クエリを書く。
 
 {SCHEMA_DDL}
 
-指標・軸の定義:
-- 取引 = 元テーブルの1行。識別子は hash。
-- 受取アドレス = outputs を展開し、さらに各 output.addresses を展開した address。
-- 取引ごとの異なる受取アドレス数 = COUNT(DISTINCT address)。
-- addresses が空または NULL の output は受取アドレス数の集計対象外。
-- 取引数 = 取引ごとの集計後の行数。outputs 展開後の行数を取引数にしない。
-- 受取アドレス数帯 = 1件、2〜3件、4〜9件、10件以上。0件は上の定義により対象外。
+スキーマ契約:
+- 取引は元テーブルの1行で、識別子は hash。
+- block_timestamp は取引時刻、block_timestamp_month は月単位のpartition列。
+- input_count、output_count、input_value、output_value、feeは元データに記録された数値列。
+- inputsとoutputsはREPEATED STRUCTで、その中のaddressesもREPEATED STRING。
+- REPEATED列を使う分析だけ、必要な階層をそれぞれUNNESTする。展開後の行数を取引数と解釈しない。
 
 規則:
+- スキーマにある列と、そこから明示的に計算できる値だけを使う。
 - テーブル参照は必ず `{TABLE}` と完全修飾する。
 - スキャン量を抑えるため、block_timestamp_month = DATE '<month-start>' を必ず使う。
-- outputs と output.addresses はそれぞれ UNNEST する。
 - hash はGoogleSQLの予約語なので、元テーブルでは t.`hash` と修飾・引用する。
   後続CTEへ渡す場合は transaction_hash という別名を使い、裸の hash は書かない。
 - SELECT * は使わず、必要な列だけを明示する。
@@ -122,41 +85,20 @@ def period_for_question(question: str) -> dict[str, str]:
     }
 
 
-def section(question: str) -> dict:
-    """Build the declared two-column result contract for the demo question."""
-    normalized = question.strip()
-    if not normalized:
-        raise ValueError("question must not be empty")
-    if len(normalized) > 500:
-        raise ValueError("question must be at most 500 characters")
-    if any(ord(char) < 32 for char in normalized):
-        raise ValueError("question must be a single line without control characters")
-    if "受取アドレス" not in normalized or "取引数" not in normalized:
-        raise ValueError(
-            "Bitcoinデモは現在「取引ごとの受取アドレス数帯別の取引数」のみ対応します。"
-        )
-    return {
-        "id": "BTC1",
-        "title": "受取アドレス数帯別の取引数",
-        "text": normalized,
-        "compare": "execution",
-        "component": "bar",
-        "verification": "execution",
-        "shape": {
-            "rows": "受取アドレス数帯ごとに1行、取引数の多い順",
-            "columns": ["受取アドレス数帯", "取引数"],
-        },
-    }
-
-
 def generation_request(item: dict, period: dict[str, str]) -> str:
-    """Build the profile-specific analysis request passed to the model."""
-    return (
+    """Attach the AI-confirmed output contract to one natural-language request."""
+    requirements = "\n".join(
+        f"- {requirement}" for requirement in item.get("generation_requirements", [])
+    )
+    request = (
         f"{item['text']}\n"
         f"（対象期間: block_timestamp_month = DATE '{period['partition']}'）\n"
-        "（出力形式: 列は `address_count_band`, `transaction_count` の順。"
-        "受取アドレス数帯ごとに1行、取引数の多い順。）"
+        "（SQL出力列: "
+        + ", ".join(f"`{column}`" for column in item["source_columns"])
+        + " の順。）\n"
+        f"（表示上の列: {'、'.join(item['shape']['columns'])}。）"
     )
+    return request + (f"\n追加制約:\n{requirements}" if requirements else "")
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -172,15 +114,8 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         )
 
 
-def quote_reserved_hash_identifiers(sql: str) -> str:
-    """Quote bare Bitcoin hash identifiers without touching paths or literals.
-
-    GoogleSQL permits the reserved HASH token after a path separator (``t.hash``)
-    but not as the first part of an identifier.  The bounded Bitcoin profile knows
-    that a bare HASH token can only mean the transaction column, so quoting it is a
-    semantics-preserving normalization before execution.
-    """
-    output: list[str] = []
+def require_quoted_hash(sql: str) -> None:
+    """Reject rather than rewrite an unquoted reserved hash identifier."""
     index = 0
     length = len(sql)
 
@@ -202,18 +137,15 @@ def quote_reserved_hash_identifiers(sql: str) -> str:
         if sql.startswith("--", index):
             end = sql.find("\n", index + 2)
             end = length if end == -1 else end
-            output.append(sql[index:end])
             index = end
             continue
         if sql.startswith("/*", index):
             end = sql.find("*/", index + 2)
             end = length if end == -1 else end + 2
-            output.append(sql[index:end])
             index = end
             continue
         if sql[index] in {"'", '"', "`"}:
             end = quoted_end(index, sql[index])
-            output.append(sql[index:end])
             index = end
             continue
         if sql[index].isalpha() or sql[index] == "_":
@@ -221,17 +153,10 @@ def quote_reserved_hash_identifiers(sql: str) -> str:
             while end < length and (sql[end].isalnum() or sql[end] == "_"):
                 end += 1
             token = sql[index:end]
-            previous = index - 1
-            while previous >= 0 and sql[previous].isspace():
-                previous -= 1
-            if token.casefold() == "hash" and (
-                previous < 0 or sql[previous] != "."
-            ):
-                token = "`hash`"
-            output.append(token)
+            if token.casefold() == "hash":
+                raise ValueError(
+                    "Bitcoin SQLのhash列が引用されていないためBigQueryへ送信しません。"
+                )
             index = end
             continue
-        output.append(sql[index])
         index += 1
-
-    return "".join(output)

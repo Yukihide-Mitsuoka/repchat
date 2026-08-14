@@ -39,7 +39,6 @@ PRICING = {
     "gemini-3.5-flash": (1.50, 9.00),
 }  # USD per 1M tokens (in, out)
 MAX_QUESTION_CHARS = 500
-SHOWCASE_IDS = ("R4", "R11", "R12", "R9", "R16", "R17")
 
 # Hand-transcribed from the public sample. Deliberately the raw export shape:
 # no semantic layer, no pre-aggregation. That is the point of the measurement.
@@ -402,30 +401,8 @@ def compare(kind: str, got, want):
     raise ValueError(kind)
 
 
-def select_sections(
-    spec: dict, question: str | None, showcase: bool = False
-) -> list[dict]:
-    """Select the full regression report or one operator-supplied question."""
-    if showcase and question is not None:
-        raise ValueError("showcase and question modes are mutually exclusive")
-    if showcase:
-        by_id = {section["id"]: section for section in spec["sections"]}
-        components = {
-            "R4": "kpi_pair",
-            "R11": "big_value",
-            "R12": "big_value",
-            "R9": "funnel",
-            "R16": "trend",
-            "R17": "sankey",
-        }
-        return [
-            {
-                **by_id[section_id],
-                "component": components[section_id],
-                "verification": "reference",
-            }
-            for section_id in SHOWCASE_IDS
-        ]
+def sections_for_run(spec: dict, question: str | None) -> list[dict]:
+    """Return the regression suite or one unmodified operator-supplied question."""
     if question is None:
         return [{**section, "verification": "reference"} for section in spec["sections"]]
 
@@ -436,10 +413,6 @@ def select_sections(
         raise ValueError(f"question must be at most {MAX_QUESTION_CHARS} characters")
     if any(ord(char) < 32 for char in normalized):
         raise ValueError("question must be a single line without control characters")
-
-    for section in spec["sections"]:
-        if section["text"].strip() == normalized:
-            return [{**section, "verification": "reference"}]
 
     return [
         {
@@ -914,7 +887,7 @@ def main() -> int:
 
     spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
     try:
-        sections = select_sections(spec, args.question)
+        sections = sections_for_run(spec, args.question)
     except ValueError as error:
         print(str(error), file=sys.stderr)
         return 2

@@ -31,9 +31,9 @@ ${body}
 `);
 }
 
-test('an exact maintained Japanese question keeps reference verification', () => {
+test('even an exact regression question remains an execution-only user request', () => {
   const result = loadRunReport(`
-sections = module["select_sections"](spec, "2021年1月のセッション数を出して")
+sections = module["sections_for_run"](spec, "2021年1月のセッション数を出して")
 print(json.dumps({
     "count": len(sections),
     "id": sections[0]["id"],
@@ -45,17 +45,17 @@ print(json.dumps({
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     count: 1,
-    id: 'R1',
+    id: 'Q1',
     text: '2021年1月のセッション数を出して',
-    has_gold: true,
-    verification: 'reference',
+    has_gold: false,
+    verification: 'execution',
   });
 });
 
 test('a new Japanese question becomes one execution-only section', () => {
   const question = '2021年1月の購入ユーザー数をデバイス別に出して';
   const result = loadRunReport(`
-sections = module["select_sections"](spec, ${JSON.stringify(question)})
+sections = module["sections_for_run"](spec, ${JSON.stringify(question)})
 print(json.dumps(sections, ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -65,26 +65,6 @@ print(json.dumps(sections, ensure_ascii=False))
   assert.equal(sections[0].text, question);
   assert.equal(sections[0].verification, 'execution');
   assert.equal('gold_sql' in sections[0], false);
-});
-
-test('showcase mode selects KPI, funnel, trend, and navigation-flow analyses', () => {
-  const result = loadRunReport(`
-sections = module["select_sections"](spec, None, showcase=True)
-print(json.dumps([{
-    "id": section["id"],
-    "component": section["component"],
-    "verification": section["verification"],
-} for section in sections]))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    { id: 'R4', component: 'kpi_pair', verification: 'reference' },
-    { id: 'R11', component: 'big_value', verification: 'reference' },
-    { id: 'R12', component: 'big_value', verification: 'reference' },
-    { id: 'R9', component: 'funnel', verification: 'reference' },
-    { id: 'R16', component: 'trend', verification: 'reference' },
-    { id: 'R17', component: 'sankey', verification: 'reference' },
-  ]);
 });
 
 test('the navigation-flow reference SQL creates bounded staged Sankey edges', () => {
@@ -133,7 +113,7 @@ test('one-question mode rejects empty and oversized input before cloud access', 
   for (const question of ['', ' '.repeat(3), 'あ'.repeat(501), '1月の\nセッション数']) {
     const result = loadRunReport(`
 try:
-    module["select_sections"](spec, ${JSON.stringify(question)})
+    module["sections_for_run"](spec, ${JSON.stringify(question)})
 except ValueError as error:
     print(str(error))
 else:

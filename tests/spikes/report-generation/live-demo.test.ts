@@ -29,6 +29,25 @@ test('live dry-run describes the paid localhost workflow', () => {
   assert.match(result.stdout, /call Vertex AI and BigQuery after each submitted prompt/);
   assert.match(result.stdout, /open http:\/\/127\.0\.0\.1:8765\//);
 });
+
+test('dashboard planning errors can present and apply an AI-interpreted correction', () => {
+  const result = python(`
+error=m.LiveDemoError("描画できません",suggested_instruction="上位10経路として追加して")
+print(json.dumps({
+ "message":str(error),
+ "suggestion":error.suggested_instruction,
+ "controls":all(value in m.HTML for value in ["plan-correction","plan-correction-text","plan-correction-apply"]),
+ "handler":all(value in m.HTML for value in ["e.suggested_instruction","showPlanCorrection(e.suggested_instruction)","変更依頼欄へ反映"]),
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    message: '描画できません',
+    suggestion: '上位10経路として追加して',
+    controls: true,
+    handler: true,
+  });
+});
 test('live startup prepares pinned dependencies before creating the engine', () => {
   const result = python(`
 from pathlib import Path
@@ -95,7 +114,7 @@ print(json.dumps({
  "copy":all(x in html for x in ["Vertex AI 最大約¥2","BigQuery 最大20 GiB","最大約¥19","合計最大約¥21","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
- "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*20","count*21"]),
+ "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*20","count*21","dry run診断修正は各1回まで"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","問い合わせを入力し、生成ボタンを押してください。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -331,12 +350,10 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
     ['organic', '120', 'cpc', '80'],
   );
 });
-test('live Sankey result is classified and rendered as a diagram', () => {
+test('AI-planned Sankey result is validated and rendered as a diagram', () => {
   const classified = python(`
-print(m.visualization_for_result(
- [("1. 入口: /", "2. /shop", 120), ("2. /shop", "3. /cart", 48)],
- ["source", "target", "sessions"]
-))
+section={"title":"回遊","component":"sankey","planned_visualization":"sankey"}
+print(m.dashboard_visualization(section,[("1. 入口: /", "2. /shop", 120), ("2. /shop", "3. /cart", 48)],["source", "target", "metric_value"]))
 `);
   assert.equal(classified.status, 0, classified.stderr);
   assert.equal(classified.stdout.trim(), 'sankey');
@@ -388,10 +405,10 @@ print(m.visualization_for_result(
         ['1. 入口: /', '2. /shop', 120],
         ['2. /shop', '3. /cart', 48],
         ['3. /cart', '4. /complete', 20],
+        ['4. /complete', '5. /after', 10],
       ],
-      columns: ['source', 'target', 'sessions'],
+      columns: ['遷移元', '遷移先', 'セッション数'],
       visualization: 'sankey',
-      navigation_depth: 4,
     },
   };
   assert.doesNotThrow(() =>
@@ -419,6 +436,10 @@ print(m.visualization_for_result(
     .filter((element) => element.tag === 'path')
     .map((element) => element.attributes.stroke);
   assert.equal(gradients.length, 3, 'each transition should have a color gradient');
+  assert.ok(
+    elements.every((element) => !element.textContent.includes('/after')),
+    'pages after the fourth page must not be rendered',
+  );
   assert.ok(nodeColors.size >= 3, 'different page types should use different node colors');
   assert.ok(
     linkStrokes.every((stroke) => /^url\(#sankey-\d+-link-\d+\)$/.test(stroke ?? '')),
@@ -454,7 +475,7 @@ print(m.visualization_for_result(
     elements
       .filter((element) => element.attributes.class === 'sankey-stage')
       .map((element) => element.textContent),
-    ['入口', '2ページ目', '3ページ目', '4ページ目'],
+    ['段階1', '段階2', '段階3', '段階4'],
   );
   assert.ok(links.every((link) => link.attributes.tabindex === '0'));
   assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
@@ -465,138 +486,52 @@ print(m.visualization_for_result(
   const detail = chart.children.find((element) => element.className.includes('sankey-detail'));
   assert.ok(detail);
   links[0]?.onfocus?.();
-  assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
-  const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
-  assert.match(
-    terminal?.textContent ?? '',
-    /2ページ目で終了: 72セッション、3ページ目で終了: 28セッション/,
-  );
+  assert.match(detail.textContent, /\/ → \/shop: 120 セッション数/);
 });
 
-test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
+test('AI-authored Sankey keeps a bounded render contract without fixed navigation selection', () => {
   const result = python(`
-queries=[
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY IF(path_sessions > 0, path_sessions, 0) DESC, p1 LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1 DESC, p2 DESC, p3 DESC LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1, p2, p3 LIMIT 12",
-]
-out=[]
-for sql in queries:
- try:
-  m.require_deterministic_navigation_order(sql)
-  out.append("accepted")
- except m.LiveDemoError as error:
-  out.append(str(error))
-print(json.dumps(out,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    'accepted',
-  ]);
-});
-
-test('custom navigation depth keeps the bounded Sankey analysis contract', () => {
-  const result = python(`
-spec=json.loads((m.HERE/"report.json").read_text())
-q3="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"
-q4=q3.replace("3ページ目", "4ページ目")
-q5=q3.replace("3ページ目", "5ページ目")
-sections=[m.section_for_question(spec,q) for q in [q3,q4,q5]]
-too_deep=""
-try:m.section_for_question(spec,q3.replace("3ページ目", "7ページ目"))
-except m.LiveDemoError as error:too_deep=str(error)
-print(json.dumps({"sections":[{"id":s["id"],"component":s["component"],"transition_mode":s["transition_mode"],"navigation_depth":s["navigation_depth"],"verification":s["verification"],"requirements":" ".join(s["generation_requirements"])} for s in sections],"too_deep":too_deep},ensure_ascii=False))
+panel={"id":"P1","title":"主要回遊","objective":"回遊を判断する","chart":"sankey","execution_prompt":"2021年1月のsourceからtargetへのsessionsを集計する","dimensions":["source","target"],"measures":["sessions"]}
+section=m.planned_analysis_section(panel)
+print(json.dumps({"component":section["component"],"planned":section["planned_visualization"],"verification":section["verification"],"rows":section["max_result_rows"],"pages":section["max_navigation_pages"],"requirements":" ".join(section["generation_requirements"]),"selector":hasattr(m,"section_for_question")},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const value = JSON.parse(result.stdout);
   assert.deepEqual(
-    value.sections.map((section: Record<string, string | number>) => ({
-      id: section.id,
-      component: section.component,
-      transition_mode: section.transition_mode,
-      navigation_depth: section.navigation_depth,
-      verification: section.verification,
-    })),
-    [
-      {
-        id: 'R17',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 3,
-        verification: 'reference',
-      },
-      {
-        id: 'Q1',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 4,
-        verification: 'execution',
-      },
-      {
-        id: 'Q1',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 5,
-        verification: 'execution',
-      },
-    ],
+    {
+      component: value.component,
+      planned: value.planned,
+      verification: value.verification,
+      rows: value.rows,
+      pages: value.pages,
+      selector: value.selector,
+    },
+    {
+      component: 'sankey',
+      planned: 'sankey',
+      verification: 'execution',
+      rows: 100,
+      pages: 4,
+      selector: false,
+    },
   );
-  assert.match(value.sections[1].requirements, /4ページ目/);
-  assert.match(value.sections[1].requirements, /3→4/);
-  assert.match(value.sections[2].requirements, /5ページ目が存在するセッションだけ/);
-  assert.equal(value.too_deep, '回遊Sankeyで指定できるのは入口から3〜6ページ目までです。');
+  assert.match(value.requirements, /source、target、metric_value/);
+  assert.match(value.requirements, /最初の4ページ/);
+  assert.match(value.requirements, /1\.〜4\./);
+  assert.match(value.requirements, /LIMIT 100/);
 });
 
-test('custom navigation depth validates stable ordering and all adjacent stages', () => {
+test('Sankey labels a repeated page attribute by source and target role', () => {
   const result = python(`
-ordering=[]
-for sql in [
- "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3 LIMIT 12",
- "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3,p4 LIMIT 12",
-]:
- try:m.require_deterministic_navigation_order(sql,4);ordering.append("accepted")
- except m.LiveDemoError as error:ordering.append(str(error))
-completion=[]
-for sql in [
- "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p2 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2,p3,p4,p5,sessions FROM top_paths WHERE p5 IS NOT NULL",
- "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p5 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2 FROM top_paths",
-]:
- try:m.require_complete_navigation_depth(sql,5);completion.append("accepted")
- except m.LiveDemoError as error:completion.append(str(error))
-valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /done",10)]
-invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
-validation=[]
-for rows in [valid,invalid]:
- try:m.validate_navigation_sankey(rows,4);validation.append("accepted")
- except m.LiveDemoError as error:validation.append(str(error))
-five_page=[]
-for rows in [
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10)],
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",9),("3. /cart","4. /checkout",9),("4. /checkout","5. /done",9)],
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /checkout",10),("4. /checkout","5. /done",10)],
-]:
- try:m.validate_navigation_sankey(rows,5);five_page.append("accepted")
- except m.LiveDemoError as error:five_page.append(str(error))
-print(json.dumps({"ordering":ordering,"completion":completion,"validation":validation,"five_page":five_page},ensure_ascii=False))
+panel={"id":"P1","title":"3ページ回遊","chart":"sankey","execution_prompt":"2021年1月のページからページへの3段階のセッション数を集計する","dimensions":["ページ","ページ"],"measures":["セッション数"]}
+section=m.planned_analysis_section(panel)
+print(json.dumps({"columns":section["shape"]["columns"],"source_columns":section["source_columns"],"requirements":" ".join(section["generation_requirements"])},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    ordering: ['回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。', 'accepted'],
-    completion: [
-      '回遊の上位12経路が5ページ目到達前に抽出されるためBigQueryへ送信しません。',
-      'accepted',
-    ],
-    validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
-    five_page: [
-      '回遊が要求された5ページ目まで到達しないため描画しません。',
-      '回遊が要求された5ページ目まで到達しないため描画しません。',
-      'accepted',
-    ],
-  });
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual(output.columns, ['遷移元ページ', '遷移先ページ', 'セッション数']);
+  assert.deepEqual(output.source_columns, ['source', 'target', 'metric_value']);
+  assert.match(output.requirements, /隣接edgeとして縦持ち/);
 });
 
 test('single-graph progress shows the dynamic stop reason before stage details', () => {
@@ -611,7 +546,7 @@ test('single-graph progress shows the dynamic stop reason before stage details',
   assert.match(html, /未定義のため停止:/);
 });
 
-test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
+test('confirmed KPI, funnel, and multi-line panels render from guarded results', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
@@ -655,23 +590,27 @@ test('dashboard-specific KPI, funnel, and trend panels render from fixed results
   };
   const cases = [
     {
-      visualization: 'kpi_pair',
+      visualization: 'kpi_group',
       columns: ['購入件数', '売上'],
       rows: [[895, 57350]],
       expectedTag: 'div',
     },
     {
       visualization: 'funnel',
-      columns: ['閲覧', 'カート', '購入'],
-      rows: [[23105, 4537, 1115]],
+      columns: ['段階', 'セッション数'],
+      rows: [
+        ['1. 閲覧', 23105],
+        ['2. カート', 4537],
+        ['3. 購入', 1115],
+      ],
       expectedTag: 'div',
     },
     {
-      visualization: 'trend',
+      visualization: 'multi_line',
       columns: ['日付', 'セッション', '7日移動平均'],
       rows: [
-        ['2021-01-01', 100, 90],
-        ['2021-01-02', 120, 95],
+        ['2021-01-01', 100000000, 10],
+        ['2021-01-02', 200000000, 20],
       ],
       expectedTag: 'svg',
     },
@@ -683,7 +622,163 @@ test('dashboard-specific KPI, funnel, and trend panels render from fixed results
     assert.equal(chart.children[0]?.tag, result.expectedTag);
   }
   const polylines = chart.children[0]?.children.filter((child) => child.tag === 'polyline') ?? [];
-  assert.equal(polylines.length, 2, 'trend should contain daily and moving-average series');
+  assert.equal(polylines.length, 2, 'multi-line should contain both confirmed series');
+  assert.equal(
+    polylines[0]?.attributes.points,
+    polylines[1]?.attributes.points,
+    'each series should use its own scale when their magnitudes differ',
+  );
+  assert.match(chart.children[1]?.textContent ?? '', /100倍以上.*系列ごとに独立した縦軸スケール/);
+
+  const nullableLine = new ElementStub('div');
+  vm.runInNewContext(`${functions}\ngraph(result, chart);`, {
+    ...context,
+    chart: nullableLine,
+    result: {
+      visualization: 'line',
+      columns: ['event_date', 'metric_value'],
+      rows: [
+        ['2021-01-01', 1200],
+        ['2021-01-02', null],
+        ['2021-01-03', 1800],
+      ],
+    },
+  });
+  const lineMarks = nullableLine.children[0]?.children ?? [];
+  assert.equal(
+    lineMarks.filter((child) => child.tag === 'circle').length,
+    2,
+    'a null measure should be a missing point rather than a zero-valued point',
+  );
+  assert.equal(
+    lineMarks.filter((child) => child.tag === 'polyline').length,
+    0,
+    'the line should not bridge a missing interval',
+  );
+});
+
+test('AI-selectable multi-series, relationship, and density charts render explicitly', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  const functions = script.slice(
+    script.indexOf('function node('),
+    script.indexOf('function finish('),
+  );
+  class ElementStub {
+    attributes: Record<string, string> = {};
+    children: ElementStub[] = [];
+    style: Record<string, string> = {};
+    textContent = '';
+    className = '';
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    setAttribute(name: string, value: unknown) {
+      this.attributes[name] = String(value);
+    }
+    append(...children: ElementStub[]) {
+      this.children.push(...children);
+    }
+    appendChild(child: ElementStub): ElementStub {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children: ElementStub[]) {
+      this.children = children;
+    }
+    insertRow(): ElementStub {
+      return this.appendChild(new ElementStub('tr'));
+    }
+    insertCell(): ElementStub {
+      return this.appendChild(new ElementStub('td'));
+    }
+    createTHead(): ElementStub {
+      return this.appendChild(new ElementStub('thead'));
+    }
+    createTBody(): ElementStub {
+      return this.appendChild(new ElementStub('tbody'));
+    }
+  }
+  const context = {
+    document: {
+      createElementNS: (_namespace: string, tag: string) => new ElementStub(tag),
+      createElement: (tag: string) => new ElementStub(tag),
+      createTextNode: (value: string) =>
+        Object.assign(new ElementStub('#text'), { textContent: value }),
+    },
+    $: () => new ElementStub('div'),
+  };
+  const cases = [
+    { visualization: 'kpi_group', columns: ['購入件数', '売上'], rows: [[10, 200]], tag: 'div' },
+    {
+      visualization: 'grouped_bar',
+      columns: ['デバイス', 'セッション', '購入'],
+      rows: [['mobile', 100, 10]],
+      tag: 'svg',
+    },
+    {
+      visualization: 'stacked_bar',
+      columns: ['新規・既存', '購入', '未購入'],
+      rows: [['新規', 10, 90]],
+      tag: 'svg',
+    },
+    {
+      visualization: 'multi_line',
+      columns: ['日付', '購入', '売上'],
+      rows: [['2021-01-01', 10, 200]],
+      tag: 'svg',
+    },
+    {
+      visualization: 'scatter',
+      columns: ['ページ', '閲覧', '売上'],
+      rows: [['/shop', 100, 200]],
+      tag: 'svg',
+    },
+    {
+      visualization: 'bubble',
+      columns: ['ページ', '閲覧', '売上', '購入'],
+      rows: [['/shop', 100, 200, 10]],
+      tag: 'svg',
+    },
+    {
+      visualization: 'funnel',
+      columns: ['段階', 'セッション'],
+      rows: [
+        ['1. 閲覧', 100],
+        ['2. 購入', 10],
+      ],
+      tag: 'div',
+    },
+    {
+      visualization: 'heatmap',
+      columns: ['曜日', '時間帯', '購入'],
+      rows: [['月', '午前', 10]],
+      tag: 'svg',
+    },
+  ];
+  for (const result of cases) {
+    const chart = new ElementStub('div');
+    vm.runInNewContext(`${functions}\ngraph(result,chart);`, { ...context, result, chart });
+    assert.equal(chart.children[0]?.tag, result.tag, result.visualization);
+    if (result.visualization === 'scatter' || result.visualization === 'bubble') {
+      const points = chart.children[0]?.children.filter((child) => child.tag === 'circle') ?? [];
+      assert.equal(points.length, 1, `${result.visualization} point count`);
+      assert.equal(points[0]?.attributes.tabindex, '0');
+      assert.ok(points[0]?.attributes['aria-label']?.includes('/shop'));
+    }
+  }
+  const chart = new ElementStub('div');
+  assert.throws(
+    () =>
+      vm.runInNewContext(`${functions}\ngraph(result,chart);`, {
+        ...context,
+        result: { visualization: 'unknown', columns: ['x'], rows: [[1]] },
+        chart,
+      }),
+    /未対応の可視化形式/,
+  );
 });
 
 test('live query derives the requested month and rejects unavailable periods', () => {
@@ -720,190 +815,71 @@ print(json.dumps({"values":values,"errors":errors},ensure_ascii=False))
   });
 });
 
-test('one dashboard request expands to the six validated analyses for its month', () => {
-  const result = python(`
-spec=json.loads((m.HERE/"report.json").read_text())
-period,sections=m.dashboard_sections(spec,"2020年12月のECサイト分析ダッシュボードを作って")
-error=""
-try:
- m.dashboard_sections(spec,"2021年1月のECサイト分析をして")
-except m.LiveDemoError as caught:
- error=str(caught)
-print(json.dumps({"period":period,"ids":[s["id"] for s in sections],"requested_month":all(period["label"] in s["text"] for s in sections),"verification":[s["verification"] for s in sections],"purposes":[bool(s["purpose"]) for s in sections],"error":error},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    period: { from: '20201201', to: '20201231', label: '2020年12月' },
-    ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    requested_month: true,
-    verification: Array(6).fill('execution'),
-    purposes: Array(6).fill(true),
-    error: '依頼に「ダッシュボード」を含めてください。',
-  });
-});
-
-test('dashboard layout normalizes incomplete and single-card rows to the full width', () => {
-  const result = python(`
-layouts=m.dashboard_layout_rows(["R4","R11","R9","R16"])
-print(json.dumps(layouts,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    { panel_ids: ['R4', 'R11'], shares: [66.6667, 33.3333] },
-    { panel_ids: ['R9'], shares: [100] },
-    { panel_ids: ['R16'], shares: [100] },
-  ]);
-});
-
-test('dashboard engine streams six generated panels without paid dependencies', () => {
-  const result = python(`
-import threading
-from datetime import date
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
-generated=[];executed=[]
-results={
- "R4": ([(895,57350)],["purchases","revenue"]),
- "R11": ([(14.56,)],["repeat_rate"]),
- "R12": ([(49.51,)],["engagement_seconds"]),
- "R9": ([(23105,4537,1115)],["viewed","carted","purchased"]),
- "R16": ([(date(2020,12,1),100,90.0)],["day","sessions","moving_average"]),
- "R17": ([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),
-}
-def generate(_client,_model,section,period,_rules):
- generated.append([section["id"],period["label"]])
- order="ORDER BY value DESC, value, value, value LIMIT 12" if section["id"]=="R17" else "LIMIT 1"
- sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' {order} /* {section['id']} */"
- return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-def execute(_bq,sql,**_kwargs):
- section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)
- executed.append(section_id)
- return (results[section_id],None)
-m.report.generate=generate;m.report.exec_bq=execute
-events=[]
-e.dashboard("2020年12月のECサイト分析ダッシュボードを作って",events.append)
-panel_results=[event for event in events if event["type"]=="result"]
-print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"layout":events[0]["layout_rows"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    first: 'dashboard_plan',
-    last: 'dashboard_complete',
-    layout: [
-      { panel_ids: ['R4', 'R11', 'R12'], shares: [50, 25, 25] },
-      { panel_ids: ['R9', 'R17'], shares: [40, 60] },
-      { panel_ids: ['R16'], shares: [100] },
-    ],
-    generated: [
-      ['R4', '2020年12月'],
-      ['R11', '2020年12月'],
-      ['R12', '2020年12月'],
-      ['R9', '2020年12月'],
-      ['R16', '2020年12月'],
-      ['R17', '2020年12月'],
-    ],
-    executed: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    result_ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    visualizations: ['kpi_pair', 'scalar', 'scalar', 'funnel', 'trend', 'sankey'],
-    first_columns: ['購入件数', '購入金額'],
-    count: 6,
-  });
-});
-
 test('dashboard result-shape validation fails closed before rendering', () => {
   const result = python(`
 errors=[]
 for section,rows,columns in [
- ({"title":"購入KPI","component":"kpi_pair"},[(1,)],["only_one"]),
- ({"title":"ファネル","component":"funnel"},[(100,-1,2)],["a","b","c"]),
- ({"title":"回遊","component":"sankey"},[("/","/shop","many")],["source","target","sessions"]),
+ ({"title":"購入KPI","component":"table","planned_visualization":"kpi_group"},[(1,)],["only_one"]),
+ ({"title":"ファネル","component":"funnel","planned_visualization":"funnel"},[("閲覧",-1)],["stage","metric_value"]),
+ ({"title":"回遊","component":"sankey","planned_visualization":"sankey"},[("/","/shop","many")],["source","target","metric_value"]),
+ ({"title":"回遊4ページ超","component":"sankey","planned_visualization":"sankey"},[("4. /complete","5. /after",10)],["source","target","metric_value"]),
+ ({"title":"仕様なし","component":"table"},[(1,)],["metric_value"]),
 ]:
  try:
   m.dashboard_visualization(section,rows,columns)
  except m.LiveDemoError as error:
   errors.append(str(error))
-print(json.dumps(errors,ensure_ascii=False))
+print(json.dumps({"errors":errors,"fallback":hasattr(m,"visualization_for_result")},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    '購入KPIの結果形状がダッシュボード仕様と一致しないため描画しません。',
-    'ファネルの結果形状がダッシュボード仕様と一致しないため描画しません。',
-    '回遊の結果形状がダッシュボード仕様と一致しないため描画しません。',
-  ]);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    errors: [
+      '購入KPIの結果形状がAI分析仕様のkpi_groupと一致しないため描画しません。',
+      'ファネルの結果形状がAI分析仕様のfunnelと一致しないため描画しません。',
+      '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
+      '回遊4ページ超の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
+      '仕様なしにAIが確定した描画仕様がないため実行しません。',
+    ],
+    fallback: false,
+  });
 });
 
-test('dashboard navigation Sankey rejects repeated pages as consecutive transitions', () => {
-  const result = python(`
-section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
-cases=[
- [("1. 入口: /", "2. /", 38913)],
- [("1. 入口: /", "2. /shop", 20), ("2. /shop", "3. /shop", 8)],
-]
-errors=[]
-for rows in cases:
- try:
-  m.dashboard_visualization(section,rows,["source","target","sessions"])
- except m.LiveDemoError as error:
-  errors.append(str(error))
-print(json.dumps(errors,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
-    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
-  ]);
-});
-
-test('dashboard navigation Sankey requires staged connected aggregated edges', () => {
-  const result = python(`
-section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
-cases=[
- [("1. 入口: /", "3. /cart", 10)],
- [("1. 入口: /", "2. /shop", 10), ("1. 入口: /", "2. /shop", 5)],
- [("1. 入口: /", "2. /shop", 10), ("2. /cart", "3. /done", 5)],
-]
-errors=[]
-for rows in cases:
- try:
-  m.dashboard_visualization(section,rows,["source","target","sessions"])
- except m.LiveDemoError as error:
-  errors.append(str(error))
-print(json.dumps(errors,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の段階が1→2または2→3になっていないため描画しません。',
-    '回遊に未集約の重複edgeが含まれるため描画しません。',
-    '回遊の1段目と2段目が接続しないため描画しません。',
-  ]);
-});
-
-test('reference mismatch stops before a live result is rendered', () => {
+test('live execution ignores fixed reference SQL and runs only generated SQL', () => {
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
 e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
 section={
  "id":"R17","title":"回遊","text":"回遊","compare":"rows_ordered",
- "component":"sankey","verification":"reference",
+ "component":"sankey","planned_visualization":"sankey","verification":"reference",
+ "source_columns":["source","target","metric_value"],"max_result_rows":100,
  "gold_sql":"SELECT 'reference' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
 }
-generated_sql="SELECT 'generated' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+generated_sql="SELECT '1. 入口: /' AS source, '2. /shop' AS target, 20 AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' ORDER BY metric_value DESC LIMIT 100"
 m.report.generate=lambda *_args,**_kwargs:({"sql":generated_sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-results=[([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),([("1. 入口: /","2. /cart",20)],["source","target","sessions"])]
-m.report.exec_bq=lambda *_args,**_kwargs:(results.pop(0),None)
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("source","STRING"),("target","STRING"),("metric_value","INT64")],None)
+calls=[]
+def exec_bq(_client,sql,**_kwargs):
+ calls.append(sql)
+ return (([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),None)
+m.report.exec_bq=exec_bq
 events=[]
-try:
- e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
-except m.LiveDemoError as error:
- print(json.dumps({"error":str(error),"types":[event["type"] for event in events]},ensure_ascii=False))
-else:
- raise AssertionError("reference mismatch was rendered")
+e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
+print(json.dumps({
+ "calls":calls,
+ "types":[event["type"] for event in events],
+ "verification":events[-1]["verification"],
+ "label":events[-1]["verification_label"],
+},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    error: '回遊の結果が登録済み参照値と一致しないため描画しません。',
-    types: ['stage', 'sql', 'stage'],
+    calls: [
+      "SELECT '1. 入口: /' AS source, '2. /shop' AS target, 20 AS metric_value FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' ORDER BY metric_value DESC LIMIT 100",
+    ],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
+    verification: 'unverified',
+    label: '実行済み・既知値未照合',
   });
 });
 
@@ -917,17 +893,20 @@ e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
 periods=[]
-sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY medium"
+question="2020年12月のセッション数を流入チャネル別に集計する"
+spec={"title":"流入別セッション","objective":"流入規模を判断する","dimensions":["流入チャネル"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"流入差を確認するため"}
+sql="SELECT traffic_source.medium AS category, COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
 m.report.generate=lambda _client,_model,_section,period,_rules:(periods.append(period) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("category","STRING"),("metric_value","INT64")],None)
 m.report.exec_bq=lambda *_args,**_kwargs:(([('organic',10)],['medium','sessions']),None)
 events=[]
-e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",events.append)
+e.query(question,events.append,analysis_specification=spec)
 print(json.dumps({"periods":periods,"types":[event["type"] for event in events]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     periods: [{ from: '20201201', to: '20201231', label: '2020年12月' }],
-    types: ['stage', 'sql', 'stage', 'result'],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
   });
 });
 
@@ -940,13 +919,15 @@ e.spec=json.loads((m.HERE/"report.json").read_text())
 e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
-sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium"
+question="2020年12月のセッション数を流入チャネル別に集計する"
+spec={"title":"流入別セッション","objective":"流入規模を判断する","dimensions":["流入チャネル"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"流入差を確認するため"}
+sql="SELECT traffic_source.medium AS category, COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
 m.report.generate=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 executions=[]
 m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
 error=""
 try:
- e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",lambda _event:None)
+ e.query(question,lambda _event:None,analysis_specification=spec)
 except m.LiveDemoError as caught:
  error=str(caught)
 print(json.dumps({"error":error,"executions":executions},ensure_ascii=False))
@@ -978,25 +959,27 @@ print(json.dumps({
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
 import threading
-from datetime import date
-from decimal import Decimal
 def engine():
  e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
  e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock();return e
-sql="SELECT COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+question="2021年1月のユーザー数を集計する"
+spec={"title":"ユーザー数","objective":"利用規模を判断する","dimensions":[],"measures":["ユーザー数"],"comparison":"2021年1月の全体","chart":"scorecard","execution_prompt":question,"reason":"規模を確認するため"}
+sql="SELECT COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 m.report.generate=lambda *_:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
 limits=[];m.report.exec_bq=lambda *_args,**kw:(limits.append(kw.get("max_results")) or (([(94790,)],["users"]),None))
-events=[];engine().query("2021年1月のユーザー数を出して",events.append)
+events=[];engine().query(question,events.append,analysis_specification=spec)
 m.report.generate=lambda *_:({"sql":"","reason":"未定義","undefined_terms":["直帰率"]},{"input_tokens":1,"output_tokens":1})
-refusal=[];engine().query("2021年1月の直帰率を出して",refusal.append)
-print(json.dumps({"shapes":[m.visualization_for_result([(1,)],["x"]),m.visualization_for_result([(date(2021,1,1),1)],["d","v"]),m.visualization_for_result([("a",Decimal("1"))],["k","v"])],"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"safe":"innerHTML" not in m.HTML and "renderSql($(\\"sql\\"),e.sql)" in m.HTML}))
+refusal_question="2021年1月の直帰率を集計する"
+refusal_spec={"title":"直帰率","objective":"直帰を判断する","dimensions":[],"measures":["直帰率"],"comparison":"2021年1月の全体","chart":"scorecard","execution_prompt":refusal_question,"reason":"規模を確認するため"}
+refusal=[];engine().query(refusal_question,refusal.append,analysis_specification=refusal_spec)
+print(json.dumps({"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"safe":"innerHTML" not in m.HTML and "renderSql($(\\"sql\\"),e.sql)" in m.HTML}))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    shapes: ['scalar', 'line', 'bar'],
-    types: ['stage', 'sql', 'stage', 'result'],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
     refusal: ['直帰率'],
-    limits: [101, null],
+    limits: [2],
     safe: true,
   });
 });
@@ -1006,16 +989,18 @@ import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  query_count=0
- def query(self,q,emit,**_kwargs):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
- def dashboard(self,q,emit,*_args,**_kwargs):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
+ def query(self,q,emit,analysis_specification=None,**_kwargs):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ def dashboard(self,q,emit,plan,**_kwargs):emit({"type":"dashboard_complete","panel_count":len(plan["panels"]),"cost_jpy":1.2})
  def meeting_report(self,revision,emit,**_kwargs):emit({"type":"meeting_report","build_revision":revision})
 engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
- req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ question="2021年1月のセッション数を集計する";spec={"title":"セッション数","objective":"訪問規模を判断する","dimensions":[],"measures":["セッション数"],"comparison":"2021年1月の全体","chart":"scorecard","execution_prompt":question,"reason":"規模を確認するため"}
+ req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":question,"analysis_specification":spec}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
  dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":"2021年1月のECサイト分析ダッシュボードを作って"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
- dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
+ try:urllib.request.urlopen(dashboard_req)
+ except urllib.error.HTTPError as e:statuses.append(e.code)
  report_req=urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"build-111111111111"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  report_revision=json.loads(urllib.request.urlopen(report_req).read().decode())["build_revision"]
  broad_req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"どんな分析をしたらいい？"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
@@ -1026,16 +1011,15 @@ try:
  for ct,origin in [("text/plain",base),("application/json","https://attacker.example")]:
   try:urllib.request.urlopen(urllib.request.Request(base+"/api/query",data=b"{}",headers={"content-type":ct,"origin":origin},method="POST"))
   except urllib.error.HTTPError as e:statuses.append(e.code)
- print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"dashboard_count":dashboard_count,"report_revision":report_revision,"statuses":statuses,"query_count":engine.query_count}))
+ print(json.dumps({"form":"日本語の問い合わせ" in page,"value":value,"report_revision":report_revision,"statuses":statuses,"query_count":engine.query_count}))
 finally:s.shutdown();s.server_close();t.join()
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
     form: true,
     value: 118380,
-    dashboard_count: 6,
     report_revision: 'build-111111111111',
-    statuses: [400, 400, 415, 403],
+    statuses: [400, 400, 400, 415, 403],
     query_count: 1,
   });
   const bind = spawnSync(
@@ -1054,10 +1038,11 @@ RefreshError=type("RefreshError",(Exception,),{})
 RefreshError.__module__="google.auth.exceptions"
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
- def query(self,_question,_emit):raise RefreshError("sensitive credential detail")
+ def query(self,_question,_emit,analysis_specification=None):raise RefreshError("sensitive credential detail")
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 try:
- req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ question="2021年1月のセッション数を集計する";spec={"title":"セッション数","objective":"訪問規模を判断する","dimensions":[],"measures":["セッション数"],"comparison":"2021年1月の全体","chart":"scorecard","execution_prompt":question,"reason":"規模を確認するため"}
+ req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":question,"analysis_specification":spec}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  event=json.loads(urllib.request.urlopen(req).read().decode())
  print(json.dumps(event,ensure_ascii=False))
 finally:s.shutdown();s.server_close();t.join()
@@ -1072,6 +1057,23 @@ finally:s.shutdown();s.server_close();t.join()
   assert.doesNotMatch(result.stdout, /sensitive credential detail/);
 });
 
+test('Vertex AI provider failures expose a bounded retry-safe message', () => {
+  const result = python(`
+ProviderError=type("ProviderError",(Exception,),{"__module__":"google.genai.errors"})
+messages=[]
+for code,status in [(400,"INVALID_ARGUMENT"),(429,"RESOURCE_EXHAUSTED"),(503,"UNAVAILABLE")]:
+ error=ProviderError();error.code=code;error.status=status
+ messages.append(m.vertex_ai_error_message(error))
+print(json.dumps(messages,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    'Vertex AIが生成リクエストを受理できませんでした（400 INVALID_ARGUMENT）。現在案は保持し、自動再実行していません。',
+    'Vertex AIの利用上限または同時実行制限に達しました（429 RESOURCE_EXHAUSTED）。現在案は保持し、自動再実行していません。',
+    'Vertex AIで一時的なサービス障害が発生しました（503 UNAVAILABLE）。現在案は保持し、自動再実行していません。',
+  ]);
+});
+
 test('dashboard HTTP boundary accepts a bounded confirmed plan larger than a simple query', () => {
   const result = python(`
 import threading,urllib.error,urllib.request
@@ -1081,15 +1083,15 @@ class E:
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
 def plan(reason):
- return {"objective":question,"objective_summary":"購入課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question(question),"hypotheses":["購入導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":reason} for panel_id in ["R4","R9","R16","R17"]]}
+ return {"objective":question,"objective_summary":"購入課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question(question),"hypotheses":["購入導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"title":f"分析{index}","kpi":"購入金額","chart":"table","decision":"優先施策を判断する","reason":reason,"execution_prompt":f"2021年1月の商品別購入金額を分析{index}として比較する","dimensions":["商品"],"measures":["購入金額"],"layout_row":(index+3)//4,"layout_weight":1} for index in range(1,21)]}
 def request(analysis_plan):
  data=json.dumps({"question":question,"profile":"ga4","analysis_plan":analysis_plan},ensure_ascii=False).encode()
  req=urllib.request.Request(base+"/api/dashboard",data=data,headers={"content-type":"application/json","origin":base},method="POST")
  return data,req
 try:
- bounded,bounded_req=request(plan("理由"*250))
+ bounded,bounded_req=request(plan("理由"*100))
  accepted=json.loads(urllib.request.urlopen(bounded_req).read().decode())["accepted"]
- oversized,oversized_req=request(plan("理由"*9000))
+ oversized,oversized_req=request(plan("理由"*900))
  oversized_status=0
  try:urllib.request.urlopen(oversized_req)
  except urllib.error.HTTPError as error:oversized_status=error.code
@@ -1113,7 +1115,7 @@ class E:
  def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月の購入課題を分析するダッシュボードを作って"
-def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して","dimensions":["区分"],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[panel(index) for index in range(1,7)]}
 plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
 def request(extra):
@@ -1135,26 +1137,19 @@ finally:s.shutdown();s.server_close();t.join()
   });
 });
 
-test('non-GA4 selector does not inject a fixed Bitcoin question into the UI', () => {
+test('non-GA4 profile exposes schema context without a fixed question or reference SQL', () => {
   const result = python(`
 html=m.HTML
 profile=m.bitcoin
-period=profile.period_for_question(profile.EXAMPLE_QUESTION)
-errors=[]
-for question in ["2023年12月の受取アドレス別の取引数", "2024年1月の手数料を出して"]:
- try:
-  profile.period_for_question(question)
-  profile.section(question)
- except ValueError as error:
-  errors.append(str(error))
+period=profile.period_for_question("2024年2月のBitcoin取引を分析したい")
 print(json.dumps({
- "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"']) and "Bitcoin受取先の複雑度" not in html,
- "cost":all(value in html for value in ["BigQuery 最大20 GiB","生成SQL 1クエリ","合計最大約¥20"]),
+ "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"']),
+ "cost":all(value in html for value in ["BigQuery 最大20 GiB","生成SQL 1クエリ","合計最大約¥21"]),
  "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
- "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
- "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
+ "rules":all(value in profile.prompt_rules() for value in ["スキーマにある列","SELECT * は使わず","block_timestamp_month"]),
+ "no_fixed_symbols":not hasattr(profile,"EXAMPLE_QUESTION") and not hasattr(profile,"REFERENCE_SQL") and not hasattr(profile,"section"),
+ "no_fixed_analysis":all(value not in profile.prompt_rules()+html for value in ["受取アドレス数帯","1件・2〜3件・4〜9件・10件以上","Bitcoin受取先の複雑度"]),
  "period":period,
- "errors":errors,
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -1163,52 +1158,50 @@ print(json.dumps({
     cost: true,
     schema: true,
     rules: true,
-    reference: true,
+    no_fixed_symbols: true,
+    no_fixed_analysis: true,
     period: {
-      from: '2024-01-01',
-      to: '2024-01-31',
-      partition: '2024-01-01',
-      label: '2024年1月',
+      from: '2024-02-01',
+      to: '2024-02-29',
+      partition: '2024-02-01',
+      label: '2024年2月',
     },
-    errors: [
-      'Bitcoinデモで検証する期間は2024年1月〜12月です。',
-      'Bitcoinデモは現在「取引ごとの受取アドレス数帯別の取引数」のみ対応します。',
-    ],
   });
 });
 
-test('Bitcoin query uses its own schema, partition guard, and dataset boundary', () => {
+test('Bitcoin query preserves an AI-authored chart specification through dry run and execution', () => {
   const result = python(`
 import threading
+from datetime import date
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
 e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
 e.client=e.bq=object();e.lock=threading.Lock();generated=[];executed=[]
-sql="""WITH per_transaction AS (
-SELECT hash, COUNT(DISTINCT address) AS address_count
+question="2024年2月のBitcoin取引について、平均手数料を日別に比較して"
+raw={"title":"日別平均手数料","objective":"手数料の月内変動を判断する","dimensions":["日別"],"measures":["平均手数料"],"comparison":"2024年2月の日別比較","chart":"line","execution_prompt":question,"reason":"変動日を特定できるため"}
+spec=m.planner.confirm_analysis_specification(raw)
+sql="""SELECT DATE(block_timestamp) AS event_date, AVG(fee) AS metric_value
 FROM \`bigquery-public-data.crypto_bitcoin.transactions\`
-CROSS JOIN UNNEST(outputs) AS output
-CROSS JOIN UNNEST(output.addresses) AS address
-WHERE block_timestamp_month = DATE '2024-01-01'
-GROUP BY hash)
-SELECT CASE WHEN address_count = 1 THEN '1件' WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件' WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件' ELSE '10件以上' END AS address_count_band, COUNT(1) AS transaction_count
-FROM per_transaction GROUP BY address_count_band ORDER BY transaction_count DESC"""
-m.report.generate_request=lambda _client,_model,request,rules:(generated.append([request,rules]) or ({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+WHERE block_timestamp_month = DATE '2024-02-01'
+GROUP BY event_date ORDER BY event_date LIMIT 100"""
+m.report.generate_request=lambda _client,_model,request,rules:(generated.append([request,rules]) or ({"sql":sql,"reason":"日別に集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("event_date","DATE"),("metric_value","NUMERIC")],None)
 def execute(_bq,source,**kwargs):
  executed.append([source,kwargs])
- return (([("1件",10),("2〜3件",4)], ["address_count_band","transaction_count"]),None)
+ return (([(date(2024,2,1),12),(date(2024,2,2),15)], ["event_date","metric_value"]),None)
 m.report.exec_bq=execute;events=[]
-e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
+e.query(question,events.append,profile="bitcoin",analysis_specification=spec)
 bad=sql.replace("bigquery-public-data.crypto_bitcoin", "bigquery-public-data.ga4_obfuscated_sample_ecommerce")
 _,bad_error=m.report.validate_sql(bad,m.bitcoin.DATASET)
 period_error=""
-try:m.bitcoin.require_sql_period(sql.replace("2024-01-01","2024-02-01"),m.bitcoin.period_for_question(m.bitcoin.EXAMPLE_QUESTION))
+try:m.bitcoin.require_sql_period(sql.replace("2024-02-01","2024-03-01"),m.bitcoin.period_for_question(question))
 except ValueError as error:period_error=str(error)
 print(json.dumps({
  "types":[event["type"] for event in events],
  "visualization":events[-1]["visualization"],
  "columns":events[-1]["columns"],
- "request_has_partition":"block_timestamp_month = DATE '2024-01-01'" in generated[0][0],
- "rules_has_nested":"output.addresses" in generated[0][1],
+ "request_has_partition":"block_timestamp_month = DATE '2024-02-01'" in generated[0][0],
+ "request_has_shape":all(value in generated[0][0] for value in ["event_date","metric_value","日別","平均手数料"]),
+ "rules_has_schema":"fee NUMERIC" in generated[0][1],
  "allowed":executed[0][1]["allowed_dataset"],
  "max_results":executed[0][1]["max_results"],
  "bad_error":bad_error,
@@ -1217,88 +1210,93 @@ print(json.dumps({
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    types: ['stage', 'sql', 'stage', 'result'],
-    visualization: 'bar',
-    columns: ['address_count_band', 'transaction_count'],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
+    visualization: 'line',
+    columns: ['日別', '平均手数料'],
     request_has_partition: true,
-    rules_has_nested: true,
+    request_has_shape: true,
+    rules_has_schema: true,
     allowed: 'bigquery-public-data.crypto_bitcoin',
     max_results: 101,
     bad_error:
       'rejected: foreign table ref `bigquery-public-data.ga4_obfuscated_sample_ecommerce.transactions`',
-    period_error: '生成SQLの対象期間が問い合わせの2024年1月と一致しません。',
+    period_error: '生成SQLの対象期間が問い合わせの2024年2月と一致しません。',
   });
 });
 
-test('Bitcoin query quotes the reserved hash column before BigQuery execution', () => {
+test('Bitcoin query rejects an unquoted reserved hash without rewriting it', () => {
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
-e.client=e.bq=object();e.lock=threading.Lock();executed=[]
-sql="""WITH tx_address_counts AS (
-    SELECT
-        t.hash,
-        COUNT(DISTINCT addr) AS unique_address_count
-    FROM \`bigquery-public-data.crypto_bitcoin.transactions\` AS t,
-        UNNEST(t.outputs) AS o,
-        UNNEST(o.addresses) AS addr
-    WHERE t.block_timestamp_month = DATE '2024-01-01'
-    GROUP BY t.hash
-),
-tx_bands AS (
-    SELECT
-        HASH,
-        CASE WHEN unique_address_count = 1 THEN '1件'
-             WHEN unique_address_count BETWEEN 2 AND 3 THEN '2〜3件'
-             WHEN unique_address_count BETWEEN 4 AND 9 THEN '4〜9件'
-             WHEN unique_address_count >= 10 THEN '10件以上'
-        END AS address_count_band
-    FROM tx_address_counts
-    WHERE unique_address_count > 0
-)
-SELECT address_count_band, COUNT(1) AS transaction_count
-FROM tx_bands
-GROUP BY address_count_band
-ORDER BY transaction_count DESC"""
-m.report.generate_request=lambda *_args:({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-def execute(_bq,source,**_kwargs):
- executed.append(source)
- return (([("1件",10)], ["address_count_band","transaction_count"]),None)
-m.report.exec_bq=execute;events=[]
-e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
-shown=next(event["sql"] for event in events if event["type"]=="sql")
+e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules();e.client=e.bq=object();e.lock=threading.Lock()
+sql="SELECT COUNT(DISTINCT t.hash) AS metric_value FROM \`bigquery-public-data.crypto_bitcoin.transactions\` AS t WHERE t.block_timestamp_month = DATE '2024-01-01'"
+m.report.generate_request=lambda *_args:({"sql":sql,"reason":"取引を集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+cloud_calls=[]
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(cloud_calls.append("dry-run") or ([("metric_value","INT64")],None))
+m.report.exec_bq=lambda *_args,**_kwargs:(cloud_calls.append("query") or (([(10,)], ["metric_value"]),None))
+question="2024年1月のBitcoin取引数を確認して"
+spec=m.planner.confirm_analysis_specification({"title":"取引数","objective":"取引規模を判断する","dimensions":[],"measures":["取引数"],"comparison":"2024年1月の全体値","chart":"scorecard","execution_prompt":question,"reason":"基準値になるため"})
+error=""
+try:e.query(question,lambda _event:None,profile="bitcoin",analysis_specification=spec)
+except m.LiveDemoError as caught:error=str(caught)
 quoted=chr(96)+"hash"+chr(96)
-protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
-protected_once=m.bitcoin.quote_reserved_hash_identifiers(protected)
-long_literal="SELECT '"+(chr(92)+"!")*2000+"hash'"
-print(json.dumps({
- "executed_quoted":("SELECT\\n        "+quoted+",") in executed[0],
- "display_quoted":quoted in shown,
- "qualified_unchanged":"t.hash" in executed[0],
- "prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,
- "protected_unchanged":protected_once==protected,
- "idempotent":m.bitcoin.quote_reserved_hash_identifiers(executed[0])==executed[0],
- "long_literal_unchanged":m.bitcoin.quote_reserved_hash_identifiers(long_literal)==long_literal,
-},ensure_ascii=False))
+m.bitcoin.require_quoted_hash("SELECT t."+quoted+", 'hash', "+quoted+" -- hash\\n/* hash */ FROM source")
+direct=[]
+for candidate in ["SELECT hash FROM source","SELECT t.hash FROM source"]:
+ try:m.bitcoin.require_quoted_hash(candidate)
+ except ValueError as caught:direct.append(str(caught))
+print(json.dumps({"error":error,"cloud_calls":cloud_calls,"prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,"direct":direct,"rewriter":hasattr(m.bitcoin,"quote_reserved_hash_identifiers")},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    executed_quoted: true,
-    display_quoted: true,
-    qualified_unchanged: true,
+    error: 'Bitcoin SQLのhash列が引用されていないためBigQueryへ送信しません。',
+    cloud_calls: [],
     prompt_guard: true,
-    protected_unchanged: true,
-    idempotent: true,
-    long_literal_unchanged: true,
+    direct: [
+      'Bitcoin SQLのhash列が引用されていないためBigQueryへ送信しません。',
+      'Bitcoin SQLのhash列が引用されていないためBigQueryへ送信しません。',
+    ],
+    rewriter: false,
   });
+});
+
+test('Bitcoin HTTP build requires and forwards an AI-authored analysis specification', () => {
+  const result = python(`
+import threading,urllib.error,urllib.request
+class E:
+ spec=json.loads((m.HERE/"report.json").read_text())
+ def query(self,question,emit,profile="ga4",analysis_specification=None):
+  emit({"type":"accepted","question":question,"profile":profile,"chart":analysis_specification["chart"],"revision":analysis_specification["revision"]})
+engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+question="2024年2月のBitcoin取引について、平均手数料を日別に比較して"
+spec={"title":"日別平均手数料","objective":"手数料の月内変動を判断する","dimensions":["日別"],"measures":["平均手数料"],"comparison":"2024年2月の日別比較","chart":"line","execution_prompt":question,"reason":"変動日を特定できるため"}
+def post(extra):
+ data=json.dumps({"question":question,"profile":"bitcoin",**extra},ensure_ascii=False).encode()
+ return urllib.request.Request(base+"/api/query",data=data,headers={"content-type":"application/json","origin":base},method="POST")
+try:
+ try:urllib.request.urlopen(post({}))
+ except urllib.error.HTTPError as error:missing={"status":error.code,"message":json.loads(error.read())["error"]}
+ accepted=json.loads(urllib.request.urlopen(post({"analysis_specification":spec})).read().decode())
+ print(json.dumps({"missing":missing,"accepted":accepted},ensure_ascii=False))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout.split('\n').at(-2) ?? '');
+  assert.deepEqual(output.missing, {
+    status: 400,
+    message: 'AIが作成した分析仕様を選択してからbuildしてください。',
+  });
+  assert.equal(output.accepted.type, 'accepted');
+  assert.equal(output.accepted.profile, 'bitcoin');
+  assert.equal(output.accepted.chart, 'line');
+  assert.match(output.accepted.revision, /^insight-[0-9a-f]{12}$/);
 });
 
 test('planning calls Vertex only and preserves AI-authored dashboard panels', () => {
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して","dimensions":[],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
 m.planner.propose_dashboard=lambda *_args,**_kwargs:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
@@ -1317,11 +1315,35 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"id
   });
 });
 
+test('dashboard build has no fixed-catalog fallback without an AI-authored plan', () => {
+  const result = python(`
+import inspect,threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
+m.report.generate=lambda *_args,**_kwargs:({"sql":"","reason":"unused","undefined_terms":["unused"]},{"input_tokens":1,"output_tokens":1})
+events=[];error=""
+try:e.dashboard("2021年1月のECサイト分析ダッシュボードを作って",events.append)
+except m.LiveDemoError as caught:error=str(caught)
+removed=all(not hasattr(m,name) for name in ["DASHBOARD_PURPOSES","DASHBOARD_ROW_TEMPLATES","dashboard_sections","dashboard_layout_rows","confirm_dashboard_analysis_plan"])
+planner_removed=all(not hasattr(m.planner,name) for name in ["PANEL_CATALOG","planning_request","normalize_plan","propose","confirm_plan"])
+layout_source=inspect.getsource(m.dashboard_layout_rows_for_plan)
+layout_is_ai_authored=all(value not in layout_source for value in ["panel.get('chart')","full_width_charts","weights ="])
+print(json.dumps({"error":error,"events":[event["type"] for event in events],"removed":removed,"planner_removed":planner_removed,"layout_is_ai_authored":layout_is_ai_authored},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: 'AIが作成した分析仕様を確定してからbuildしてください。',
+    events: [],
+    removed: true,
+    planner_removed: true,
+    layout_is_ai_authored: true,
+  });
+});
+
 test('planning sends the selected current plan and revision instruction back to the AI', () => {
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して","dimensions":["区分"],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
 def propose(*_args,**kwargs):
@@ -1340,13 +1362,15 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events]},en
 
 test('a confirmed dynamic dashboard plan builds its authored specifications', () => {
   const result = python(`
-def panel(title,chart,prompt):return {"title":title,"kpi":"定義済み指標","chart":chart,"decision":"意思決定","reason":"目的に必要","execution_prompt":prompt}
+def panel(title,chart,prompt,row,weight):
+ dimension=[] if chart=="scorecard" else (["日別"] if chart=="line" else ["medium"] if "medium" in prompt else ["デバイス"])
+ return {"title":title,"kpi":"購入件数","chart":chart,"decision":"意思決定","reason":"目的に必要","execution_prompt":prompt,"dimensions":dimension,"measures":["購入件数"],"layout_row":row,"layout_weight":weight}
 question="2021年1月の購入課題を分析するダッシュボードを作って"
 raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"軸間比較","hypotheses":["差がある"],"clarifications":[],"panels":[
- panel("流入別購入","bar","2021年1月の購入件数をmedium別に出して"),
- panel("日別購入","line","2021年1月の日別購入件数を出して"),
- panel("デバイス別購入","bar","2021年1月の購入件数をデバイス別に出して"),
- panel("購入規模","scorecard","2021年1月の購入件数を出して"),
+ panel("流入別購入","bar","2021年1月の購入件数をmedium別に出して",1,1),
+ panel("日別購入","line","2021年1月の日別購入件数を出して",1,3),
+ panel("デバイス別購入","bar","2021年1月の購入件数をデバイス別に出して",2,1),
+ panel("購入規模","scorecard","2021年1月の購入件数を出して",2,1),
 ]}
 plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
 confirmed=m.planner.confirm_dashboard_plan(plan)
@@ -1365,8 +1389,8 @@ print(json.dumps({"period":period["label"],"ids":[item["id"] for item in section
       '2021年1月の購入件数を出して',
     ],
     layouts: [
-      { panel_ids: ['P1', 'P2'], shares: [50, 50] },
-      { panel_ids: ['P3', 'P4'], shares: [60, 40] },
+      { panel_ids: ['P1', 'P2'], shares: [25, 75] },
+      { panel_ids: ['P3', 'P4'], shares: [50, 50] },
     ],
   });
 });
@@ -1377,14 +1401,82 @@ section={"title":"流入別の比較表","component":"table","planned_visualizat
 rows=[("organic",120),("cpc",80)]
 print(json.dumps({
  "planned":m.dashboard_visualization(section,rows,["medium","sessions"]),
- "automatic":m.visualization_for_result(rows,["medium","sessions"]),
+ "automatic_fallback":hasattr(m,"visualization_for_result"),
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     planned: 'table',
-    automatic: 'bar',
+    automatic_fallback: false,
   });
+});
+
+test('expanded AI chart contracts preserve aliases through dry run and rendering', () => {
+  const result = python(`
+from datetime import date
+specs={
+ "kpi_group":([], ["購入件数","購入金額"], [(10,200)], ["INT64","NUMERIC"]),
+ "grouped_bar":(["デバイス"], ["セッション数","購入件数"], [("mobile",100,10)], ["STRING","INT64","INT64"]),
+ "stacked_bar":(["新規区分"], ["購入","未購入"], [("新規",10,90)], ["STRING","INT64","INT64"]),
+ "multi_line":(["日付"], ["購入件数","購入金額"], [(date(2021,1,1),10,200)], ["DATE","INT64","NUMERIC"]),
+ "scatter":(["ページ"], ["閲覧数","購入金額"], [("/shop",100,200)], ["STRING","INT64","NUMERIC"]),
+ "bubble":(["ページ"], ["閲覧数","購入金額","購入件数"], [("/shop",100,200,10)], ["STRING","INT64","NUMERIC","INT64"]),
+ "funnel":(["段階"], ["セッション数"], [("1. 閲覧",100)], ["STRING","INT64"]),
+ "heatmap":(["曜日","時間帯"], ["購入件数"], [("月","午前",10)], ["STRING","STRING","INT64"]),
+}
+observed={}
+for chart,(dimensions,measures,rows,types) in specs.items():
+ panel={"id":"P1","title":chart,"chart":chart,"decision":"判断","execution_prompt":"仕様","dimensions":dimensions,"measures":measures}
+ section=m.planned_analysis_section(panel)
+ schema=list(zip(section["source_columns"],types))
+ m.validate_dashboard_dry_run_schema(section,schema)
+ observed[chart]={"aliases":section["source_columns"],"render":m.dashboard_visualization(section,rows,dimensions+measures),"limit":section["max_result_rows"]}
+bad=m.planned_analysis_section({"id":"P1","title":"bubble","chart":"bubble","decision":"判断","execution_prompt":"仕様","dimensions":["ページ"],"measures":["閲覧数","購入金額","購入件数"]})
+try:m.dashboard_visualization(bad,[("/shop",100,200,-1)],["ページ","閲覧数","購入金額","購入件数"])
+except m.LiveDemoError as error:bad_error=str(error)
+bad_bar=m.planned_analysis_section({"id":"P2","title":"bar","chart":"bar","decision":"判断","execution_prompt":"仕様","dimensions":["区分"],"measures":["指標"]})
+try:m.dashboard_visualization(bad_bar,[("差分",-1)],["区分","指標"])
+except m.LiveDemoError as error:bad_bar_error=str(error)
+print(json.dumps({"observed":observed,"bad_error":bad_error,"bad_bar_error":bad_bar_error},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual(output.observed, {
+    kpi_group: { aliases: ['metric_1', 'metric_2'], render: 'kpi_group', limit: 1 },
+    grouped_bar: {
+      aliases: ['category', 'metric_1', 'metric_2'],
+      render: 'grouped_bar',
+      limit: 20,
+    },
+    stacked_bar: {
+      aliases: ['category', 'metric_1', 'metric_2'],
+      render: 'stacked_bar',
+      limit: 20,
+    },
+    multi_line: {
+      aliases: ['event_date', 'metric_1', 'metric_2'],
+      render: 'multi_line',
+      limit: 100,
+    },
+    scatter: {
+      aliases: ['category', 'x_value', 'y_value'],
+      render: 'scatter',
+      limit: 100,
+    },
+    bubble: {
+      aliases: ['category', 'x_value', 'y_value', 'size_value'],
+      render: 'bubble',
+      limit: 100,
+    },
+    funnel: { aliases: ['stage', 'metric_value'], render: 'funnel', limit: 12 },
+    heatmap: {
+      aliases: ['x_category', 'y_category', 'metric_value'],
+      render: 'heatmap',
+      limit: 100,
+    },
+  });
+  assert.match(output.bad_error, /結果形状がAI分析仕様のbubbleと一致しない/);
+  assert.match(output.bad_bar_error, /結果形状がAI分析仕様のbarと一致しない/);
 });
 
 test('dashboard rendering rejects a result shape that differs from the AI specification', () => {
@@ -1397,6 +1489,267 @@ except m.LiveDemoError as error:print(str(error))
   assert.match(result.stdout, /結果形状がAI分析仕様のscorecardと一致しない/);
 });
 
+test('a planned line remains drawable when dates are missing or the result is empty', () => {
+  const result = python(`
+from datetime import date
+from decimal import Decimal
+section={"title":"日別購入金額推移","component":"line","planned_visualization":"line"}
+print(json.dumps({
+ "nullable":m.dashboard_visualization(section,[(date(2021,1,1),Decimal("1200")),(date(2021,1,2),None)],["event_date","metric_value"]),
+ "empty":m.dashboard_visualization(section,[],["event_date","metric_value"]),
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    nullable: 'line',
+    empty: 'line',
+  });
+});
+
+test('dashboard rejects generated SQL whose declared output cannot match the chart before execution', () => {
+  const result = python(`
+section={"title":"購入規模","component":"table","planned_visualization":"scorecard","source_columns":["metric_value"]}
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+good="SELECT SUM(purchases) AS metric_value FROM (SELECT medium, COUNT(*) AS purchases FROM "+table+" GROUP BY medium)"
+m.validate_generated_dashboard_sql(section,good)
+bad="SELECT medium AS category, COUNT(*) AS metric_value FROM "+table+" GROUP BY medium"
+try:m.validate_generated_dashboard_sql(section,bad)
+except m.LiveDemoError as error:print(str(error))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /scorecardに必要な1列の一意なASCII別名を満たさないためBigQueryへ送信しません/,
+  );
+});
+
+test('stacked bars accept semantic SQL aliases while preserving column order and types', () => {
+  const result = python(`
+panel={"id":"P1","title":"デバイス別新規・リピートセッション構成","chart":"stacked_bar","decision":"デバイス別の定着度を判断する","execution_prompt":"2021年1月のデバイス別に新規セッション数とリピートセッション数を比較する","dimensions":["デバイス"],"measures":["新規セッション数","リピートセッション数"]}
+section=m.planned_analysis_section(panel)
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+sql="SELECT device.category AS device_category, COUNTIF(is_new) AS new_sessions, COUNTIF(NOT is_new) AS repeat_sessions FROM "+table+" GROUP BY device_category ORDER BY new_sessions DESC LIMIT 20"
+m.validate_generated_dashboard_sql(section,sql)
+m.validate_dashboard_dry_run_schema(section,[("device_category","STRING"),("new_sessions","INT64"),("repeat_sessions","INT64")])
+errors=[]
+for invalid_sql in [
+ "SELECT device.category AS device_category, COUNTIF(is_new) AS sessions FROM "+table+" GROUP BY device_category ORDER BY sessions DESC LIMIT 20",
+ "SELECT device.category, COUNTIF(is_new) AS new_sessions, COUNTIF(NOT is_new) AS repeat_sessions FROM "+table+" GROUP BY device.category ORDER BY new_sessions DESC LIMIT 20",
+]:
+ try:m.validate_generated_dashboard_sql(section,invalid_sql)
+ except m.LiveDemoError as error:errors.append(str(error))
+try:m.validate_dashboard_dry_run_schema(section,[("device_category","STRING"),("new_sessions","STRING"),("repeat_sessions","INT64")])
+except m.LiveDemoError as error:errors.append(str(error))
+print(json.dumps({"accepted":True,"errors":errors,"display_columns":section["shape"]["columns"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.accepted, true);
+  assert.deepEqual(output.display_columns, [
+    'デバイス',
+    '新規セッション数',
+    'リピートセッション数',
+  ]);
+  assert.equal(output.errors.length, 3);
+  assert.match(output.errors[0], /必要な3列/);
+  assert.match(output.errors[1], /別名なし/);
+  assert.match(output.errors[2], /dry run出力/);
+});
+
+test('grouped bars require non-null metric expressions before BigQuery execution', () => {
+  const result = python(`
+panel={"id":"P1","title":"イベント別エンゲージメント時間とユーザー数","chart":"grouped_bar","decision":"行動を判断する","execution_prompt":"2021年1月のイベント別にエンゲージメント時間とユーザー数を比較する","dimensions":["イベント"],"measures":["エンゲージメント時間","ユーザー数"]}
+section=m.planned_analysis_section(panel)
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+unsafe="SELECT event_name AS category, SUM(engagement_time) AS metric_1, COUNT(DISTINCT user_pseudo_id) AS metric_2 FROM "+table+" GROUP BY category ORDER BY metric_1 DESC LIMIT 20"
+safe="SELECT event_name AS category, COALESCE(SUM(engagement_time), 0) AS metric_1, COUNT(DISTINCT user_pseudo_id) AS metric_2 FROM "+table+" GROUP BY category ORDER BY metric_1 DESC LIMIT 20"
+error=""
+try:m.validate_generated_dashboard_sql(section,unsafe)
+except m.LiveDemoError as caught:error=str(caught)
+m.validate_generated_dashboard_sql(section,safe)
+print(json.dumps({"error":error,"safe":True,"requirements":section["generation_requirements"],"nonnull":section["nonnull_metric_columns"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.error, /NULLを返し得るためBigQueryへ送信しません/);
+  assert.equal(output.safe, true);
+  assert.deepEqual(output.nonnull, ['metric_1', 'metric_2']);
+  assert.ok(output.requirements.some((value: string) => value.includes('COALESCE')));
+});
+
+test('a single-row KPI group does not require meaningless ordering or a row limit', () => {
+  const result = python(`
+section={"title":"サイト全体エンゲージメント概要","component":"kpi_group","planned_visualization":"kpi_group","source_columns":["metric_1","metric_2","metric_3","metric_4"],"max_result_rows":1}
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+sql="SELECT COUNT(DISTINCT user_pseudo_id) AS metric_1, COUNT(*) AS metric_2, SUM(engagement_time) AS metric_3, AVG(engagement_time) AS metric_4 FROM "+table
+m.validate_generated_dashboard_sql(section,sql)
+print("accepted")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'accepted');
+});
+
+test('dynamic dashboard SQL is bounded to the renderer row limit before BigQuery execution', () => {
+  const result = python(`
+def panel(title,chart,dimensions):
+ return {"id":"P1","title":title,"kpi":"購入金額","chart":chart,"decision":"優先施策を判断する","reason":"比較に必要","execution_prompt":"2021年1月の"+"・".join(dimensions+["購入金額"])+"を比較する","dimensions":dimensions,"measures":["購入金額"]}
+question="2021年1月の購入成果を改善するダッシュボードを作って"
+limits={}
+for chart,dimensions in [("bar",["商品"]),("line",["日別"]),("table",["商品"]),("sankey",["source","target"])]:
+ plan={"period":m.period_for_question(question),"panels":[panel(chart,chart,dimensions)]}
+ _period,sections=m.dashboard_sections_for_plan(question,plan)
+ limits[chart]=sections[0]["max_result_rows"]
+section={"id":"P1","title":"商品別購入金額","text":"2021年1月の商品別購入金額を比較する","compare":"execution","component":"table","planned_visualization":"table","verification":"execution","shape":{"rows":"商品ごとに1行","columns":["商品","購入金額"]},"source_columns":["dimension_1","metric_1"],"dimension_count":1,"max_result_rows":100}
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+unbounded="SELECT item_name AS dimension_1, SUM(revenue) AS metric_1 FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY item_name ORDER BY metric_1 DESC"
+try:m.validate_generated_dashboard_sql(section,unbounded)
+except m.LiveDemoError as error:rejected=str(error)
+else:rejected="accepted"
+bounded=unbounded+" LIMIT 100"
+m.validate_generated_dashboard_sql(section,bounded)
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="";e.client=e.bq=object()
+m.report.generate=lambda *_args,**_kwargs:({"sql":unbounded,"reason":"商品別比較","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.repair=lambda *_args,**_kwargs:({"sql":bounded,"reason":"行数上限を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+executions=[]
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(executions.append("dry-run") or ([('dimension_1','STRING'),('metric_1','NUMERIC')],None))
+m.report.exec_bq=lambda *_args,**_kwargs:(executions.append("query") or (([("商品A",10)],["dimension_1","metric_1"]),None))
+try:e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,{"panel_id":"P1"})
+except m.LiveDemoError as error:build_error=str(error)
+else:build_error=""
+print(json.dumps({"limits":limits,"unbounded":rejected,"bounded":"accepted","build_error":build_error,"executions":executions},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    limits: { bar: 30, line: 100, table: 100, sankey: 100 },
+    unbounded:
+      '商品別購入金額のSQLにtable用のORDER BYとLIMIT 100以下がないためBigQueryへ送信しません。',
+    bounded: 'accepted',
+    build_error: '',
+    executions: ['dry-run', 'query'],
+  });
+});
+
+test('dashboard dry-run schema mismatch stops before the paid query execution', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="";e.client=e.bq=object()
+section={"id":"P1","title":"購入規模","text":"2021年1月の購入件数を集計する","compare":"execution","component":"table","planned_visualization":"scorecard","verification":"execution","shape":{"rows":"1行","columns":["購入件数"]},"source_columns":["metric_value"]}
+tick=chr(96);sql="SELECT COUNT(*) AS metric_value FROM "+tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+m.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.repair=lambda *_args,**_kwargs:({"sql":sql,"reason":"型を修正できない","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","STRING")],None)
+executions=[];m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
+try:e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,{"panel_id":"P1"})
+except m.LiveDemoError as error:print(json.dumps({"error":str(error),"executions":executions},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error:
+      'SQL担当AIで1回修正しましたが、実行前診断を解消できなかったため実行しません: 購入規模のdry run出力（metric_value:STRING）がscorecardの描画仕様と一致しないためBigQueryを実行しません。',
+    executions: [],
+  });
+});
+
+test('a missing stacked-bar dimension alias is repaired before BigQuery dry run', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.bitcoin_rules="bitcoin";e.client=e.bq=object()
+panel={"id":"P1","title":"デバイス別 エンゲージメント時間と購入件数の比較","chart":"stacked_bar","decision":"デバイス差を判断する","execution_prompt":"2021年1月のデバイス別エンゲージメント時間と購入件数を比較する","dimensions":["デバイス"],"measures":["エンゲージメント時間","購入件数"]}
+section=m.planned_analysis_section(panel)
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+initial="SELECT device.category, COALESCE(SUM(1), 0) AS metric_1, COUNTIF(event_name = 'purchase') AS metric_2 FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY device.category ORDER BY metric_2 DESC LIMIT 20"
+repaired="SELECT device.category AS dimension_1, COALESCE(SUM(1), 0) AS metric_1, COUNTIF(event_name = 'purchase') AS metric_2 FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY dimension_1 ORDER BY metric_2 DESC LIMIT 20"
+m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+repairs=[]
+m.report.repair=lambda _client,_model,_request,sql,diagnostic,_rules:(repairs.append([sql,diagnostic]) or ({"sql":repaired,"reason":"区分軸の別名を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+dry_runs=[];m.report.inspect_bq_schema=lambda _bq,sql,**_kwargs:(dry_runs.append(sql) or ([('dimension_1','STRING'),('metric_1','INT64'),('metric_2','INT64')],None))
+executed=[];m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([('mobile',100,5)],['dimension_1','metric_1','metric_2']),None))
+events=[];e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
+print(json.dumps({"repairs":repairs,"dry_runs":dry_runs,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"],"reason":next(event["reason"] for event in events if event["type"]=="sql")},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.repairs.length, 1);
+  assert.match(output.repairs[0][1], /SQL出力列（別名なし、metric_1、metric_2）/);
+  assert.deepEqual(output.dry_runs, [output.executed[0]]);
+  assert.match(output.executed[0], /device\.category AS dimension_1/);
+  assert.deepEqual(output.stages, ['generate', 'validate', 'repair', 'execute']);
+  assert.equal(output.reason, '区分軸の別名を修正');
+});
+
+test('a BigQuery compiler diagnostic is repaired once before paid execution', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.bitcoin_rules="bitcoin";e.client=e.bq=object()
+panel={"id":"P1","title":"主要ページ間回遊フロー","chart":"scorecard","decision":"回遊を判断する","execution_prompt":"2021年1月の回遊セッション数を集計する","dimensions":[],"measures":["セッション数"]}
+section=m.planned_analysis_section(panel)
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+initial="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+repaired="WITH base AS (SELECT user_pseudo_id FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131') SELECT COUNT(*) AS metric_value FROM base"
+m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+repairs=[]
+m.report.repair=lambda _client,_model,request,sql,diagnostic,rules:(repairs.append([request,sql,diagnostic,rules]) or ({"sql":repaired,"reason":"相関をCTEへ変換","undefined_terms":[]},{"input_tokens":2,"output_tokens":2}))
+dry_runs=[]
+def inspect(_bq,sql,**_kwargs):
+ dry_runs.append(sql)
+ return (None,"bq dry-run error: BadRequest: Correlated subqueries that reference other tables are not supported") if len(dry_runs)==1 else ([('metric_value','INT64')],None)
+m.report.inspect_bq_schema=inspect
+executed=[]
+m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([(12,)],["metric_value"]),None))
+events=[]
+cost=e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
+print(json.dumps({"repairs":repairs,"dry_runs":dry_runs,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"],"reason":next(event["reason"] for event in events if event["type"]=="sql"),"cost_positive":cost>0},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.repairs.length, 1);
+  assert.match(output.repairs[0][0], /2021年1月の回遊セッション数/);
+  assert.match(output.repairs[0][2], /Correlated subqueries/);
+  assert.equal(output.repairs[0][3], 'rules');
+  assert.equal(output.dry_runs.length, 2);
+  assert.equal(output.dry_runs[0], output.repairs[0][1]);
+  assert.equal(output.dry_runs[1], output.executed[0]);
+  assert.deepEqual(output.executed, [output.dry_runs[1]]);
+  assert.deepEqual(output.stages, ['generate', 'validate', 'repair', 'execute']);
+  assert.equal(output.reason, '相関をCTEへ変換');
+  assert.equal(output.cost_positive, true);
+});
+
+test('cancelling an active request releases the server operation lock', () => {
+  const result = python(`
+import threading,time
+e=object.__new__(m.LiveQueryEngine);e.lock=threading.Lock();e.operation_state_lock=threading.Lock();e.active_request_id=e.active_cancel_event=e.active_done_event=None
+token=e._begin_operation("request-123456789012-abcd");cancelled=[]
+thread=threading.Thread(target=lambda:cancelled.append(e.cancel("request-123456789012-abcd")));thread.start()
+for _ in range(100):
+ if token.is_set():break
+ time.sleep(.001)
+observed=token.is_set();e._finish_operation();thread.join()
+available=e.lock.acquire(blocking=False)
+if available:e.lock.release()
+print(json.dumps({"observed":observed,"cancelled":cancelled,"available":available}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    observed: true,
+    cancelled: [true],
+    available: true,
+  });
+});
+
+test('composer becomes a stop control and prevents a second submission while streaming', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  for (const expected of [
+    'new AbortController()',
+    'function stopActiveRequest()',
+    '$("composer-submit").textContent="■"',
+    '$("composer-input").disabled=true',
+    'if(activeRequest){stopActiveRequest();return}',
+    'request_id:operation.requestId',
+  ]) {
+    assert.ok(script.includes(expected), `missing in-flight composer contract: ${expected}`);
+  }
+});
+
 test('dashboard UI separates consultation from confirmed paid build', () => {
   const result = python(`
 html=m.HTML
@@ -1405,7 +1758,7 @@ print(json.dumps({
  "review":all(value in html for value in ['id="plan-review"','id="plan-clarifications"','id="plan-panels"','id="plan-revision"']),
  "flow":all(value in html for value in ['/api/plan','answers:currentAnswers','analysis_plan:pendingPlan','selected.size<1']),
  "iterative":all(value in html for value in ['id="plan-revision-instruction"','analysis_plan:pendingPlanBase','revision_instruction:pendingPlanInstruction','追加・変更・削除']),
- "memory":all(value in html for value in ["organization_context_revision","ローカルデモfixture・本番メモリー未接続"]),
+ "memory":all(value in html for value in ["organization_context_revision","依頼と確認回答から生成したコンテキスト"]),
 }))
 `);
   assert.equal(result.status, 0, result.stderr);
@@ -1450,19 +1803,19 @@ print(json.dumps({"initial":m.planner.INITIAL_PANEL_COUNT,"maximum":m.planner.MA
 
 test('an AI-authored dashboard supports twenty panels without hardcoded topics', () => {
   const result = python(`
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を1行で出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を1行で出して","dimensions":[],"measures":[f"定義済み指標{index}"],"layout_row":(index+3)//4,"layout_weight":((index-1)%4)+1}
 question="2021年1月の購入課題を分析するダッシュボードを作って"
 plan={"period":m.period_for_question(question),"panels":[panel(index) for index in range(1,21)]}
 period,sections=m.dashboard_sections_for_plan(question,plan)
 layout=m.dashboard_layout_rows_for_plan(plan["panels"])
-print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"sections":len(sections),"rows":len(layout),"all_full":all(len(row["panel_ids"])==2 and sum(row["shares"])==100 for row in layout)},ensure_ascii=False))
+print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"sections":len(sections),"rows":len(layout),"all_weighted":all(len(row["panel_ids"])==4 and sum(row["shares"])==100 for row in layout)},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     limit: 98304,
     sections: 20,
-    rows: 10,
-    all_full: true,
+    rows: 5,
+    all_weighted: true,
   });
 });
 
@@ -1474,8 +1827,8 @@ print(json.dumps({
  "adjustable":all(value in html for value in ['id="sidebar-toggle"','aria-label="ナビゲーションを折りたたむ"','id="navigation-resizer"','aria-label="ナビゲーションの幅を変更"','id="inspector-toggle"','aria-label="詳細パネルを折りたたむ"','id="inspector-resizer"','aria-label="詳細パネルの幅を変更"']),
  "views":all(value in html for value in ['id="artifact-dashboard-view"','id="build-studio-view"','id="meeting-report-view"','id="graph-workspace"']),
  "navigation":all(value in html for value in ['id="view-dashboard"','id="view-build"','id="view-report"','id="view-graph"']),
- "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="consult"','data-composer-action="dashboard"','data-composer-action="insight"','data-composer-action="report"']),
- "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','購入成果改善ダッシュボード','未保存のインサイト','aria-label="分析スレッド"','購入成果を改善する','現在の対話']),
+ "conversation":all(value in html for value in ['id="analysis-composer"','id="composer-input"','data-composer-action="consult"','data-composer-action="dashboard"','data-composer-action="insight"']) and 'data-composer-action="report"' not in html,
+ "artifact_tree":all(value in html for value in ['aria-label="分析成果物"','ダッシュボード','未作成','未保存のインサイト','aria-label="分析スレッド"','新しい分析','現在の対話']),
  "inspector":all(value in html for value in ['id="inspector-empty"','id="inspector-content"','id="inspector-tab-reason"','id="inspector-tab-sql"','id="inspector-tab-data"','id="inspector-tab-provenance"']),
  "artifact_preview":all(value in html for value in ['id="artifact-preview"','id="artifact-preview-host"','単一グラフのインサイト']),
 }))
@@ -1493,7 +1846,7 @@ print(json.dumps({
   });
 });
 
-test('broad analysis requests use paid, stateful AI consultation before paid execution', () => {
+test('explicit consultation and every new insight use stateful AI planning before execution', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
@@ -1508,17 +1861,37 @@ test('broad analysis requests use paid, stateful AI consultation before paid exe
   assert.ok(script.includes('consultationHistory.slice(-8)'));
   assert.ok(script.includes('stream("/api/consult"'));
   assert.ok(script.includes('function selectAnalysisRecommendation(recommendation)'));
+  assert.ok(script.includes('pendingInsightSpecification=recommendation'));
+  assert.ok(script.includes('analysis_specification:pendingInsightSpecification'));
+  assert.ok(script.includes('selectProfile($("composer-profile").value)'));
+  assert.ok(
+    script.includes(
+      '$("question").addEventListener("input",()=>{pendingInsightSpecification=null})',
+    ),
+  );
+  assert.ok(
+    script.includes(
+      'function beginAnalysisConsultation(question,profile){pendingInsightSpecification=null',
+    ),
+  );
+  assert.ok(
+    script.includes(
+      '$("composer-profile").onchange=()=>{pendingInsightSpecification=null;const profile=$("composer-profile").value;selectProfile(profile);$("composer-input").value=""',
+    ),
+  );
   assert.ok(script.includes('if(action==="consult"){beginAnalysisConsultation'));
+  assert.ok(
+    script.includes(
+      'if(!pendingInsightSpecification||question!==pendingInsightSpecification.execution_prompt){beginAnalysisConsultation',
+    ),
+  );
   assert.ok(script.includes('selectWorkspace("consult");setComposerAction("consult",false)'));
   assert.ok(script.includes('setComposerAction("insight",false)'));
   assert.ok(script.includes('$("composer-input").value=""'));
   assert.ok(!script.includes('const analysisRecommendations='));
   const submit =
     script.match(/function submitComposer\(\)\{.*?\}\nconst originalQueryHandler/s)?.[0] ?? '';
-  assert.ok(
-    submit.indexOf('if(action==="consult"){beginAnalysisConsultation') <
-      submit.indexOf('showCost("graph")'),
-  );
+  assert.ok(submit.indexOf('beginAnalysisConsultation') < submit.indexOf('showCost("graph")'));
 });
 
 test('consultation HTTP boundary accepts bounded history and rejects invalid turns', () => {
@@ -1529,7 +1902,7 @@ class E:
  calls=[]
  def consult(self,question,history,emit,profile="ga4"):
   self.calls.append({"question":question,"history":history,"profile":profile})
-  emit({"type":"consultation","assistant_message":"別の切り口です。","follow_up_question":"どちらを優先しますか？","recommendations":[{"title":"流入チャネル別の購入効率","objective":"成果につながる流入元を探す","metric":"セッション数と購入件数","dimension":"medium","comparison":"チャネル間","chart":"bar","execution_prompt":"2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して","reason":"偏りを判断するため"}],"history_message":"別の切り口です。"})
+  emit({"type":"consultation","assistant_message":"別の切り口です。","follow_up_question":"どちらを優先しますか？","recommendations":[{"title":"流入チャネル別の集客規模","objective":"集客量が偏る流入元を探す","dimensions":["medium"],"measures":["セッション数"],"comparison":"チャネル間","chart":"bar","execution_prompt":"2021年1月のセッション数を流入チャネル（medium）別に出して","reason":"偏りを判断するため","revision":"insight-111111111111"}],"history_message":"別の切り口です。"})
 engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 def post(history):
  data=json.dumps({"question":"他にない？","profile":"ga4","history":history},ensure_ascii=False).encode()
@@ -1564,18 +1937,47 @@ finally:s.shutdown();s.server_close();t.join()
   });
 });
 
-test('consultation prompt detection is bounded to advice requests', () => {
+test('query routing does not classify natural-language phrases', () => {
+  const result = python(
+    'print(json.dumps({"classifier":hasattr(m,"requires_analysis_consultation")}))',
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { classifier: false });
+});
+
+test('every single-insight build requires an AI-authored specification', () => {
   const result = python(`
-print(json.dumps({
- "broad":[m.requires_analysis_consultation(value) for value in ["どんな分析をしたらいい？","何を分析すればいい？","おすすめの分析を教えて","どんな分析をしたらいい" + "！" * 1000]],
- "concrete":[m.requires_analysis_consultation(value) for value in ["2021年1月のセッション数を出して","2021年1月のWebサイト回遊を分析して","2024年1月のBitcoin取引の受取アドレス数帯別の取引数を出して"]]
-}))
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object();e.lock=threading.Lock()
+errors=[]
+for profile,question in [("ga4","2021年1月のユーザー数を出して"),("bitcoin","2024年1月の取引数を出して")]:
+ try:e.query(question,lambda _event:None,profile=profile)
+ except m.LiveDemoError as error:errors.append(str(error))
+print(json.dumps({"errors":errors,"selector":hasattr(m,"section_for_question"),"classifier":hasattr(m,"requires_analysis_consultation")},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    broad: [true, true, true, true],
-    concrete: [false, false, false],
+    errors: [
+      'AIが作成した分析仕様を選択してからbuildしてください。',
+      'AIが作成した分析仕様を選択してからbuildしてください。',
+    ],
+    selector: false,
+    classifier: false,
   });
+});
+
+test('workspace exposes no fixed insight examples or phrase classifier', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
+  assert.doesNotMatch(rendered.stdout, /data-q=/);
+  assert.ok(!script.includes('function isConsultationPrompt(question)'));
+  assert.ok(!script.includes('profileDefaults'));
+  assert.ok(!script.includes('action==="consult"?"どんな分析をしたらいい？"'));
+  assert.ok(!script.includes('card.dataset.panelId==="R17"'));
+  assert.ok(!script.includes('card.dataset.panelId==="R9"'));
+  assert.doesNotMatch(rendered.stdout, /購入成果改善ダッシュボード|流入別の購入率/);
+  assert.match(rendered.stdout, /id="dashboard-question"[^>]*><\/textarea>/);
 });
 
 test('workspace pane controls stay viewport-anchored and expose their state visually', () => {
@@ -1677,10 +2079,35 @@ test('dashboard resizes every shared row without free rearrangement', () => {
   assert.doesNotMatch(script, /draggable\s*=|ondragstart|Sortable/);
 });
 
+test('dashboard cards in the same row share height while content stays top-aligned', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /\.dashboard-layout-row\{[^}]*align-items:stretch/);
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-card \.chart\{[^}]*align-items:start[^}]*overflow:visible[^}]*flex:1/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-layout-row>\.dashboard-card \.chart\{[^}]*max-height:460px[^}]*overflow:auto/,
+  );
+  assert.ok(
+    rendered.stdout.indexOf(
+      '.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}',
+    ) <
+      rendered.stdout.indexOf(
+        '@container (max-width:900px){.dashboard-layout-row{grid-template-columns:',
+      ),
+    'the single-column container override must follow the desktop height cap',
+  );
+  assert.match(rendered.stdout, /\.chart-table-scroll\{[^}]*max-height:360px[^}]*overflow:auto/);
+  assert.match(rendered.stdout, /\.chart-table-scroll th,[^}]*overflow-wrap:anywhere/);
+});
+
 test('left navigation stays compact and scrolls long titles only on interaction', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
-  assert.match(rendered.stdout, /class="sidebar-title"><span>購入成果改善ダッシュボード<\/span>/);
+  assert.match(rendered.stdout, /class="sidebar-title"><span>ダッシュボード<\/span>/);
   assert.match(
     rendered.stdout,
     /class="sidebar-chrome"><span class="brand">RepChat<\/span><\/div>/,
@@ -1731,8 +2158,8 @@ test('analysis workspace visual hierarchy protects charts and the main surface',
 html=m.HTML
 print(json.dumps({
  "tokens":all(value in html for value in ["--radius-card:12px","--shadow-card:","--color-background:"]),
- "hierarchy":all(value in html for value in [".dashboard-card:nth-child(1){grid-column:span 6}",".dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}"]),
- "overflow":all(value in html for value in ["body{overflow-x:hidden", ".dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:0}"]),
+ "hierarchy":all(value in html for value in [".dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:268px", ".dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}"]),
+ "overflow":all(value in html for value in ["body{overflow-x:hidden", ".dashboard-card .chart svg{display:block;min-width:0;width:100%;max-width:100%}"]),
  "responsive":all(value in html for value in ["@media(max-width:1180px)","position:fixed","@media(max-width:960px)","@media(max-width:760px)"]),
  "accessible":all(value in html for value in [":focus-visible","prefers-reduced-motion:reduce","outline:3px solid var(--color-focus)"]),
 }))
@@ -1784,7 +2211,7 @@ test('selected workspace title is compact and not repeated above the main conten
   );
   assert.match(
     rendered.stdout,
-    /build:\["購入成果を改善する","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"\]/,
+    /build:\["新しい分析","AIと目的・KPI・比較軸を相談し、確認した仕様だけをbuildします。","分析スレッド"\]/,
   );
   assert.doesNotMatch(rendered.stdout, /id="workspace-back"|id="workspace-forward"/);
 });
@@ -1863,7 +2290,7 @@ test('meeting report owns persistent processing and error state across workspace
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.ok(rendered.stdout.includes('id="report-status"'));
   assert.ok(rendered.stdout.includes('id="report-message"'));
-  assert.ok(!rendered.stdout.includes('id="report-warning"'));
+  assert.ok(!rendered.stdout.includes('generation_warnings'));
   assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
   assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
   assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
@@ -1945,8 +2372,8 @@ test('chart values use bounded Japanese number formatting without changing raw t
   assert.deepEqual([...values], ['118,380', '895', '57,350.13', '14.57', '49.51', 'organic']);
   assert.ok(script.includes('textContent:chartValue(r.rows[0][0],r.columns[0],true)'));
   assert.ok(script.includes('value.textContent=chartValue(r.rows[0][index],column)'));
-  assert.ok(script.includes('textContent:chartValue(r.rows[0][index],column,true)'));
-  assert.ok(script.includes('textContent=chartValue(x[1],r.columns?.[1]??"")'));
+  assert.ok(script.includes('textContent:chartValue(row[1],r.columns[1],true)'));
+  assert.ok(script.includes('textContent=chartValue(value,columns[1])'));
   assert.ok(
     script.includes('replaceChildren(table(result.columns,result.rows))'),
     'the audit table must retain raw query values',
@@ -2037,30 +2464,36 @@ import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
 e.spec=json.loads((m.HERE/"report.json").read_text());e.metric_definitions=json.loads((m.HERE/"metrics.json").read_text())
 e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
-plan={"objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"購入成果の課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question("2021年1月"),"hypotheses":["導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":"必要"} for panel_id in ["R4","R9","R16","R17"]]}
-rows={"R4":[[895,123456.0]],"R9":[[100,50,20]],"R16":[["2021-01-31",118380,117000.5]],"R17":[["1. 入口: /","2. /shop",5]]}
-columns={"R4":["購入件数","購入金額"],"R9":["閲覧","カート","購入"],"R16":["日付","セッション数","7日移動平均"],"R17":["source","target","sessions"]}
+panels=[
+ {"title":"購入規模","kpi":"購入成果","chart":"table","decision":"購入成果の規模を判断する","reason":"全体規模が必要","execution_prompt":"2021年1月の購入件数と購入金額を集計する","dimensions":[],"measures":["購入件数","購入金額"],"layout_row":1,"layout_weight":1},
+ {"title":"購入ファネル","kpi":"購入導線","chart":"table","decision":"購入までの減少箇所を判断する","reason":"導線診断が必要","execution_prompt":"2021年1月の閲覧とカートと購入を集計する","dimensions":[],"measures":["閲覧","カート","購入"],"layout_row":1,"layout_weight":1},
+ {"title":"日別推移","kpi":"セッション数","chart":"line","decision":"月内変動を判断する","reason":"変動確認が必要","execution_prompt":"2021年1月の日付別セッション数を集計する","dimensions":["日付"],"measures":["セッション数"],"layout_row":2,"layout_weight":1},
+ {"title":"主要回遊","kpi":"回遊数","chart":"sankey","decision":"主要な遷移を判断する","reason":"回遊確認が必要","execution_prompt":"2021年1月のsourceからtargetへのsessionsを集計する","dimensions":["source","target"],"measures":["sessions"],"layout_row":2,"layout_weight":1},
+]
+plan={"objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"購入成果の課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question("2021年1月"),"hypotheses":["導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":panels}
+rows={"P1":[[895,123456.0]],"P2":[[100,50,20]],"P3":[["2021-01-31",118380]],"P4":[["1. 入口: /","2. /shop",5]]}
+columns={"P1":["購入件数","購入金額"],"P2":["閲覧","カート","購入"],"P3":["日付","セッション数"],"P4":["source","target","sessions"]}
 def run_section(section,period,emit,context=None,profile="ga4"):
  emit({"type":"sql","sql":"SELECT value FROM source","sql_sha256":"1"*16,**context})
- emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":section["component"],**context})
+ emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":"funnel" if section["id"]=="P2" else section["component"],**context})
  return .1
 e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
-raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["R4"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
+raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["P1"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["P1"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["P3"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["P2"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["P1"]}],"limitations":["目標値と施策履歴が未登録です。"]}
 calls=[]
 m.meeting.generate=lambda _client,_model,current:(calls.append(current["build_revision"]) or (m.meeting.normalize_report(raw,current),{"input_tokens":10,"output_tokens":5}))
 report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)
 error=""
 try:e.meeting_report("build-000000000000",lambda _event:None)
 except m.LiveDemoError as caught:error=str(caught)
-funnel=next(panel for panel in bundle["panels"] if panel["id"]=="R9")
-print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["goal"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"funnel_rate":funnel["derived_metrics"][0]["value"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
+funnel=next(panel for panel in bundle["panels"] if panel["id"]=="P2")
+print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["objective_summary"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"funnel_rate":funnel["derived_metrics"][0]["value"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.dashboard_complete, output.build);
   assert.match(output.build, /^build-[0-9a-f]{12}$/);
   assert.match(output.plan, /^plan-[0-9a-f]{12}$/);
-  assert.equal(output.organization, '購入成果を伸ばし、訪問者の継続利用を改善する');
+  assert.equal(output.organization, '購入成果の課題を判断する');
   assert.equal(output.metric, true);
   assert.match(output.result_revision, /^result-[0-9a-f]{12}$/);
   assert.equal(output.sql, '1111111111111111');
