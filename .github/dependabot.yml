@@ -5,8 +5,9 @@
 # Dependabot version updates at the same time produces duplicate, conflicting weekly PRs,
 # so all update blocks below are commented out.
 #
-# Dependabot SECURITY updates/alerts do NOT need this file — they are a repository
-# setting enabled by scripts/setup-github.sh (vulnerability-alerts + automated-security-fixes).
+# Dependabot alerts do not need this file and remain enabled by repository governance.
+# Automated security-fix PRs remain disabled because Renovate is the single update-PR
+# provider; vulnerability alerts still provide the independent detection channel.
 #
 # If you prefer Dependabot OVER Renovate: delete renovate.json, then uncomment the
 # ecosystem block(s) below. GitHub may show a "no update configuration" notice while every
