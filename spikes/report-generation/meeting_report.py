@@ -18,9 +18,6 @@ MAX_PANEL_REFS = 6
 REPORT_DECIMAL_PLACES = 2
 FUNNEL_RATE_DECIMAL_PLACES = 1
 NO_DIGITS_PATTERN = r"^[^0-9０-９]*$"
-GENERATION_WARNING = (
-    "AI出力のうち、根拠を確認できない数値表現または構造を除外しました。"
-)
 REPORT_ITEM_LIMITS = {
     "observations": 3,
     "interpretations": 2,
@@ -385,14 +382,9 @@ def normalize_report(raw: dict, bundle: dict) -> dict:
             raise ReportError(f"会議報告の{name}は{limit}件以内にしてください。")
         return [cited(item, name, extra) for item in source]
 
-    summary_source = raw.get("executive_summary")
-    if isinstance(summary_source, str):
-        summary_text = _text(summary_source, "要約", SUMMARY_MAX_CHARS)
-        if re.search(r"\d", summary_text):
-            raise ReportError("会議報告の要約には根拠リンクのない数値を書けません。")
-        summary = {"text": summary_text, "panel_ids": [], "evidence_refs": []}
-    else:
-        summary = cited(summary_source, "要約", text_limit=SUMMARY_MAX_CHARS)
+    summary = cited(
+        raw.get("executive_summary"), "要約", text_limit=SUMMARY_MAX_CHARS
+    )
     limitations = raw.get("limitations")
     if not isinstance(limitations, list):
         raise ReportError("会議報告のlimitationsが配列ではありません。")
@@ -439,103 +431,6 @@ def normalize_report(raw: dict, bundle: dict) -> dict:
     return _set_report_revision(report)
 
 
-def _fallback_raw_report(bundle: dict) -> dict:
-    """Return a numeric-free cited draft used only when generated items are unsafe."""
-    panel_id = bundle["panels"][0]["id"]
-    return {
-        "executive_summary": {
-            "text": "確認できる根拠を基に、傾向と追加検証事項を整理しました。",
-            "panel_ids": [panel_id],
-        },
-        "observations": [
-            {
-                "text": "根拠パネルの集計結果を確認しました。",
-                "panel_ids": [panel_id],
-            }
-        ],
-        "interpretations": [
-            {
-                "text": "この集計だけでは変化の要因を確定できません。",
-                "uncertainty": "比較対象と施策履歴が不足しています。",
-                "panel_ids": [panel_id],
-            }
-        ],
-        "hypotheses": [
-            {
-                "text": "表示された傾向に影響する条件がある可能性があります。",
-                "validation": "同じ指標を比較条件別に確認します。",
-                "panel_ids": [panel_id],
-            }
-        ],
-        "actions": [
-            {
-                "text": "根拠パネルを確認し、追加検証の優先順位を決めます。",
-                "owner": "マーケティング責任者",
-                "urgency": "次回会議まで",
-                "expected_impact": "判断に必要な不足情報を特定できます。",
-                "next_step": "比較条件と施策履歴を確認します。",
-                "success_metric": "確定済みの主要指標",
-                "panel_ids": [panel_id],
-            }
-        ],
-        "limitations": [
-            "比較対象、目標値、施策履歴の不足を確認する必要があります。"
-        ],
-    }
-
-
-def normalize_generated_report(raw: dict, bundle: dict) -> dict:
-    """Keep valid generated items while discarding unsafe claims without another call."""
-    _evidence_index(bundle)
-    try:
-        return normalize_report(raw, bundle)
-    except ReportError:
-        pass
-
-    fallback = _fallback_raw_report(bundle)
-    source = raw if isinstance(raw, dict) else {}
-    repaired = dict(fallback)
-
-    summary = source.get("executive_summary")
-    if summary is not None:
-        probe = {**fallback, "executive_summary": summary}
-        try:
-            normalize_report(probe, bundle)
-            repaired["executive_summary"] = summary
-        except ReportError:
-            pass
-
-    for name in ("observations", "interpretations", "hypotheses", "actions"):
-        valid = []
-        candidates = source.get(name)
-        if isinstance(candidates, list):
-            for candidate in candidates[: REPORT_ITEM_LIMITS[name]]:
-                probe = {**fallback, name: [candidate]}
-                try:
-                    normalize_report(probe, bundle)
-                    valid.append(candidate)
-                except ReportError:
-                    continue
-        if valid:
-            repaired[name] = valid
-
-    valid_limitations = []
-    limitations = source.get("limitations")
-    if isinstance(limitations, list):
-        for candidate in limitations[: REPORT_ITEM_LIMITS["limitations"]]:
-            probe = {**fallback, "limitations": [candidate]}
-            try:
-                normalize_report(probe, bundle)
-                valid_limitations.append(candidate)
-            except ReportError:
-                continue
-    if valid_limitations:
-        repaired["limitations"] = valid_limitations
-
-    report = normalize_report(repaired, bundle)
-    report["generation_warnings"] = [GENERATION_WARNING]
-    return _set_report_revision(report)
-
 def generate(client, model: str, bundle: dict):
     """Generate and validate one report draft without another warehouse query."""
     from google.genai import types
@@ -570,7 +465,7 @@ def generate(client, model: str, bundle: dict):
             "今回のVertex AI呼出しは課金対象で、自動再実行していません。"
         ) from error
     usage = response.usage_metadata
-    return normalize_generated_report(raw, bundle), {
+    return normalize_report(raw, bundle), {
         "input_tokens": usage.prompt_token_count or 0,
         "output_tokens": (usage.candidates_token_count or 0)
         + (getattr(usage, "thoughts_token_count", 0) or 0),
