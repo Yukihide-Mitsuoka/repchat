@@ -457,7 +457,7 @@ print(m.visualization_for_result(
     ['入口', '2ページ目', '3ページ目', '4ページ目'],
   );
   assert.ok(links.every((link) => link.attributes.tabindex === '0'));
-  assert.ok(links.every((link) => link.attributes['aria-label']?.includes('セッション')));
+  assert.ok(links.every((link) => link.attributes['aria-label']?.includes('sessions')));
   assert.ok(
     links.every((link) => link.children.some((child) => child.tag === 'title')),
     'each transition should expose its value as an SVG tooltip',
@@ -465,12 +465,9 @@ print(m.visualization_for_result(
   const detail = chart.children.find((element) => element.className.includes('sankey-detail'));
   assert.ok(detail);
   links[0]?.onfocus?.();
-  assert.match(detail.textContent, /\/ → \/shop: 120セッション/);
+  assert.match(detail.textContent, /\/ → \/shop: 120 sessions/);
   const terminal = chart.children.find((element) => element.className.includes('sankey-terminal'));
-  assert.match(
-    terminal?.textContent ?? '',
-    /2ページ目で終了: 72セッション、3ページ目で終了: 28セッション/,
-  );
+  assert.equal(terminal, undefined);
 });
 
 test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
@@ -724,9 +721,9 @@ test('dashboard result-shape validation fails closed before rendering', () => {
   const result = python(`
 errors=[]
 for section,rows,columns in [
- ({"title":"購入KPI","component":"kpi_pair"},[(1,)],["only_one"]),
- ({"title":"ファネル","component":"funnel"},[(100,-1,2)],["a","b","c"]),
- ({"title":"回遊","component":"sankey"},[("/","/shop","many")],["source","target","sessions"]),
+ ({"title":"購入KPI","planned_visualization":"scorecard"},[("invalid",)],["only_one"]),
+ ({"title":"ファネル","planned_visualization":"funnel"},[("1. 閲覧",-1)],["stage","metric_value"]),
+ ({"title":"回遊","planned_visualization":"sankey"},[("1. /","2. /shop","many")],["source","target","metric_value"]),
 ]:
  try:
   m.dashboard_visualization(section,rows,columns)
@@ -736,18 +733,18 @@ print(json.dumps(errors,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
-    '購入KPIの結果形状がダッシュボード仕様と一致しないため描画しません。',
-    'ファネルの結果形状がダッシュボード仕様と一致しないため描画しません。',
-    '回遊の結果形状がダッシュボード仕様と一致しないため描画しません。',
+    '購入KPIの結果形状がAI分析仕様のscorecardと一致しないため描画しません。',
+    'ファネルの結果形状がAI分析仕様のfunnelと一致しないため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
   ]);
 });
 
 test('dashboard navigation Sankey rejects repeated pages as consecutive transitions', () => {
   const result = python(`
-section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
+section={"id":"R17","title":"回遊","planned_visualization":"sankey"}
 cases=[
- [("1. 入口: /", "2. /", 38913)],
- [("1. 入口: /", "2. /shop", 20), ("2. /shop", "3. /shop", 8)],
+ [("1. /", "1. /", 38913)],
+ [("4. /shop", "5. /thanks", 8)],
 ]
 errors=[]
 for rows in cases:
@@ -759,18 +756,18 @@ print(json.dumps(errors,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
-    '回遊の連続する同一ページが遷移として含まれるため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
   ]);
 });
 
 test('dashboard navigation Sankey requires staged connected aggregated edges', () => {
   const result = python(`
-section={"id":"R17","title":"回遊","component":"sankey","transition_mode":"page_navigation"}
+section={"id":"R17","title":"回遊","planned_visualization":"sankey"}
 cases=[
  [("1. 入口: /", "3. /cart", 10)],
- [("1. 入口: /", "2. /shop", 10), ("1. 入口: /", "2. /shop", 5)],
- [("1. 入口: /", "2. /shop", 10), ("2. /cart", "3. /done", 5)],
+ [("2. /shop", "4. /done", 5)],
+ [("3. /cart", "5. /done", 5)],
 ]
 errors=[]
 for rows in cases:
@@ -782,9 +779,9 @@ print(json.dumps(errors,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の段階が1→2または2→3になっていないため描画しません。',
-    '回遊に未集約の重複edgeが含まれるため描画しません。',
-    '回遊の1段目と2段目が接続しないため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
+    '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
   ]);
 });
 
@@ -1341,6 +1338,41 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
   assert.deepEqual(output.contracts.sankey.columns, ['source', 'target', 'metric_value']);
   assert.equal(output.max_pages, 4);
   assert.ok(Object.values(output.contracts).every((contract: any) => contract.limit > 0));
+});
+
+test('all AI chart contracts have explicit result validation and browser renderers', () => {
+  const result = python(`
+from datetime import date
+cases={
+ "scorecard":([(1,)], ["値"]),
+ "kpi_group":([(1,2)], ["値1","値2"]),
+ "bar":([("A",1)], ["区分","値"]),
+ "grouped_bar":([("A",1,2)], ["区分","値1","値2"]),
+ "stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
+ "line":([(date(2021,1,1),1),(date(2021,1,2),None)], ["日付","値"]),
+ "multi_line":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
+ "scatter":([("A",1,2)], ["項目","X","Y"]),
+ "bubble":([("A",1,2,3)], ["項目","X","Y","大きさ"]),
+ "funnel":([("1. 閲覧",10)], ["段階","値"]),
+ "heatmap":([("月","午前",10)], ["縦","横","値"]),
+ "table":([("A",1)], ["区分","値"]),
+ "sankey":([("1. /","2. /shop",10),("2. /shop","3. /cart",5),("3. /cart","4. /thanks",2)], ["遷移元","遷移先","流量"]),
+}
+rendered={}
+for chart,(rows,columns) in cases.items():
+ section={"title":chart,"planned_visualization":chart}
+ rendered[chart]=m.dashboard_visualization(section,rows,columns)
+browser=["kpiGroup","barChart","lineChart","scatterChart","funnelChart","heatmapChart","renderResultTable"]
+print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML for name in browser),"sankey_limit":"const maxPages=4" in m.HTML},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(Object.keys(output.rendered).length, 13);
+  assert.equal(output.rendered.scorecard, 'scalar');
+  assert.equal(output.rendered.grouped_bar, 'grouped_bar');
+  assert.equal(output.rendered.sankey, 'sankey');
+  assert.equal(output.browser, true);
+  assert.equal(output.sankey_limit, true);
 });
 
 test('dashboard SQL and dry-run schema are checked against the AI chart contract', () => {
@@ -2018,9 +2050,8 @@ test('chart values use bounded Japanese number formatting without changing raw t
   );
   assert.deepEqual([...values], ['118,380', '895', '57,350.13', '14.57', '49.51', 'organic']);
   assert.ok(script.includes('textContent:chartValue(r.rows[0][0],r.columns[0],true)'));
-  assert.ok(script.includes('value.textContent=chartValue(r.rows[0][index],column)'));
-  assert.ok(script.includes('textContent:chartValue(r.rows[0][index],column,true)'));
-  assert.ok(script.includes('textContent=chartValue(x[1],r.columns?.[1]??"")'));
+  assert.ok(script.includes('value.textContent=chartValue(r.rows[0][index],column,true)'));
+  assert.ok(script.includes('textContent=chartValue(value,columns[1])'));
   assert.ok(
     script.includes('replaceChildren(table(result.columns,result.rows))'),
     'the audit table must retain raw query values',
