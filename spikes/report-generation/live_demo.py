@@ -881,13 +881,8 @@ def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[d
 
 
 def confirm_dashboard_analysis_plan(plan: dict) -> dict:
-    """Freeze dynamic plans while preserving the fixed demo fixture contract."""
-    panels = plan.get("panels", []) if isinstance(plan, dict) else []
-    if panels and all(
-        isinstance(panel, dict) and "execution_prompt" in panel for panel in panels
-    ):
-        return planner.confirm_dashboard_plan(plan)
-    return planner.confirm_plan(plan)
+    """Freeze only a complete AI-authored dashboard specification."""
+    return planner.confirm_dashboard_plan(plan)
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -1385,7 +1380,7 @@ class LiveQueryEngine:
                     "organization_context_revision": confirmed[
                         "organization_context_revision"
                     ],
-                    "organization_context": planner.ORGANIZATION_CONTEXT,
+                    "organization_context": confirmed["organization_context"],
                     "analysis_specification": {
                         "revision": confirmed["revision"],
                         "objective": confirmed["objective_summary"],
