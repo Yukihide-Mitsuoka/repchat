@@ -112,12 +112,8 @@ make demo-live PROJECT=kotonoha-bi-dev
 LOG-0065 の結論「定義しないと安定しない」は、**まだ仮定**でした。`metrics.json`（購入件数と
 新規判定を含む最小の定義層）を渡して3回走らせ、比較しました。
 
-```bash
-# 定義あり（既定）
-GOOGLE_CLOUD_PROJECT=<project> spikes/nl2sql-accuracy/.venv/bin/python spikes/report-generation/run_report.py
-# 定義なし（LOG-0065 と同じ条件）
-... run_report.py --no-metrics
-```
+この表は旧固定runnerで得た履歴です。runnerと入力fixtureは削除済みであり、現在のライブデモから
+再実行する経路はありません。
 
 | | 定義なし | **定義あり（3回）** |
 |---|---|---|
@@ -420,20 +416,6 @@ SQL表示の整形には、Python 3.13対応・BSDライセンスの`sqlparse==0
 0、4、8、12...スペースへ正規化します。SELECT列は対応するSELECTより4スペース深く配置し、
 Evidence標準`CodeBlock`でsyntax highlight、コピー、横スクロールを提供します。
 整形対象は表示文字列だけで、BigQueryへ送るSQLは変更しません。
-
-**任意: 2テナントに配る** — `tenant_serve.py` に `out/.demo/evidence-app/build` を渡します。
-詳しくは後述の「実際に2テナントへ配った」。
-
-### Evidence依存の既知リスク
-
-公式テンプレートの全コネクタをそのまま入れると、未使用のSnowflake・Databricks・SQLite等を含み
-critical 10件になったため採用していません。デモはEvidence 40.1.8・core-components 5.4.2・
-BigQuery 2.0.12だけのlockfileを持ち、Vitestのcritical advisoryをoverrideで解消しています。
-
-2026-07-29の監査は**critical 0 / high 16**です。残るhighはEvidenceが固定するSvelteKit/Svelteと
-build toolの依存です。緩和策は、(1) `localhost`だけで起動、(2) 入力はリポジトリ内の信頼済み定義と
-生成物だけ、(3) 本番配信・gate・認証には使わない、(4) 実行ごとにcritical監査、です。
-これは製品ランタイムの依存採用ではなく、デザインパートナーへ見せるローカルスパイクに限定します。
 
 ## Evidence で実際に描画した（2026-07-28）
 
