@@ -331,12 +331,10 @@ test('live bar chart renders labels when DOM append returns undefined', () => {
     ['organic', '120', 'cpc', '80'],
   );
 });
-test('live Sankey result is classified and rendered as a diagram', () => {
+test('AI-planned Sankey result is validated and rendered as a diagram', () => {
   const classified = python(`
-print(m.visualization_for_result(
- [("1. 入口: /", "2. /shop", 120), ("2. /shop", "3. /cart", 48)],
- ["source", "target", "sessions"]
-))
+section={"title":"回遊","component":"sankey","planned_visualization":"sankey"}
+print(m.dashboard_visualization(section,[("1. 入口: /", "2. /shop", 120), ("2. /shop", "3. /cart", 48)],["source", "target", "metric_value"]))
 `);
   assert.equal(classified.status, 0, classified.stderr);
   assert.equal(classified.stdout.trim(), 'sankey');
@@ -470,130 +468,36 @@ print(m.visualization_for_result(
   assert.equal(terminal, undefined);
 });
 
-test('navigation SQL requires deterministic tie-breaking before BigQuery execution', () => {
+test('AI-authored Sankey keeps a bounded render contract without fixed navigation selection', () => {
   const result = python(`
-queries=[
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY IF(path_sessions > 0, path_sessions, 0) DESC, p1 LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1 DESC, p2 DESC, p3 DESC LIMIT 12",
- "SELECT p1,p2,p3,COUNT(1) AS path_sessions FROM journeys GROUP BY p1,p2,p3 ORDER BY path_sessions DESC, p1, p2, p3 LIMIT 12",
-]
-out=[]
-for sql in queries:
- try:
-  m.require_deterministic_navigation_order(sql)
-  out.append("accepted")
- except m.LiveDemoError as error:
-  out.append(str(error))
-print(json.dumps(out,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    '回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。',
-    'accepted',
-  ]);
-});
-
-test('custom navigation depth keeps the bounded Sankey analysis contract', () => {
-  const result = python(`
-spec=json.loads((m.HERE/"report.json").read_text())
-q3="2021年1月のWebサイト回遊を分析するため、セッション内のページビューを時系列順に並べ、入口から3ページ目までの上位12経路を集計し、段階付きのsource、target、セッション数をサンキーダイアグラム用に出して"
-q4=q3.replace("3ページ目", "4ページ目")
-q5=q3.replace("3ページ目", "5ページ目")
-sections=[m.section_for_question(spec,q) for q in [q3,q4,q5]]
-too_deep=""
-try:m.section_for_question(spec,q3.replace("3ページ目", "7ページ目"))
-except m.LiveDemoError as error:too_deep=str(error)
-print(json.dumps({"sections":[{"id":s["id"],"component":s["component"],"transition_mode":s["transition_mode"],"navigation_depth":s["navigation_depth"],"verification":s["verification"],"requirements":" ".join(s["generation_requirements"])} for s in sections],"too_deep":too_deep},ensure_ascii=False))
+panel={"id":"P1","title":"主要回遊","objective":"回遊を判断する","chart":"sankey","execution_prompt":"2021年1月のsourceからtargetへのsessionsを集計する","dimensions":["source","target"],"measures":["sessions"]}
+section=m.planned_analysis_section(panel)
+removed=["section_for_question","require_deterministic_navigation_order","require_complete_navigation_depth","validate_navigation_sankey"]
+print(json.dumps({"component":section["component"],"planned":section["planned_visualization"],"verification":section["verification"],"rows":section["max_result_rows"],"pages":section["max_navigation_pages"],"requirements":" ".join(section["generation_requirements"]),"removed":all(not hasattr(m,name) for name in removed)},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const value = JSON.parse(result.stdout);
   assert.deepEqual(
-    value.sections.map((section: Record<string, string | number>) => ({
-      id: section.id,
-      component: section.component,
-      transition_mode: section.transition_mode,
-      navigation_depth: section.navigation_depth,
-      verification: section.verification,
-    })),
-    [
-      {
-        id: 'R17',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 3,
-        verification: 'reference',
-      },
-      {
-        id: 'Q1',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 4,
-        verification: 'execution',
-      },
-      {
-        id: 'Q1',
-        component: 'sankey',
-        transition_mode: 'page_navigation',
-        navigation_depth: 5,
-        verification: 'execution',
-      },
-    ],
+    {
+      component: value.component,
+      planned: value.planned,
+      verification: value.verification,
+      rows: value.rows,
+      pages: value.pages,
+      removed: value.removed,
+    },
+    {
+      component: 'sankey',
+      planned: 'sankey',
+      verification: 'execution',
+      rows: 100,
+      pages: 4,
+      removed: true,
+    },
   );
-  assert.match(value.sections[1].requirements, /4ページ目/);
-  assert.match(value.sections[1].requirements, /3→4/);
-  assert.match(value.sections[2].requirements, /5ページ目が存在するセッションだけ/);
-  assert.equal(value.too_deep, '回遊Sankeyで指定できるのは入口から3〜6ページ目までです。');
-});
-
-test('custom navigation depth validates stable ordering and all adjacent stages', () => {
-  const result = python(`
-ordering=[]
-for sql in [
- "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3 LIMIT 12",
- "SELECT p1,p2,p3,p4,COUNT(1) AS sessions FROM journeys GROUP BY p1,p2,p3,p4 ORDER BY sessions DESC,p1,p2,p3,p4 LIMIT 12",
-]:
- try:m.require_deterministic_navigation_order(sql,4);ordering.append("accepted")
- except m.LiveDemoError as error:ordering.append(str(error))
-completion=[]
-for sql in [
- "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p2 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2,p3,p4,p5,sessions FROM top_paths WHERE p5 IS NOT NULL",
- "WITH session_paths AS (SELECT p1,p2,p3,p4,p5 FROM journeys WHERE p5 IS NOT NULL), top_paths AS (SELECT p1,p2,p3,p4,p5,COUNT(1) sessions FROM session_paths GROUP BY p1,p2,p3,p4,p5 ORDER BY sessions DESC,p1,p2,p3,p4,p5 LIMIT 12) SELECT p1,p2 FROM top_paths",
-]:
- try:m.require_complete_navigation_depth(sql,5);completion.append("accepted")
- except m.LiveDemoError as error:completion.append(str(error))
-valid=[("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /done",10)]
-invalid=[("1. 入口: /","2. /shop",10),("3. /cart","4. /done",4)]
-validation=[]
-for rows in [valid,invalid]:
- try:m.validate_navigation_sankey(rows,4);validation.append("accepted")
- except m.LiveDemoError as error:validation.append(str(error))
-five_page=[]
-for rows in [
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10)],
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",9),("3. /cart","4. /checkout",9),("4. /checkout","5. /done",9)],
- [("1. 入口: /","2. /shop",10),("2. /shop","3. /cart",10),("3. /cart","4. /checkout",10),("4. /checkout","5. /done",10)],
-]:
- try:m.validate_navigation_sankey(rows,5);five_page.append("accepted")
- except m.LiveDemoError as error:five_page.append(str(error))
-print(json.dumps({"ordering":ordering,"completion":completion,"validation":validation,"five_page":five_page},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    ordering: ['回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。', 'accepted'],
-    completion: [
-      '回遊の上位12経路が5ページ目到達前に抽出されるためBigQueryへ送信しません。',
-      'accepted',
-    ],
-    validation: ['accepted', '回遊の段階間が接続しないため描画しません。'],
-    five_page: [
-      '回遊が要求された5ページ目まで到達しないため描画しません。',
-      '回遊が要求された5ページ目まで到達しないため描画しません。',
-      'accepted',
-    ],
-  });
+  assert.match(value.requirements, /source、target、metric_value/);
+  assert.match(value.requirements, /最初の4ページ/);
+  assert.match(value.requirements, /LIMIT 100/);
 });
 
 test('single-graph progress shows the dynamic stop reason before stage details', () => {
@@ -785,32 +689,21 @@ print(json.dumps(errors,ensure_ascii=False))
   ]);
 });
 
-test('reference mismatch stops before a live result is rendered', () => {
+test('editing an AI-authored insight requires a new consultation before execution', () => {
   const result = python(`
-import threading
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
-section={
- "id":"R17","title":"回遊","text":"回遊","compare":"rows_ordered",
- "component":"sankey","verification":"reference",
- "gold_sql":"SELECT 'reference' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'",
-}
-generated_sql="SELECT 'generated' FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
-m.report.generate=lambda *_args,**_kwargs:({"sql":generated_sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-results=[([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),([("1. 入口: /","2. /cart",20)],["source","target","sessions"])]
-m.report.exec_bq=lambda *_args,**_kwargs:(results.pop(0),None)
-events=[]
+question="2021年1月のユーザー数を出して"
+spec={"title":"ユーザー数","objective":"規模を確認する","dimensions":[],"measures":["ユーザー数"],"comparison":"単月","chart":"scorecard","execution_prompt":question,"reason":"基準値を判断する"}
 try:
- e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append)
+ m.analysis_section_for_specification(question+"、デバイス別に",spec,"ga4")
 except m.LiveDemoError as error:
- print(json.dumps({"error":str(error),"types":[event["type"] for event in events]},ensure_ascii=False))
+ print(json.dumps({"error":str(error),"fixed_reference":"gold_sql" in m.LiveQueryEngine._run_section.__code__.co_consts},ensure_ascii=False))
 else:
- raise AssertionError("reference mismatch was rendered")
+ raise AssertionError("changed request was accepted")
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    error: '回遊の結果が登録済み参照値と一致しないため描画しません。',
-    types: ['stage', 'sql', 'stage'],
+    error: '分析依頼がAIの分析仕様から変更されています。変更内容を再度相談してください。',
+    fixed_reference: false,
   });
 });
 
@@ -819,22 +712,24 @@ test('live query passes the requested period to SQL generation', () => {
 import threading
 e=object.__new__(m.LiveQueryEngine)
 e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text())
 e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
 periods=[]
-sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY medium"
+question="2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して"
+spec={"title":"流入別セッション","objective":"流入規模を比較する","dimensions":["medium"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"集客差を判断する"}
+sql="SELECT traffic_source.medium AS category, COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
 m.report.generate=lambda _client,_model,_section,period,_rules:(periods.append(period) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
-m.report.exec_bq=lambda *_args,**_kwargs:(([('organic',10)],['medium','sessions']),None)
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('category','STRING'),('metric_value','INT64')],None))
+m.report.exec_bq=lambda *_args,**_kwargs:(([('organic',10)],['category','metric_value']),None)
 events=[]
-e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",events.append)
+e.query(question,events.append,analysis_specification=spec)
 print(json.dumps({"periods":periods,"types":[event["type"] for event in events]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     periods: [{ from: '20201201', to: '20201231', label: '2020年12月' }],
-    types: ['stage', 'sql', 'stage', 'result'],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
   });
 });
 
@@ -843,17 +738,18 @@ test('live query rejects generated SQL for a different month before BigQuery', (
 import threading
 e=object.__new__(m.LiveQueryEngine)
 e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text())
 e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
+question="2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して"
+spec={"title":"流入別セッション","objective":"流入規模を比較する","dimensions":["medium"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"集客差を判断する"}
 sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium"
 m.report.generate=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 executions=[]
 m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
 error=""
 try:
- e.query("2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して",lambda _event:None)
+ e.query(question,lambda _event:None,analysis_specification=spec)
 except m.LiveDemoError as caught:
  error=str(caught)
 print(json.dumps({"error":error,"executions":executions},ensure_ascii=False))
@@ -885,25 +781,29 @@ print(json.dumps({
 test('live engine renders safe shapes, refuses undefined metrics, and caps fetched rows', () => {
   const result = python(`
 import threading
-from datetime import date
-from decimal import Decimal
 def engine():
  e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
- e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock();return e
-sql="SELECT COUNT(DISTINCT user_pseudo_id) AS users FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+ e.rules="";e.client=e.bq=object();e.lock=threading.Lock();return e
+sql="SELECT COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 m.report.generate=lambda *_:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-limits=[];m.report.exec_bq=lambda *_args,**kw:(limits.append(kw.get("max_results")) or (([(94790,)],["users"]),None))
-events=[];engine().query("2021年1月のユーザー数を出して",events.append)
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('metric_value','INT64')],None))
+limits=[];m.report.exec_bq=lambda *_args,**kw:(limits.append(kw.get("max_results")) or (([(94790,)],["metric_value"]),None))
+question="2021年1月のユーザー数を出して"
+scorecard={"title":"ユーザー数","objective":"規模を確認する","dimensions":[],"measures":["ユーザー数"],"comparison":"単月","chart":"scorecard","execution_prompt":question,"reason":"基準値を判断する"}
+events=[];engine().query(question,events.append,analysis_specification=scorecard)
 m.report.generate=lambda *_:({"sql":"","reason":"未定義","undefined_terms":["直帰率"]},{"input_tokens":1,"output_tokens":1})
-refusal=[];engine().query("2021年1月の直帰率を出して",refusal.append)
-print(json.dumps({"shapes":[m.visualization_for_result([(1,)],["x"]),m.visualization_for_result([(date(2021,1,1),1)],["d","v"]),m.visualization_for_result([("a",Decimal("1"))],["k","v"])],"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"safe":"innerHTML" not in m.HTML and "renderSql($(\\"sql\\"),e.sql)" in m.HTML}))
+refusal_question="2021年1月の直帰率を出して"
+refusal_spec={**scorecard,"title":"直帰率","measures":["直帰率"],"execution_prompt":refusal_question}
+refusal=[];engine().query(refusal_question,refusal.append,analysis_specification=refusal_spec)
+print(json.dumps({"visualization":events[-1]["visualization"],"types":[x["type"] for x in events],"refusal":refusal[-1]["undefined_terms"],"limits":limits,"automatic":hasattr(m,"visualization_for_result"),"safe":"innerHTML" not in m.HTML and "renderSql($(\\"sql\\"),e.sql)" in m.HTML}))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    shapes: ['scalar', 'line', 'bar'],
-    types: ['stage', 'sql', 'stage', 'result'],
+    visualization: 'scalar',
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
     refusal: ['直帰率'],
-    limits: [101, null],
+    limits: [101],
+    automatic: false,
     safe: true,
   });
 });
@@ -911,7 +811,6 @@ test('live HTTP boundary serves same-origin JSON and rejects unsafe requests and
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- spec=json.loads((m.HERE/"report.json").read_text())
  query_count=0
  def query(self,q,emit,**_kwargs):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
  def dashboard(self,q,emit,*_args,**_kwargs):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
@@ -919,7 +818,9 @@ class E:
 engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
- req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ query_question="2021年1月のセッション数を出して"
+ query_spec={"title":"セッション数","objective":"規模を確認する","dimensions":[],"measures":["セッション数"],"comparison":"単月","chart":"scorecard","execution_prompt":query_question,"reason":"基準値を判断する"}
+ req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":query_question,"analysis_specification":query_spec},ensure_ascii=False).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
  dashboard_question="2021年1月のECサイト分析ダッシュボードを作って"
  dashboard_raw={"objective_summary":"成果を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[{"title":"購入規模","kpi":"購入件数","chart":"scorecard","decision":"規模を判断する","reason":"基準値が必要","execution_prompt":"2021年1月の購入件数を集計する","dimensions":[],"measures":["購入件数"],"layout_row":1,"layout_weight":1}]}
@@ -963,11 +864,12 @@ import threading,urllib.request
 RefreshError=type("RefreshError",(Exception,),{})
 RefreshError.__module__="google.auth.exceptions"
 class E:
- spec=json.loads((m.HERE/"report.json").read_text())
- def query(self,_question,_emit):raise RefreshError("sensitive credential detail")
+ def query(self,_question,_emit,**_kwargs):raise RefreshError("sensitive credential detail")
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 try:
- req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ question="2021年1月のセッション数を出して"
+ spec={"title":"セッション数","objective":"規模を確認する","dimensions":[],"measures":["セッション数"],"comparison":"単月","chart":"scorecard","execution_prompt":question,"reason":"基準値を判断する"}
+ req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":question,"analysis_specification":spec},ensure_ascii=False).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  event=json.loads(urllib.request.urlopen(req).read().decode())
  print(json.dumps(event,ensure_ascii=False))
 finally:s.shutdown();s.server_close();t.join()
@@ -1049,20 +951,19 @@ test('non-GA4 selector does not inject a fixed Bitcoin question into the UI', ()
   const result = python(`
 html=m.HTML
 profile=m.bitcoin
-period=profile.period_for_question(profile.EXAMPLE_QUESTION)
+period=profile.period_for_question("2024年1月のBitcoin取引を分析したい")
 errors=[]
-for question in ["2023年12月の受取アドレス別の取引数", "2024年1月の手数料を出して"]:
+for question in ["2023年12月の受取アドレス別の取引数"]:
  try:
   profile.period_for_question(question)
-  profile.section(question)
  except ValueError as error:
   errors.append(str(error))
 print(json.dumps({
  "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"']) and "Bitcoin受取先の複雑度" not in html,
  "cost":all(value in html for value in ["BigQuery 最大20 GiB","生成SQL 1クエリ","合計最大約¥20"]),
  "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
- "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
- "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
+ "rules":all(value in profile.prompt_rules() for value in ["必要な場合だけUNNEST","SELECT * は使わず"]),
+ "no_fixed_analysis":all(not hasattr(profile,name) for name in ["EXAMPLE_QUESTION","REFERENCE_SQL","section"]),
  "period":period,
  "errors":errors,
 },ensure_ascii=False))
@@ -1073,17 +974,14 @@ print(json.dumps({
     cost: true,
     schema: true,
     rules: true,
-    reference: true,
+    no_fixed_analysis: true,
     period: {
       from: '2024-01-01',
       to: '2024-01-31',
       partition: '2024-01-01',
       label: '2024年1月',
     },
-    errors: [
-      'Bitcoinデモで検証する期間は2024年1月〜12月です。',
-      'Bitcoinデモは現在「取引ごとの受取アドレス数帯別の取引数」のみ対応します。',
-    ],
+    errors: ['Bitcoinデモで検証する期間は2024年1月〜12月です。'],
   });
 });
 
@@ -1091,8 +989,10 @@ test('Bitcoin query uses its own schema, partition guard, and dataset boundary',
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
+e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
 e.client=e.bq=object();e.lock=threading.Lock();generated=[];executed=[]
+question="2024年1月のBitcoin取引について、受取アドレス数帯別の取引数を比較して"
+spec={"title":"受取アドレス数帯別の取引数","objective":"受取構造を比較する","dimensions":["受取アドレス数帯"],"measures":["取引数"],"comparison":"帯別","chart":"bar","execution_prompt":question,"reason":"分布を判断する"}
 sql="""WITH per_transaction AS (
 SELECT hash, COUNT(DISTINCT address) AS address_count
 FROM \`bigquery-public-data.crypto_bitcoin.transactions\`
@@ -1100,25 +1000,26 @@ CROSS JOIN UNNEST(outputs) AS output
 CROSS JOIN UNNEST(output.addresses) AS address
 WHERE block_timestamp_month = DATE '2024-01-01'
 GROUP BY hash)
-SELECT CASE WHEN address_count = 1 THEN '1件' WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件' WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件' ELSE '10件以上' END AS address_count_band, COUNT(1) AS transaction_count
-FROM per_transaction GROUP BY address_count_band ORDER BY transaction_count DESC"""
+SELECT CASE WHEN address_count = 1 THEN '1件' WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件' WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件' ELSE '10件以上' END AS category, COUNT(1) AS metric_value
+FROM per_transaction GROUP BY category ORDER BY metric_value DESC LIMIT 30"""
 m.report.generate_request=lambda _client,_model,request,rules:(generated.append([request,rules]) or ({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('category','STRING'),('metric_value','INT64')],None))
 def execute(_bq,source,**kwargs):
  executed.append([source,kwargs])
- return (([("1件",10),("2〜3件",4)], ["address_count_band","transaction_count"]),None)
+ return (([("1件",10),("2〜3件",4)], ["category","metric_value"]),None)
 m.report.exec_bq=execute;events=[]
-e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
+e.query(question,events.append,profile="bitcoin",analysis_specification=spec)
 bad=sql.replace("bigquery-public-data.crypto_bitcoin", "bigquery-public-data.ga4_obfuscated_sample_ecommerce")
 _,bad_error=m.report.validate_sql(bad,m.bitcoin.DATASET)
 period_error=""
-try:m.bitcoin.require_sql_period(sql.replace("2024-01-01","2024-02-01"),m.bitcoin.period_for_question(m.bitcoin.EXAMPLE_QUESTION))
+try:m.bitcoin.require_sql_period(sql.replace("2024-01-01","2024-02-01"),m.bitcoin.period_for_question(question))
 except ValueError as error:period_error=str(error)
 print(json.dumps({
  "types":[event["type"] for event in events],
  "visualization":events[-1]["visualization"],
  "columns":events[-1]["columns"],
  "request_has_partition":"block_timestamp_month = DATE '2024-01-01'" in generated[0][0],
- "rules_has_nested":"output.addresses" in generated[0][1],
+ "rules_are_neutral":"必要な場合だけUNNEST" in generated[0][1],
  "allowed":executed[0][1]["allowed_dataset"],
  "max_results":executed[0][1]["max_results"],
  "bad_error":bad_error,
@@ -1127,11 +1028,11 @@ print(json.dumps({
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    types: ['stage', 'sql', 'stage', 'result'],
+    types: ['stage', 'stage', 'sql', 'stage', 'result'],
     visualization: 'bar',
-    columns: ['address_count_band', 'transaction_count'],
+    columns: ['受取アドレス数帯', '取引数'],
     request_has_partition: true,
-    rules_has_nested: true,
+    rules_are_neutral: true,
     allowed: 'bigquery-public-data.crypto_bitcoin',
     max_results: 101,
     bad_error:
@@ -1144,8 +1045,10 @@ test('Bitcoin query quotes the reserved hash column before BigQuery execution', 
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
+e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
 e.client=e.bq=object();e.lock=threading.Lock();executed=[]
+question="2024年1月のBitcoin取引について、受取アドレス数帯別の取引数を比較して"
+spec={"title":"受取アドレス数帯別の取引数","objective":"受取構造を比較する","dimensions":["受取アドレス数帯"],"measures":["取引数"],"comparison":"帯別","chart":"bar","execution_prompt":question,"reason":"分布を判断する"}
 sql="""WITH tx_address_counts AS (
     SELECT
         t.hash,
@@ -1167,16 +1070,18 @@ tx_bands AS (
     FROM tx_address_counts
     WHERE unique_address_count > 0
 )
-SELECT address_count_band, COUNT(1) AS transaction_count
+SELECT address_count_band AS category, COUNT(1) AS metric_value
 FROM tx_bands
-GROUP BY address_count_band
-ORDER BY transaction_count DESC"""
+GROUP BY category
+ORDER BY metric_value DESC
+LIMIT 30"""
 m.report.generate_request=lambda *_args:({"sql":sql,"reason":"二段階で展開","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('category','STRING'),('metric_value','INT64')],None))
 def execute(_bq,source,**_kwargs):
  executed.append(source)
- return (([("1件",10)], ["address_count_band","transaction_count"]),None)
+ return (([("1件",10)], ["category","metric_value"]),None)
 m.report.exec_bq=execute;events=[]
-e.query(m.bitcoin.EXAMPLE_QUESTION,events.append,profile="bitcoin")
+e.query(question,events.append,profile="bitcoin",analysis_specification=spec)
 shown=next(event["sql"] for event in events if event["type"]=="sql")
 quoted=chr(96)+"hash"+chr(96)
 protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
@@ -1458,13 +1363,13 @@ section={"title":"流入別の比較表","component":"table","planned_visualizat
 rows=[("organic",120),("cpc",80)]
 print(json.dumps({
  "planned":m.dashboard_visualization(section,rows,["medium","sessions"]),
- "automatic":m.visualization_for_result(rows,["medium","sessions"]),
+ "automatic":hasattr(m,"visualization_for_result"),
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     planned: 'table',
-    automatic: 'bar',
+    automatic: false,
   });
 });
 
@@ -1645,17 +1550,24 @@ finally:s.shutdown();s.server_close();t.join()
   });
 });
 
-test('consultation prompt detection is bounded to advice requests', () => {
+test('every single-insight build requires an AI-authored specification without phrase routing', () => {
   const result = python(`
-print(json.dumps({
- "broad":[m.requires_analysis_consultation(value) for value in ["どんな分析をしたらいい？","何を分析すればいい？","おすすめの分析を教えて","どんな分析をしたらいい" + "！" * 1000]],
- "concrete":[m.requires_analysis_consultation(value) for value in ["2021年1月のセッション数を出して","2021年1月のWebサイト回遊を分析して","2024年1月のBitcoin取引の受取アドレス数帯別の取引数を出して"]]
-}))
+import threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object();e.lock=threading.Lock()
+errors=[]
+for profile,question in [("ga4","2021年1月のユーザー数を出して"),("bitcoin","2024年1月の取引数を出して")]:
+ try:e.query(question,lambda _event:None,profile=profile)
+ except m.LiveDemoError as error:errors.append(str(error))
+removed=["requires_analysis_consultation","section_for_question","visualization_for_result"]
+print(json.dumps({"errors":errors,"removed":all(not hasattr(m,name) for name in removed)},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    broad: [true, true, true, true],
-    concrete: [false, false, false],
+    errors: [
+      'AIが作成した分析仕様を選択してからbuildしてください。',
+      'AIが作成した分析仕様を選択してからbuildしてください。',
+    ],
+    removed: true,
   });
 });
 

@@ -15,37 +15,6 @@ DATASET = "bigquery-public-data.crypto_bitcoin"
 TABLE = f"{DATASET}.transactions"
 FIRST_MONTH = date(2024, 1, 1)
 LAST_MONTH = date(2024, 12, 1)
-EXAMPLE_QUESTION = (
-    "2024年1月のBitcoin取引について、各取引の異なる受取アドレス数を、"
-    "1件・2〜3件・4〜9件・10件以上に分け、取引数が多い順で出して"
-)
-REFERENCE_SQL = f"""WITH per_transaction AS (
-    SELECT
-        t.`hash`,
-        COUNT(DISTINCT address) AS address_count
-    FROM
-        `{TABLE}` AS t
-        CROSS JOIN UNNEST(t.outputs) AS output
-        CROSS JOIN UNNEST(output.addresses) AS address
-    WHERE
-        t.block_timestamp_month = DATE '2024-01-01'
-    GROUP BY
-        t.`hash`
-)
-SELECT
-    CASE
-        WHEN address_count = 1 THEN '1件'
-        WHEN address_count BETWEEN 2 AND 3 THEN '2〜3件'
-        WHEN address_count BETWEEN 4 AND 9 THEN '4〜9件'
-        ELSE '10件以上'
-    END AS address_count_band,
-    COUNT(1) AS transaction_count
-FROM
-    per_transaction
-GROUP BY
-    address_count_band
-ORDER BY
-    transaction_count DESC"""
 
 SCHEMA_DDL = f"""
 -- BigQuery public dataset; block_timestamp_month is the partition column.
@@ -73,23 +42,15 @@ CREATE TABLE `{TABLE}` (
 
 
 def prompt_rules() -> str:
-    """Return the inspected schema and the smallest explicit semantic contract."""
+    """Return inspected schema facts and execution constraints without an analysis recipe."""
     return f"""あなたは BigQuery 標準SQLで分析用クエリを書く。
 
 {SCHEMA_DDL}
 
-指標・軸の定義:
-- 取引 = 元テーブルの1行。識別子は hash。
-- 受取アドレス = outputs を展開し、さらに各 output.addresses を展開した address。
-- 取引ごとの異なる受取アドレス数 = COUNT(DISTINCT address)。
-- addresses が空または NULL の output は受取アドレス数の集計対象外。
-- 取引数 = 取引ごとの集計後の行数。outputs 展開後の行数を取引数にしない。
-- 受取アドレス数帯 = 1件、2〜3件、4〜9件、10件以上。0件は上の定義により対象外。
-
 規則:
 - テーブル参照は必ず `{TABLE}` と完全修飾する。
 - スキャン量を抑えるため、block_timestamp_month = DATE '<month-start>' を必ず使う。
-- outputs と output.addresses はそれぞれ UNNEST する。
+- 配列列は、利用者が求める分析に必要な場合だけUNNESTする。
 - hash はGoogleSQLの予約語なので、元テーブルでは t.`hash` と修飾・引用する。
   後続CTEへ渡す場合は transaction_hash という別名を使い、裸の hash は書かない。
 - SELECT * は使わず、必要な列だけを明示する。
@@ -122,40 +83,17 @@ def period_for_question(question: str) -> dict[str, str]:
     }
 
 
-def section(question: str) -> dict:
-    """Build the declared two-column result contract for the demo question."""
-    normalized = question.strip()
-    if not normalized:
-        raise ValueError("question must not be empty")
-    if len(normalized) > 500:
-        raise ValueError("question must be at most 500 characters")
-    if any(ord(char) < 32 for char in normalized):
-        raise ValueError("question must be a single line without control characters")
-    if "受取アドレス" not in normalized or "取引数" not in normalized:
-        raise ValueError(
-            "Bitcoinデモは現在「取引ごとの受取アドレス数帯別の取引数」のみ対応します。"
-        )
-    return {
-        "id": "BTC1",
-        "title": "受取アドレス数帯別の取引数",
-        "text": normalized,
-        "compare": "execution",
-        "component": "bar",
-        "verification": "execution",
-        "shape": {
-            "rows": "受取アドレス数帯ごとに1行、取引数の多い順",
-            "columns": ["受取アドレス数帯", "取引数"],
-        },
-    }
-
-
 def generation_request(item: dict, period: dict[str, str]) -> str:
     """Build the profile-specific analysis request passed to the model."""
+    source_columns = "、".join(item["source_columns"])
+    display_columns = "、".join(item["shape"]["columns"])
+    requirements = "\n".join(f"- {value}" for value in item.get("generation_requirements", []))
     return (
         f"{item['text']}\n"
         f"（対象期間: block_timestamp_month = DATE '{period['partition']}'）\n"
-        "（出力形式: 列は `address_count_band`, `transaction_count` の順。"
-        "受取アドレス数帯ごとに1行、取引数の多い順。）"
+        f"（描画契約: {item['planned_visualization']}。表示列: {display_columns}。"
+        f"最終SELECTの列別名と順序: {source_columns}。）\n"
+        f"追加の実行条件:\n{requirements}"
     )
 
 
