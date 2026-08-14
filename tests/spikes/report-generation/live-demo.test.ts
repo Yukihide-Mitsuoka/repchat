@@ -1367,8 +1367,8 @@ print(json.dumps({"period":period["label"],"ids":[item["id"] for item in section
       '2021年1月の購入件数を出して',
     ],
     layouts: [
-      { panel_ids: ['P1', 'P2'], shares: [50, 50] },
-      { panel_ids: ['P3', 'P4'], shares: [60, 40] },
+      { panel_ids: ['P1', 'P2'], shares: [25, 75] },
+      { panel_ids: ['P3', 'P4'], shares: [50, 50] },
     ],
   });
 });
@@ -1452,19 +1452,19 @@ print(json.dumps({"initial":m.planner.INITIAL_PANEL_COUNT,"maximum":m.planner.MA
 
 test('an AI-authored dashboard supports twenty panels without hardcoded topics', () => {
   const result = python(`
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を1行で出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の定義済み指標{index}を1行で出して","dimensions":[],"measures":[f"定義済み指標{index}"],"layout_row":(index+3)//4,"layout_weight":((index-1)%4)+1}
 question="2021年1月の購入課題を分析するダッシュボードを作って"
 plan={"period":m.period_for_question(question),"panels":[panel(index) for index in range(1,21)]}
 period,sections=m.dashboard_sections_for_plan(question,plan)
 layout=m.dashboard_layout_rows_for_plan(plan["panels"])
-print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"sections":len(sections),"rows":len(layout),"all_full":all(len(row["panel_ids"])==2 and sum(row["shares"])==100 for row in layout)},ensure_ascii=False))
+print(json.dumps({"limit":m.MAX_PLAN_BODY_BYTES,"sections":len(sections),"rows":len(layout),"all_weighted":all(len(row["panel_ids"])==4 and sum(row["shares"])==100 for row in layout)},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     limit: 98304,
     sections: 20,
-    rows: 10,
-    all_full: true,
+    rows: 5,
+    all_weighted: true,
   });
 });
 
