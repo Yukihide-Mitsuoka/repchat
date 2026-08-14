@@ -72,28 +72,6 @@ def running_in_demo_venv() -> bool:
     return Path(sys.prefix).resolve() == VENV_DIR.resolve()
 
 
-def requires_analysis_consultation(question: str) -> bool:
-    """Return whether a prompt asks for advice rather than a runnable analysis.
-
-    This guard is intentionally narrow. Concrete prompts remain eligible for the
-    existing cost gate, while common Japanese discovery questions cannot fall
-    through to a default SQL template and unexpectedly spend money.
-    """
-    compact = "".join(question.split()).rstrip("?？!！。")
-    discovery = (
-        compact.startswith(("どんな", "何を", "何の", "どういう"))
-        and "分析" in compact
-        and any(word in compact for word in ("したら", "すれば", "できる"))
-    )
-    recommendation = (
-        compact.startswith(("おすすめ", "推奨"))
-        and "分析" in compact
-        and compact.endswith(("教えて", "提案して", "知りたい"))
-    )
-    consultation = compact.startswith("分析") and "相談" in compact
-    return discovery or recommendation or consultation
-
-
 def analysis_consultation_context(metrics: str, profile: str) -> str:
     """Expose schema semantics, not a menu of prewritten analyses, to the planner."""
     if profile == "bitcoin":
@@ -742,55 +720,6 @@ def period_for_question(question: str) -> dict[str, str]:
     }
 
 
-def navigation_generation_requirements(depth: int) -> list[str]:
-    """Build the bounded staged-path contract for a requested Sankey depth."""
-    page_names = ["入口", *(f"{stage}ページ目" for stage in range(2, depth + 1))]
-    path_names = "・".join(page_names)
-    hops = "、".join(f"{stage}→{stage + 1}" for stage in range(1, depth))
-    prefixes = "、".join(
-        "`1. 入口: `" if stage == 1 else f"`{stage}. `"
-        for stage in range(1, depth + 1)
-    )
-    return [
-        "page_pathはpage_locationのURLからホスト・クエリ・フラグメントを除いたパスとし、"
-        "空なら`/`にする。完全なURLをsource/targetへ出さない",
-        "セッション内をevent_timestamp順、同時刻ならpage_path順に並べ、連続する同一page_pathは"
-        f"1回の滞在へ統合する。その後の最初の{depth}件を{path_names}にする",
-        f"各段階のパスはp1〜p{depth}のASCII別名にする。{depth}ページ目が存在する"
-        f"セッションだけを対象にし、上位12経路を抽出する前にp{depth} IS NOT NULLで絞る。"
-        "`(exit)`などの離脱ノードは作らない",
-        f"まず{path_names}の組ごとにセッション数を数え、セッション数降順、同数なら{path_names}昇順で"
-        f"上位12経路を確定してから、{hops}のedgeへ分割して同一edgeをSUMする",
-        f"source/targetの段階接頭辞は正確に{prefixes}とし、最終列のASCII別名は"
-        "source、target、sessionsにする",
-    ]
-
-
-def section_for_question(spec: dict, question: str) -> dict:
-    """Keep a bounded navigation contract when only the requested depth changes."""
-    selected = report.select_sections(spec, question)[0]
-    match = re.search(r"入口から(?P<depth>\d+)ページ目まで", question)
-    is_navigation = "Webサイト回遊" in question and "サンキー" in question
-    if match is None or not is_navigation:
-        return selected
-    depth = int(match.group("depth"))
-    if not 3 <= depth <= 6:
-        raise LiveDemoError("回遊Sankeyで指定できるのは入口から3〜6ページ目までです。")
-    base = next(section for section in spec["sections"] if section["id"] == "R17")
-    if selected["id"] == "R17" and depth == 3:
-        return {**selected, "navigation_depth": 3}
-    return {
-        **base,
-        "id": "Q1",
-        "title": f"入口から{depth}ページ目までの主要回遊",
-        "text": question.strip(),
-        "verification": "execution",
-        "navigation_depth": depth,
-        "require_full_navigation_depth": True,
-        "generation_requirements": navigation_generation_requirements(depth),
-    }
-
-
 def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict:
     """Translate one confirmed AI specification into a guarded render contract."""
     component_for_chart = {
@@ -918,6 +847,23 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             f"最終SELECTは{ordering}でORDER BYし、LIMIT {max_rows}を明示する"
         )
     return section
+
+
+def analysis_section_for_specification(
+    question: str, analysis_specification: dict, profile: str
+) -> tuple[dict, dict]:
+    """Freeze one selected AI proposal before SQL generation."""
+    confirmed = planner.confirm_analysis_specification(analysis_specification)
+    if question.strip() != confirmed["execution_prompt"]:
+        raise LiveDemoError(
+            "分析依頼がAIの分析仕様から変更されています。変更内容を再度相談してください。"
+        )
+    period = (
+        bitcoin.period_for_question(question)
+        if profile == "bitcoin"
+        else period_for_question(question)
+    )
+    return period, planned_analysis_section(confirmed, "I1")
 
 
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
@@ -1119,191 +1065,12 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         )
 
 
-def require_deterministic_navigation_order(sql: str, navigation_depth: int = 3) -> None:
-    """Require a stable top-12 journey order before executing navigation SQL."""
-
-    def order_terms(clause: str) -> list[str]:
-        terms: list[str] = []
-        start = depth = 0
-        quote: str | None = None
-        index = 0
-        while index < len(clause):
-            char = clause[index]
-            if quote:
-                if char == quote:
-                    if index + 1 < len(clause) and clause[index + 1] == quote:
-                        index += 1
-                    else:
-                        quote = None
-            elif char in "'\"`":
-                quote = char
-            elif char == "(":
-                depth += 1
-            elif char == ")":
-                depth = max(0, depth - 1)
-            elif char == "," and depth == 0:
-                terms.append(clause[start:index].strip())
-                start = index + 1
-            index += 1
-        terms.append(clause[start:].strip())
-        return [term for term in terms if term]
-
-    for limit in re.finditer(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE):
-        prefix = sql[: limit.start()]
-        order_matches = list(
-            re.finditer(r"\bORDER\s+BY\b", prefix, flags=re.IGNORECASE)
-        )
-        if not order_matches:
-            continue
-        clause = prefix[order_matches[-1].end() :]
-        terms = order_terms(clause)
-        tie_terms = terms[1 : navigation_depth + 1]
-        tie_terms_are_ascending = len(tie_terms) == navigation_depth and not any(
-            re.search(r"\bDESC\b", term, re.IGNORECASE) for term in tie_terms
-        )
-        if (
-            len(terms) >= navigation_depth + 1
-            and re.search(r"\bDESC\b", terms[0], re.IGNORECASE)
-            and tie_terms_are_ascending
-        ):
-            return
-    raise LiveDemoError(
-        "回遊の上位12経路に同数時の順序がないためBigQueryへ送信しません。"
-    )
-
-
-def require_complete_navigation_depth(sql: str, navigation_depth: int) -> None:
-    """Require the requested final page before selecting the bounded top paths."""
-    limit = re.search(r"\bLIMIT\s+12\b", sql, flags=re.IGNORECASE)
-    prefix = sql[: limit.start()] if limit else ""
-    without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", prefix, flags=re.S)
-    without_literals = re.sub(r"'(?:''|[^'])*'", "''", without_comments)
-    final_page = f"p{navigation_depth}"
-    if not re.search(
-        rf"\b(?:WHERE|HAVING)\b"
-        rf"(?:(?!\b(?:GROUP\s+BY|ORDER\s+BY|LIMIT|UNION)\b)[\s\S])*?"
-        rf"\b{final_page}\s+IS\s+NOT\s+NULL\b",
-        without_literals,
-        flags=re.IGNORECASE,
-    ):
-        raise LiveDemoError(
-            f"回遊の上位12経路が{navigation_depth}ページ目到達前に抽出されるため"
-            "BigQueryへ送信しません。"
-        )
-
-
 def json_value(value):
     if isinstance(value, (date, datetime)):
         return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
     return value if value is None or isinstance(value, (str, int, float, bool)) else str(value)
-def visualization_for_result(rows: list[tuple], columns: list[str]) -> str:
-    if len(rows) == 1 and len(columns) == 1:
-        return "scalar"
-    numeric = (int, float, Decimal)
-    if (
-        rows
-        and [column.lower() for column in columns] == ["source", "target", "sessions"]
-        and all(
-            len(row) == 3
-            and isinstance(row[0], str)
-            and isinstance(row[1], str)
-            and isinstance(row[2], numeric)
-            and math.isfinite(float(row[2]))
-            for row in rows
-        )
-    ):
-        return "sankey"
-    if rows and len(columns) == 2 and all(
-        isinstance(row[0], (date, datetime)) and isinstance(row[1], numeric) for row in rows
-    ):
-        return "line"
-    if rows and len(columns) == 2 and len(rows) <= 30 and all(
-        isinstance(row[1], numeric) and math.isfinite(float(row[1])) for row in rows
-    ):
-        return "bar"
-    return "table"
-
-
-def validate_navigation_sankey(rows: list[tuple], navigation_depth: int = 3) -> None:
-    """Reject edges that do not represent collapsed adjacent page transitions."""
-    patterns = {1: re.compile(r"^1\. 入口: (.+)$")}
-    patterns.update(
-        {
-            stage: re.compile(rf"^{stage}\. (.+)$")
-            for stage in range(2, navigation_depth + 1)
-        }
-    )
-    sources = {stage: set() for stage in range(1, navigation_depth)}
-    targets = {stage: set() for stage in range(1, navigation_depth)}
-    outgoing: dict[tuple[int, str], Decimal] = {}
-    incoming: dict[tuple[int, str], Decimal] = {}
-    seen_edges: set[tuple[str, str]] = set()
-    for source, target, _sessions in rows:
-        source_stage = next(
-            (
-                stage
-                for stage in range(1, navigation_depth)
-                if patterns[stage].fullmatch(source)
-            ),
-            None,
-        )
-        source_match = patterns[source_stage].fullmatch(source) if source_stage else None
-        target_match = (
-            patterns[source_stage + 1].fullmatch(target) if source_stage else None
-        )
-        if source_match is None or target_match is None:
-            allowed = "または".join(
-                f"{stage}→{stage + 1}" for stage in range(1, navigation_depth)
-            )
-            raise LiveDemoError(
-                f"回遊の段階が{allowed}になっていないため描画しません。"
-            )
-        source_page, target_page = source_match.group(1), target_match.group(1)
-        if source_page == target_page:
-            raise LiveDemoError(
-                "回遊の連続する同一ページが遷移として含まれるため描画しません。"
-            )
-        edge = (source, target)
-        if edge in seen_edges:
-            raise LiveDemoError("回遊に未集約の重複edgeが含まれるため描画しません。")
-        seen_edges.add(edge)
-        sources[source_stage].add(source_page)
-        targets[source_stage].add(target_page)
-        sessions = Decimal(str(_sessions))
-        outgoing[(source_stage, source_page)] = outgoing.get(
-            (source_stage, source_page), Decimal(0)
-        ) + sessions
-        incoming[(source_stage + 1, target_page)] = incoming.get(
-            (source_stage + 1, target_page), Decimal(0)
-        ) + sessions
-    connected = bool(sources[1]) and all(
-        not sources[stage] or sources[stage].issubset(targets[stage - 1])
-        for stage in range(2, navigation_depth)
-    )
-    if not connected:
-        message = (
-            "回遊の1段目と2段目が接続しないため描画しません。"
-            if navigation_depth == 3
-            else "回遊の段階間が接続しないため描画しません。"
-        )
-        raise LiveDemoError(message)
-    if navigation_depth > 3:
-        has_every_hop = all(sources[stage] for stage in range(1, navigation_depth))
-        conserves_flow = all(
-            sources[stage] == targets[stage - 1]
-            and all(
-                incoming.get((stage, page), Decimal(0))
-                == outgoing.get((stage, page), Decimal(0))
-                for page in sources[stage]
-            )
-            for stage in range(2, navigation_depth)
-        )
-        if not has_every_hop or not conserves_flow:
-            raise LiveDemoError(
-                f"回遊が要求された{navigation_depth}ページ目まで到達しないため描画しません。"
-            )
 
 
 def valid_sankey_result(rows: list[tuple]) -> bool:
@@ -1392,7 +1159,6 @@ class LiveQueryEngine:
         from google import genai
         from google.cloud import bigquery
         self.model = model
-        self.spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
         self.metric_definitions = json.loads(
             (HERE / "metrics.json").read_text(encoding="utf-8")
         )
@@ -1461,13 +1227,19 @@ class LiveQueryEngine:
     ) -> None:
         cancel_event = self._begin_operation(request_id)
         try:
-            if profile == "bitcoin":
-                section = bitcoin.section(question)
-                period = bitcoin.period_for_question(question)
-            else:
-                section = section_for_question(self.spec, question)
-                period = period_for_question(question)
-            self._run_section(section, period, emit, profile=profile)
+            if analysis_specification is None:
+                raise LiveDemoError(
+                    "AIが作成した分析仕様を選択してからbuildしてください。"
+                )
+            try:
+                period, section = analysis_section_for_specification(
+                    question, analysis_specification, profile
+                )
+            except (ValueError, planner.PlannerError) as error:
+                raise LiveDemoError(str(error)) from error
+            self._run_section(
+                section, period, emit, profile=profile, cancel_event=cancel_event
+            )
         finally:
             self._finish_operation()
 
@@ -1758,14 +1530,6 @@ class LiveQueryEngine:
                 bitcoin.require_sql_period(normalized, period)
             else:
                 require_sql_period(normalized, period)
-                if section.get("transition_mode") == "page_navigation":
-                    require_deterministic_navigation_order(
-                        normalized, section.get("navigation_depth", 3)
-                    )
-                    if section.get("require_full_navigation_depth"):
-                        require_complete_navigation_depth(
-                            normalized, section["navigation_depth"]
-                        )
         except ValueError as error:
             raise LiveDemoError(str(error)) from error
         if section.get("source_columns"):
@@ -1885,44 +1649,12 @@ class LiveQueryEngine:
             raise LiveDemoError(
                 f"結果が{MAX_RESULT_ROWS}行を超えたため描画しません。集計条件を追加してください。"
             )
-        verification, label = "unverified", "実行済み・既知値未照合"
-        if section["verification"] == "reference":
-            wanted, error = report.exec_bq(
-                self.bq, section["gold_sql"], allowed_dataset=allowed_dataset
-            )
-            if error:
-                raise LiveDemoError("登録済み参照SQLの実行に失敗しました。")
-            assert wanted is not None
-            matches, detail = report.compare(section["compare"], rows, wanted[0])
-            verification = "matched" if matches else "mismatch"
-            label = (
-                "実行・参照値照合済み"
-                if matches
-                else f"参照値と不一致: {detail}"
-            )
-            if not matches:
-                raise LiveDemoError(
-                    f"{section['title']}の結果が登録済み参照値と一致しないため描画しません。"
-                )
-        if not context and section.get("transition_mode") == "page_navigation":
-            if visualization_for_result(rows, columns) != "sankey":
-                raise LiveDemoError(
-                    f"{section['title']}の結果形状が回遊仕様と一致しないため描画しません。"
-                )
-            validate_navigation_sankey(rows, section.get("navigation_depth", 3))
-        visualization = (
-            dashboard_visualization(section, rows, columns)
-            if context
-            else visualization_for_result(rows, columns)
-        )
+        verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
+        visualization = dashboard_visualization(section, rows, columns)
         send(
             {
                 "type": "result",
-                "columns": (
-                    section.get("shape", {}).get("columns", columns)
-                    if context
-                    else columns
-                ),
+                "columns": section.get("shape", {}).get("columns", columns),
                 "source_columns": columns,
                 "rows": [[json_value(value) for value in row] for row in rows],
                 "visualization": visualization,
@@ -2052,7 +1784,6 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                     raise ValueError(
                         "analysis_plan and revision_instruction must be provided together"
                     )
-                report.select_sections(self.engine.spec, question)
                 period_for_question(question)
                 if analysis_plan is not None:
                     planner.confirm_dashboard_plan(analysis_plan)
@@ -2060,20 +1791,21 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                 if profile != "ga4":
                     raise ValueError("dashboard mode currently supports only ga4")
                 if analysis_plan is None:
-                    raise ValueError("analysis_plan is required")
+                    raise ValueError(
+                        "AIが作成した分析仕様を確定してからbuildしてください。"
+                    )
                 confirmed = planner.confirm_dashboard_plan(analysis_plan)
                 dashboard_sections_for_plan(question, confirmed)
-            elif requires_analysis_consultation(question):
+            elif analysis_specification is None:
                 raise ValueError(
-                    "分析内容が具体化されていません。相談から分析候補を選び、"
-                    "期間・指標・比較軸を確定してください。"
+                    "AIが作成した分析仕様を選択してからbuildしてください。"
                 )
-            elif profile == "bitcoin":
-                bitcoin.section(question)
-                bitcoin.period_for_question(question)
             else:
-                section_for_question(self.engine.spec, question)
-                period_for_question(question)
+                confirmed = planner.confirm_analysis_specification(
+                    analysis_specification
+                )
+                analysis_section_for_specification(question, confirmed, profile)
+                analysis_specification = confirmed
         except (ValueError, json.JSONDecodeError, LiveDemoError, planner.PlannerError) as error:
             self._send_json(400, {"error": str(error)})
             return
