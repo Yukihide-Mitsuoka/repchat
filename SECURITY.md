@@ -4,8 +4,9 @@
 
 **Do not open a public issue or PR for security problems.**
 
-Report privately via GitHub: **Security → Advisories → "Report a vulnerability"**
-(private vulnerability reporting must be enabled on this repository).
+Use this repository's **Security → Advisories → Report a vulnerability** form, following
+[GitHub's private-reporting instructions](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/reporting-a-security-vulnerability).
+Private vulnerability reporting must remain enabled.
 
 Include: affected version/commit, reproduction steps, impact assessment, and any
 suggested fix. You will receive an acknowledgement within **3 business days** and a

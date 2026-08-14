@@ -91,10 +91,9 @@ warning when it exceeds 1,500 words, has an invalid or future `updated` date, or
 been updated for more than 30 days. These handoff findings never justify skipping the
 document.
 
-Canonical guardrail separation intentionally crosses the byte soft-warning threshold:
-the complete rule body is still read once, while the additional 69 words are the stable
-adapter that lets future rule changes synchronize from one inherited source. The hard
-ceiling was not raised and no mandatory instruction was removed to hide the warning.
+Canonical guardrails still load once through their stable adapter. Compact routing and
+inventory prose keeps the baseline below the soft-warning threshold without removing a
+mandatory source, rule, marker, or discovery condition.
 
 These changes removed no mandatory source and did not alter Claude Code obligations. A PR
 that intentionally increases a ceiling states the reason and confirms that no narrower
