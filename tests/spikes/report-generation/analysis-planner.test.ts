@@ -333,7 +333,7 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
       {
         enum: null,
         min_items: null,
-        max_items: 0,
+        max_items: null,
         has_temperature: false,
       },
     ],

@@ -58,11 +58,60 @@ PANEL_CATALOG = {
 
 CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
 DASHBOARD_CHARTS = ("scorecard", "bar", "line", "table", "sankey")
+SUPPORTED_DASHBOARD_CHARTS = (
+    "scorecard",
+    "kpi_group",
+    "bar",
+    "grouped_bar",
+    "stacked_bar",
+    "line",
+    "multi_line",
+    "scatter",
+    "bubble",
+    "funnel",
+    "heatmap",
+    "table",
+    "sankey",
+)
+DASHBOARD_ROW_LIMITS = {
+    "scorecard": 1,
+    "kpi_group": 1,
+    "bar": 30,
+    "grouped_bar": 20,
+    "stacked_bar": 20,
+    "line": 100,
+    "multi_line": 100,
+    "scatter": 100,
+    "bubble": 100,
+    "funnel": 12,
+    "heatmap": 100,
+    "table": 100,
+    "sankey": 100,
+}
+CHART_SHAPE_CONTRACTS = {
+    "scorecard": (0, 0, 1, 1),
+    "kpi_group": (0, 0, 2, 4),
+    "bar": (1, 1, 1, 1),
+    "grouped_bar": (1, 1, 2, 4),
+    "stacked_bar": (1, 1, 2, 4),
+    "line": (1, 1, 1, 1),
+    "multi_line": (1, 1, 2, 4),
+    "scatter": (1, 1, 2, 2),
+    "bubble": (1, 1, 3, 3),
+    "funnel": (1, 1, 1, 1),
+    "heatmap": (2, 2, 1, 1),
+    "table": (0, 4, 1, 4),
+    "sankey": (2, 2, 1, 1),
+}
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
-DYNAMIC_PANEL_FIELDS = (
+MAX_SANKEY_PAGES = 4
+DYNAMIC_PANEL_TEXT_FIELDS = (
     "title", "kpi", "chart", "decision", "reason", "execution_prompt"
 )
+DYNAMIC_PANEL_LIST_FIELDS = ("dimensions", "measures")
+DYNAMIC_PANEL_LAYOUT_FIELDS = ("layout_row", "layout_weight")
+DYNAMIC_PANEL_FIELDS = DYNAMIC_PANEL_TEXT_FIELDS
 
 
 def _positive_count_setting(name: str, default: int) -> int:
@@ -89,6 +138,56 @@ if INITIAL_PANEL_COUNT > MAX_PANEL_COUNT:
     raise ValueError(
         "ANALYSIS_INITIAL_PANEL_COUNT must not exceed ANALYSIS_MAX_PANEL_COUNT"
     )
+
+
+def _neutral_chart_order(charts: tuple[str, ...], seed: str) -> tuple[str, ...]:
+    """Return a reproducible order unrelated to chart semantics or source order."""
+    if not seed:
+        return charts
+    return tuple(
+        sorted(
+            charts,
+            key=lambda chart: hashlib.sha256(f"{seed}\0{chart}".encode()).digest(),
+        )
+    )
+
+
+def _visualization_response_schema(
+    charts: tuple[str, ...], *, seed: str = ""
+) -> dict:
+    """Constrain chart and result shape together without prompt heuristics."""
+    variants = []
+    for chart in _neutral_chart_order(charts, seed):
+        min_dimensions, max_dimensions, min_measures, max_measures = (
+            CHART_SHAPE_CONTRACTS[chart]
+        )
+        variants.append(
+            {
+                "type": "object",
+                "properties": {
+                    "chart": {
+                        "type": "string",
+                        "format": "enum",
+                        "enum": [chart],
+                    },
+                    "dimensions": {
+                        "type": "array",
+                        "minItems": min_dimensions,
+                        "maxItems": max_dimensions,
+                        "items": {"type": "string"},
+                    },
+                    "measures": {
+                        "type": "array",
+                        "minItems": min_measures,
+                        "maxItems": max_measures,
+                        "items": {"type": "string"},
+                    },
+                },
+                "required": ["chart", "dimensions", "measures"],
+            }
+        )
+    return {"anyOf": variants}
+
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -158,13 +257,21 @@ DYNAMIC_PLAN_SCHEMA["properties"]["panels"] = {
 class PlannerError(ValueError):
     """A planner contract violation safe to show in the local UI."""
 
+    def __init__(self, message: str, *, suggested_instruction: str | None = None):
+        super().__init__(message)
+        self.suggested_instruction = suggested_instruction
+
 
 def _response_schema(answers: dict[str, str]) -> dict:
     """Constrain clarification output to fields that still need an answer."""
     unanswered = [field for field in CLARIFICATION_FIELDS if field not in answers]
     schema = copy.deepcopy(PLAN_SCHEMA)
     clarifications = schema["properties"]["clarifications"]
-    clarifications["maxItems"] = len(unanswered)
+    # Vertex structured output can reject an array schema whose maxItems is 0.
+    # When every field is answered, omit that API-level bound and let the
+    # normalizer below reject any repeated or unsupported clarification.
+    if unanswered:
+        clarifications["maxItems"] = len(unanswered)
     if len(unanswered) == len(CLARIFICATION_FIELDS):
         clarifications["minItems"] = 1
     if unanswered:
