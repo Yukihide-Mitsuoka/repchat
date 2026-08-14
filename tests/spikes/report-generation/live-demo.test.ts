@@ -92,10 +92,10 @@ test('live prompt uses an accessible in-page cost dialog before sending the requ
   const result = python(`
 html=m.HTML
 print(json.dumps({
- "copy":all(x in html for x in ["Vertex AI 約¥1","BigQuery 最大40 GiB","最大約¥38","合計最大約¥39","無料枠やキャッシュで0円"]),
+ "copy":all(x in html for x in ["Vertex AI 最大約¥2","BigQuery 最大20 GiB","最大約¥19","合計最大約¥21","無料枠やキャッシュで0円"]),
  "dialog":all(x in html for x in ['<dialog id="cost-dialog"','aria-labelledby="cost-title"','id="cancel-cost"','id="confirm-cost"']),
  "actions":all(x in html for x in ['$("cost-dialog").showModal()','$("cost-dialog").close()','pendingMode==="dashboard-plan"?runPlan():pendingMode==="dashboard-build"?runDashboard():pendingMode==="report"?runMeetingReport():runQuery()']),
- "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*40","count*39"]),
+ "dashboard":all(x in html for x in ["今回の相談 約¥1","BigQuery ¥0（仕様確定前は実行しません）","count*20","count*21"]),
  "portable":"confirm(COST_CONFIRMATION)" not in html,
  "progress":all(x in html for x in ["生成の進行状況","実行前","問い合わせを入力し、生成ボタンを押してください。","SQLを作る","安全性を確認","データを取得","結果を可視化"])
 }))
@@ -1006,9 +1006,9 @@ import threading,urllib.error,urllib.request
 class E:
  spec=json.loads((m.HERE/"report.json").read_text())
  query_count=0
- def query(self,q,emit):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
- def dashboard(self,q,emit):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
- def meeting_report(self,revision,emit):emit({"type":"meeting_report","build_revision":revision})
+ def query(self,q,emit,**_kwargs):self.query_count+=1;emit({"type":"result","rows":[[118380]],"columns":["sessions"],"visualization":"scalar","verification":"matched","verification_label":"照合済み","cost_jpy":0.1})
+ def dashboard(self,q,emit,*_args,**_kwargs):emit({"type":"dashboard_complete","panel_count":6,"cost_jpy":1.2})
+ def meeting_report(self,revision,emit,**_kwargs):emit({"type":"meeting_report","build_revision":revision})
 engine=E();s=m.create_server("127.0.0.1",0,engine);t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}";statuses=[]
 try:
  page=urllib.request.urlopen(base+"/").read().decode()
@@ -1135,7 +1135,7 @@ finally:s.shutdown();s.server_close();t.join()
   });
 });
 
-test('non-GA4 selector exposes the bounded Bitcoin nested-schema demonstration', () => {
+test('non-GA4 selector does not inject a fixed Bitcoin question into the UI', () => {
   const result = python(`
 html=m.HTML
 profile=m.bitcoin
@@ -1148,8 +1148,8 @@ for question in ["2023年12月の受取アドレス別の取引数", "2024年1�
  except ValueError as error:
   errors.append(str(error))
 print(json.dumps({
- "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"','Bitcoin受取先の複雑度']),
- "cost":all(value in html for value in ["BigQuery dry run 約2.91 GiB","上限20 GiB","参照値照合なし","通常約¥5・最大約¥20"]),
+ "selector":all(value in html for value in ['id="dataset-profile"','value="bitcoin"']) and "Bitcoin受取先の複雑度" not in html,
+ "cost":all(value in html for value in ["BigQuery 最大20 GiB","生成SQL 1クエリ","合計最大約¥20"]),
  "schema":all(value in profile.SCHEMA_DDL for value in ["outputs ARRAY<STRUCT<","addresses ARRAY<STRING>",profile.TABLE]),
  "rules":all(value in profile.prompt_rules() for value in ["outputs と output.addresses はそれぞれ UNNEST","SELECT * は使わず"]),
  "reference":all(value in profile.REFERENCE_SQL for value in ["UNNEST(t.outputs)","UNNEST(output.addresses)","block_timestamp_month = DATE '2024-01-01'"]),
@@ -1501,14 +1501,14 @@ test('broad analysis requests use paid, stateful AI consultation before paid exe
   assert.match(rendered.stdout, /id="consultation-thread"/);
   assert.match(rendered.stdout, /id="consultation-recommendations"/);
   assert.match(rendered.stdout, /相談ではVertex AIを使用し、BigQueryは実行しません/);
-  assert.ok(script.includes('function isConsultationPrompt(question)'));
+  assert.ok(!script.includes('function isConsultationPrompt(question)'));
   assert.ok(script.includes('function beginAnalysisConsultation(question,profile)'));
   assert.ok(script.includes('async function runAnalysisConsultation()'));
   assert.ok(script.includes('consultationHistory'));
   assert.ok(script.includes('consultationHistory.slice(-8)'));
   assert.ok(script.includes('stream("/api/consult"'));
   assert.ok(script.includes('function selectAnalysisRecommendation(recommendation)'));
-  assert.ok(script.includes('if(action==="consult"||isConsultationPrompt(question))'));
+  assert.ok(script.includes('if(action==="consult"){beginAnalysisConsultation'));
   assert.ok(script.includes('selectWorkspace("consult");setComposerAction("consult",false)'));
   assert.ok(script.includes('setComposerAction("insight",false)'));
   assert.ok(script.includes('$("composer-input").value=""'));
@@ -1516,7 +1516,7 @@ test('broad analysis requests use paid, stateful AI consultation before paid exe
   const submit =
     script.match(/function submitComposer\(\)\{.*?\}\nconst originalQueryHandler/s)?.[0] ?? '';
   assert.ok(
-    submit.indexOf('if(action==="consult"||isConsultationPrompt(question))') <
+    submit.indexOf('if(action==="consult"){beginAnalysisConsultation') <
       submit.indexOf('showCost("graph")'),
   );
 });
@@ -1863,7 +1863,7 @@ test('meeting report owns persistent processing and error state across workspace
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.ok(rendered.stdout.includes('id="report-status"'));
   assert.ok(rendered.stdout.includes('id="report-message"'));
-  assert.ok(rendered.stdout.includes('id="report-warning"'));
+  assert.ok(!rendered.stdout.includes('id="report-warning"'));
   assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
   assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
   assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));
@@ -2045,7 +2045,7 @@ def run_section(section,period,emit,context=None,profile="ga4"):
  emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":section["component"],**context})
  return .1
 e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
-raw={"executive_summary":"追加診断が必要です。","observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
+raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["R4"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
 calls=[]
 m.meeting.generate=lambda _client,_model,current:(calls.append(current["build_revision"]) or (m.meeting.normalize_report(raw,current),{"input_tokens":10,"output_tokens":5}))
 report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)

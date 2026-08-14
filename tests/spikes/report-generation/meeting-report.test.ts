@@ -36,7 +36,7 @@ ${body}`,
 test('normalizes a draft into immutable evidence-linked meeting commentary', () => {
   const result = python(`
 raw={
- "executive_summary":"購入成果には追加診断が必要です。",
+ "executive_summary":{"text":"購入成果には追加診断が必要です。","panel_ids":["R4"]},
  "observations":[{"text":"購入金額は123,456.00円です。","panel_ids":["R4"]}],
  "interpretations":[{"text":"日次推移には変動があります。","uncertainty":"施策履歴が無いため原因は不明です。","panel_ids":["R16"]}],
  "hypotheses":[{"text":"導線に改善余地がある可能性があります。","validation":"流入別に追加検証します。","panel_ids":["R4","R16"]}],
@@ -143,7 +143,7 @@ print(json.dumps({"summary":accepted["executive_summary"]["text"],"observation":
 test('rejects unsupported numbers, unknown evidence, and revision mismatches', () => {
   const result = python(`
 base={
- "executive_summary":"要約です。",
+ "executive_summary":{"text":"要約です。","panel_ids":["R4"]},
  "observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],
  "interpretations":[{"text":"解釈です。","uncertainty":"不確実です。","panel_ids":["R4"]}],
  "hypotheses":[{"text":"仮説です。","validation":"検証します。","panel_ids":["R4"]}],
@@ -157,12 +157,13 @@ bad_bundle={**bundle,"organization_context_revision":"other-v1"}
 oversized={**bundle,"metric_definitions":{"x":"a"*50000}}
 long_summary={**base,"executive_summary":{"text":"あ"*161,"panel_ids":["R4"]}}
 too_many_observations={**base,"observations":base["observations"]*4}
-for raw,current in [(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized),(long_summary,bundle),(too_many_observations,bundle)]:
+for raw,current in [({**base,"executive_summary":"要約です。"},bundle),(bad_number,bundle),(unknown,bundle),(base,bad_bundle),({**base,"limitations":None},bundle),({**base,"limitations":["30件未満です。"]},bundle),(base,oversized),(long_summary,bundle),(too_many_observations,bundle)]:
  try:m.normalize_report(raw,current)
  except m.ReportError as error:cases.append(str(error))
 print(json.dumps(cases,ensure_ascii=False))`);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
+    '会議報告の根拠パネルが未登録または空です。',
     '会議報告に根拠パネルへ存在しない数値があります: 999',
     '会議報告の根拠パネルが未登録または空です。',
     '組織コンテキストrevisionが根拠bundleと一致しません。',
@@ -259,7 +260,7 @@ genai.types=types.SimpleNamespace(
 )
 google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
 raw={
- "executive_summary":"追加診断が必要です。",
+ "executive_summary":{"text":"追加診断が必要です。","panel_ids":["R4"]},
  "observations":[{"text":"購入成果を確認しました。","panel_ids":["R4"]}],
  "interpretations":[{"text":"追加分析が必要です。","uncertainty":"施策履歴がありません。","panel_ids":["R4"]}],
  "hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に確認します。","panel_ids":["R4"]}],
@@ -295,7 +296,7 @@ print(json.dumps({
   });
 });
 
-test('one paid response keeps valid claims and reports excluded unsupported numbers without retrying', () => {
+test('one paid response with unsupported claims fails without retrying or rewriting', () => {
   const result = python(`
 import sys,types
 google=types.ModuleType("google");genai=types.ModuleType("google.genai")
@@ -327,29 +328,41 @@ class Models:
 strict_error=""
 try:m.normalize_report(raw,bundle)
 except m.ReportError as error:strict_error=str(error)
-report,_=m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+generated_error=""
+try:m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+except m.ReportError as error:generated_error=str(error)
 print(json.dumps({
  "calls":captured["calls"],
  "strict_error":strict_error,
- "observations":[item["text"] for item in report["observations"]],
- "interpretations":[item["text"] for item in report["interpretations"]],
- "hypotheses":[item["text"] for item in report["hypotheses"]],
- "actions":[item["text"] for item in report["actions"]],
- "limitations":report["limitations"],
- "warnings":report["generation_warnings"],
+ "generated_error":generated_error,
+ "fallback":hasattr(m,"_fallback_raw_report"),
  "limitation_pattern":captured["config"].response_schema["properties"]["limitations"]["items"]["pattern"],
 },ensure_ascii=False))`);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.calls, 1);
   assert.equal(output.strict_error, '会議報告に根拠パネルへ存在しない数値があります: 22');
-  assert.deepEqual(output.observations, ['購入件数は895件です。']);
-  assert.deepEqual(output.hypotheses, ['導線に改善余地がある可能性があります。']);
-  assert.ok(output.interpretations.every((value: string) => !/3000|4000/.test(value)));
-  assert.ok(output.actions.every((value: string) => !/6/.test(value)));
-  assert.ok(output.limitations.every((value: string) => !/\d/.test(value)));
-  assert.deepEqual(output.warnings, [
-    'AI出力のうち、根拠を確認できない数値表現または構造を除外しました。',
-  ]);
+  assert.equal(output.generated_error, output.strict_error);
+  assert.equal(output.fallback, false);
   assert.equal(output.limitation_pattern, '^[^0-9０-９]*$');
+});
+
+test('invalid generated meeting commentary fails instead of using fixed fallback prose', () => {
+  const result = python(`
+invalid={
+ "executive_summary":{"text":"根拠外の22件を確認しました。","panel_ids":["R4"]},
+ "observations":[{"text":"根拠外の22件を確認しました。","panel_ids":["R4"]}],
+ "interpretations":[],"hypotheses":[],"actions":[],"limitations":[]
+}
+try:
+ m.normalize_report(invalid,bundle)
+except m.ReportError as error:
+ print(json.dumps({"error":str(error),"fallback":hasattr(m,"_fallback_raw_report"),"normalizer":hasattr(m,"normalize_generated_report")},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: '会議報告に根拠パネルへ存在しない数値があります: 22',
+    fallback: false,
+    normalizer: false,
+  });
 });

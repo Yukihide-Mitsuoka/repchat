@@ -28,6 +28,14 @@ class RepChatTemplateSyncContractTest(unittest.TestCase):
         self.assertIn("Sweep for siblings", skill)
         self.assertIn("Sibling occurrences searched; results reported", skill)
 
+    def test_foundation_expand_compatibility_test_has_explicit_ownership(self):
+        path = "scripts/tests/test_expand_phase_compatibility.py"
+        manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+
+        self.assertIn(path, manifest["inherited_paths"])
+        self.assertNotIn(path, manifest["protected_paths"])
+        self.assertNotIn(path, self.entries())
+
     def test_project_release_history_and_codeql_invariant_are_target_owned(self):
         entries = self.entries()
         manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
