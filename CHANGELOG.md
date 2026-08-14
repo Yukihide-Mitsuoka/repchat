@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.18.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.17.0...v1.18.0) (2026-08-14)
+
+
+### Features
+
+* **demo:** add dashboard focus mode ([#365](https://github.com/Yukihide-Mitsuoka/repchat/issues/365)) ([f18f487](https://github.com/Yukihide-Mitsuoka/repchat/commit/f18f4874a884347c5fc51f7ab4cb79fe780a5daf))
+* **demo:** add stateful analysis consultation planner ([#375](https://github.com/Yukihide-Mitsuoka/repchat/issues/375)) ([d888cee](https://github.com/Yukihide-Mitsuoka/repchat/commit/d888cee2b1d72d681c84873c18a23c5b084af33c))
+* **demo:** build AI-authored dashboard specifications ([#378](https://github.com/Yukihide-Mitsuoka/repchat/issues/378)) ([2ec2b63](https://github.com/Yukihide-Mitsuoka/repchat/commit/2ec2b6350a30b4c4ae0203dcc0da6fd80922aec7))
+* **demo:** define AI-authored dashboard plans ([#377](https://github.com/Yukihide-Mitsuoka/repchat/issues/377)) ([bfef658](https://github.com/Yukihide-Mitsuoka/repchat/commit/bfef658c79e6ac41afc0ce477c609a3048c06feb))
+* **demo:** define renderer chart contracts ([#392](https://github.com/Yukihide-Mitsuoka/repchat/issues/392)) ([6620cdf](https://github.com/Yukihide-Mitsuoka/repchat/commit/6620cdf5c91d8889264bbc9d43413356a218554a))
+* **demo:** prevent overlapping analysis requests ([#391](https://github.com/Yukihide-Mitsuoka/repchat/issues/391)) ([428e76d](https://github.com/Yukihide-Mitsuoka/repchat/commit/428e76d3d7f8e5fd2659b46affcbad6d9e8d758b))
+* **demo:** revise AI-authored dashboard plans ([#379](https://github.com/Yukihide-Mitsuoka/repchat/issues/379)) ([91e7bc7](https://github.com/Yukihide-Mitsuoka/repchat/commit/91e7bc71806960a8b3312329d438d93d2e2a4533))
+* **demo:** validate AI consultation specifications ([#396](https://github.com/Yukihide-Mitsuoka/repchat/issues/396)) ([3c74608](https://github.com/Yukihide-Mitsuoka/repchat/commit/3c746081bf593cc6b82c9fe0d61b2c20130e8b05))
+* **demo:** validate and repair generated SQL ([#387](https://github.com/Yukihide-Mitsuoka/repchat/issues/387)) ([96c9edd](https://github.com/Yukihide-Mitsuoka/repchat/commit/96c9edd1b8211ea91782e687679ce61ce0c39fe0))
+
+
+### Bug Fixes
+
+* **demo:** align dashboard card heights ([#395](https://github.com/Yukihide-Mitsuoka/repchat/issues/395)) ([ec12b0a](https://github.com/Yukihide-Mitsuoka/repchat/commit/ec12b0a998a2d967365568625ca3a06b700b063c))
+* **demo:** constrain and auto-grow analysis composer ([#360](https://github.com/Yukihide-Mitsuoka/repchat/issues/360)) ([31680ae](https://github.com/Yukihide-Mitsuoka/repchat/commit/31680ae57a6fca0f138501b3517ebd78eb2f97ff))
+* **demo:** expand artifact pane safely ([#368](https://github.com/Yukihide-Mitsuoka/repchat/issues/368)) ([566eb0f](https://github.com/Yukihide-Mitsuoka/repchat/commit/566eb0f6b1b602c5ef112a9b3d8e36f38361a37a)), closes [#367](https://github.com/Yukihide-Mitsuoka/repchat/issues/367)
+* **demo:** keep dashboard rows complete and full-width ([#363](https://github.com/Yukihide-Mitsuoka/repchat/issues/363)) ([9b14f4b](https://github.com/Yukihide-Mitsuoka/repchat/commit/9b14f4b084170953a22648a979e660fed5400a0b))
+* **demo:** make analysis consultation stateful ([#376](https://github.com/Yukihide-Mitsuoka/repchat/issues/376)) ([bb6c5cd](https://github.com/Yukihide-Mitsuoka/repchat/commit/bb6c5cde726b0645f1126efcf38f007df1c21a85))
+* own inherited expand compatibility test ([#383](https://github.com/Yukihide-Mitsuoka/repchat/issues/383)) ([e8b07a4](https://github.com/Yukihide-Mitsuoka/repchat/commit/e8b07a4d814d58947d79f3940f4e5403e68da288))
+* upgrade protected workflow actions ([#390](https://github.com/Yukihide-Mitsuoka/repchat/issues/390)) ([751a533](https://github.com/Yukihide-Mitsuoka/repchat/commit/751a5331a1d409c8b8dd575919874711f7456bcd)), closes [#384](https://github.com/Yukihide-Mitsuoka/repchat/issues/384)
+
 ## [1.17.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.16.1...v1.17.0) (2026-08-11)
 
 
