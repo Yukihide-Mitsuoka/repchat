@@ -211,14 +211,14 @@ history=[
 raw={
  "assistant_message":"別の切り口なら流入元を比較できます。",
  "recommendations":[{
-  "title":"流入チャネル別の購入効率",
-  "objective":"集客量だけでなく購入成果につながる流入元を見つける",
-  "metric":"セッション数と購入件数",
-  "dimension":"medium",
+  "title":"流入チャネル別の集客規模",
+  "objective":"集客量が偏っている流入元を見つける",
+  "dimensions":["medium"],
+  "measures":["セッション数"],
   "comparison":"2021年1月の流入チャネル間比較",
   "chart":"bar",
-  "execution_prompt":"2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して",
-  "reason":"集客の偏りと成果の両方を判断できるため"
+  "execution_prompt":"2021年1月のセッション数を流入チャネル（medium）別に出して",
+  "reason":"集客の偏りを判断できるため"
  }],
  "follow_up_question":"成果と集客のどちらを優先しますか？",
 }
@@ -229,12 +229,16 @@ for invalid in [
  {**raw,"recommendations":[raw["recommendations"][0],raw["recommendations"][0]]},
  {**raw,"recommendations":[{**raw["recommendations"][0],"execution_prompt":"SELECT * FROM events"}]},
  {**raw,"recommendations":[{**raw["recommendations"][0],"reason":""}]},
+ {**raw,"recommendations":[{**raw["recommendations"][0],"dimensions":[]}]},
 ]:
  try:p.normalize_consultation(invalid)
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps({
  "titles":[item["title"] for item in normalized["recommendations"]],
  "generated_prompt":normalized["recommendations"][0]["execution_prompt"],
+ "dimensions":normalized["recommendations"][0]["dimensions"],
+ "measures":normalized["recommendations"][0]["measures"],
+ "revision":normalized["recommendations"][0]["revision"],
  "history_in_request":all(item["content"] in request for item in history),
  "current_in_request":"他にない？" in request,
  "context_in_request":"medium" in request,
@@ -244,9 +248,14 @@ print(json.dumps({
     { cwd: ROOT, encoding: 'utf8' },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    titles: ['流入チャネル別の購入効率'],
-    generated_prompt: '2021年1月のセッション数と購入件数を流入チャネル（medium）別に出して',
+  const output = JSON.parse(result.stdout);
+  assert.match(output.revision, /^insight-[0-9a-f]{12}$/);
+  delete output.revision;
+  assert.deepEqual(output, {
+    titles: ['流入チャネル別の集客規模'],
+    generated_prompt: '2021年1月のセッション数を流入チャネル（medium）別に出して',
+    dimensions: ['medium'],
+    measures: ['セッション数'],
     history_in_request: true,
     current_in_request: true,
     context_in_request: true,
@@ -254,6 +263,7 @@ print(json.dumps({
       '分析相談に重複した候補があります。',
       '分析相談の実行依頼にはSQLを書けません。',
       '分析相談の候補理由が空です。',
+      'AIが生成したbar仕様を描画できません。必要なのは区分軸1件・指標1件ですが、AI出力は区分軸0件・指標1件でした。',
     ],
   });
 });
