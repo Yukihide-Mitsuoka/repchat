@@ -463,23 +463,21 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-grid{gap:14px;margin-top:14px;align-items:stretch;container-type:inline-size}
 .dashboard-card{display:flex;flex-direction:column;grid-column:span 4;min-width:0;min-height:268px;padding:18px 18px 16px;border-color:#dde3ea;border-radius:var(--radius-card);box-shadow:var(--shadow-card);overflow:hidden;transition:border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}
 .dashboard-card:hover{border-color:#bcc9d5;box-shadow:0 2px 4px #1018280d,0 14px 34px #10182812;transform:translateY(-1px)}
-.dashboard-card:nth-child(1){grid-column:span 6}
-.dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}
-.dashboard-card:nth-child(4),.dashboard-card:nth-child(5){grid-column:span 6;min-height:390px}
-.dashboard-card:nth-child(6){grid-column:1/-1;min-height:470px}
 .dashboard-layout-row{grid-column:1/-1;display:grid;align-items:stretch;min-width:0}
-.dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:390px;margin:0}
-.dashboard-layout-row:first-child>.dashboard-card{min-height:268px}
-.dashboard-card-resizer{position:relative;z-index:2;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
+.dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:268px;margin:0}
+.dashboard-card-resizer{position:relative;z-index:2;align-self:stretch;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
 .dashboard-card-resizer::after{content:"";position:absolute;top:12px;bottom:12px;left:calc(50% - .5px);width:1px;border-radius:999px;background:#dfe4ea;transition:background 120ms ease,box-shadow 120ms ease}
 .dashboard-card-resizer:hover::after,.dashboard-card-resizer:focus-visible::after,.dashboard-card-resizer.dragging::after{background:#4b84b4;box-shadow:0 0 0 3px #4b84b426}
-@container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-card-resizer{display:none}}
+.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}
+@container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:visible}.dashboard-card-resizer{display:none}}
 .dashboard-card h3{font-size:15px;line-height:1.45;letter-spacing:-.01em}
 .dashboard-card .purpose{min-height:0;margin:9px 0 16px;color:#687386;font-size:11px}
 .panel-state{display:inline-flex;align-items:center;min-height:23px;padding:3px 7px;border-radius:999px;background:var(--color-success-soft);color:var(--color-success);font-size:10px;white-space:nowrap}
-.dashboard-card .chart{min-width:0;flex:1;display:grid;align-items:center;overflow:hidden}
+.dashboard-card .chart{min-width:0;display:grid;align-items:start;overflow:visible;flex:1}
 .dashboard-card .chart svg{display:block;min-width:0;width:100%;max-width:100%}
-.dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:0}
+.chart-table-scroll{align-self:start;width:100%;max-height:360px;overflow:auto}
+.chart-table-scroll table{width:max-content;min-width:100%;margin-top:0}
+.chart-table-scroll th,.chart-table-scroll td{max-width:320px;overflow-wrap:anywhere;vertical-align:top}
 .metric{align-self:center;padding:20px 6px;font-size:48px;letter-spacing:-.04em}
 .kpi-pair{gap:10px;align-self:center;width:100%}
 .kpi-pair div{padding:17px 16px;border:1px solid #edf0f3;border-radius:9px;background:#f7f9fb}

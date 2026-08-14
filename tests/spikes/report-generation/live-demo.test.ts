@@ -1677,6 +1677,31 @@ test('dashboard resizes every shared row without free rearrangement', () => {
   assert.doesNotMatch(script, /draggable\s*=|ondragstart|Sortable/);
 });
 
+test('dashboard cards in the same row share height while content stays top-aligned', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /\.dashboard-layout-row\{[^}]*align-items:stretch/);
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-card \.chart\{[^}]*align-items:start[^}]*overflow:visible[^}]*flex:1/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-layout-row>\.dashboard-card \.chart\{[^}]*max-height:460px[^}]*overflow:auto/,
+  );
+  assert.ok(
+    rendered.stdout.indexOf(
+      '.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}',
+    ) <
+      rendered.stdout.indexOf(
+        '@container (max-width:900px){.dashboard-layout-row{grid-template-columns:',
+      ),
+    'the single-column container override must follow the desktop height cap',
+  );
+  assert.match(rendered.stdout, /\.chart-table-scroll\{[^}]*max-height:360px[^}]*overflow:auto/);
+  assert.match(rendered.stdout, /\.chart-table-scroll th,[^}]*overflow-wrap:anywhere/);
+});
+
 test('left navigation stays compact and scrolls long titles only on interaction', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
@@ -1731,8 +1756,8 @@ test('analysis workspace visual hierarchy protects charts and the main surface',
 html=m.HTML
 print(json.dumps({
  "tokens":all(value in html for value in ["--radius-card:12px","--shadow-card:","--color-background:"]),
- "hierarchy":all(value in html for value in [".dashboard-card:nth-child(1){grid-column:span 6}",".dashboard-card:nth-child(2),.dashboard-card:nth-child(3){grid-column:span 3}"]),
- "overflow":all(value in html for value in ["body{overflow-x:hidden", ".dashboard-card.wide .chart svg,.dashboard-card.full .chart svg{min-width:0}"]),
+ "hierarchy":all(value in html for value in [".dashboard-layout-row>.dashboard-card{grid-column:auto!important;min-height:268px", ".dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}"]),
+ "overflow":all(value in html for value in ["body{overflow-x:hidden", ".dashboard-card .chart svg{display:block;min-width:0;width:100%;max-width:100%}"]),
  "responsive":all(value in html for value in ["@media(max-width:1180px)","position:fixed","@media(max-width:960px)","@media(max-width:760px)"]),
  "accessible":all(value in html for value in [":focus-visible","prefers-reduced-motion:reduce","outline:3px solid var(--color-focus)"]),
 }))
