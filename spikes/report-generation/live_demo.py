@@ -28,45 +28,6 @@ MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
 MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
-DASHBOARD_SECTION_IDS = report.SHOWCASE_IDS
-DASHBOARD_PURPOSES = {
-    "R4": "購入成果の規模を最初に確認する",
-    "R11": "単発訪問だけでなく、ユーザーが定着しているかを確認する",
-    "R12": "訪問中に十分な関与が生まれているかを確認する",
-    "R9": "閲覧から購入までのどこで減少しているかを特定する",
-    "R16": "日々の変動と7日間の基調を分けて確認する",
-    "R17": "主要なページ遷移から回遊上の特徴を確認する",
-}
-DASHBOARD_ROW_TEMPLATES = (
-    (("R4", 50), ("R11", 25), ("R12", 25)),
-    (("R9", 40), ("R17", 60)),
-    (("R16", 100),),
-)
-
-
-def dashboard_layout_rows(panel_ids: list[str]) -> list[dict]:
-    """Return complete rows whose shares always consume the available width."""
-    requested = set(panel_ids)
-    known = {panel_id for row in DASHBOARD_ROW_TEMPLATES for panel_id, _ in row}
-    if len(requested) != len(panel_ids) or not requested <= known:
-        raise LiveDemoError("ダッシュボード行へ未登録または重複したパネルがあります。")
-    rows = []
-    covered = set()
-    for template in DASHBOARD_ROW_TEMPLATES:
-        present = [(panel_id, share) for panel_id, share in template if panel_id in requested]
-        if not present:
-            continue
-        total = sum(share for _, share in present)
-        shares = [round(share * 100 / total, 4) for _, share in present]
-        shares[-1] = round(100 - sum(shares[:-1]), 4)
-        row_ids = [panel_id for panel_id, _ in present]
-        rows.append({"panel_ids": row_ids, "shares": shares})
-        covered.update(row_ids)
-    if covered != requested:
-        raise LiveDemoError("ダッシュボード行に配置できないパネルがあります。")
-    return rows
-
-
 def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
     """Lay out AI-authored panels without encoding any analysis topic."""
     if not panels:
@@ -806,35 +767,6 @@ def section_for_question(spec: dict, question: str) -> dict:
     }
 
 
-def dashboard_sections(
-    spec: dict, question: str, panel_ids: list[str] | None = None
-) -> tuple[dict[str, str], list[dict]]:
-    """Expand one concrete dashboard request into the validated showcase analyses."""
-    report.select_sections(spec, question)
-    if "ダッシュボード" not in question:
-        raise LiveDemoError("依頼に「ダッシュボード」を含めてください。")
-    period = period_for_question(question)
-    sections = report.select_sections(spec, None, showcase=True)
-    if tuple(section["id"] for section in sections) != DASHBOARD_SECTION_IDS:
-        raise LiveDemoError("ダッシュボード分析定義の構成が一致しません。")
-    if panel_ids is not None:
-        if len(panel_ids) != len(set(panel_ids)) or not 4 <= len(panel_ids) <= 6:
-            raise LiveDemoError("確定した分析パネルは重複なしの4〜6件にしてください。")
-        by_id = {section["id"]: section for section in sections}
-        if any(panel_id not in by_id for panel_id in panel_ids):
-            raise LiveDemoError("確定した分析計画に未登録のパネルがあります。")
-        sections = [by_id[panel_id] for panel_id in panel_ids]
-    month_pattern = re.compile(r"\d{4}年\s*\d{1,2}月")
-    for section in sections:
-        section["text"] = month_pattern.sub(period["label"], section["text"], count=1)
-        section["purpose"] = DASHBOARD_PURPOSES[section["id"]]
-        # Registered reference SQL is fixed to January 2021. Other available
-        # sample months can execute, but cannot be labelled reference-verified.
-        if period["from"] != "20210101" or period["to"] != "20210131":
-            section["verification"] = "execution"
-    return period, sections
-
-
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
     """Turn AI-authored analysis specifications into guarded generation sections."""
     if "ダッシュボード" not in question:
@@ -886,11 +818,6 @@ def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[d
             f"確定した分析パネルは1〜{planner.MAX_PANEL_COUNT}件にしてください。"
         )
     return period, sections
-
-
-def confirm_dashboard_analysis_plan(plan: dict) -> dict:
-    """Freeze only a complete AI-authored dashboard specification."""
-    return planner.confirm_dashboard_plan(plan)
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -1286,43 +1213,24 @@ class LiveQueryEngine:
         cancel_event = self._begin_operation(request_id)
         try:
             self.latest_dashboard = None
-            try:
-                confirmed = (
-                    confirm_dashboard_analysis_plan(analysis_plan) if analysis_plan else None
+            if analysis_plan is None:
+                raise LiveDemoError(
+                    "AIが作成した分析仕様を確定してからbuildしてください。"
                 )
+            try:
+                confirmed = planner.confirm_dashboard_plan(analysis_plan)
             except planner.PlannerError as error:
                 raise LiveDemoError(str(error)) from error
-            dynamic_plan = bool(
-                confirmed
-                and all("execution_prompt" in panel for panel in confirmed["panels"])
-            )
-            if dynamic_plan:
-                period, sections = dashboard_sections_for_plan(question, confirmed)
-                layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
-            else:
-                panel_ids = (
-                    [panel["id"] for panel in confirmed["panels"]]
-                    if confirmed
-                    else None
-                )
-                period, sections = dashboard_sections(self.spec, question, panel_ids)
-                layout_rows = dashboard_layout_rows(
-                    [section["id"] for section in sections]
-                )
-                if confirmed and confirmed["period"] != period:
-                    raise LiveDemoError(
-                        "確定した分析仕様の対象期間が依頼文と一致しません。"
-                    )
+            period, sections = dashboard_sections_for_plan(question, confirmed)
+            layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
             emit(
                 {
                     "type": "dashboard_plan",
                     "period": period["label"],
-                    "plan_revision": confirmed["revision"] if confirmed else "legacy-demo",
-                    "organization_context_revision": (
-                        confirmed["organization_context_revision"]
-                        if confirmed
-                        else "not-attached"
-                    ),
+                    "plan_revision": confirmed["revision"],
+                    "organization_context_revision": confirmed[
+                        "organization_context_revision"
+                    ],
                     "panels": [
                         {
                             "id": section["id"],
@@ -1381,9 +1289,7 @@ class LiveQueryEngine:
                         + hashlib.sha256(result_canonical.encode()).hexdigest()[:12]
                     )
                     evidence_panels.append(evidence)
-            bundle = None
-            if confirmed:
-                bundle = {
+            bundle = {
                     "plan_revision": confirmed["revision"],
                     "organization_context_revision": confirmed[
                         "organization_context_revision"
@@ -1399,18 +1305,18 @@ class LiveQueryEngine:
                     },
                     "metric_definitions": self.metric_definitions,
                     "panels": evidence_panels,
-                }
-                canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)
-                bundle["build_revision"] = (
-                    "build-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
-                )
-                self.latest_dashboard = bundle
+            }
+            canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)
+            bundle["build_revision"] = (
+                "build-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
+            )
+            self.latest_dashboard = bundle
             emit(
                 {
                     "type": "dashboard_complete",
                     "panel_count": len(sections),
                     "cost_jpy": round(total_cost, 3),
-                    "build_revision": bundle["build_revision"] if bundle else None,
+                    "build_revision": bundle["build_revision"],
                 }
             )
         finally:
@@ -1760,23 +1666,10 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/dashboard":
                 if profile != "ga4":
                     raise ValueError("dashboard mode currently supports only ga4")
-                confirmed = (
-                    confirm_dashboard_analysis_plan(analysis_plan)
-                    if analysis_plan
-                    else None
-                )
-                if confirmed and all(
-                    "execution_prompt" in panel for panel in confirmed["panels"]
-                ):
-                    dashboard_sections_for_plan(question, confirmed)
-                else:
-                    dashboard_sections(
-                        self.engine.spec,
-                        question,
-                        [panel["id"] for panel in confirmed["panels"]]
-                        if confirmed
-                        else None,
-                    )
+                if analysis_plan is None:
+                    raise ValueError("analysis_plan is required")
+                confirmed = planner.confirm_dashboard_plan(analysis_plan)
+                dashboard_sections_for_plan(question, confirmed)
             elif requires_analysis_consultation(question):
                 raise ValueError(
                     "分析内容が具体化されていません。相談から分析候補を選び、"

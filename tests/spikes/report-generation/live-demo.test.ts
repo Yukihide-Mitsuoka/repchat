@@ -720,96 +720,6 @@ print(json.dumps({"values":values,"errors":errors},ensure_ascii=False))
   });
 });
 
-test('one dashboard request expands to the six validated analyses for its month', () => {
-  const result = python(`
-spec=json.loads((m.HERE/"report.json").read_text())
-period,sections=m.dashboard_sections(spec,"2020年12月のECサイト分析ダッシュボードを作って")
-error=""
-try:
- m.dashboard_sections(spec,"2021年1月のECサイト分析をして")
-except m.LiveDemoError as caught:
- error=str(caught)
-print(json.dumps({"period":period,"ids":[s["id"] for s in sections],"requested_month":all(period["label"] in s["text"] for s in sections),"verification":[s["verification"] for s in sections],"purposes":[bool(s["purpose"]) for s in sections],"error":error},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    period: { from: '20201201', to: '20201231', label: '2020年12月' },
-    ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    requested_month: true,
-    verification: Array(6).fill('execution'),
-    purposes: Array(6).fill(true),
-    error: '依頼に「ダッシュボード」を含めてください。',
-  });
-});
-
-test('dashboard layout normalizes incomplete and single-card rows to the full width', () => {
-  const result = python(`
-layouts=m.dashboard_layout_rows(["R4","R11","R9","R16"])
-print(json.dumps(layouts,ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    { panel_ids: ['R4', 'R11'], shares: [66.6667, 33.3333] },
-    { panel_ids: ['R9'], shares: [100] },
-    { panel_ids: ['R16'], shares: [100] },
-  ]);
-});
-
-test('dashboard engine streams six generated panels without paid dependencies', () => {
-  const result = python(`
-import threading
-from datetime import date
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock()
-generated=[];executed=[]
-results={
- "R4": ([(895,57350)],["purchases","revenue"]),
- "R11": ([(14.56,)],["repeat_rate"]),
- "R12": ([(49.51,)],["engagement_seconds"]),
- "R9": ([(23105,4537,1115)],["viewed","carted","purchased"]),
- "R16": ([(date(2020,12,1),100,90.0)],["day","sessions","moving_average"]),
- "R17": ([("1. 入口: /","2. /shop",20)],["source","target","sessions"]),
-}
-def generate(_client,_model,section,period,_rules):
- generated.append([section["id"],period["label"]])
- order="ORDER BY value DESC, value, value, value LIMIT 12" if section["id"]=="R17" else "LIMIT 1"
- sql=f"SELECT 1 AS value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' {order} /* {section['id']} */"
- return ({"sql":sql,"reason":"理由","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
-def execute(_bq,sql,**_kwargs):
- section_id=next(section_id for section_id in m.DASHBOARD_SECTION_IDS if f"/* {section_id} */" in sql)
- executed.append(section_id)
- return (results[section_id],None)
-m.report.generate=generate;m.report.exec_bq=execute
-events=[]
-e.dashboard("2020年12月のECサイト分析ダッシュボードを作って",events.append)
-panel_results=[event for event in events if event["type"]=="result"]
-print(json.dumps({"first":events[0]["type"],"last":events[-1]["type"],"layout":events[0]["layout_rows"],"generated":generated,"executed":executed,"result_ids":[event["panel_id"] for event in panel_results],"visualizations":[event["visualization"] for event in panel_results],"first_columns":panel_results[0]["columns"],"count":events[-1]["panel_count"]},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    first: 'dashboard_plan',
-    last: 'dashboard_complete',
-    layout: [
-      { panel_ids: ['R4', 'R11', 'R12'], shares: [50, 25, 25] },
-      { panel_ids: ['R9', 'R17'], shares: [40, 60] },
-      { panel_ids: ['R16'], shares: [100] },
-    ],
-    generated: [
-      ['R4', '2020年12月'],
-      ['R11', '2020年12月'],
-      ['R12', '2020年12月'],
-      ['R9', '2020年12月'],
-      ['R16', '2020年12月'],
-      ['R17', '2020年12月'],
-    ],
-    executed: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    result_ids: ['R4', 'R11', 'R12', 'R9', 'R16', 'R17'],
-    visualizations: ['kpi_pair', 'scalar', 'scalar', 'funnel', 'trend', 'sankey'],
-    first_columns: ['購入件数', '購入金額'],
-    count: 6,
-  });
-});
-
 test('dashboard result-shape validation fails closed before rendering', () => {
   const result = python(`
 errors=[]
@@ -1014,7 +924,10 @@ try:
  page=urllib.request.urlopen(base+"/").read().decode()
  req=urllib.request.Request(base+"/api/query",data=json.dumps({"question":"2021年1月のセッション数を出して"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  value=json.loads(urllib.request.urlopen(req).read().decode())["rows"][0][0]
- dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":"2021年1月のECサイト分析ダッシュボードを作って"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+ dashboard_question="2021年1月のECサイト分析ダッシュボードを作って"
+ dashboard_raw={"objective_summary":"成果を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[{"title":"購入規模","kpi":"購入件数","chart":"scorecard","decision":"規模を判断する","reason":"基準値が必要","execution_prompt":"2021年1月の購入件数を集計する","dimensions":[],"measures":["購入件数"],"layout_row":1,"layout_weight":1}]}
+ dashboard_plan=m.planner.normalize_dashboard_plan(dashboard_raw,dashboard_question,m.period_for_question(dashboard_question),{"audience":"責任者","comparison":"月内比較","business_goal":"成果改善"})
+ dashboard_req=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":dashboard_question,"analysis_plan":dashboard_plan},ensure_ascii=False).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  dashboard_count=json.loads(urllib.request.urlopen(dashboard_req).read().decode())["panel_count"]
  report_req=urllib.request.Request(base+"/api/report",data=json.dumps({"question":"会議報告案を作って","build_revision":"build-111111111111"}).encode(),headers={"content-type":"application/json","origin":base},method="POST")
  report_revision=json.loads(urllib.request.urlopen(report_req).read().decode())["build_revision"]
@@ -1314,6 +1227,30 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"id
     ids: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'],
     period: '2021年1月',
     confirmed: 'confirmed',
+  });
+});
+
+test('dashboard build has no fixed-catalog fallback without an AI-authored plan', () => {
+  const result = python(`
+import inspect,threading
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.spec=json.loads((m.HERE/"report.json").read_text());e.rules="";e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
+m.report.generate=lambda *_args,**_kwargs:({"sql":"","reason":"unused","undefined_terms":["unused"]},{"input_tokens":1,"output_tokens":1})
+events=[];error=""
+try:e.dashboard("2021年1月のECサイト分析ダッシュボードを作って",events.append)
+except m.LiveDemoError as caught:error=str(caught)
+removed=all(not hasattr(m,name) for name in ["DASHBOARD_PURPOSES","DASHBOARD_ROW_TEMPLATES","dashboard_sections","dashboard_layout_rows","confirm_dashboard_analysis_plan"])
+planner_removed=all(not hasattr(m.planner,name) for name in ["PANEL_CATALOG","planning_request","normalize_plan","propose","confirm_plan"])
+layout_source=inspect.getsource(m.dashboard_layout_rows_for_plan)
+layout_is_ai_authored=all(value not in layout_source for value in ["panel.get('chart')","full_width_charts","weights ="])
+print(json.dumps({"error":error,"events":[event["type"] for event in events],"removed":removed,"planner_removed":planner_removed,"layout_is_ai_authored":layout_is_ai_authored},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    error: 'AIが作成した分析仕様を確定してからbuildしてください。',
+    events: [],
+    removed: true,
+    planner_removed: true,
+    layout_is_ai_authored: true,
   });
 });
 
