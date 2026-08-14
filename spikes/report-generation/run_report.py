@@ -1,32 +1,14 @@
 #!/usr/bin/env python3
-"""Run the explicit GA4 SQL-generation regression fixture.
+"""Shared SQL generation, BigQuery validation, and Evidence rendering helpers.
 
-The gate this spike exists to test (docs/positioning.md §5) is whether a report
-can be produced without anyone writing SQL. So each section is described the way
-a person would ask for it, the model writes the SQL, and the result is compared
-against a hand-written reference — the spike's stand-in for the "known number"
-the customer supplies in production (§2.7).
-
-The dataset is the public GA4 export sample, chosen because it is the exact
-schema a GA4 reseller's customers already have, nested event_params and all.
-That nesting is where §2.8 predicts natural-language SQL will fail; this
-measures whether it does.
-
-This command is a regression measurement, not the natural-language product
-entry point. The live product requires an AI-authored analysis specification
-before SQL generation. Output here is an Evidence markdown page built from the
-model's SQL, and fixture reference values are used only for regression checks.
-
-    python3 spikes/report-generation/run_report.py --project <gcp-project>
+The executable fixed-report runner was removed. Product analysis starts in the
+live consultation flow and requires an AI-authored specification before SQL.
 """
-import argparse
 import html
 import json
-import os
 import re
 import sys
 import time
-from datetime import date, datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -38,8 +20,6 @@ PRICING = {
     "gemini-3.6-flash": (1.50, 7.50),
     "gemini-3.5-flash": (1.50, 9.00),
 }  # USD per 1M tokens (in, out)
-MAX_QUESTION_CHARS = 500
-SHOWCASE_IDS = ("R4", "R11", "R12", "R9", "R16", "R17")
 
 # Hand-transcribed from the public sample. Deliberately the raw export shape:
 # no semantic layer, no pre-aggregation. That is the point of the measurement.
@@ -369,101 +349,6 @@ def validate_sql(
     if not found_dataset:
         return None, f"rejected: query must reference dataset {allowed_dataset}"
     return s, None
-
-
-def _norm(c):
-    return round(c, 2) if isinstance(c, float) else c
-
-
-def compare(kind: str, got, want):
-    g = [tuple(_norm(c) for c in r) for r in got]
-    w = [tuple(_norm(c) for c in r) for r in want]
-    if kind == "scalar":
-        if len(g) == 1 and len(g[0]) == 1 and len(w) == 1:
-            a, b = g[0][0], w[0][0]
-            ok = (
-                abs(float(a) - float(b)) <= 0.02
-                if isinstance(a, float) or isinstance(b, float)
-                else a == b
-            )
-            return ok, f"got={a} want={b}"
-        return False, f"expected 1x1, got {g[:2]} want {w[:2]}"
-    if kind == "rows_ordered":
-        # Column names are the model's choice, so only the values are compared.
-        return g == w, f"got={g[:3]}... want={w[:3]}..."
-    if kind == "rows_unordered":
-        # For a plain breakdown, both the row order and the label wording are
-        # the model's choice — 「新規」 vs 「新規セッション」 is not an error.
-        # Only the numbers, sorted, are load-bearing.
-        def nums(rows):
-            return sorted(tuple(c for c in r if isinstance(c, (int, float))) for r in rows)
-
-        return nums(g) == nums(w), f"got={nums(g)} want={nums(w)}"
-    raise ValueError(kind)
-
-
-def select_sections(
-    spec: dict, question: str | None, showcase: bool = False
-) -> list[dict]:
-    """Select the full regression report or one operator-supplied question."""
-    if showcase and question is not None:
-        raise ValueError("showcase and question modes are mutually exclusive")
-    if showcase:
-        by_id = {section["id"]: section for section in spec["sections"]}
-        components = {
-            "R4": "kpi_pair",
-            "R11": "big_value",
-            "R12": "big_value",
-            "R9": "funnel",
-            "R16": "trend",
-            "R17": "sankey",
-        }
-        return [
-            {
-                **by_id[section_id],
-                "component": components[section_id],
-                "verification": "reference",
-            }
-            for section_id in SHOWCASE_IDS
-        ]
-    if question is None:
-        return [{**section, "verification": "reference"} for section in spec["sections"]]
-
-    normalized = question.strip()
-    if not normalized:
-        raise ValueError("question must not be empty")
-    if len(normalized) > MAX_QUESTION_CHARS:
-        raise ValueError(f"question must be at most {MAX_QUESTION_CHARS} characters")
-    if any(ord(char) < 32 for char in normalized):
-        raise ValueError("question must be a single line without control characters")
-
-    for section in spec["sections"]:
-        if section["text"].strip() == normalized:
-            return [{**section, "verification": "reference"}]
-
-    return [
-        {
-            "id": "Q1",
-            "title": "日本語問い合わせの結果",
-            "text": normalized,
-            "compare": "execution",
-            "component": "table",
-            "verification": "execution",
-        }
-    ]
-
-
-def component_for_result(rows: list[tuple], columns: list[str]) -> str:
-    """Choose the smallest Evidence component supported by the actual result."""
-    if len(rows) == 1 and len(columns) == 1:
-        return "big_value"
-    if (
-        rows
-        and len(columns) == 2
-        and all(row and isinstance(row[0], (date, datetime)) for row in rows)
-    ):
-        return "line"
-    return "table"
 
 
 EVIDENCE_COMPONENT = {
@@ -897,164 +782,9 @@ def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Pat
     return out_path
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--project", default=os.environ.get("GOOGLE_CLOUD_PROJECT"))
-    # `global` — the same endpoint nl2sql-thelook used; the current Gemini
-    # models are not published to the regional endpoints this project can see.
-    ap.add_argument("--region", default="global", help="Vertex region")
-    ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--no-metrics", action="store_true",
-                    help="指標定義を渡さずに走らせる（LOG-0065 と同じ条件）")
-    ap.add_argument("--question", help="日本語の問い合わせ1件だけを生成・実行・描画する")
-    args = ap.parse_args()
-    if not args.project:
-        print("--project or GOOGLE_CLOUD_PROJECT is required", file=sys.stderr)
-        return 2
-
-    spec = json.loads((HERE / "report.json").read_text(encoding="utf-8"))
-    try:
-        sections = select_sections(spec, args.question)
-    except ValueError as error:
-        print(str(error), file=sys.stderr)
-        return 2
-    metrics = "" if args.no_metrics else metrics_block(HERE / "metrics.json")
-    rules = prompt_rules(metrics)
-    print(f"metrics definitions: {'off' if not metrics else 'on'}", flush=True)
-    from google import genai
-    from google.cloud import bigquery
-
-    # ADC expires (a laptop sleeping through a run is enough). Without this the
-    # failure arrives ~12 sections deep as a stack trace, which is easy to filter
-    # away and mistake for "the run produced nothing" — that happened three times
-    # before this check existed. Fail here instead, with the fix in the message.
-    try:
-        import google.auth
-
-        creds, _ = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
-        from google.auth.transport.requests import Request
-
-        creds.refresh(Request())
-    except Exception as e:  # noqa: BLE001 — the message is the remedy
-        print(
-            f"ADC not usable ({type(e).__name__}). "
-            "Run: gcloud auth application-default login",
-            file=sys.stderr,
-        )
-        return 2
-
-    client = genai.Client(vertexai=True, project=args.project, location=args.region)
-    bq = bigquery.Client(project=args.project)
-
-    results, passed, tokens = [], 0, {"input_tokens": 0, "output_tokens": 0}
-    for s in sections:
-        ans, usage = generate(client, args.model, s, spec["period"], rules)
-        for k in tokens:
-            tokens[k] += usage[k]
-        sql = (ans.get("sql") or "").strip()
-        undefined = ans.get("undefined_terms") or []
-
-        # ADR-0013 C5: sections whose metric is deliberately absent from
-        # metrics.json. Passing means the model REFUSED — inventing a plausible
-        # definition is the failure, however good the SQL looks.
-        if s.get("expect") == "refusal":
-            ok = not sql and bool(undefined)
-            detail = (f"refused, undefined={undefined}" if ok
-                      else f"answered anyway: undefined={undefined} sql={sql[:70]}")
-            passed += ok
-            print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
-            results.append({"id": s["id"], "title": s["title"], "question": s["text"],
-                            "component": s["component"],
-                            "sql": sql or None, "columns": None, "ok": ok, "detail": detail,
-                            "undefined_terms": undefined, "reason": ans.get("reason", ""),
-                            "verification": "refused"})
-            continue
-
-        if s["verification"] == "execution" and not sql and undefined:
-            detail = f"refused, undefined={undefined}"
-            passed += 1
-            print(f"PASS  {s['id']} {s['title']}  {detail[:110]}", flush=True)
-            results.append({"id": s["id"], "title": s["title"], "question": s["text"],
-                            "component": s["component"], "sql": None, "columns": None,
-                            "ok": True, "detail": detail, "undefined_terms": undefined,
-                            "reason": ans.get("reason", ""), "verification": "refused"})
-            continue
-
-        # Record why, not just that. A bare "no sql" made an over-refusal
-        # indistinguishable from a generation failure on the first C5 run.
-        got_res, got_err = (
-            exec_bq(bq, sql)
-            if sql
-            else (None, f"refused: undefined={undefined} reason={ans.get('reason', '')[:80]}")
-        )
-        if s["verification"] == "execution":
-            want_res, want_err = None, None
-        else:
-            want_res, want_err = exec_bq(bq, s["gold_sql"])
-            if want_err:  # the reference itself is wrong — say so loudly
-                print(f"REFERENCE BROKEN  {s['id']}  {want_err}", file=sys.stderr, flush=True)
-
-        if got_err or want_err:
-            ok, detail, component = False, got_err or want_err, s["component"]
-            columns = None
-        else:
-            got, columns = got_res
-            if s["verification"] == "execution":
-                ok, detail = True, "executed; reference value not registered"
-                component = component_for_result(got, columns)
-            else:
-                want, _ = want_res
-                ok, detail = compare(s["compare"], got, want)
-                component = s["component"]
-        passed += ok
-
-        print(f"{'PASS' if ok else 'FAIL'}  {s['id']} {s['title']}  {detail[:110]}", flush=True)
-        results.append(
-            {
-                "id": s["id"],
-                "title": s["title"],
-                "question": s["text"],
-                "component": component,
-                "sql": sql,
-                "columns": columns,
-                "ok": ok,
-                "detail": detail,
-                "undefined_terms": undefined,
-                "reason": ans.get("reason", ""),
-                "verification": s["verification"],
-            }
-        )
-
-    out_dir = HERE / "out"
-    out_path = write_outputs(out_dir, spec, results, args.project)
-
-    cost = (
-        tokens["input_tokens"] * PRICING[args.model][0]
-        + tokens["output_tokens"] * PRICING[args.model][1]
-    ) / 1e6 * USD_JPY
-    (HERE / "out" / "result.json").write_text(
-        json.dumps(
-            {
-                "ran_at": datetime.now(timezone.utc).isoformat(),
-                "model": args.model,
-                "passed": passed,
-                "total": len(sections),
-                "cost_jpy": round(cost, 3),
-                "sections": results,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    print(f"\nresult: {passed} / {len(sections)} sections handled")
-    print(f"cost: ¥{cost:.2f}  ({tokens['input_tokens']}in / {tokens['output_tokens']}out)")
-    print(f"page: {out_path}")
-    return 0 if passed == len(sections) else 1
-
-
 if __name__ == "__main__":
-    sys.exit(main())
+    print(
+        "固定レポートrunnerは削除されました。AI分析仕様を作成するmake demo-liveを使用してください。",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)

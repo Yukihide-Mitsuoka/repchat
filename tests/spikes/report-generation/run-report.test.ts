@@ -31,117 +31,16 @@ ${body}
 `);
 }
 
-test('an exact maintained Japanese question keeps reference verification', () => {
+test('fixed report routing and executable runner are removed', () => {
   const result = loadRunReport(`
-sections = module["select_sections"](spec, "2021年1月のセッション数を出して")
-print(json.dumps({
-    "count": len(sections),
-    "id": sections[0]["id"],
-    "text": sections[0]["text"],
-    "has_gold": "gold_sql" in sections[0],
-    "verification": sections[0]["verification"],
-}, ensure_ascii=False))
+removed=["select_sections","compare","component_for_result","SHOWCASE_IDS"]
+print(json.dumps({"removed":all(name not in module for name in removed)}))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    count: 1,
-    id: 'R1',
-    text: '2021年1月のセッション数を出して',
-    has_gold: true,
-    verification: 'reference',
-  });
-});
-
-test('a new Japanese question becomes one execution-only section', () => {
-  const question = '2021年1月の購入ユーザー数をデバイス別に出して';
-  const result = loadRunReport(`
-sections = module["select_sections"](spec, ${JSON.stringify(question)})
-print(json.dumps(sections, ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  const sections = JSON.parse(result.stdout);
-  assert.equal(sections.length, 1);
-  assert.equal(sections[0].id, 'Q1');
-  assert.equal(sections[0].text, question);
-  assert.equal(sections[0].verification, 'execution');
-  assert.equal('gold_sql' in sections[0], false);
-});
-
-test('showcase mode selects KPI, funnel, trend, and navigation-flow analyses', () => {
-  const result = loadRunReport(`
-sections = module["select_sections"](spec, None, showcase=True)
-print(json.dumps([{
-    "id": section["id"],
-    "component": section["component"],
-    "verification": section["verification"],
-} for section in sections]))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), [
-    { id: 'R4', component: 'kpi_pair', verification: 'reference' },
-    { id: 'R11', component: 'big_value', verification: 'reference' },
-    { id: 'R12', component: 'big_value', verification: 'reference' },
-    { id: 'R9', component: 'funnel', verification: 'reference' },
-    { id: 'R16', component: 'trend', verification: 'reference' },
-    { id: 'R17', component: 'sankey', verification: 'reference' },
-  ]);
-});
-
-test('the navigation-flow reference SQL creates bounded staged Sankey edges', () => {
-  const result = loadRunReport(`
-section = next(section for section in spec["sections"] if section["id"] == "R17")
-print(section["gold_sql"])
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(
-    result.stdout,
-    /ROW_NUMBER\(\) OVER \(PARTITION BY session_id ORDER BY event_timestamp/,
-  );
-  assert.match(
-    result.stdout,
-    /LAG\(page_path\) OVER \(PARTITION BY session_id ORDER BY event_timestamp/,
-  );
-  assert.match(result.stdout, /previous_page_path IS NULL OR page_path != previous_page_path/);
-  assert.match(result.stdout, /step <= 3/);
-  assert.match(
-    result.stdout,
-    /ORDER BY sessions DESC, entry_page, second_page, third_page LIMIT 12/,
-  );
-  assert.match(result.stdout, /LIMIT 12/);
-  assert.match(result.stdout, /'1\. 入口: '/);
-  assert.match(result.stdout, /'2\. '/);
-  assert.match(result.stdout, /'3\. '/);
-  assert.doesNotMatch(result.stdout, /SELECT\s+(?:DISTINCT\s+)?\*/i);
-});
-
-test('the navigation-flow generation request fixes normalization and edge semantics', () => {
-  const result = loadRunReport(`
-section = next(section for section in spec["sections"] if section["id"] == "R17")
-print(module["generation_request"](section, spec["period"]))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /URLからホスト・クエリ・フラグメントを除いたパス/);
-  assert.match(result.stdout, /連続する同一page_pathは1回の滞在へ統合/);
-  assert.match(result.stdout, /2ページ目が存在するセッションだけ/);
-  assert.match(result.stdout, /上位12経路を確定してから/);
-  assert.match(result.stdout, /同数なら入口・2ページ目・3ページ目昇順/);
-  assert.match(result.stdout, /離脱ノードは作らない/);
-  assert.match(result.stdout, /`1\. 入口: `、`2\. `、`3\. `/);
-});
-
-test('one-question mode rejects empty and oversized input before cloud access', () => {
-  for (const question of ['', ' '.repeat(3), 'あ'.repeat(501), '1月の\nセッション数']) {
-    const result = loadRunReport(`
-try:
-    module["select_sections"](spec, ${JSON.stringify(question)})
-except ValueError as error:
-    print(str(error))
-else:
-    raise AssertionError("question was accepted")
-`);
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /question/);
-  }
+  assert.deepEqual(JSON.parse(result.stdout), { removed: true });
+  const command = spawnSync('python3', [RUN_REPORT], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(command.status, 2);
+  assert.match(command.stderr, /固定レポートrunnerは削除されました.*demo-live/);
 });
 
 test('live SQL generation defaults to Gemini 3.6 Flash without unsupported temperature', () => {
@@ -425,22 +324,6 @@ print(json.dumps([module["validate_sql"](query) for query in queries]))
   for (const validation of validations.slice(1)) {
     assert.match(validation[1], /^rejected:/);
   }
-});
-
-test('result shape selects a BigValue, line chart, or table', () => {
-  const result = loadRunReport(`
-cases = [
-    module["component_for_result"]([(118380,)], ["sessions"]),
-    module["component_for_result"](
-        [(date(2021, 1, 1), 100), (date(2021, 1, 2), 120)],
-        ["day", "sessions"],
-    ),
-    module["component_for_result"]([("organic", 100), ("cpc", 50)], ["medium", "sessions"]),
-]
-print(json.dumps(cases))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), ['big_value', 'line', 'table']);
 });
 
 test('the Evidence page shows the Japanese question and generated warehouse SQL', () => {
