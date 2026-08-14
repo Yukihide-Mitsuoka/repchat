@@ -1343,6 +1343,83 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
   assert.ok(Object.values(output.contracts).every((contract: any) => contract.limit > 0));
 });
 
+test('dashboard SQL and dry-run schema are checked against the AI chart contract', () => {
+  const result = python(`
+panel={"id":"P1","title":"イベント別比較","chart":"grouped_bar","decision":"判断","execution_prompt":"2021年1月を比較","dimensions":["イベント"],"measures":["時間","人数"]}
+section=m.planned_analysis_section(panel)
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+safe="SELECT event_name AS category, COALESCE(SUM(engagement_time),0) AS metric_1, COUNT(DISTINCT user_pseudo_id) AS metric_2 FROM "+table+" GROUP BY category ORDER BY metric_1 DESC LIMIT 20"
+m.validate_generated_dashboard_sql(section,safe)
+m.validate_dashboard_dry_run_schema(section,[("category","STRING"),("metric_1","INT64"),("metric_2","INT64")])
+errors=[]
+for sql in [
+ "SELECT event_name, COALESCE(SUM(engagement_time),0) AS metric_1, COUNT(*) AS metric_2 FROM "+table+" GROUP BY event_name ORDER BY metric_1 DESC LIMIT 20",
+ "SELECT event_name AS category, SUM(engagement_time) AS metric_1, COUNT(*) AS metric_2 FROM "+table+" GROUP BY category ORDER BY metric_1 DESC LIMIT 20",
+ "SELECT event_name AS category, COALESCE(SUM(engagement_time),0) AS metric_1, COUNT(*) AS metric_2 FROM "+table+" GROUP BY category",
+]:
+ try:m.validate_generated_dashboard_sql(section,sql)
+ except m.LiveDemoError as error:errors.append(str(error))
+try:m.validate_dashboard_dry_run_schema(section,[("category","STRING"),("metric_1","STRING"),("metric_2","INT64")])
+except m.LiveDemoError as error:errors.append(str(error))
+print(json.dumps({"safe":True,"errors":errors},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.safe, true);
+  assert.equal(output.errors.length, 4);
+  assert.match(output.errors[0], /別名なし/);
+  assert.match(output.errors[1], /NULLを返し得る/);
+  assert.match(output.errors[2], /ORDER BYとLIMIT 20以下/);
+  assert.match(output.errors[3], /dry run出力/);
+});
+
+test('dashboard dry-run mismatch is repaired once and still stops before paid execution', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+section=m.planned_analysis_section({"id":"P1","title":"購入規模","chart":"scorecard","decision":"判断","execution_prompt":"2021年1月の購入件数","dimensions":[],"measures":["購入件数"]})
+tick=chr(96);sql="SELECT COUNT(*) AS metric_value FROM "+tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+m.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+repairs=[]
+m.report.repair=lambda *_args,**_kwargs:(repairs.append(True) or ({"sql":sql,"reason":"型を修正できない","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","STRING")],None)
+executions=[];m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
+try:e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,{"panel_id":"P1"})
+except m.LiveDemoError as error:message=str(error)
+print(json.dumps({"message":message,"repairs":len(repairs),"executions":executions},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).message, /1回修正しましたが/);
+  assert.equal(JSON.parse(result.stdout).repairs, 1);
+  assert.deepEqual(JSON.parse(result.stdout).executions, []);
+});
+
+test('a compiler dry-run diagnostic is repaired before paid execution', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+section=m.planned_analysis_section({"id":"P1","title":"購入規模","chart":"scorecard","decision":"判断","execution_prompt":"2021年1月の購入件数","dimensions":[],"measures":["購入件数"]})
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+initial="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+repaired="WITH base AS (SELECT user_pseudo_id FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131') SELECT COUNT(*) AS metric_value FROM base"
+m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+diagnostics=[]
+m.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({"sql":repaired,"reason":"CTEへ修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+dry_runs=[]
+def inspect(_bq,sql,**_kwargs):
+ dry_runs.append(sql)
+ return (None,"bq dry-run error: BadRequest: Correlated subqueries are not supported") if len(dry_runs)==1 else ([("metric_value","INT64")],None)
+m.report.inspect_bq_schema=inspect
+executed=[];m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([(12,)], ["metric_value"]),None))
+events=[];e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append,{"panel_id":"P1"})
+print(json.dumps({"diagnostics":diagnostics,"dry_runs":dry_runs,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.diagnostics[0], /Correlated subqueries/);
+  assert.equal(output.dry_runs.length, 2);
+  assert.deepEqual(output.executed, [output.dry_runs[1]]);
+  assert.deepEqual(output.stages, ['generate', 'validate', 'repair', 'execute']);
+});
+
 test('an AI-authored table remains a table even when its result could be plotted', () => {
   const result = python(`
 section={"title":"流入別の比較表","component":"table","planned_visualization":"table"}
