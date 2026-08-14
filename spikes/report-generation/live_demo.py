@@ -71,22 +71,30 @@ def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
     """Lay out AI-authored panels without encoding any analysis topic."""
     if not panels:
         raise LiveDemoError("ダッシュボード計画にパネルがありません。")
+    grouped: dict[int, list[dict]] = {}
+    for panel in panels:
+        row = panel.get("layout_row")
+        weight = panel.get("layout_weight")
+        if (
+            isinstance(row, bool)
+            or not isinstance(row, int)
+            or row < 1
+            or isinstance(weight, bool)
+            or not isinstance(weight, int)
+            or not 1 <= weight <= 100
+        ):
+            raise LiveDemoError("AIが考察したダッシュボード配置がありません。")
+        grouped.setdefault(row, []).append(panel)
+    row_numbers = list(grouped)
+    if row_numbers != sorted(row_numbers) or any(
+        len(group) > 4 for group in grouped.values()
+    ):
+        raise LiveDemoError("AIが考察したダッシュボード行が描画仕様と一致しません。")
     rows: list[dict] = []
-    index = 0
-    weights = {"scorecard": 40, "bar": 60, "line": 60, "table": 60, "sankey": 100}
-    while index < len(panels):
-        panel = panels[index]
-        if panel.get("chart") == "sankey":
-            group = [panel]
-            index += 1
-        else:
-            group = panels[index : index + 2]
-            if len(group) == 2 and group[1].get("chart") == "sankey":
-                group = group[:1]
-            index += len(group)
-        raw_shares = [weights.get(item.get("chart"), 60) for item in group]
-        total = sum(raw_shares)
-        shares = [round(value * 100 / total, 4) for value in raw_shares]
+    for row_number in row_numbers:
+        group = grouped[row_number]
+        total = sum(item["layout_weight"] for item in group)
+        shares = [round(item["layout_weight"] * 100 / total, 4) for item in group]
         shares[-1] = round(100 - sum(shares[:-1]), 4)
         rows.append(
             {
