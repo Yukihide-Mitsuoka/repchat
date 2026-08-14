@@ -1081,15 +1081,15 @@ class E:
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
 def plan(reason):
- return {"objective":question,"objective_summary":"購入課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question(question),"hypotheses":["購入導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":reason} for panel_id in ["R4","R9","R16","R17"]]}
+ return {"objective":question,"objective_summary":"購入課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question(question),"hypotheses":["購入導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"title":f"分析{index}","kpi":"購入金額","chart":"table","decision":"優先施策を判断する","reason":reason,"execution_prompt":f"2021年1月の商品別購入金額を分析{index}として比較する","dimensions":["商品"],"measures":["購入金額"],"layout_row":(index+3)//4,"layout_weight":1} for index in range(1,21)]}
 def request(analysis_plan):
  data=json.dumps({"question":question,"profile":"ga4","analysis_plan":analysis_plan},ensure_ascii=False).encode()
  req=urllib.request.Request(base+"/api/dashboard",data=data,headers={"content-type":"application/json","origin":base},method="POST")
  return data,req
 try:
- bounded,bounded_req=request(plan("理由"*250))
+ bounded,bounded_req=request(plan("理由"*100))
  accepted=json.loads(urllib.request.urlopen(bounded_req).read().decode())["accepted"]
- oversized,oversized_req=request(plan("理由"*9000))
+ oversized,oversized_req=request(plan("理由"*900))
  oversized_status=0
  try:urllib.request.urlopen(oversized_req)
  except urllib.error.HTTPError as error:oversized_status=error.code
@@ -1113,7 +1113,7 @@ class E:
  def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月の購入課題を分析するダッシュボードを作って"
-def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して","dimensions":["区分"],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[panel(index) for index in range(1,7)]}
 plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
 def request(extra):
@@ -1298,7 +1298,7 @@ test('planning calls Vertex only and preserves AI-authored dashboard panels', ()
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を1行で出して","dimensions":[],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
 m.planner.propose_dashboard=lambda *_args,**_kwargs:(calls.append("vertex") or (raw,{"input_tokens":10,"output_tokens":5}))
@@ -1321,7 +1321,7 @@ test('planning sends the selected current plan and revision instruction back to 
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.metrics="metrics";e.client=object();e.lock=threading.Lock()
-def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して"}
+def panel(index):return {"id":f"P{index}","title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して","dimensions":["区分"],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
 raw={"status":"proposed","objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"目的","audience":"責任者","comparison":"月内比較","period":m.period_for_question("2021年1月"),"hypotheses":["仮説"],"clarifications":[],"answers":{"audience":"責任者"},"organization_context_revision":"demo-org-ec-v1","panels":[panel(index) for index in range(1,7)],"revision":"plan-test"}
 calls=[]
 def propose(*_args,**kwargs):
@@ -1340,13 +1340,15 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events]},en
 
 test('a confirmed dynamic dashboard plan builds its authored specifications', () => {
   const result = python(`
-def panel(title,chart,prompt):return {"title":title,"kpi":"定義済み指標","chart":chart,"decision":"意思決定","reason":"目的に必要","execution_prompt":prompt}
+def panel(title,chart,prompt,row,weight):
+ dimension=[] if chart=="scorecard" else (["日別"] if chart=="line" else ["medium"] if "medium" in prompt else ["デバイス"])
+ return {"title":title,"kpi":"購入件数","chart":chart,"decision":"意思決定","reason":"目的に必要","execution_prompt":prompt,"dimensions":dimension,"measures":["購入件数"],"layout_row":row,"layout_weight":weight}
 question="2021年1月の購入課題を分析するダッシュボードを作って"
 raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"軸間比較","hypotheses":["差がある"],"clarifications":[],"panels":[
- panel("流入別購入","bar","2021年1月の購入件数をmedium別に出して"),
- panel("日別購入","line","2021年1月の日別購入件数を出して"),
- panel("デバイス別購入","bar","2021年1月の購入件数をデバイス別に出して"),
- panel("購入規模","scorecard","2021年1月の購入件数を出して"),
+ panel("流入別購入","bar","2021年1月の購入件数をmedium別に出して",1,1),
+ panel("日別購入","line","2021年1月の日別購入件数を出して",1,3),
+ panel("デバイス別購入","bar","2021年1月の購入件数をデバイス別に出して",2,1),
+ panel("購入規模","scorecard","2021年1月の購入件数を出して",2,1),
 ]}
 plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),{"audience":"責任者"})
 confirmed=m.planner.confirm_dashboard_plan(plan)
@@ -2062,30 +2064,36 @@ import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
 e.spec=json.loads((m.HERE/"report.json").read_text());e.metric_definitions=json.loads((m.HERE/"metrics.json").read_text())
 e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
-plan={"objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"購入成果の課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question("2021年1月"),"hypotheses":["導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":[{"id":panel_id,"reason":"必要"} for panel_id in ["R4","R9","R16","R17"]]}
-rows={"R4":[[895,123456.0]],"R9":[[100,50,20]],"R16":[["2021-01-31",118380,117000.5]],"R17":[["1. 入口: /","2. /shop",5]]}
-columns={"R4":["購入件数","購入金額"],"R9":["閲覧","カート","購入"],"R16":["日付","セッション数","7日移動平均"],"R17":["source","target","sessions"]}
+panels=[
+ {"title":"購入規模","kpi":"購入成果","chart":"table","decision":"購入成果の規模を判断する","reason":"全体規模が必要","execution_prompt":"2021年1月の購入件数と購入金額を集計する","dimensions":[],"measures":["購入件数","購入金額"],"layout_row":1,"layout_weight":1},
+ {"title":"購入ファネル","kpi":"購入導線","chart":"table","decision":"購入までの減少箇所を判断する","reason":"導線診断が必要","execution_prompt":"2021年1月の閲覧とカートと購入を集計する","dimensions":[],"measures":["閲覧","カート","購入"],"layout_row":1,"layout_weight":1},
+ {"title":"日別推移","kpi":"セッション数","chart":"line","decision":"月内変動を判断する","reason":"変動確認が必要","execution_prompt":"2021年1月の日付別セッション数を集計する","dimensions":["日付"],"measures":["セッション数"],"layout_row":2,"layout_weight":1},
+ {"title":"主要回遊","kpi":"回遊数","chart":"sankey","decision":"主要な遷移を判断する","reason":"回遊確認が必要","execution_prompt":"2021年1月のsourceからtargetへのsessionsを集計する","dimensions":["source","target"],"measures":["sessions"],"layout_row":2,"layout_weight":1},
+]
+plan={"objective":"2021年1月の購入成果を改善するダッシュボードを作って","objective_summary":"購入成果の課題を判断する","audience":"月次会議","comparison":"月内推移","period":m.period_for_question("2021年1月"),"hypotheses":["導線に課題がある"],"clarifications":[],"answers":{"audience":"月次会議"},"panels":panels}
+rows={"P1":[[895,123456.0]],"P2":[[100,50,20]],"P3":[["2021-01-31",118380]],"P4":[["1. 入口: /","2. /shop",5]]}
+columns={"P1":["購入件数","購入金額"],"P2":["閲覧","カート","購入"],"P3":["日付","セッション数"],"P4":["source","target","sessions"]}
 def run_section(section,period,emit,context=None,profile="ga4"):
  emit({"type":"sql","sql":"SELECT value FROM source","sql_sha256":"1"*16,**context})
- emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":section["component"],**context})
+ emit({"type":"result","columns":columns[section["id"]],"rows":rows[section["id"]],"verification":"matched","verification_label":"照合済み","visualization":"funnel" if section["id"]=="P2" else section["component"],**context})
  return .1
 e._run_section=run_section;events=[];e.dashboard(plan["objective"],events.append,plan);bundle=e.latest_dashboard
-raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["R4"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R16"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["R9"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["R4"]}],"limitations":["目標値と施策履歴が未登録です。"]}
+raw={"executive_summary":{"text":"追加診断が必要です。","panel_ids":["P1"]},"observations":[{"text":"購入件数は895件です。","panel_ids":["P1"]}],"interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["P3"]}],"hypotheses":[{"text":"導線に課題がある可能性があります。","validation":"流入別に検証します。","panel_ids":["P2"]}],"actions":[{"text":"導線を確認します。","owner":"マーケティング責任者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に比較します。","success_metric":"購入件数","panel_ids":["P1"]}],"limitations":["目標値と施策履歴が未登録です。"]}
 calls=[]
 m.meeting.generate=lambda _client,_model,current:(calls.append(current["build_revision"]) or (m.meeting.normalize_report(raw,current),{"input_tokens":10,"output_tokens":5}))
 report_events=[];e.meeting_report(bundle["build_revision"],report_events.append)
 error=""
 try:e.meeting_report("build-000000000000",lambda _event:None)
 except m.LiveDemoError as caught:error=str(caught)
-funnel=next(panel for panel in bundle["panels"] if panel["id"]=="R9")
-print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["goal"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"funnel_rate":funnel["derived_metrics"][0]["value"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
+funnel=next(panel for panel in bundle["panels"] if panel["id"]=="P2")
+print(json.dumps({"dashboard_complete":events[-1]["build_revision"],"build":bundle["build_revision"],"plan":bundle["analysis_specification"]["revision"],"organization":bundle["organization_context"]["objective_summary"],"metric":"購入件数" in bundle["metric_definitions"]["metrics"],"result_revision":bundle["panels"][0]["result_revision"],"sql":bundle["panels"][0]["sql_sha256"],"funnel_rate":funnel["derived_metrics"][0]["value"],"report_types":[event["type"] for event in report_events],"report_revision":report_events[-1]["report"]["report_revision"],"citation":report_events[-1]["report"]["observations"][0]["evidence_refs"][0],"calls":calls,"error":error},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.dashboard_complete, output.build);
   assert.match(output.build, /^build-[0-9a-f]{12}$/);
   assert.match(output.plan, /^plan-[0-9a-f]{12}$/);
-  assert.equal(output.organization, '購入成果を伸ばし、訪問者の継続利用を改善する');
+  assert.equal(output.organization, '購入成果の課題を判断する');
   assert.equal(output.metric, true);
   assert.match(output.result_revision, /^result-[0-9a-f]{12}$/);
   assert.equal(output.sql, '1111111111111111');
