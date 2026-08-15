@@ -68,21 +68,35 @@ print(json.dumps({"same":first==second,"different":first!=other,"complete":set(f
   });
 });
 
-test('dashboard measures are constrained to defined metrics without fixing analysis content', () => {
+test('defined metrics are validated after generation without expanding every chart schema', () => {
   const result = python(`
 metrics='''指標定義:\n- 指標「セッション数」 = COUNT(*)\n- 指標「購入金額」 = SUM(value)\n- 軸「日付」 = event_date'''
 names=p._defined_metric_names(metrics)
 schema=p._dashboard_response_schema({},seed="依頼A",metric_names=names)
 variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-enums=[item["properties"]["measures"]["items"]["enum"] for item in variants]
-print(json.dumps({"names":names,"same":all(set(values)==set(names) for values in enums),"unknown":any("目標達成度" in values for values in enums)},ensure_ascii=False))
+measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
+raw={
+ "objective_summary":"目的を確認する","audience":"責任者","comparison":"月内比較",
+ "hypotheses":["指標を比較する"],
+ "clarifications":[{"field":"audience","question":"主な読者は誰ですか","recommended_answer":"責任者"}],
+ "panels":[{
+  "title":"未定義指標","kpi":"目標達成度","chart":"scorecard",
+  "decision":"目標達成度を判断する","reason":"判断に必要",
+  "execution_prompt":"2021年1月の目標達成度を集計する",
+  "dimensions":[],"measures":["目標達成度"],"layout_row":1,"layout_weight":100
+ }]
+}
+error=""
+try:
+ p.normalize_dashboard_plan(raw,"2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},{},allowed_metrics=names)
+except Exception as caught:error=f"{type(caught).__name__}: {caught}"
+print(json.dumps({"schema_bytes":len(json.dumps(schema,ensure_ascii=False,separators=(",",":" )).encode()),"measure_enums":measure_enums,"error":error},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    names: ['セッション数', '購入金額'],
-    same: true,
-    unknown: false,
-  });
+  const output = JSON.parse(result.stdout);
+  assert.ok(output.schema_bytes < 8000, output.schema_bytes);
+  assert.ok(output.measure_enums.every((value: unknown) => value === null));
+  assert.match(output.error, /指標定義にない指標.*目標達成度/);
 });
 
 test('answered clarification schema avoids the provider-invalid zero item bound', () => {
