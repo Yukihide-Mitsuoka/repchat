@@ -43,6 +43,11 @@ print(json.dumps({
   );
   assert.deepEqual(output.contracts.scorecard, [0, 0, 1, 1]);
   assert.deepEqual(output.contracts.grouped_bar, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.area, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.stacked_area, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.histogram, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.donut, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.calendar_heatmap, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
 });
@@ -60,6 +65,23 @@ print(json.dumps({"same":first==second,"different":first!=other,"complete":set(f
     same: true,
     different: true,
     complete: true,
+  });
+});
+
+test('dashboard measures are constrained to defined metrics without fixing analysis content', () => {
+  const result = python(`
+metrics='''指標定義:\n- 指標「セッション数」 = COUNT(*)\n- 指標「購入金額」 = SUM(value)\n- 軸「日付」 = event_date'''
+names=p._defined_metric_names(metrics)
+schema=p._dashboard_response_schema({},seed="依頼A",metric_names=names)
+variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
+enums=[item["properties"]["measures"]["items"]["enum"] for item in variants]
+print(json.dumps({"names":names,"same":all(set(values)==set(names) for values in enums),"unknown":any("目標達成度" in values for values in enums)},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    names: ['セッション数', '購入金額'],
+    same: true,
+    unknown: false,
   });
 });
 

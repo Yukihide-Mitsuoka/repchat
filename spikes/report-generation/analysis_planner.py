@@ -17,6 +17,11 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "stacked_bar",
     "line",
     "multi_line",
+    "area",
+    "stacked_area",
+    "histogram",
+    "donut",
+    "calendar_heatmap",
     "scatter",
     "bubble",
     "funnel",
@@ -36,6 +41,11 @@ DASHBOARD_ROW_LIMITS = {
     "stacked_bar": 20,
     "line": 100,
     "multi_line": 100,
+    "area": 100,
+    "stacked_area": 100,
+    "histogram": 30,
+    "donut": 12,
+    "calendar_heatmap": 366,
     "scatter": 100,
     "bubble": 100,
     "funnel": 12,
@@ -51,6 +61,11 @@ CHART_SHAPE_CONTRACTS = {
     "stacked_bar": (1, 1, 2, 4),
     "line": (1, 1, 1, 1),
     "multi_line": (1, 1, 2, 4),
+    "area": (1, 1, 1, 1),
+    "stacked_area": (1, 1, 2, 4),
+    "histogram": (1, 1, 1, 1),
+    "donut": (1, 1, 1, 1),
+    "calendar_heatmap": (1, 1, 1, 1),
     "scatter": (1, 1, 2, 2),
     "bubble": (1, 1, 3, 3),
     "funnel": (1, 1, 1, 1),
@@ -110,8 +125,13 @@ def _neutral_chart_order(charts: tuple[str, ...], seed: str) -> tuple[str, ...]:
     )
 
 
+def _defined_metric_names(metrics: str) -> tuple[str, ...]:
+    """Extract only customer-defined metric names from the rendered definition block."""
+    return tuple(dict.fromkeys(re.findall(r'^- 指標「([^」]+)」', metrics, re.MULTILINE)))
+
+
 def _visualization_response_schema(
-    charts: tuple[str, ...], *, seed: str = ""
+    charts: tuple[str, ...], *, seed: str = "", metric_names: tuple[str, ...] = ()
 ) -> dict:
     """Constrain chart and result shape together without prompt heuristics."""
     variants = []
@@ -119,6 +139,14 @@ def _visualization_response_schema(
         min_dimensions, max_dimensions, min_measures, max_measures = (
             CHART_SHAPE_CONTRACTS[chart]
         )
+        measure_items = {"type": "string"}
+        if metric_names:
+            measure_items.update(
+                {
+                    "format": "enum",
+                    "enum": list(_neutral_chart_order(metric_names, seed)),
+                }
+            )
         variants.append(
             {
                 "type": "object",
@@ -138,7 +166,7 @@ def _visualization_response_schema(
                         "type": "array",
                         "minItems": min_measures,
                         "maxItems": max_measures,
-                        "items": {"type": "string"},
+                        "items": measure_items,
                     },
                 },
                 "required": ["chart", "dimensions", "measures"],
@@ -256,7 +284,11 @@ def _response_schema(answers: dict[str, str]) -> dict:
 
 
 def _dashboard_response_schema(
-    answers: dict[str, str], *, revising: bool = False, seed: str = ""
+    answers: dict[str, str],
+    *,
+    revising: bool = False,
+    seed: str = "",
+    metric_names: tuple[str, ...] = (),
 ) -> dict:
     """Constrain an initial or revised AI-authored dashboard."""
     schema = _response_schema(answers)
@@ -264,7 +296,9 @@ def _dashboard_response_schema(
         DYNAMIC_PLAN_SCHEMA["properties"]["panels"]
     )
     schema["properties"]["panels"]["items"]["properties"]["visualization"] = (
-        _visualization_response_schema(DASHBOARD_CHARTS, seed=seed)
+        _visualization_response_schema(
+            DASHBOARD_CHARTS, seed=seed, metric_names=metric_names
+        )
     )
     if revising:
         # Vertex can reject otherwise valid structured-output schemas as too
@@ -330,6 +364,7 @@ def dashboard_planning_request(
 - 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。
 - 利用できない指標や因果関係を捏造しない。
+- measuresは上の「指標定義」に名前がある指標だけにする。目標値や目標達成度など、定義にない基準を作らない。
 """
 
 
@@ -615,6 +650,7 @@ def propose_dashboard(
                 answers,
                 revising=current_plan is not None,
                 seed=f"{objective}\n{instruction or ''}",
+                metric_names=_defined_metric_names(metrics),
             ),
         ),
     )
