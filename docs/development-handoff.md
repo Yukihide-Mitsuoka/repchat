@@ -19,7 +19,7 @@ updated: 2026-08-15
 | デモ実行状態 | [PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)はmerge済み。18 chart分岐へ定義済み指標enumを複製してschemaが6,898 bytesから9,319 bytesへ増えた原因を固定応答で再現し、PR #412では指標検証をserver側へ移した。実Vertex AI・BigQueryは再実行していない |
 | 直近完了 | `make format`、`make lint`、`make test-unit`、`make test`は2026-08-15に成功。修正前コードに対する再現テストは9,319 bytesのschemaで失敗し、修正後は成功した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | PR #412のCIとreview指摘へ対応する。merge後は無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
+| AIができること | PR #412のCI 24件は2026-08-15に成功済み。review指摘へ対応し、merge後は無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
 | 完了時 | PR #412をmergeし、費用承認が得られた場合だけVertex AIのdashboard相談を1回確認する。その後はIssue #160の証拠を`proceed` / `revise` / `reject`に分類する |
 
@@ -87,7 +87,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-15）
 
-1. **現在:** [PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)のCIとreviewを完了する。修正前コードで失敗する再現テスト、server側の未定義指標拒否、固定テスト・format・lint・全テストは確認済み。
+1. **現在:** [PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)はCI 24件が成功済み。reviewを完了してmergeする。修正前コードで失敗する再現テスト、server側の未定義指標拒否、固定テスト・format・lint・全テストは確認済み。
 2. **merge後:** ローカルデモを最新mainから再起動し、無料の固定応答でschema、現在案保持、未定義指標の修正文案を確認する。
 3. **オーナー承認後:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
