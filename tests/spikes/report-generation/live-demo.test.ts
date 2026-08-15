@@ -490,14 +490,29 @@ print(json.dumps({"component":section["component"],"planned":section["planned_vi
       component: 'sankey',
       planned: 'sankey',
       verification: 'execution',
-      rows: 100,
+      rows: 30,
       pages: 4,
       removed: true,
     },
   );
   assert.match(value.requirements, /source、target、metric_value/);
   assert.match(value.requirements, /最初の4ページ/);
-  assert.match(value.requirements, /LIMIT 100/);
+  assert.match(value.requirements, /上位10経路/);
+  assert.match(value.requirements, /LIMIT 30/);
+});
+
+test('multi-line charts always use one visible vertical scale per series', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /independent=seriesCount>1,/);
+  assert.doesNotMatch(
+    rendered.stdout,
+    /Math\.max\(\.\.\.magnitudes\)\/Math\.min\(\.\.\.magnitudes\)>=100/,
+  );
+  assert.match(
+    rendered.stdout,
+    /系列ごとに独立した縦軸スケールで、各系列の期間内の変化を同じ高さに正規化しています。/,
+  );
 });
 
 test('single-graph progress shows the dynamic stop reason before stage details', () => {
@@ -687,6 +702,30 @@ print(json.dumps(errors,ensure_ascii=False))
     '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
     '回遊の結果形状がAI分析仕様のsankeyと一致しないため描画しません。',
   ]);
+});
+
+test('dashboard navigation Sankey rejects more than ten paths worth of nodes or edges', () => {
+  const result = python(`
+section={"id":"R17","title":"回遊","planned_visualization":"sankey"}
+cases=[
+ [(f"1. /start-{index}",f"2. /next-{index}",index+1) for index in range(11)],
+ [(f"1. /start-{index}",f"2. /next-{index}",index+1) for index in range(10)]
+  +[(f"2. /next-{index}",f"3. /last-{index}",index+1) for index in range(10)]
+  +[(f"3. /last-{index}",f"4. /done-{index}",index+1) for index in range(10)]
+  +[("1. /extra","2. /extra",1)],
+]
+accepted=[]
+for rows in cases:
+ try:
+  m.dashboard_visualization(section,rows,["source","target","sessions"])
+ except m.LiveDemoError:
+  accepted.append(False)
+ else:
+  accepted.append(True)
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [false, false]);
 });
 
 test('editing an AI-authored insight requires a new consultation before execution', () => {

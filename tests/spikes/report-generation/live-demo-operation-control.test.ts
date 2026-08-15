@@ -47,11 +47,14 @@ test('composer becomes a stop control and prevents a second submission while str
   for (const expected of [
     'new AbortController()',
     'function stopActiveRequest()',
-    '$("composer-submit").textContent="■"',
+    'function setComposerSubmitIcon(stopping)',
+    'setComposerSubmitIcon(true)',
+    'setComposerSubmitIcon(false)',
     '$("composer-input").disabled=true',
     'if(activeRequest){stopActiveRequest();return}',
     'request_id:operation.requestId',
   ]) {
     assert.ok(script.includes(expected), `missing in-flight composer contract: ${expected}`);
   }
+  assert.match(rendered.stdout, /#composer-submit svg\{display:block;width:16px;height:16px\}/);
 });
