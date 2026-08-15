@@ -12,7 +12,8 @@ BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認
 
 ## ダッシュボード相談で「生成または実行に失敗しました。端末ログを確認してください。」と表示される
 
-**Affects:** PR #411の可視化拡張後に、定義済み指標を含むdashboard plannerを実Vertex AIへ送る場合。
+**Affects:** PR #411の可視化拡張後からPR #412の修正前までに、定義済み指標を含むdashboard plannerを
+実Vertex AIへ送る場合。
 
 **Cause:** 18種類の可視化を表す`anyOf`の各分岐へ、同じ定義済み指標enumを複製していました。
 指標7件のGA4契約ではstructured-output schemaが6,898 bytesから9,319 bytesへ増え、providerが
@@ -26,7 +27,8 @@ AI応答の`measures`はserver側で定義済み指標と照合し、未定義�
 含まれた場合にserver側が拒否することを確認します。修正版での実Vertex AI確認は、画面の費用を改めて
 承認した場合だけ1回実行してください。
 
-**Refs:** [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)
+**Refs:** [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)、
+[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)
 
 ## 「Google Cloudの認証期限が切れています」で停止する
 
