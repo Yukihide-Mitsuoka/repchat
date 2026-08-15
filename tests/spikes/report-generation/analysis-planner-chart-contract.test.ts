@@ -100,25 +100,46 @@ raw={
   "dimensions":[],"measures":["目標達成度"],"layout_row":1,"layout_weight":100
  }]
 }
+valid={**raw,"panels":[{
+ "title":"定義済み指標","kpi":"セッション数","chart":"scorecard",
+ "decision":"セッション数を判断する","reason":"判断に必要",
+ "execution_prompt":"2021年1月のセッション数を集計する",
+ "dimensions":[],"measures":["セッション数"],"layout_row":1,"layout_weight":100
+}]}
 captured={}
 class Models:
+ def __init__(self):self.responses=[raw,valid]
  def generate_content(self,**kwargs):
   captured["schema"]=kwargs["config"].response_schema
-  return types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),usage_metadata=object())
+  return types.SimpleNamespace(text=json.dumps(self.responses.pop(0),ensure_ascii=False),usage_metadata=object())
+client=types.SimpleNamespace(models=Models())
 error=""
+suggestion=""
 try:
- p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
-except Exception as caught:error=f"{type(caught).__name__}: {caught}"
+ p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
+except Exception as caught:
+ error=f"{type(caught).__name__}: {caught}"
+ suggestion=getattr(caught,"suggested_instruction","")
+accepted,_usage=p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
 schema=captured["schema"]
 variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
 measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
-print(json.dumps({"schema_bytes":len(json.dumps(schema,ensure_ascii=False,separators=(",",":" )).encode()),"measure_enums":measure_enums,"error":error},ensure_ascii=False))
+schema_json=json.dumps(schema,ensure_ascii=False,separators=(",",":"))
+description=schema["properties"]["panels"]["description"]
+description_metrics=description.removeprefix("measuresは次の定義済み指標名だけを使う: ").split("、")
+print(json.dumps({"schema_bytes":len(schema_json.encode()),"names":names,"description_metrics":description_metrics,"measure_enums":measure_enums,"error":error,"suggestion":suggestion,"accepted":accepted["panels"][0]["measures"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.ok(output.schema_bytes < 8000, output.schema_bytes);
+  assert.deepEqual(new Set(output.description_metrics), new Set(output.names));
+  assert.equal(output.description_metrics.length, output.names.length);
   assert.ok(output.measure_enums.every((value: unknown) => value === null));
   assert.match(output.error, /指標定義にない指標.*目標達成度/);
+  assert.match(output.suggestion, /セッション数/);
+  assert.match(output.suggestion, /購入金額/);
+  assert.match(output.suggestion, /だけを使って再提案/);
+  assert.deepEqual(output.accepted, ['セッション数']);
 });
 
 test('answered clarification schema avoids the provider-invalid zero item bound', () => {

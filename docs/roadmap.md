@@ -19,18 +19,18 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 2026-08-15時点では、未解消の不具合と検証阻害を先に解消し、その後に以下の順で依頼を選びます。
 各Issueが受入条件の正本であり、この表は開始順序と依存関係だけを管理します。
 
-| 優先 | 段階 | 依頼候補 | 開始条件 |
-|---:|---|---|---|
-| 1 | 検証ゲート | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | 現在。オーナーが参加者を選定し、5分デモ後に`proceed` / `revise` / `reject`を確定する |
-| 2 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | 評価設計は並行可能。製品能力として扱うのは独立レビュー、実値照合、未知・非公開相当2種類の評価に合格した後 |
-| 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | #160=`proceed`。#188とは独立に開始し、閲覧面と監査面のinteraction・認可境界を先に確定する |
-| 3 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179のinteractionと#188のschema品質境界が確定した後 |
-| 4 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
-| 5 | 意思決定支援 | [#181 根拠付き経営報告とアクション](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | #180の統制された生成・公開経路と、SQL・結果・根拠のrevision追跡が安定した後 |
-| 6 | 外部連携 | [#345 Action Package API](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) | #181の承認済みaction revisionが安定し、最初の外部consumerを確認した後 |
-| 条件付き | 品質向上 | [#380 AI考察後の根拠付きパネル補強](https://github.com/Yukihide-Mitsuoka/repchat/issues/380) | AI-only plannerのbaselineが代表シナリオで安定し、補強による改善を同一評価セットで比較できる場合だけ |
-| 着手直前 | 本番化 | [#194 課金・認証方式](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) | 課金または本番オンボーディングへ着手する直前。オーナー判断なしにAIが方式を選ばない |
-| リリース前 | リリース | [#251 検証可能なrelease artifact](https://github.com/Yukihide-Mitsuoka/repchat/issues/251) | 配布対象とconsumerを確定し、`make build`またはpublish jobが不変artifactを生成できる時点 |
+| 優先 | 段階 | 依頼候補 | 目的 | 開始・完了条件 |
+|---:|---|---|---|---|
+| 1 | 検証ゲート | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | 現在のAI提案・SQL・dashboardが実利用者の意思決定に使えるか判定する | 現在。オーナーが参加者を選定し、5分デモ後に`proceed` / `revise` / `reject`を確定する |
+| 2 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | GA4・Bitcoinの固定例や固定SQLに依存せず、未知schemaから分析・SQL・描画できる境界を測る | 評価設計は並行可能。独立レビュー、実値照合、未知・非公開相当2種類の反復評価に合格するまで製品能力として扱わない |
+| 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #160=`proceed`。#188とは独立に開始し、interaction・deep link・認可境界を先に確定する |
+| 3 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | 対話、immutable specification revision、承認、非同期build、再開、公開を製品契約にする | #179のinteractionと#188のschema品質境界が確定した後 |
+| 4 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | AI配置と利用者の幅調整を構造化revisionとして保存・公開し、共有相手に再現する | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
+| 5 | 意思決定支援 | [#181 根拠付き経営報告とアクション](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | 根拠へ追跡できる判断、施策、担当、成功指標、検証方法を生成し、人間の承認後だけ配布する | #180の統制された生成・公開経路と、SQL・結果・根拠のrevision追跡が安定した後 |
+| 6 | 外部連携 | [#345 Action Package API](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) | 承認済み施策をprovider非依存のJSON packageとして外部systemへ渡し、権限・credential・監査を分析処理から分離する | #181の承認済みaction revisionが安定し、最初の外部consumerを確認した後 |
+| 条件付き | 品質向上 | [#380 AI考察後の根拠付きパネル補強](https://github.com/Yukihide-Mitsuoka/repchat/issues/380) | AI-only計画の後に根拠付き補強候補を任意提示し、固定パネル置換や自動fallbackを行わず品質差を測る | AI-only plannerのbaselineが代表シナリオで安定し、同一評価セットで改善と失敗例を比較できる場合だけ |
+| 着手直前 | 本番化 | [#194 課金・認証方式](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) | 閲覧者・作成者・管理者の課金区分、初期認証方式、利用者管理主体をオーナー判断で確定する | 課金または本番オンボーディングへ着手する直前。オーナー判断なしにAIが方式を選ばない |
+| リリース前 | リリース | [#251 検証可能なrelease artifact](https://github.com/Yukihide-Mitsuoka/repchat/issues/251) | 実行コード、設定、依存関係、検査結果を同じ不変artifactとprovenanceへ結び付ける | 配布対象とconsumerを確定し、`make build`またはpublish jobがattestation対象を生成できる時点 |
 
 同順位の#179と#188は独立した依頼として並行できます。#160が`revise`または`reject`の場合は、
 優先3以降へ進まず、観測結果からpositioningと本ロードマップを再評価します。
