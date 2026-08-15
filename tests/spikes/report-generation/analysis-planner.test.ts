@@ -157,7 +157,7 @@ print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_
     'funnel',
     'heatmap',
   ]);
-  assert.equal(output.charts.length, 13);
+  assert.equal(output.charts.length, 18);
   assert.deepEqual(output.schema_charts, output.charts);
   assert.deepEqual(output.consultation_charts, output.charts);
   assert.deepEqual(output.bar_shape, {

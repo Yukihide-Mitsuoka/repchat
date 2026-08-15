@@ -513,6 +513,21 @@ test('multi-line charts always use one visible vertical scale per series', () =>
     rendered.stdout,
     /系列ごとに独立した縦軸スケールで、各系列の期間内の変化を同じ高さに正規化しています。/,
   );
+  assert.match(rendered.stdout, /class:"chart-axis-value"/);
+  assert.match(rendered.stdout, /class:"chart-axis-title"/);
+  assert.match(rendered.stdout, /metricAxisTitle\(r\.columns\[seriesIndex\+1\]\)/);
+  assert.match(rendered.stdout, /購入金額.*USD/);
+  assert.match(rendered.stdout, /購入件数.*件/);
+  assert.match(rendered.stdout, /chartValue\(tickValue,r\.columns\[seriesIndex\+1\]\)/);
+});
+
+test('stopped dashboard panels explain why SQL and data do not exist', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /SQL生成前に停止したため、SQLはありません。/);
+  assert.match(rendered.stdout, /SQLを実行していないため、取得データはありません。/);
+  assert.match(rendered.stdout, /panel\.sqlStatus/);
+  assert.match(rendered.stdout, /panel\.dataStatus/);
 });
 
 test('single-graph progress shows the dynamic stop reason before stage details', () => {
@@ -581,6 +596,52 @@ test('dashboard-specific KPI, funnel, and trend panels render from fixed results
       columns: ['閲覧', 'カート', '購入'],
       rows: [[23105, 4537, 1115]],
       expectedTag: 'div',
+    },
+    {
+      visualization: 'area',
+      columns: ['日付', '購入件数'],
+      rows: [
+        ['2021-01-01', 10],
+        ['2021-01-02', 14],
+      ],
+      expectedTag: 'svg',
+    },
+    {
+      visualization: 'stacked_area',
+      columns: ['日付', '新規', 'リピート'],
+      rows: [
+        ['2021-01-01', 10, 4],
+        ['2021-01-02', 12, 7],
+      ],
+      expectedTag: 'svg',
+    },
+    {
+      visualization: 'histogram',
+      columns: ['階級下限', '度数'],
+      rows: [
+        [0, 3],
+        [10, 5],
+      ],
+      expectedTag: 'svg',
+    },
+    {
+      visualization: 'donut',
+      columns: ['デバイス', 'セッション数'],
+      rows: [
+        ['desktop', 70],
+        ['mobile', 30],
+      ],
+      expectedTag: 'svg',
+    },
+    {
+      visualization: 'calendar_heatmap',
+      columns: ['日付', '購入件数'],
+      rows: [
+        ['2021-01-01', 10],
+        ['2021-01-02', 3],
+        ['2021-01-03', 12],
+      ],
+      expectedTag: 'svg',
     },
     {
       visualization: 'trend',
@@ -1255,6 +1316,9 @@ charts={
  "scorecard":([], ["値"]),"kpi_group":([], ["値1","値2"]),
  "bar":(["区分"],["値"]),"grouped_bar":(["区分"],["値1","値2"]),
  "stacked_bar":(["区分"],["値1","値2"]),"line":(["日付"],["値"]),
+ "area":(["日付"],["値"]),"stacked_area":(["日付"],["値1","値2"]),
+ "histogram":(["階級"],["度数"]),"donut":(["区分"],["値"]),
+ "calendar_heatmap":(["日付"],["値"]),
  "multi_line":(["日付"],["値1","値2"]),"scatter":(["項目"],["X","Y"]),
  "bubble":(["項目"],["X","Y","大きさ"]),"funnel":(["段階"],["値"]),
  "heatmap":(["縦","横"],["値"]),"table":(["区分"],["値"]),
@@ -1269,7 +1333,7 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.contracts).length, 13);
+  assert.equal(Object.keys(output.contracts).length, 18);
   assert.deepEqual(output.contracts.grouped_bar.columns, ['category', 'metric_1', 'metric_2']);
   assert.deepEqual(output.contracts.bubble.columns, [
     'category',
@@ -1292,6 +1356,11 @@ cases={
  "grouped_bar":([("A",1,2)], ["区分","値1","値2"]),
  "stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
  "line":([(date(2021,1,1),1),(date(2021,1,2),None)], ["日付","値"]),
+ "area":([(date(2021,1,1),1)], ["日付","値"]),
+ "stacked_area":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
+ "histogram":([(0,3),(10,5)], ["階級下限","度数"]),
+ "donut":([("A",3),("B",2)], ["区分","値"]),
+ "calendar_heatmap":([(date(2021,1,1),3)], ["日付","値"]),
  "multi_line":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
  "scatter":([("A",1,2)], ["項目","X","Y"]),
  "bubble":([("A",1,2,3)], ["項目","X","Y","大きさ"]),
@@ -1304,12 +1373,12 @@ rendered={}
 for chart,(rows,columns) in cases.items():
  section={"title":chart,"planned_visualization":chart}
  rendered[chart]=m.dashboard_visualization(section,rows,columns)
-browser=["kpiGroup","barChart","lineChart","scatterChart","funnelChart","heatmapChart","renderResultTable"]
+browser=["kpiGroup","barChart","lineChart","areaChart","histogramChart","donutChart","calendarHeatmapChart","scatterChart","funnelChart","heatmapChart","renderResultTable"]
 print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML for name in browser),"sankey_limit":"const maxPages=4" in m.HTML},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.rendered).length, 13);
+  assert.equal(Object.keys(output.rendered).length, 18);
   assert.equal(output.rendered.scorecard, 'scalar');
   assert.equal(output.rendered.grouped_bar, 'grouped_bar');
   assert.equal(output.rendered.sankey, 'sankey');
