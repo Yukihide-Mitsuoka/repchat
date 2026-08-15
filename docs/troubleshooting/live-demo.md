@@ -2,13 +2,31 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-10
+updated: 2026-08-15
 ---
 
 # ライブデモのトラブルシューティング
 
 この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
 BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
+
+## ダッシュボード相談で「生成または実行に失敗しました。端末ログを確認してください。」と表示される
+
+**Affects:** PR #411の可視化拡張後に、定義済み指標を含むdashboard plannerを実Vertex AIへ送る場合。
+
+**Cause:** 18種類の可視化を表す`anyOf`の各分岐へ、同じ定義済み指標enumを複製していました。
+指標7件のGA4契約ではstructured-output schemaが6,898 bytesから9,319 bytesへ増え、providerが
+複雑すぎるschemaとして分析計画の生成前に拒否しました。BigQueryは実行されていません。
+
+**Fix:** 可視化ごとのschemaはchartと結果形状だけを制約し、定義済み指標はschema内に1回だけ説明します。
+AI応答の`measures`はserver側で定義済み指標と照合し、未定義指標があれば現在案を保持して再提案文を
+表示します。追加のVertex AI呼出しは自動実行しません。
+
+**Prevention:** 固定応答回帰テストで、可視化分岐へ指標enumを複製しないことと、provider応答に未定義指標が
+含まれた場合にserver側が拒否することを確認します。修正版での実Vertex AI確認は、画面の費用を改めて
+承認した場合だけ1回実行してください。
+
+**Refs:** [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)
 
 ## 「Google Cloudの認証期限が切れています」で停止する
 

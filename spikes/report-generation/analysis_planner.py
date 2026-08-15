@@ -131,7 +131,7 @@ def _defined_metric_names(metrics: str) -> tuple[str, ...]:
 
 
 def _visualization_response_schema(
-    charts: tuple[str, ...], *, seed: str = "", metric_names: tuple[str, ...] = ()
+    charts: tuple[str, ...], *, seed: str = ""
 ) -> dict:
     """Constrain chart and result shape together without prompt heuristics."""
     variants = []
@@ -139,14 +139,6 @@ def _visualization_response_schema(
         min_dimensions, max_dimensions, min_measures, max_measures = (
             CHART_SHAPE_CONTRACTS[chart]
         )
-        measure_items = {"type": "string"}
-        if metric_names:
-            measure_items.update(
-                {
-                    "format": "enum",
-                    "enum": list(_neutral_chart_order(metric_names, seed)),
-                }
-            )
         variants.append(
             {
                 "type": "object",
@@ -166,7 +158,7 @@ def _visualization_response_schema(
                         "type": "array",
                         "minItems": min_measures,
                         "maxItems": max_measures,
-                        "items": measure_items,
+                        "items": {"type": "string"},
                     },
                 },
                 "required": ["chart", "dimensions", "measures"],
@@ -296,10 +288,13 @@ def _dashboard_response_schema(
         DYNAMIC_PLAN_SCHEMA["properties"]["panels"]
     )
     schema["properties"]["panels"]["items"]["properties"]["visualization"] = (
-        _visualization_response_schema(
-            DASHBOARD_CHARTS, seed=seed, metric_names=metric_names
-        )
+        _visualization_response_schema(DASHBOARD_CHARTS, seed=seed)
     )
+    if metric_names:
+        schema["properties"]["panels"]["description"] = (
+            "measuresは次の定義済み指標名だけを使う: "
+            + "、".join(_neutral_chart_order(metric_names, seed))
+        )
     if revising:
         # Vertex can reject otherwise valid structured-output schemas as too
         # complex when a nested array has a long item-count limit. Revisions
@@ -522,6 +517,7 @@ def normalize_dashboard_plan(
     answers: dict[str, str] | None = None,
     *,
     allow_layout_gaps: bool = False,
+    allowed_metrics: tuple[str, ...] = (),
 ) -> dict:
     """Validate model output and produce a deterministic proposed revision."""
     plan = _normalize_plan_header(raw, objective, period, answers)
@@ -549,6 +545,20 @@ def normalize_dashboard_plan(
             allow_role_duplicates=panel["chart"] == "sankey",
         )
         panel["measures"] = _panel_terms(item.get("measures"), "指標", minimum=1)
+        undefined_metrics = [
+            measure
+            for measure in panel["measures"]
+            if allowed_metrics and measure not in allowed_metrics
+        ]
+        if undefined_metrics:
+            raise PlannerError(
+                "AIが指標定義にない指標を生成しました: "
+                + "、".join(undefined_metrics)
+                + "。現在案は保持し、自動再実行していません。",
+                suggested_instruction="指標は定義済みの「"
+                + "」「".join(allowed_metrics)
+                + "」だけを使って再提案して",
+            )
         layout_row = item.get("layout_row")
         layout_weight = item.get("layout_weight")
         if (
@@ -633,6 +643,7 @@ def propose_dashboard(
     from google.genai import types
     from vertex_usage import token_counts
 
+    metric_names = _defined_metric_names(metrics)
     response = client.models.generate_content(
         model=model,
         contents=dashboard_planning_request(
@@ -650,7 +661,7 @@ def propose_dashboard(
                 answers,
                 revising=current_plan is not None,
                 seed=f"{objective}\n{instruction or ''}",
-                metric_names=_defined_metric_names(metrics),
+                metric_names=metric_names,
             ),
         ),
     )
@@ -674,7 +685,7 @@ def propose_dashboard(
             "現在案は保持し、自動再実行していません。"
         ) from error
     return normalize_dashboard_plan(
-        raw, objective, period, answers
+        raw, objective, period, answers, allowed_metrics=metric_names
     ), token_counts(response.usage_metadata)
 
 

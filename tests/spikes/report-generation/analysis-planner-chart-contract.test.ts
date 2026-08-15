@@ -70,11 +70,25 @@ print(json.dumps({"same":first==second,"different":first!=other,"complete":set(f
 
 test('defined metrics are validated after generation without expanding every chart schema', () => {
   const result = python(`
-metrics='''指標定義:\n- 指標「セッション数」 = COUNT(*)\n- 指標「購入金額」 = SUM(value)\n- 軸「日付」 = event_date'''
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+vertex_usage=types.ModuleType("vertex_usage")
+vertex_usage.token_counts=lambda _usage:{"input_tokens":1,"output_tokens":1}
+sys.modules["vertex_usage"]=vertex_usage
+metrics='''指標定義:
+- 指標「セッション数」 = COUNT(*)
+- 指標「ユーザー数」 = COUNT(DISTINCT user_pseudo_id)
+- 指標「閲覧数」 = COUNTIF(event_name = "page_view")
+- 指標「商品閲覧数」 = COUNTIF(event_name = "view_item")
+- 指標「カート追加数」 = COUNTIF(event_name = "add_to_cart")
+- 指標「購入件数」 = COUNTIF(event_name = "purchase")
+- 指標「購入金額」 = SUM(ecommerce.purchase_revenue)
+- 軸「日付」 = event_date'''
 names=p._defined_metric_names(metrics)
-schema=p._dashboard_response_schema({},seed="依頼A",metric_names=names)
-variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
 raw={
  "objective_summary":"目的を確認する","audience":"責任者","comparison":"月内比較",
  "hypotheses":["指標を比較する"],
@@ -86,10 +100,18 @@ raw={
   "dimensions":[],"measures":["目標達成度"],"layout_row":1,"layout_weight":100
  }]
 }
+captured={}
+class Models:
+ def generate_content(self,**kwargs):
+  captured["schema"]=kwargs["config"].response_schema
+  return types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),usage_metadata=object())
 error=""
 try:
- p.normalize_dashboard_plan(raw,"2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},{},allowed_metrics=names)
+ p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
 except Exception as caught:error=f"{type(caught).__name__}: {caught}"
+schema=captured["schema"]
+variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
+measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
 print(json.dumps({"schema_bytes":len(json.dumps(schema,ensure_ascii=False,separators=(",",":" )).encode()),"measure_enums":measure_enums,"error":error},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
