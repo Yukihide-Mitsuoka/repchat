@@ -25,6 +25,9 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "sankey",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+MAX_SANKEY_PAGES = 4
+MAX_SANKEY_PATHS = 10
+MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_PAGES - 1)
 DASHBOARD_ROW_LIMITS = {
     "scorecard": 1,
     "kpi_group": 1,
@@ -38,7 +41,7 @@ DASHBOARD_ROW_LIMITS = {
     "funnel": 12,
     "heatmap": 100,
     "table": 100,
-    "sankey": 100,
+    "sankey": MAX_SANKEY_EDGE_ROWS,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -57,7 +60,6 @@ CHART_SHAPE_CONTRACTS = {
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
-MAX_SANKEY_PAGES = 4
 DYNAMIC_PANEL_TEXT_FIELDS = (
     "title", "kpi", "chart", "decision", "reason", "execution_prompt"
 )
@@ -323,7 +325,7 @@ def dashboard_planning_request(
 - 各パネルには構造化出力schemaで要求された分析仕様と、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
 - execution_promptにはSQLを書かない。対象期間、dimensionsとmeasuresの全項目、比較、必要な出力列が分かる仕様にする。
 - 各可視化の結果は最大行数以内で判断できる集計粒度にする。高カーディナリティの区分軸は上位件数と並び順をexecution_promptへ明記する。
-- ページ回遊のsankeyは最大{MAX_SANKEY_PAGES}ページにする。dimensionsは各ページを列挙せず遷移元・遷移先の2件にし、複数ページ分は隣接edgeの複数行としてexecution_promptへ明記する。
+- ページ回遊のsankeyは上位{MAX_SANKEY_PATHS}経路・最大{MAX_SANKEY_PAGES}ページにする。指定した最終ページへ到達した完全な経路を集計して上位経路を選んだ後、dimensionsを遷移元・遷移先の2件とする隣接edgeへ変換する手順をexecution_promptへ明記する。
 - KPI・グラフの選択理由をパネルごとに日本語で説明する。
 - 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。
