@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-12
+updated: 2026-08-15
 ---
 
 # 開発引き継ぎ
@@ -15,13 +15,13 @@ updated: 2026-08-12
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374) — dashboard plannerの固定6分析依存を外し、AIが作った任意の分析仕様をreview、freeze、SQL生成、描画まで保持する |
-| デモ実行状態 | [PR #375](https://github.com/Yukihide-Mitsuoka/repchat/pull/375)と[PR #376](https://github.com/Yukihide-Mitsuoka/repchat/pull/376)の単一分析相談はmerge済み。Issue #374は固定応答で検証し、実Vertex AIとBigQueryは再実行していない |
-| 直近完了 | [Issue #373](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)の状態付きAI相談、[PR #372](https://github.com/Yukihide-Mitsuoka/repchat/pull/372)の共有可能なdashboard layout revision要件、[PR #365](https://github.com/Yukihide-Mitsuoka/repchat/pull/365)のdashboard閲覧モードはmerge済み |
+| 作業 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張後に発生したdashboard plannerのprovider schema回帰を、[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)で修正する |
+| デモ実行状態 | [PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)はmerge済み。18 chart分岐へ定義済み指標enumを複製してschemaが6,898 bytesから9,319 bytesへ増えた原因を固定応答で再現し、PR #412では指標検証をserver側へ移した。実Vertex AI・BigQueryは再実行していない |
+| 直近完了 | `make format`、`make lint`、`make test-unit`、`make test`は2026-08-15に成功。修正前コードに対する再現テストは9,319 bytesのschemaで失敗し、修正後は成功した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | Issue #374のtest、format、lint、reviewを完了し、固定候補一覧が通常plannerへ渡らず、動的分析仕様がfreeze後のSQL生成とlayoutまで保持されることを固定応答で確認する。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
+| AIができること | PR #412の必須CIは2026-08-15に成功済み。review指摘へ対応し、merge後は無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
-| 完了時 | 証拠を`proceed` / `revise` / `reject`に分類し、Issue #160と[status](status.md)を更新する。方向が変わる場合だけpositioning、ADR、decision logを更新する |
+| 完了時 | PR #412をmergeし、費用承認が得られた場合だけVertex AIのdashboard相談を1回確認する。その後はIssue #160の証拠を`proceed` / `revise` / `reject`に分類する |
 
 ## 最初に読む順序
 
@@ -85,11 +85,11 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-12）
+## 次にやる順序（2026-08-15）
 
-1. **現在:** [Issue #374](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で、AIが作る任意のdashboard分析仕様をreview、追加・変更・削除、freeze、SQL生成、描画まで保持することを固定応答で検証する。実Vertex AI・BigQueryは実行しない。
-2. **UI確認後:** ローカルデモを最新修正から再起動し、現在案を保った再提案、件数境界、可視化別layout、結果形状不一致の拒否を確認する。
-3. **オーナー承認後:** Vertex AIだけを使う相談を「どんな分析をしたらいい？」→「他にない？」の2 turnで確認し、既出案の固定反復ではないことを評価する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
+1. **現在:** [PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)は必須CIが成功済み。reviewを完了してmergeする。修正前コードで失敗する再現テスト、server側の未定義指標拒否、固定テスト・format・lint・全テストは確認済み。
+2. **merge後:** ローカルデモを最新mainから再起動し、無料の固定応答でschema、現在案保持、未定義指標の修正文案を確認する。
+3. **オーナー承認後:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
 4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
 5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
 6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。

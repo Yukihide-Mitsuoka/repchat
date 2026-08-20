@@ -68,21 +68,78 @@ print(json.dumps({"same":first==second,"different":first!=other,"complete":set(f
   });
 });
 
-test('dashboard measures are constrained to defined metrics without fixing analysis content', () => {
+test('defined metrics are validated after generation without expanding every chart schema', () => {
   const result = python(`
-metrics='''指標定義:\n- 指標「セッション数」 = COUNT(*)\n- 指標「購入金額」 = SUM(value)\n- 軸「日付」 = event_date'''
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+vertex_usage=types.ModuleType("vertex_usage")
+vertex_usage.token_counts=lambda _usage:{"input_tokens":1,"output_tokens":1}
+sys.modules["vertex_usage"]=vertex_usage
+metrics='''指標定義:
+- 指標「セッション数」 = COUNT(*)
+- 指標「ユーザー数」 = COUNT(DISTINCT user_pseudo_id)
+- 指標「閲覧数」 = COUNTIF(event_name = "page_view")
+- 指標「商品閲覧数」 = COUNTIF(event_name = "view_item")
+- 指標「カート追加数」 = COUNTIF(event_name = "add_to_cart")
+- 指標「購入件数」 = COUNTIF(event_name = "purchase")
+- 指標「購入金額」 = SUM(ecommerce.purchase_revenue)
+- 軸「日付」 = event_date'''
 names=p._defined_metric_names(metrics)
-schema=p._dashboard_response_schema({},seed="依頼A",metric_names=names)
+raw={
+ "objective_summary":"目的を確認する","audience":"責任者","comparison":"月内比較",
+ "hypotheses":["指標を比較する"],
+ "clarifications":[{"field":"audience","question":"主な読者は誰ですか","recommended_answer":"責任者"}],
+ "panels":[{
+  "title":"未定義指標","kpi":"目標達成度","chart":"scorecard",
+  "decision":"目標達成度を判断する","reason":"判断に必要",
+  "execution_prompt":"2021年1月の目標達成度を集計する",
+  "dimensions":[],"measures":["目標達成度"],"layout_row":1,"layout_weight":100
+ }]
+}
+valid={**raw,"panels":[{
+ "title":"定義済み指標","kpi":"セッション数","chart":"scorecard",
+ "decision":"セッション数を判断する","reason":"判断に必要",
+ "execution_prompt":"2021年1月のセッション数を集計する",
+ "dimensions":[],"measures":["セッション数"],"layout_row":1,"layout_weight":100
+}]}
+captured={}
+class Models:
+ def __init__(self):self.responses=[raw,valid]
+ def generate_content(self,**kwargs):
+  captured["schema"]=kwargs["config"].response_schema
+  return types.SimpleNamespace(text=json.dumps(self.responses.pop(0),ensure_ascii=False),usage_metadata=object())
+client=types.SimpleNamespace(models=Models())
+error=""
+suggestion=""
+try:
+ p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
+except Exception as caught:
+ error=f"{type(caught).__name__}: {caught}"
+ suggestion=getattr(caught,"suggested_instruction","")
+accepted,_usage=p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
+schema=captured["schema"]
 variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-enums=[item["properties"]["measures"]["items"]["enum"] for item in variants]
-print(json.dumps({"names":names,"same":all(set(values)==set(names) for values in enums),"unknown":any("目標達成度" in values for values in enums)},ensure_ascii=False))
+measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
+schema_json=json.dumps(schema,ensure_ascii=False,separators=(",",":"))
+description=schema["properties"]["panels"]["description"]
+description_metrics=description.removeprefix("measuresは次の定義済み指標名だけを使う: ").split("、")
+print(json.dumps({"schema_bytes":len(schema_json.encode()),"names":names,"description_metrics":description_metrics,"measure_enums":measure_enums,"error":error,"suggestion":suggestion,"accepted":accepted["panels"][0]["measures"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    names: ['セッション数', '購入金額'],
-    same: true,
-    unknown: false,
-  });
+  const output = JSON.parse(result.stdout);
+  assert.ok(output.schema_bytes < 8000, output.schema_bytes);
+  assert.deepEqual(new Set(output.description_metrics), new Set(output.names));
+  assert.equal(output.description_metrics.length, output.names.length);
+  assert.ok(output.measure_enums.every((value: unknown) => value === null));
+  assert.match(output.error, /指標定義にない指標.*目標達成度/);
+  assert.match(output.suggestion, /セッション数/);
+  assert.match(output.suggestion, /購入金額/);
+  assert.match(output.suggestion, /だけを使って再提案/);
+  assert.deepEqual(output.accepted, ['セッション数']);
 });
 
 test('answered clarification schema avoids the provider-invalid zero item bound', () => {
