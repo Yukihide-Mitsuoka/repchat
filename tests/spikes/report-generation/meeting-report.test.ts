@@ -184,6 +184,8 @@ print(json.dumps({
  "specification":"月内推移" in request,
  "metrics":"取引IDの異なり数" in request,
  "evidence":"result-222222222222" in request,
+ "allowlist":"根拠パネルに存在する許可数値（この一覧にない数値は使用禁止）" in request,
+ "rounding":"204を200にするような整数の概算" in request,
  "impact":"expected_impact" in required,
  "no_warehouse":"BigQuery" not in request,
 },ensure_ascii=False))`);
@@ -193,6 +195,8 @@ print(json.dumps({
     specification: true,
     metrics: true,
     evidence: true,
+    allowlist: true,
+    rounding: true,
     impact: true,
     no_warehouse: true,
   });

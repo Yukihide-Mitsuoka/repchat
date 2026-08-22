@@ -1470,6 +1470,18 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(parsed.donut.series[0].type, 'pie');
   assert.equal(parsed.funnel.series[0].sort, 'none');
   assert.equal(parsed.sankey.series[0].type, 'sankey');
+
+  const grouped = vm.runInNewContext(
+    `${source};standardChartOption({visualization:'grouped_bar',columns:['channel','new_sessions','repeat_sessions','purchases'],rows:[['organic',100,20,3]]})`,
+    {
+      metricUnit: (column: string) => (column.includes('sessions') ? 'セッション' : '件'),
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as Record<string, any>;
+  assert.equal(grouped.xAxis.length, 2, '同じ単位の系列は共有軸にまとめる');
+  assert.equal(JSON.stringify(grouped.series.map((series: any) => series.xAxisIndex)), '[0,0,1]');
+  assert.equal(grouped.series[0].labelLayout.hideOverlap, true);
+  assert.ok(grouped.grid.top > 70 && grouped.grid.bottom > 70);
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {
@@ -1920,6 +1932,14 @@ test('dashboard cards in the same row share height while content stays top-align
   assert.match(
     rendered.stdout,
     /\.dashboard-layout-row>\.dashboard-card \.chart\{[^}]*max-height:460px[^}]*overflow:auto/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-layout-row>\.dashboard-card \.chart\{display:flex;flex:1;min-height:0;overflow:hidden\}/,
+  );
+  assert.match(
+    rendered.stdout,
+    /\.dashboard-layout-row>\.dashboard-card \.echart-root\{flex:1 1 auto;height:100%!important;min-height:300px\}/,
   );
   assert.ok(
     rendered.stdout.indexOf(
