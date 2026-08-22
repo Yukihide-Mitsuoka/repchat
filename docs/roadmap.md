@@ -146,6 +146,8 @@ Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視�
 - 基本の生成・統制・配信が安定した後、根拠付き報告を最大3件の意思決定、担当付きアクション、次回の
   効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。
   最初は会議パック、決定・アクション永続化は適応型分析メモリーPhase 1と本番role・認証の後に行う。
+- AI plannerの分析考察とグラフ選定を分離する必要が実測で確認された場合、[可視化選定skill](requirements/evidence-cloud-visualization-coverage.md#8-将来の可視化選定skill)を実装する。
+  分析目的・データ形状・表示文脈から対応済みchart capabilityを比較し、最大3候補、選定理由、除外理由、必要な変換、confidenceを返す。未対応グラフへの自動置換は行わず、実行後の形状再検査で不適合を停止する。開始条件は#160の`proceed`、#179/#180のrevision・build契約確定、代表シナリオでの現行AI-only planner baselineの取得とする。
 - 実顧客で同種修正の反復が観測された場合に、適応型分析メモリーの候補抽出、scope確認、再確認・昇格提案を
   段階導入する。自動昇格は行わず、類似検索や外部Memory Bankはpolicy量またはlookup遅延が測定上の
   bottleneckになった場合だけ派生indexとして評価する（[要件](requirements/adaptive-analysis-memory.md)）。
