@@ -104,6 +104,27 @@ print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標�
   });
 });
 
+test('planner prompt validates comparisons against the source contract', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
+print(json.dumps({"comparison_rule":"比較や派生指標が意思決定に有用なら候補として提案してよい" in request,"source_contract":"データソースから確認できる" in request,"clarifications":"clarificationsで確認する" in request},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    comparison_rule: true,
+    source_contract: true,
+    clarifications: true,
+  });
+});
+
 test('program constraints allow every renderer without exposing a chart catalog in prompts', () => {
   const result = spawnSync(
     'python3',

@@ -353,6 +353,10 @@ def dashboard_planning_request(
 - 固定済みの分析候補から選ばず、目的と仮説から分析仕様そのものを新規に考える。
 - 各パネルには構造化出力schemaで要求された分析仕様と、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
 - execution_promptにはSQLを書かない。対象期間、dimensionsとmeasuresの全項目、比較、必要な出力列が分かる仕様にする。
+- 比較や派生指標が意思決定に有用なら候補として提案してよい。ただし、データソースから確認できる
+  期間・粒度・指標で実行できるかを判断し、追加の範囲や定義が必要ならclarificationsで確認する。
+  確認前のexecution_promptやmeasuresには未確認の実行条件を含めず、確認済みなら必要な期間と出力列を
+  仕様へ明示する。
 - 各可視化の結果は最大行数以内で判断できる集計粒度にする。高カーディナリティの区分軸は上位件数と並び順をexecution_promptへ明記する。
 - ページ回遊のsankeyは上位{MAX_SANKEY_PATHS}経路・最大{MAX_SANKEY_PAGES}ページにする。指定した最終ページへ到達した完全な経路を集計して上位経路を選んだ後、dimensionsを遷移元・遷移先の2件とする隣接edgeへ変換する手順をexecution_promptへ明記する。
 - KPI・グラフの選択理由をパネルごとに日本語で説明する。

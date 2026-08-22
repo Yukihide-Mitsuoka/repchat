@@ -78,7 +78,8 @@ def metrics_block(path: Path) -> str:
         flt = f"  [対象行: {spec['filter']}]" if spec.get("filter") else ""
         lines.append(f"- 指標「{name}」 = {spec['expr']}{flt}{alias(spec)}{extra}")
     for name, spec in m["dimensions"].items():
-        lines.append(f"- 軸「{name}」 = {spec['expr']}{alias(spec)}")
+        flt = f"  [対象行: {spec['filter']}]" if spec.get("filter") else ""
+        lines.append(f"- 軸「{name}」 = {spec['expr']}{flt}{alias(spec)}")
     return "\n".join(lines).replace("\t", "    ")
 
 
@@ -168,6 +169,9 @@ def generation_request(section: dict, period: dict) -> str:
         f"{section['text']}\n"
         f"（対象期間: _TABLE_SUFFIX は '{period['from']}' から '{period['to']}'）\n"
         f"（出力形式: {shape}）"
+        "\n（SQLの責務: 最終SELECTは、確認済み仕様で明示されたdimensionsとmeasuresだけを返す。"
+        "execution_promptの判断目的に未確認の期間・派生指標が含まれる場合は、推測で列を追加せず、"
+        "分析仕様の確認不足として扱う。比較を実行する場合は、対象期間と出力列を仕様に明示する。）"
     )
     requirements = section.get("generation_requirements") or []
     if requirements:
@@ -205,6 +209,9 @@ def repair_request(analysis_request: str, sql: str, diagnostic: str) -> str:
     return f"""次の確定済み分析仕様に対して生成したSQLが実行前検証に失敗した。
 分析内容、対象期間、出力列の数・順序・別名、ORDER BY、LIMITは変更せず、診断原因だけを修正すること。
 固定SQLや別の分析への置換、指標の代用はしないこと。
+使用する関数と構文は、選択されたデータソースのSQL方言・実行環境で利用可能なものに限ること。
+診断に未対応の関数や構文が含まれる場合は、同じ分析仕様を保ったまま、そのデータソースで利用可能な
+表現へ修正すること。
 
 確定済み分析仕様:
 {analysis_request}

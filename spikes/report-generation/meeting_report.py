@@ -11,6 +11,7 @@ NUMBER = re.compile(r"(?<![A-Za-z])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
 MAX_BUNDLE_BYTES = 48 * 1024
 MAX_OUTPUT_TOKENS = 8192
 SUMMARY_MAX_CHARS = 160
+SUMMARY_GENERATION_TARGET_CHARS = 120
 CLAIM_MAX_CHARS = 120
 DETAIL_MAX_CHARS = 80
 SHORT_DETAIL_MAX_CHARS = 40
@@ -159,7 +160,7 @@ build revision: {bundle['build_revision']}
 - limitationsには半角・全角を問わず数字を一切書かない。
 - 読み手は日本語の月次マーケティング会議参加者。SQL用語は使わない。
 - executive_summaryにもtextとpanel_idsを付ける。数値は参照した根拠パネルに存在する値だけを書く。
-- executive_summaryは{SUMMARY_MAX_CHARS}文字以内、各本文は{CLAIM_MAX_CHARS}文字以内の一文にする。
+- executive_summaryは受理上限{SUMMARY_MAX_CHARS}文字以内とし、生成時は安全余白を取って{SUMMARY_GENERATION_TARGET_CHARS}文字以内の一文にする。各本文は{CLAIM_MAX_CHARS}文字以内の一文にする。
 - 観測は最大{REPORT_ITEM_LIMITS['observations']}件、解釈は最大{REPORT_ITEM_LIMITS['interpretations']}件、未検証の仮説は最大{REPORT_ITEM_LIMITS['hypotheses']}件、推奨アクションは最大{REPORT_ITEM_LIMITS['actions']}件、limitationsは最大{REPORT_ITEM_LIMITS['limitations']}件に絞る。
 - 不確実性、検証方法、期待効果、次の一歩は各{DETAIL_MAX_CHARS}文字以内、担当、緊急度、成功指標は各{SHORT_DETAIL_MAX_CHARS}文字以内にする。
 """
@@ -332,6 +333,37 @@ def _validate_numbers(text: str, indexed: dict[str, dict], panel_ids: list[str])
         )
 
 
+def _bound_generated_summary(raw: dict) -> tuple[dict, list[str]]:
+    """Bound an overlong model summary at a complete sentence before validation."""
+    summary = raw.get("executive_summary") if isinstance(raw, dict) else None
+    text = summary.get("text") if isinstance(summary, dict) else None
+    if not isinstance(text, str) or len(text.strip()) <= SUMMARY_MAX_CHARS:
+        return raw, []
+    normalized = text.strip()
+    sentence_ends = [
+        match.end()
+        for match in re.finditer(r"[。！？!?]", normalized)
+        if match.end() <= SUMMARY_MAX_CHARS
+    ]
+    if not sentence_ends:
+        return raw, []
+    end = max(sentence_ends)
+    bounded = normalized[:end].rstrip()
+    if end < len(normalized) and normalized[end] in "0123456789０１２３４５６７８９,.":
+        number = re.search(r"[0-9０-９][0-9０-９,.]*$", bounded)
+        if number:
+            bounded = bounded[: number.start()].rstrip(" 、,，")
+    if not bounded:
+        return raw, []
+    bounded_raw = dict(raw)
+    bounded_summary = dict(summary)
+    bounded_summary["text"] = bounded
+    bounded_raw["executive_summary"] = bounded_summary
+    return bounded_raw, [
+        f"AIが生成した会議報告の要約を{SUMMARY_MAX_CHARS}文字以内に整形しました。"
+    ]
+
+
 def _set_report_revision(report: dict) -> dict:
     payload = {key: value for key, value in report.items() if key != "report_revision"}
     canonical = json.dumps(
@@ -464,8 +496,13 @@ def generate(client, model: str, bundle: dict):
             "会議報告のJSONが不完全です。"
             "今回のVertex AI呼出しは課金対象で、自動再実行していません。"
         ) from error
+    raw, warnings = _bound_generated_summary(raw)
     usage = response.usage_metadata
-    return normalize_report(raw, bundle), {
+    normalized = normalize_report(raw, bundle)
+    if warnings:
+        normalized["generation_warnings"] = warnings
+        _set_report_revision(normalized)
+    return normalized, {
         "input_tokens": usage.prompt_token_count or 0,
         "output_tokens": (usage.candidates_token_count or 0)
         + (getattr(usage, "thoughts_token_count", 0) or 0),
