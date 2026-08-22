@@ -465,6 +465,9 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-card-resizer:hover::after,.dashboard-card-resizer:focus-visible::after,.dashboard-card-resizer.dragging::after{background:#4b84b4;box-shadow:0 0 0 3px #4b84b426}
 .dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}
 @container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:visible}.dashboard-card-resizer{display:none}}
+.dashboard-layout-row>.dashboard-card .chart{display:flex;flex:1;min-height:0;overflow:hidden}
+.dashboard-layout-row>.dashboard-card .echart-root{flex:1 1 auto;height:100%!important;min-height:300px}
+@container (max-width:900px){.dashboard-layout-row>.dashboard-card .chart{overflow:visible}.dashboard-layout-row>.dashboard-card .echart-root{height:auto!important;min-height:260px}}
 .dashboard-card h3{font-size:15px;line-height:1.45;letter-spacing:-.01em}
 .dashboard-card .purpose{min-height:0;margin:9px 0 16px;color:#687386;font-size:11px}
 .panel-state{display:inline-flex;align-items:center;min-height:23px;padding:3px 7px;border-radius:999px;background:var(--color-success-soft);color:var(--color-success);font-size:10px;white-space:nowrap}

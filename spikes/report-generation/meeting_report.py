@@ -141,6 +141,13 @@ class ReportError(ValueError):
 
 def report_request(bundle: dict) -> str:
     """Build a Japanese reporting request from one immutable evidence bundle."""
+    indexed = _evidence_index(bundle)
+    allowed_numbers = "、".join(
+        sorted(
+            _evidence_numbers(indexed, list(indexed)),
+            key=lambda value: (Decimal(value.replace(",", "")), value),
+        )
+    )
     return f"""次の確定済みダッシュボードだけを根拠に、月次会議の報告案を書く。
 
 分析仕様revision: {bundle['plan_revision']}
@@ -150,10 +157,12 @@ build revision: {bundle['build_revision']}
 確定済み分析仕様: {json.dumps(bundle['analysis_specification'], ensure_ascii=False)}
 指標定義: {json.dumps(bundle['metric_definitions'], ensure_ascii=False)}
 根拠パネル: {json.dumps(bundle['panels'], ensure_ascii=False)}
+根拠パネルに存在する許可数値（この一覧にない数値は使用禁止）: {allowed_numbers}
 
 規則:
 - 観測、解釈、未検証の仮説、推奨アクションを混ぜない。
-- 数値は根拠パネルの生値、その値を最大小数2桁へ丸めた値、またはderived_metricsに記録された値だけを使い、必ずpanel_idsを付ける。
+- 数値は根拠パネルの生値、その値を小数点以下2桁まで丸めた値、またはderived_metricsに記録された値だけを使い、必ずpanel_idsを付ける。丸めは小数点以下だけに限定し、204を200にするような整数の概算・有効数字化は行わない。
+- 数値を使わずに説明できる場合は定性的に書き、根拠にない閾値・目標値・概数を補わない。
 - 相関を因果と断定せず、解釈には不確実性を、仮説には検証方法を付ける。
 - アクションには期待効果、担当、緊急度、次の一歩、成功指標を付ける。
 - 目標値、事業事情、サンプルサイズを推測しない。不足はlimitationsへ書く。
