@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -1386,6 +1387,98 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
   assert.equal(output.sankey_limit, true);
   assert.equal(output.area_negative_scale, true);
   assert.equal(output.area_no_zero_coercion, true);
+});
+
+test('standard chart renderer creates ECharts options for every supported chart', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const results = {
+    bar: { visualization: 'bar', columns: ['channel', 'sessions'], rows: [['organic', 100]] },
+    grouped_bar: {
+      visualization: 'grouped_bar',
+      columns: ['channel', 'sessions', 'revenue'],
+      rows: [['organic', 100, 20]],
+    },
+    stacked_bar: {
+      visualization: 'stacked_bar',
+      columns: ['device', 'new_sessions', 'repeat_sessions'],
+      rows: [['mobile', 100, 20]],
+    },
+    line: { visualization: 'line', columns: ['date', 'sessions'], rows: [['2021-01-01', 100]] },
+    multi_line: {
+      visualization: 'multi_line',
+      columns: ['date', 'sessions', 'revenue'],
+      rows: [['2021-01-01', 100, 20]],
+    },
+    area: { visualization: 'area', columns: ['date', 'sessions'], rows: [['2021-01-01', 100]] },
+    stacked_area: {
+      visualization: 'stacked_area',
+      columns: ['date', 'new_sessions', 'repeat_sessions'],
+      rows: [['2021-01-01', 100, 20]],
+    },
+    histogram: {
+      visualization: 'histogram',
+      columns: ['bin_start', 'frequency'],
+      rows: [[0, 10]],
+    },
+    donut: { visualization: 'donut', columns: ['device', 'sessions'], rows: [['mobile', 10]] },
+    calendar_heatmap: {
+      visualization: 'calendar_heatmap',
+      columns: ['date', 'sessions'],
+      rows: [['2021-01-01', 10]],
+    },
+    scatter: {
+      visualization: 'scatter',
+      columns: ['page', 'pageviews', 'engagement_time'],
+      rows: [['/', 10, 2]],
+    },
+    bubble: {
+      visualization: 'bubble',
+      columns: ['channel', 'sessions', 'engagement_time', 'users'],
+      rows: [['organic', 10, 2, 4]],
+    },
+    funnel: { visualization: 'funnel', columns: ['stage', 'sessions'], rows: [['1. view', 10]] },
+    heatmap: {
+      visualization: 'heatmap',
+      columns: ['device', 'channel', 'sessions'],
+      rows: [['mobile', 'organic', 10]],
+    },
+    sankey: {
+      visualization: 'sankey',
+      columns: ['source', 'target', 'sessions'],
+      rows: [['1. /', '2. /shop', 10]],
+    },
+  };
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify(Object.fromEntries(Object.entries(results).map(([name,result]) => [name,standardChartOption(result)])))`,
+    {
+      results,
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(Object.keys(parsed).length, 15);
+  assert.equal(parsed.bar.series[0].type, 'bar');
+  assert.equal(parsed.bar.series[0].label.show, true);
+  assert.equal(parsed.grouped_bar.xAxis[0].type, 'value');
+  assert.equal(parsed.multi_line.yAxis.length, 2);
+  assert.equal(parsed.multi_line.yAxis[0].name, 'sessions');
+  assert.equal(parsed.donut.series[0].type, 'pie');
+  assert.equal(parsed.funnel.series[0].sort, 'none');
+  assert.equal(parsed.sankey.series[0].type, 'sankey');
+});
+
+test('live dashboard loads the standard chart library and renderer', () => {
+  const rendered = python('print(m.HTML)');
+  assert.equal(rendered.status, 0, rendered.stderr);
+  assert.match(rendered.stdout, /<script src="\/assets\/echarts\.min\.js"><\/script>/);
+  assert.match(rendered.stdout, /function renderStandardChart\(/);
+  assert.match(rendered.stdout, /instance\.setOption\(standardChartOption\(result\)/);
+  assert.match(rendered.stdout, /renderer: 'svg'/);
 });
 
 test('area render validation rejects missing values instead of drawing them as zero', () => {
