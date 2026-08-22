@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-08-15
+updated: 2026-08-20
 ---
 
 # Spike: レポート生成
@@ -415,7 +415,7 @@ dry-run経路はありません。
 にある`SimpleSelectStar`と同じ判断です。デモの実行前検査に必要な規則はコード内で固定できるため、
 Java/Docker製のツール全体は依存に加えていません。
 
-SQL表示の整形には、Python 3.13対応・BSDライセンスの`sqlparse==0.5.5`をデモ専用venvにpinしています。
+SQL表示の整形には、Python 3.13対応・BSDライセンスの`sqlparse==0.6.0`をデモ専用venvにpinしています。
 `sqlparse`のaligned modeで主要句を改行した後、予約語幅による位置合わせを構文階層ごとの
 0、4、8、12...スペースへ正規化します。SELECT列は対応するSELECTより4スペース深く配置し、
 Evidence標準`CodeBlock`でsyntax highlight、コピー、横スクロールを提供します。

@@ -542,8 +542,8 @@ def format_sql_for_display(sql: str) -> str:
             flags=re.I,
         )
     else:
-        # AlignedIndentFilter uses keyword-width offsets and does not receive
-        # indent_width in sqlparse 0.5.5. It provides useful line breaks here;
+        # AlignedIndentFilter uses keyword-width offsets instead of the requested
+        # indent width. It provides useful line breaks here;
         # normalize_sql_indentation applies the four-space hierarchy below.
         formatted = sqlparse.format(
             sql.strip(),
