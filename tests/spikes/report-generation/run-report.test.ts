@@ -133,6 +133,7 @@ print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
   assert.match(output.request, /Correlated subqueries that reference other tables/);
   assert.match(output.request, /source、target、metric_value/);
   assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
+  assert.match(output.request, /未確認の期間・派生指標が含まれる場合は、推測で列を追加せず/);
   assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
 });
 
