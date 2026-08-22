@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.0...v1.20.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **demo:** balance chart layout and ground report numbers ([#426](https://github.com/Yukihide-Mitsuoka/repchat/issues/426)) ([9e28ccc](https://github.com/Yukihide-Mitsuoka/repchat/commit/9e28ccca098e9d3f90ab35615f0d03466bf726d6))
+
 ## [1.20.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.19.0...v1.20.0) (2026-08-22)
 
 
