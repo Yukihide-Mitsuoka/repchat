@@ -1374,7 +1374,7 @@ for chart,(rows,columns) in cases.items():
  section={"title":chart,"planned_visualization":chart}
  rendered[chart]=m.dashboard_visualization(section,rows,columns)
 browser=["kpiGroup","barChart","lineChart","areaChart","histogramChart","donutChart","calendarHeatmapChart","scatterChart","funnelChart","heatmapChart","renderResultTable"]
-print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML for name in browser),"sankey_limit":"const maxPages=4" in m.HTML},ensure_ascii=False))
+print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML for name in browser),"sankey_limit":"const maxPages=4" in m.HTML,"area_negative_scale":"numericValues=values.flat(),min=stacked?0:Math.min(0,...numericValues)" in m.HTML,"area_no_zero_coercion":"Math.max(0,Number(value)||0)" not in m.HTML},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -1384,6 +1384,23 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
   assert.equal(output.rendered.sankey, 'sankey');
   assert.equal(output.browser, true);
   assert.equal(output.sankey_limit, true);
+  assert.equal(output.area_negative_scale, true);
+  assert.equal(output.area_no_zero_coercion, true);
+});
+
+test('area render validation rejects missing values instead of drawing them as zero', () => {
+  const result = python(`
+from datetime import date
+section={"title":"収支推移","planned_visualization":"area"}
+try:
+ m.dashboard_visualization(section,[(date(2021,1,1),None)],["日付","収支"])
+except Exception as error:
+ print(json.dumps({"message":str(error)},ensure_ascii=False))
+else:
+ print(json.dumps({"message":"accepted"},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(JSON.parse(result.stdout).message, /結果形状がAI分析仕様のareaと一致しない/);
 });
 
 test('dashboard SQL and dry-run schema are checked against the AI chart contract', () => {
@@ -1434,6 +1451,30 @@ print(json.dumps({"message":message,"repairs":len(repairs),"executions":executio
   assert.match(JSON.parse(result.stdout).message, /1回修正しましたが/);
   assert.equal(JSON.parse(result.stdout).repairs, 1);
   assert.deepEqual(JSON.parse(result.stdout).executions, []);
+});
+
+test('dashboard period mismatch is repaired once before BigQuery execution', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+section=m.planned_analysis_section({"id":"P1","title":"流入別セッション","chart":"bar","decision":"判断","execution_prompt":"2021年1月の流入別セッション","dimensions":["流入元"],"measures":["セッション数"]})
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+initial="SELECT traffic_source.medium AS category, COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
+repaired="SELECT traffic_source.medium AS category, COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
+m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+diagnostics=[]
+m.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({"sql":repaired,"reason":"期間を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("category","STRING"),("metric_value","INT64")],None)
+executed=[]
+m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([("organic",12)], ["category","metric_value"]),None))
+events=[];e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},events.append,{"operation":"dashboard","panel_id":"P1"})
+print(json.dumps({"diagnostics":diagnostics,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"]},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.diagnostics[0], /生成SQLの対象期間/);
+  assert.equal(output.executed.length, 1);
+  assert.match(output.executed[0], /20210101.*20210131/);
+  assert.deepEqual(output.stages, ['generate', 'validate', 'repair', 'execute']);
 });
 
 test('a compiler dry-run diagnostic is repaired before paid execution', () => {
@@ -1986,7 +2027,7 @@ test('meeting report owns persistent processing and error state across workspace
   const script = rendered.stdout.split('<script>').at(-1)?.split('</script>')[0] ?? '';
   assert.ok(rendered.stdout.includes('id="report-status"'));
   assert.ok(rendered.stdout.includes('id="report-message"'));
-  assert.ok(!rendered.stdout.includes('id="report-warning"'));
+  assert.ok(rendered.stdout.includes('id="report-warning"'));
   assert.ok(script.includes('let reportWorkspaceState="報告案なし"'));
   assert.ok(script.includes('view==="report"?reportWorkspaceState:copy[view][2]'));
   assert.ok(script.includes('setReportState("エラー",e.message,"notice error")'));

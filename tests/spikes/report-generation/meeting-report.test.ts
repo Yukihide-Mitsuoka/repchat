@@ -347,6 +347,77 @@ print(json.dumps({
   assert.equal(output.limitation_pattern, '^[^0-9０-９]*$');
 });
 
+test('bounds an overlong generated summary without retrying the paid response', () => {
+  const result = python(`
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class Config:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(
+ GenerateContentConfig=Config,
+ ThinkingConfig=Config,
+ ThinkingLevel=types.SimpleNamespace(LOW="LOW"),
+)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+raw={
+ "executive_summary":{"text":"購入成果を確認しました。"+"追加診断が必要です。"*20,"panel_ids":["R4"]},
+ "observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],
+ "interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R4"]}],
+ "hypotheses":[{"text":"導線に改善余地がある可能性があります。","validation":"流入別に確認します。","panel_ids":["R4"]}],
+ "actions":[{"text":"導線を確認します。","owner":"担当者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に確認します。","success_metric":"購入件数","panel_ids":["R4"]}],
+ "limitations":["目標値と施策履歴が未登録です。"],
+}
+usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=600,thoughts_token_count=0)
+response=types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=usage)
+captured={"calls":0}
+class Models:
+ def generate_content(self,**kwargs):
+  captured["calls"]+=1
+  return response
+report,_=m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+print(json.dumps({"calls":captured["calls"],"length":len(report["executive_summary"]["text"]),"warnings":report.get("generation_warnings",[])},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: 1,
+    length: 152,
+    warnings: ['AIが生成した会議報告の要約を160文字以内に整形しました。'],
+  });
+});
+
+test('rejects an overlong generated summary when no complete sentence fits', () => {
+  const result = python(`
+import sys,types
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class Config:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(
+ GenerateContentConfig=Config,
+ ThinkingConfig=Config,
+ ThinkingLevel=types.SimpleNamespace(LOW="LOW"),
+)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+raw={
+ "executive_summary":{"text":"あ"*161,"panel_ids":["R4"]},
+ "observations":[{"text":"購入件数は895件です。","panel_ids":["R4"]}],
+ "interpretations":[{"text":"変動があります。","uncertainty":"施策履歴がありません。","panel_ids":["R4"]}],
+ "hypotheses":[{"text":"導線に改善余地がある可能性があります。","validation":"流入別に確認します。","panel_ids":["R4"]}],
+ "actions":[{"text":"導線を確認します。","owner":"担当者","urgency":"次回会議まで","expected_impact":"阻害箇所を特定できます。","next_step":"流入別に確認します。","success_metric":"購入件数","panel_ids":["R4"]}],
+ "limitations":["目標値と施策履歴が未登録です。"],
+}
+usage=types.SimpleNamespace(prompt_token_count=100,candidates_token_count=600,thoughts_token_count=0)
+response=types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=usage)
+class Models:
+ def generate_content(self,**kwargs):return response
+try:
+ m.generate(types.SimpleNamespace(models=Models()),"model",bundle)
+except Exception as error:
+ print(json.dumps({"message":str(error)},ensure_ascii=False))
+else:
+ print(json.dumps({"message":"accepted"},ensure_ascii=False))`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).message, '会議報告の要約は160文字以内にしてください。');
+});
+
 test('invalid generated meeting commentary fails instead of using fixed fallback prose', () => {
   const result = python(`
 invalid={

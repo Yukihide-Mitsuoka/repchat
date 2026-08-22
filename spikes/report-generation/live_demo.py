@@ -115,7 +115,7 @@ label{font-size:14px;font-weight:700;display:block;margin-bottom:9px}select{bord
 <p class="lead">AIが目的を分解し、確認事項、仮説、KPI、グラフ候補と理由を提案します。仕様を確定するまでBigQueryは実行しません。</p><div class="actions"><button id="dashboard-submit">AIと分析計画を相談</button><span class="cost">相談はVertex AIだけを使用し、build費用は仕様確定後に別途確認します。</span></div></section>
 <section class="panel" aria-labelledby="dashboard-progress-title"><div class="progress-head"><h2 id="dashboard-progress-title">相談・buildの進行状況</h2><span id="dashboard-status" class="status-pill">相談前</span></div><p id="dashboard-message" class="notice" aria-live="polite">分析目的を確認し、相談を開始してください。</p><div id="dashboard-plan" class="plan-list"><div id="dashboard-step-plan" class="plan-item"><strong>1. 目的を分解</strong><span>意思決定と仮説を言語化</span></div><div id="dashboard-step-review" class="plan-item"><strong>2. 仕様を確認</strong><span>KPI・比較・読者・パネルを編集</span></div><div id="dashboard-step-build" class="plan-item"><strong>3. 確定してbuild</strong><span>費用確認後にSQLを生成</span></div></div></section>
 <section id="plan-review" class="panel hidden"><div class="progress-head"><h2>AIが提案した分析仕様</h2><span id="plan-revision" class="status-pill"></span></div><p id="plan-summary" class="lead"></p><p id="plan-context" class="notice warning"></p><div class="plan-list"><label class="plan-item" for="plan-audience">主な読者<input id="plan-audience"></label><label class="plan-item" for="plan-comparison">比較の考え方<input id="plan-comparison"></label></div><h3>検証する仮説</h3><div id="plan-hypotheses"></div><div id="plan-clarifications"></div><h3>ダッシュボードへ含めるパネル</h3><p class="lead">初回は原則__INITIAL_PANEL_COUNT__件です。管理者設定の最大__MAX_PANEL_COUNT__件まで確定できます。</p><div id="plan-panels"></div><label for="plan-revision-instruction">分析仕様への追加・変更・削除依頼</label><input id="plan-revision-instruction" maxlength="500" placeholder="追加・変更・削除したい内容を入力してください"><div id="plan-correction" class="notice warning hidden"><strong>AIの解釈を描画仕様に合わせた修正文案</strong><p id="plan-correction-text"></p><button id="plan-correction-apply" class="secondary" type="button">変更依頼欄へ反映</button></div><div class="actions"><button id="plan-revise" class="secondary" type="button">選択と変更依頼を反映してAIに再提案</button><button id="plan-build" type="button">この仕様を確定してbuild</button></div></section>
-</div></section><section id="meeting-report-view" class="workspace-view hidden"><section class="panel" aria-labelledby="report-progress-title"><div class="progress-head"><h2 id="report-progress-title">会議報告の生成状況</h2><span id="report-status" class="status-pill">報告案なし</span></div><p id="report-message" class="notice" aria-live="polite">build済みダッシュボードから会議報告案を生成してください。</p></section><section id="report-empty" class="panel empty-state"><p class="eyebrow">Meeting report</p><h2>会議報告案はまだありません</h2><p class="lead">build済みダッシュボードの根拠bundleから、観測・解釈・仮説・アクションを分けた未承認案を生成します。</p><button id="back-to-dashboard" class="secondary" type="button">ダッシュボードへ戻る</button></section><section id="report-output" class="panel hidden report-home"><div class="progress-head"><h2>会議報告アシスト</h2><span id="report-revision" class="status-pill"></span></div><p class="approval">AIが作成した未承認案です。外部共有前に人間が根拠と表現を確認してください。</p><div id="report-summary" class="lead"></div><div id="report-sections"></div></section></section>
+</div></section><section id="meeting-report-view" class="workspace-view hidden"><section class="panel" aria-labelledby="report-progress-title"><div class="progress-head"><h2 id="report-progress-title">会議報告の生成状況</h2><span id="report-status" class="status-pill">報告案なし</span></div><p id="report-message" class="notice" aria-live="polite">build済みダッシュボードから会議報告案を生成してください。</p></section><section id="report-empty" class="panel empty-state"><p class="eyebrow">Meeting report</p><h2>会議報告案はまだありません</h2><p class="lead">build済みダッシュボードの根拠bundleから、観測・解釈・仮説・アクションを分けた未承認案を生成します。</p><button id="back-to-dashboard" class="secondary" type="button">ダッシュボードへ戻る</button></section><section id="report-output" class="panel hidden report-home"><div class="progress-head"><h2>会議報告アシスト</h2><span id="report-revision" class="status-pill"></span></div><p class="approval">AIが作成した未承認案です。外部共有前に人間が根拠と表現を確認してください。</p><p id="report-warning" class="notice warning hidden" role="status"></p><div id="report-summary" class="lead"></div><div id="report-sections"></div></section></section>
 <div id="graph-workspace" class="workspace-view hidden"><section class="panel query-panel"><label for="dataset-profile">分析対象データ</label><select id="dataset-profile"><option value="ga4">GA4 ECサイト（既知のnestedスキーマ）</option><option value="bitcoin">Bitcoin取引（非GA4のnested/repeated検証）</option></select><label for="question">日本語の問い合わせ</label><textarea id="question"></textarea><p id="profile-note" class="lead">公開GA4サンプルの2020年11月〜2021年1月を対象に、相談でAIが作成した分析仕様からSQLとグラフを生成します。</p>
 <div class="actions"><button id="submit">SQLとグラフを生成</button><span class="cost">送信ごとに実Vertex AI・BigQueryを使用します。</span></div></section>
 <section class="panel" aria-labelledby="progress-title"><div class="progress-head"><h2 id="progress-title">生成の進行状況</h2><span id="run-status" class="status-pill">実行前</span></div><p id="message" class="notice" aria-live="polite">問い合わせを入力し、生成ボタンを押してください。</p><ol class="stages"><li id="s-generate"><strong>1. SQL生成</strong><span>SQLを作る</span></li><li id="s-validate"><strong>2. SQL検査</strong><span>安全性を確認</span></li><li id="s-execute"><strong>3. BigQuery実行</strong><span>データを取得</span></li><li id="s-render"><strong>4. 描画</strong><span>結果を可視化</span></li></ol></section>
@@ -191,7 +191,7 @@ function lineChart(r,box){
 const w=820,h=380,seriesCount=r.columns.length-1,seriesValues=Array.from({length:seriesCount},(_unused,seriesIndex)=>r.rows.map(row=>row[seriesIndex+1]===null||row[seriesIndex+1]===undefined||row[seriesIndex+1]===""?NaN:Number(row[seriesIndex+1])).filter(Number.isFinite));if(!seriesValues.some(values=>values.length)){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"数値が取得できる日付はありませんでした。"}));return}const scaleFor=values=>{const min=Math.min(...values),max=Math.max(...values);return{min,max,span:max-min||1}},independent=seriesCount>1,globalScale=scaleFor(seriesValues.flat()),scales=independent?seriesValues.map(scaleFor):seriesValues.map(()=>globalScale),sideCount=Math.ceil(seriesCount/2),plot={left:30+sideCount*66,right:w-30-sideCount*66,top:30,bottom:h-62},svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}ごとの${r.columns.slice(1).join("・")}推移${independent?"（系列ごとの独立スケール）":""}`});box.append(svg);timeAxisFrame(svg,r,scales,w,h,plot);
 for(let seriesIndex=0;seriesIndex<seriesCount;seriesIndex++){const scale=scales[seriesIndex],points=r.rows.map((row,index)=>{const value=row[seriesIndex+1]===null||row[seriesIndex+1]===undefined||row[seriesIndex+1]===""?NaN:Number(row[seriesIndex+1]);return Number.isFinite(value)?[plot.left+index*(plot.right-plot.left)/Math.max(r.rows.length-1,1),plot.top+(scale.max-value)*(plot.bottom-plot.top)/scale.span,value,row[0]]:null}),draw=segment=>{if(segment.length>1)svg.append(node("polyline",{points:segment.map(point=>point.slice(0,2).join(",")).join(" "),fill:"none",stroke:chartPalette[seriesIndex%chartPalette.length],"stroke-width":3}));segment.forEach(point=>{const circle=node("circle",{cx:point[0],cy:point[1],r:4,fill:chartPalette[seriesIndex%chartPalette.length]});circle.appendChild(node("title")).textContent=`${point[3]} / ${r.columns[seriesIndex+1]}: ${chartValue(point[2],r.columns[seriesIndex+1])}`;svg.append(circle)})};let segment=[];for(const point of [...points,null]){if(point)segment.push(point);else if(segment.length){draw(segment);segment=[]}}}if(seriesCount>1)chartLegend(svg,r.columns.slice(1),w,h-8);if(independent){const ranges=r.columns.slice(1).map((column,index)=>`${column}: ${chartValue(scales[index].min,column)}〜${chartValue(scales[index].max,column)}`).join(" / ");box.appendChild(Object.assign(document.createElement("p"),{className:"chart-caption multi-line-scale-note",textContent:`系列ごとに独立した縦軸スケールで、各系列の期間内の変化を同じ高さに正規化しています。縦軸範囲: ${ranges}。各点の値はマウス操作で確認できます。`}))}
 }
-function areaChart(r,box,stacked){const w=820,h=380,seriesCount=r.columns.length-1,values=r.rows.map(row=>row.slice(1).map(value=>Math.max(0,Number(value)||0))),totals=values.map(row=>stacked?row.reduce((sum,value)=>sum+value,0):row[0]),max=Math.max(1,...totals),scale={min:0,max,span:max},plot={left:96,right:w-96,top:30,bottom:h-62},svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}ごとの${r.columns.slice(1).join("・")}面グラフ`});box.append(svg);timeAxisFrame(svg,{...r,columns:[r.columns[0],stacked?"合計":r.columns[1]]},[scale],w,h,plot);const accumulated=Array(r.rows.length).fill(0);for(let seriesIndex=0;seriesIndex<seriesCount;seriesIndex++){const lower=[...accumulated],upper=values.map((row,index)=>{accumulated[index]+=row[seriesIndex];return accumulated[index]}),x=index=>plot.left+index*(plot.right-plot.left)/Math.max(r.rows.length-1,1),y=value=>plot.bottom-value*(plot.bottom-plot.top)/max,path=[...upper.map((value,index)=>`${x(index)},${y(value)}`),...lower.map((value,index)=>`${x(lower.length-1-index)},${y(lower[lower.length-1-index])}`)].join(" "),polygon=node("polygon",{points:path,fill:chartPalette[seriesIndex%chartPalette.length],"fill-opacity":stacked?.55:.28,stroke:chartPalette[seriesIndex%chartPalette.length],"stroke-width":2});polygon.appendChild(node("title")).textContent=r.columns[seriesIndex+1];svg.append(polygon)}if(seriesCount>1)chartLegend(svg,r.columns.slice(1),w,h-8)}
+function areaChart(r,box,stacked){const w=820,h=380,seriesCount=r.columns.length-1,values=r.rows.map(row=>row.slice(1).map(value=>Number(value))),totals=values.map(row=>stacked?row.reduce((sum,value)=>sum+value,0):row[0]),numericValues=values.flat(),min=stacked?0:Math.min(0,...numericValues),max=stacked?Math.max(1,...totals):Math.max(1,...numericValues),span=max-min,scale={min,max,span},plot={left:96,right:w-96,top:30,bottom:h-62},svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}ごとの${r.columns.slice(1).join("・")}面グラフ`});box.append(svg);timeAxisFrame(svg,{...r,columns:[r.columns[0],stacked?"合計":r.columns[1]]},[scale],w,h,plot);const accumulated=Array(r.rows.length).fill(0);for(let seriesIndex=0;seriesIndex<seriesCount;seriesIndex++){const lower=[...accumulated],upper=values.map((row,index)=>{accumulated[index]+=row[seriesIndex];return accumulated[index]}),x=index=>plot.left+index*(plot.right-plot.left)/Math.max(r.rows.length-1,1),y=value=>plot.bottom-(value-min)*(plot.bottom-plot.top)/span,path=[...upper.map((value,index)=>`${x(index)},${y(value)}`),...lower.map((value,index)=>`${x(lower.length-1-index)},${y(lower[lower.length-1-index])}`)].join(" "),polygon=node("polygon",{points:path,fill:chartPalette[seriesIndex%chartPalette.length],"fill-opacity":stacked?.55:.28,stroke:chartPalette[seriesIndex%chartPalette.length],"stroke-width":2});polygon.appendChild(node("title")).textContent=r.columns[seriesIndex+1];svg.append(polygon)}if(seriesCount>1)chartLegend(svg,r.columns.slice(1),w,h-8)}
 function histogramChart(r,box){const w=820,h=360,plot={left:72,right:w-30,top:24,bottom:h-60},max=Math.max(1,...r.rows.map(row=>Number(row[1]))),barWidth=(plot.right-plot.left)/Math.max(r.rows.length,1),svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}の${r.columns[1]}分布`});box.append(svg);[max,max/2,0].forEach((value,index)=>{const y=plot.top+index*(plot.bottom-plot.top)/2,label=node("text",{x:64,y:y+4,"text-anchor":"end",class:"chart-axis-value"});label.textContent=chartValue(value,r.columns[1]);svg.append(node("line",{x1:plot.left,y1:y,x2:plot.right,y2:y,stroke:"#e4e7ec"}),label)});r.rows.forEach((row,index)=>{const height=Number(row[1])/max*(plot.bottom-plot.top),rect=node("rect",{x:plot.left+index*barWidth+1,y:plot.bottom-height,width:Math.max(1,barWidth-2),height,fill:"#3973c6"});rect.appendChild(node("title")).textContent=`${r.columns[0]} ${chartValue(row[0],r.columns[0])}: ${chartValue(row[1],r.columns[1])}`;svg.append(rect);if(index%Math.max(1,Math.ceil(r.rows.length/8))===0){const label=node("text",{x:plot.left+(index+.5)*barWidth,y:h-34,"text-anchor":"middle"});label.textContent=chartValue(row[0],r.columns[0]);svg.append(label)}})}
 function donutChart(r,box){const w=820,h=360,cx=260,cy=170,radius=112,circumference=2*Math.PI*radius,total=r.rows.reduce((sum,row)=>sum+Number(row[1]),0),svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}別の${r.columns[1]}構成`});box.append(svg);if(total<=0){box.appendChild(Object.assign(document.createElement("p"),{className:"notice warning",textContent:"構成比を描画できる正の値がありません。"}));return}let offset=0;r.rows.forEach((row,index)=>{const value=Number(row[1]),length=value/total*circumference,circle=node("circle",{cx,cy,r:radius,fill:"none",stroke:chartPalette[index%chartPalette.length],"stroke-width":42,"stroke-dasharray":`${length} ${circumference-length}`,"stroke-dashoffset":-offset,transform:`rotate(-90 ${cx} ${cy})`});circle.appendChild(node("title")).textContent=`${row[0]}: ${chartValue(value,r.columns[1])} (${(value/total*100).toFixed(1)}%)`;svg.append(circle);offset+=length;const legend=node("text",{x:430,y:55+index*24});legend.textContent=`${row[0]}  ${(value/total*100).toFixed(1)}%`;legend.setAttribute("fill",chartPalette[index%chartPalette.length]);svg.append(legend)});const center=node("text",{x:cx,y:cy+5,"text-anchor":"middle",class:"chart-axis-title"});center.textContent=chartValue(total,r.columns[1]);svg.append(center)}
 function calendarHeatmapChart(r,box){const w=820,h=300,cell=34,left=88,top=42,values=r.rows.map(row=>Number(row[1])),min=Math.min(...values),max=Math.max(...values),span=max-min||1,dates=r.rows.map(row=>new Date(String(row[0]).slice(0,10)+"T00:00:00Z")),first=dates[0],firstMondayOffset=(first.getUTCDay()+6)%7,svg=node("svg",{viewBox:`0 0 ${w} ${h}`,role:"img","aria-label":`${r.columns[0]}ごとの${r.columns[1]}カレンダーヒートマップ`});box.append(svg);["月","火","水","木","金","土","日"].forEach((label,index)=>{const text=node("text",{x:left-12,y:top+index*cell+22,"text-anchor":"end"});text.textContent=label;svg.append(text)});r.rows.forEach((row,index)=>{const date=dates[index],dayOffset=Math.round((date-first)/86400000)+firstMondayOffset,week=Math.floor(dayOffset/7),weekday=(date.getUTCDay()+6)%7,value=Number(row[1]),opacity=.12+.88*(value-min)/span,rect=node("rect",{x:left+week*cell,y:top+weekday*cell,width:cell-4,height:cell-4,rx:4,fill:"#3973c6","fill-opacity":opacity,tabindex:0});rect.appendChild(node("title")).textContent=`${row[0]}: ${chartValue(value,r.columns[1])}`;svg.append(rect);if(weekday===0||index===0){const label=node("text",{x:left+week*cell,y:top-10});label.textContent=String(row[0]).slice(5,10);svg.append(label)}})}
@@ -951,6 +951,20 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         )
 
 
+def sql_period_diagnostic(
+    sql: str, period: dict[str, str], profile: str = "ga4"
+) -> str:
+    """Return a repair diagnostic without changing the fail-closed contract."""
+    try:
+        if profile == "bitcoin":
+            bitcoin.require_sql_period(sql, period)
+        else:
+            require_sql_period(sql, period)
+    except (LiveDemoError, ValueError) as error:
+        return str(error)
+    return ""
+
+
 def _top_level_select_expressions(sql: str) -> tuple[list[str], str]:
     """Return the final SELECT expressions and its top-level suffix."""
     structure = re.sub(
@@ -1191,9 +1205,13 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and 3 <= width <= 5 and all(
             all(finite(value) and value >= 0 for value in row[1:]) for row in rows
         )
-    elif planned in {"line", "area"}:
+    elif planned == "line":
         valid = valid and width == 2 and all(
             isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
+        )
+    elif planned == "area":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], (date, datetime)) and finite(row[1]) for row in rows
         )
     elif planned == "multi_line":
         valid = valid and 3 <= width <= 5 and all(
@@ -1204,7 +1222,7 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
     elif planned == "stacked_area":
         valid = valid and 3 <= width <= 5 and all(
             isinstance(row[0], (date, datetime))
-            and all(nullable_finite(value) and (value is None or value >= 0) for value in row[1:])
+            and all(finite(value) and value >= 0 for value in row[1:])
             for row in rows
         )
     elif planned == "histogram":
@@ -1413,6 +1431,7 @@ class LiveQueryEngine:
             for index, section in enumerate(sections, start=1):
                 self._check_cancelled(cancel_event)
                 context = {
+                    "operation": "dashboard",
                     "panel_id": section["id"],
                     "panel_index": index,
                     "panel_count": len(sections),
@@ -1612,14 +1631,14 @@ class LiveQueryEngine:
         if error:
             raise LiveDemoError(f"生成SQLを安全検査で拒否しました: {error}")
         assert normalized is not None
-        try:
-            if profile == "bitcoin":
-                normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
-                bitcoin.require_sql_period(normalized, period)
-            else:
-                require_sql_period(normalized, period)
-        except ValueError as error:
-            raise LiveDemoError(str(error)) from error
+        if profile == "bitcoin":
+            normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
+        period_diagnostic = sql_period_diagnostic(normalized, period, profile)
+        allow_period_repair = extra.get("operation") == "dashboard"
+        if period_diagnostic and (
+            not allow_period_repair or not section.get("source_columns")
+        ):
+            raise LiveDemoError(period_diagnostic)
         if section.get("source_columns"):
             send(
                 {
@@ -1635,11 +1654,12 @@ class LiveQueryEngine:
             )
             repair_used = False
             while True:
-                diagnostic = ""
-                try:
-                    validate_generated_dashboard_sql(section, normalized)
-                except LiveDemoError as validation_error:
-                    diagnostic = str(validation_error)
+                diagnostic = period_diagnostic if allow_period_repair else ""
+                if not diagnostic:
+                    try:
+                        validate_generated_dashboard_sql(section, normalized)
+                    except LiveDemoError as validation_error:
+                        diagnostic = str(validation_error)
                 if not diagnostic:
                     dry_schema, dry_error = report.inspect_bq_schema(
                         self.bq, normalized, allowed_dataset=allowed_dataset
@@ -1698,14 +1718,11 @@ class LiveQueryEngine:
                         f"修正SQLを安全検査で拒否しました: {validation_error}"
                     )
                 assert normalized is not None
-                try:
-                    if profile == "bitcoin":
-                        normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
-                        bitcoin.require_sql_period(normalized, period)
-                    else:
-                        require_sql_period(normalized, period)
-                except ValueError as repair_error:
-                    raise LiveDemoError(str(repair_error)) from repair_error
+                if profile == "bitcoin":
+                    normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
+                period_diagnostic = sql_period_diagnostic(normalized, period, profile)
+                if period_diagnostic and not allow_period_repair:
+                    raise LiveDemoError(period_diagnostic)
                 answer = repaired
                 repair_used = True
         send(
