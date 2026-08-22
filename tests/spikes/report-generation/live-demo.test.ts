@@ -1465,6 +1465,10 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(parsed.bar.series[0].type, 'bar');
   assert.equal(parsed.bar.series[0].label.show, true);
   assert.equal(parsed.grouped_bar.xAxis[0].type, 'value');
+  assert.equal(parsed.grouped_bar.grid.left, 108);
+  assert.equal(parsed.grouped_bar.grid.bottom, 68);
+  assert.equal(parsed.scatter.grid.left, 56);
+  assert.equal(parsed.scatter.grid.bottom, 48);
   assert.equal(parsed.multi_line.yAxis.length, 2);
   assert.equal(parsed.multi_line.yAxis[0].name, 'sessions');
   assert.equal(parsed.donut.series[0].type, 'pie');
@@ -1481,7 +1485,8 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(grouped.xAxis.length, 2, '同じ単位の系列は共有軸にまとめる');
   assert.equal(JSON.stringify(grouped.series.map((series: any) => series.xAxisIndex)), '[0,0,1]');
   assert.equal(grouped.series[0].labelLayout.hideOverlap, true);
-  assert.ok(grouped.grid.top > 70 && grouped.grid.bottom > 70);
+  assert.equal(grouped.grid.top, 68, '上側の単位軸に必要な余白だけを確保する');
+  assert.equal(grouped.grid.bottom, 68, '下側の単位軸に必要な余白だけを確保する');
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {

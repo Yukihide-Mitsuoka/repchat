@@ -33,8 +33,8 @@ function standardChartUnit(column) {
 
 function standardChartGrid(horizontal = false, spacing = {}) {
   const base = horizontal
-    ? { left: 156, right: 34, top: 70, bottom: 70, containLabel: true }
-    : { left: 76, right: 28, top: 56, bottom: 70, containLabel: true };
+    ? { left: 108, right: 24, top: 42, bottom: 46, containLabel: true }
+    : { left: 56, right: 24, top: 40, bottom: 48, containLabel: true };
   return { ...base, ...spacing };
 }
 
@@ -141,8 +141,8 @@ function standardBarOption(result, mode) {
   });
   const option = standardChartBase({ horizontal: true, legend: metricColumns.length > 1 });
   option.grid = standardChartGrid(true, {
-    top: 62 + topAxisCount * 32,
-    bottom: 62 + bottomAxisCount * 32,
+    top: 42 + topAxisCount * 26,
+    bottom: 42 + bottomAxisCount * 26,
   });
   option.xAxis = axes.map((axis) => ({ ...axis, gridIndex: 0 }));
   option.yAxis = standardChartCategoryAxis(categories, {
