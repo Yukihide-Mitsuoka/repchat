@@ -15,13 +15,13 @@ updated: 2026-08-22
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | デモ阻害のコード修正は完了。次は最新mainの無料固定応答確認、費用承認後の実Vertex AI確認、または[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証から選ぶ |
-| デモ実行状態 | localhost:8765のデモprocessは停止中。[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)でprovider schema回帰を修正済みだが、実Vertex AI・BigQueryは再実行していない |
-| 直近完了 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張と[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)のschema修正をmerge済み。[PR #415](https://github.com/Yukihide-Mitsuoka/repchat/pull/415)で`sqlparse`を0.6.0へ更新し、TrivyのPython脆弱性は0件になった |
+| 作業 | デモ阻害のコード修正と無料固定応答確認は完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
+| デモ実行状態 | localhost:8765のデモprocessは停止中。最新mainの固定応答テストで、provider schemaが8,000 bytes未満、定義済み指標がschema内に1回、未定義指標がserver側で拒否されて修正文案を返すこと、定義済み指標が受理されることを確認した。実Vertex AI・BigQueryは再実行していない |
+| 直近完了 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張と[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)のschema修正をmergeし、無料固定応答を確認済み。[PR #415](https://github.com/Yukihide-Mitsuoka/repchat/pull/415)で`sqlparse`を0.6.0へ更新し、TrivyのPython脆弱性は0件になった |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | 最新mainからデモを再起動して無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
+| AIができること | 無料の固定応答確認は完了済み。実Vertex AIのdashboard相談は費用を提示してオーナー承認を得た場合だけ1回実行し、SQL生成・BigQueryは別の費用確認とする |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
-| 完了時 | 無料固定応答が成功し、費用承認が得られた場合だけVertex AIのdashboard相談を1回確認する。その後はIssue #160の証拠を`proceed` / `revise` / `reject`に分類する |
+| 完了時 | Issue #410は完了として閉じた。任意の実Vertex AI確認は別の費用承認後に行い、次の必須ゲートはIssue #160の証拠を`proceed` / `revise` / `reject`に分類すること |
 
 ## 最初に読む順序
 
@@ -87,9 +87,9 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-22）
 
-1. **無料確認:** 最新mainからローカルデモを再起動し、固定応答でschema、現在案保持、未定義指標の修正文案を確認する。
-2. **オーナー承認後:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
-3. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に`proceed` / `revise` / `reject`へ分類する。
+1. **現在の必須作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
+2. **オーナーが費用を承認した場合だけ:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
+3. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
 4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
 5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
 
