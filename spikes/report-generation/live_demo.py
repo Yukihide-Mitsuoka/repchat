@@ -23,6 +23,7 @@ import meeting_report as meeting
 import run_report as report
 from demo_support import DemoError, VENV_DIR, prepare_python, require_adc, run
 HERE = Path(__file__).resolve().parent
+ECHARTS_ASSET = HERE / "assets" / "echarts.min.js"
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
 MAX_QUESTION_CHARS = 500
@@ -468,6 +469,8 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-card .purpose{min-height:0;margin:9px 0 16px;color:#687386;font-size:11px}
 .panel-state{display:inline-flex;align-items:center;min-height:23px;padding:3px 7px;border-radius:999px;background:var(--color-success-soft);color:var(--color-success);font-size:10px;white-space:nowrap}
 .dashboard-card .chart{min-width:0;display:grid;align-items:start;overflow:visible;flex:1}
+.chart .echart-root{display:block;width:100%;min-width:0;max-width:100%;height:auto}
+.dashboard-card .chart .echart-root{width:100%;min-width:0;max-width:100%}
 .dashboard-card .chart svg{display:block;min-width:0;width:100%;max-width:100%}
 .chart-table-scroll{align-self:start;width:100%;max-height:360px;overflow:auto}
 .chart-table-scroll table{width:max-content;min-width:100%;margin-top:0}
@@ -687,7 +690,16 @@ selectWorkspace("build");setComposerAction("dashboard",false);
 if(window.innerWidth<=1180 && $("inspector-toggle").getAttribute("aria-expanded")==="true")toggleInspector();
 if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==="true")toggleSidebar();
 """
-HTML = HTML.replace("</script></body>", WORKSPACE_POLISH_SCRIPT + "\n</script></body>")
+CHART_RENDERER = (HERE / "chart_renderer.js").read_text(encoding="utf-8")
+HTML = HTML.replace(
+    "</script></body>",
+    CHART_RENDERER + "\n" + WORKSPACE_POLISH_SCRIPT + "\n</script></body>",
+)
+HTML = HTML.replace(
+    "<script>\nconst $=",
+    '<script src="/assets/echarts.min.js"></script><script>\nconst $=',
+    1,
+)
 HTML = HTML.replace("__INITIAL_PANEL_COUNT__", str(planner.INITIAL_PANEL_COUNT))
 HTML = HTML.replace("__MAX_PANEL_COUNT__", str(planner.MAX_PANEL_COUNT))
 HTML = HTML.replace("__MAX_SANKEY_PAGES__", str(MAX_SANKEY_PAGES))
@@ -1775,6 +1787,8 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         if self.path == "/":
             self._send(200, HTML.encode(), "text/html; charset=utf-8")
+        elif self.path == "/assets/echarts.min.js":
+            self._send(200, ECHARTS_ASSET.read_bytes(), "application/javascript; charset=utf-8")
         else:
             self._send(204 if self.path == "/favicon.ico" else 404, b"", "text/plain")
     def do_POST(self) -> None:
@@ -1977,7 +1991,7 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         self.send_header("x-content-type-options", "nosniff")
         self.send_header(
             "content-security-policy",
-            "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; "
             "connect-src 'self'; img-src 'self' data:",
         )
     def _send(self, status: int, body: bytes, content_type: str) -> None:
