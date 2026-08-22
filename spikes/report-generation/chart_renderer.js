@@ -31,10 +31,18 @@ function standardChartUnit(column) {
   return metricAxisTitle(column);
 }
 
+function standardChartCategoryWidth(categories) {
+  const longest = categories.reduce(
+    (length, category) => Math.max(length, standardChartLabel(category, 30).length),
+    0,
+  );
+  return Math.min(132, Math.max(72, longest * 7 + 12));
+}
+
 function standardChartGrid(horizontal = false, spacing = {}) {
   const base = horizontal
-    ? { left: 156, right: 34, top: 70, bottom: 70, containLabel: true }
-    : { left: 76, right: 28, top: 56, bottom: 70, containLabel: true };
+    ? { left: 64, right: 24, top: 36, bottom: 42, containLabel: true }
+    : { left: 52, right: 24, top: 36, bottom: 42, containLabel: true };
   return { ...base, ...spacing };
 }
 
@@ -126,9 +134,12 @@ function standardBarOption(result, mode) {
       barMaxWidth: mode === 'grouped' ? 24 : 34,
       barGap: '30%',
       barCategoryGap: '28%',
-      emphasis: { focus: 'series' },
+      emphasis: {
+        focus: 'series',
+        label: { show: true, position: canStack ? 'inside' : 'right', distance: 8 },
+      },
       label: {
-        show: true,
+        show: false,
         position: canStack ? 'inside' : 'right',
         distance: 8,
         formatter: (params) => standardChartFormat(params.value, column),
@@ -141,12 +152,12 @@ function standardBarOption(result, mode) {
   });
   const option = standardChartBase({ horizontal: true, legend: metricColumns.length > 1 });
   option.grid = standardChartGrid(true, {
-    top: 62 + topAxisCount * 32,
-    bottom: 62 + bottomAxisCount * 32,
+    top: 36 + topAxisCount * 24,
+    bottom: 36 + bottomAxisCount * 24,
   });
   option.xAxis = axes.map((axis) => ({ ...axis, gridIndex: 0 }));
   option.yAxis = standardChartCategoryAxis(categories, {
-    width: 132,
+    width: standardChartCategoryWidth(categories),
     overflow: 'truncate',
     formatter: (value) => standardChartLabel(value, 30),
   });
