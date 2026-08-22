@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.19.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.18.0...v1.19.0) (2026-08-22)
+
+
+### Features
+
+* **demo:** derive chart execution contracts ([#401](https://github.com/Yukihide-Mitsuoka/repchat/issues/401)) ([3db7866](https://github.com/Yukihide-Mitsuoka/repchat/commit/3db7866d600e015c3fdec91092bef67c75d7e493))
+* **demo:** improve visualization evidence ([#411](https://github.com/Yukihide-Mitsuoka/repchat/issues/411)) ([aac5d6d](https://github.com/Yukihide-Mitsuoka/repchat/commit/aac5d6da94f050babf99a48e2a2258a4c07a3332))
+* **demo:** preflight AI dashboard SQL ([#403](https://github.com/Yukihide-Mitsuoka/repchat/issues/403)) ([e205192](https://github.com/Yukihide-Mitsuoka/repchat/commit/e2051924fd2eeacda7f73a9a75825ec08efd73b0))
+* **demo:** render all AI chart types ([#404](https://github.com/Yukihide-Mitsuoka/repchat/issues/404)) ([b74b9ef](https://github.com/Yukihide-Mitsuoka/repchat/commit/b74b9ef6eb64b98c1d64ad7611dfc70831b24285))
+
+
+### Bug Fixes
+
+* **demo:** bound dashboard provider schema ([#412](https://github.com/Yukihide-Mitsuoka/repchat/issues/412)) ([85a34a0](https://github.com/Yukihide-Mitsuoka/repchat/commit/85a34a016aded5ea8786d294aefed577861cad47))
+* **demo:** improve chart readability ([#409](https://github.com/Yukihide-Mitsuoka/repchat/issues/409)) ([9dcecbd](https://github.com/Yukihide-Mitsuoka/repchat/commit/9dcecbde52761bd95483422d33ae1c713dc3ddcc))
+* **demo:** preserve generated analysis integrity ([#419](https://github.com/Yukihide-Mitsuoka/repchat/issues/419)) ([e8a0f3e](https://github.com/Yukihide-Mitsuoka/repchat/commit/e8a0f3e64cd95008c5b823a7a0eaf38783b39fc8))
+* **demo:** update sqlparse to 0.6.0 ([#415](https://github.com/Yukihide-Mitsuoka/repchat/issues/415)) ([cfea08d](https://github.com/Yukihide-Mitsuoka/repchat/commit/cfea08d08ef99bee59c8cb5419bd47283cf30a2e)), closes [#414](https://github.com/Yukihide-Mitsuoka/repchat/issues/414)
+
 ## [1.18.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.17.0...v1.18.0) (2026-08-14)
 
 
