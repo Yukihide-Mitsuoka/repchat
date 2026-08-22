@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-15
+updated: 2026-08-22
 ---
 
 # 開発引き継ぎ
@@ -15,13 +15,13 @@ updated: 2026-08-15
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張後に発生したdashboard plannerのprovider schema回帰を、[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)で修正する |
-| デモ実行状態 | [PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)はmerge済み。18 chart分岐へ定義済み指標enumを複製してschemaが6,898 bytesから9,319 bytesへ増えた原因を固定応答で再現し、PR #412では指標検証をserver側へ移した。実Vertex AI・BigQueryは再実行していない |
-| 直近完了 | `make format`、`make lint`、`make test-unit`、`make test`は2026-08-15に成功。修正前コードに対する再現テストは9,319 bytesのschemaで失敗し、修正後は成功した |
+| 作業 | デモ阻害のコード修正は完了。次は最新mainの無料固定応答確認、費用承認後の実Vertex AI確認、または[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証から選ぶ |
+| デモ実行状態 | localhost:8765のデモprocessは停止中。[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)でprovider schema回帰を修正済みだが、実Vertex AI・BigQueryは再実行していない |
+| 直近完了 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張と[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)のschema修正をmerge済み。[PR #415](https://github.com/Yukihide-Mitsuoka/repchat/pull/415)で`sqlparse`を0.6.0へ更新し、TrivyのPython脆弱性は0件になった |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | PR #412の必須CIは2026-08-15に成功済み。review指摘へ対応し、merge後は無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
+| AIができること | 最新mainからデモを再起動して無料の固定応答確認まで行える。有料Vertex AI・BigQueryはオーナー承認なしに実行しない |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
-| 完了時 | PR #412をmergeし、費用承認が得られた場合だけVertex AIのdashboard相談を1回確認する。その後はIssue #160の証拠を`proceed` / `revise` / `reject`に分類する |
+| 完了時 | 無料固定応答が成功し、費用承認が得られた場合だけVertex AIのdashboard相談を1回確認する。その後はIssue #160の証拠を`proceed` / `revise` / `reject`に分類する |
 
 ## 最初に読む順序
 
@@ -85,14 +85,13 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
 
-## 次にやる順序（2026-08-15）
+## 次にやる順序（2026-08-22）
 
-1. **現在:** [PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)は必須CIが成功済み。reviewを完了してmergeする。修正前コードで失敗する再現テスト、server側の未定義指標拒否、固定テスト・format・lint・全テストは確認済み。
-2. **merge後:** ローカルデモを最新mainから再起動し、無料の固定応答でschema、現在案保持、未定義指標の修正文案を確認する。
-3. **オーナー承認後:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
-4. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。デモ阻害を解消後に5分デモを行い、`proceed` / `revise` / `reject`へ分類する。
-5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
-6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
+1. **無料確認:** 最新mainからローカルデモを再起動し、固定応答でschema、現在案保持、未定義指標の修正文案を確認する。
+2. **オーナー承認後:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
+3. **並行するオーナー作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に`proceed` / `revise` / `reject`へ分類する。
+4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
+5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
 
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 

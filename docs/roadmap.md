@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-15
-last_reviewed: 2026-08-15
+updated: 2026-08-22
+last_reviewed: 2026-08-22
 ---
 
 # プロジェクトロードマップ
@@ -16,7 +16,7 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 ## 次の依頼を選ぶ優先順位
 
-2026-08-15時点では、未解消の不具合と検証阻害を先に解消し、その後に以下の順で依頼を選びます。
+2026-08-22時点では、未解消の不具合と検証阻害を先に解消し、その後に以下の順で依頼を選びます。
 各Issueが受入条件の正本であり、この表は開始順序と依存関係だけを管理します。
 
 | 優先 | 段階 | 依頼候補 | 目的 | 開始・完了条件 |
@@ -41,10 +41,14 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 | 優先 | 課題 | 次の完了条件 |
 |---:|---|---|
-| 0 | [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張後、dashboard plannerのstructured-output schemaがproviderに拒否される | 再現テストで指標enumの重複展開を固定し、定義済み指標の検証をserver側へ移して、固定テスト・format・lint・全テストを通す。実Vertex AI・BigQueryは費用承認なしに再実行しない |
 | 保守時 | [#315 `make doctor` wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 外部I/Oまたは待機条件を特定し、timeout延長や再試行ではなく無外部I/Oの再現テストと原因修正を行う |
 | 再発時 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | 4件同時失敗時の未省略例外を取得し、listener割当・cleanup・並列実行の原因を確定して再現テストを追加する |
 | 費用承認後 | #374/#410で拡張したAI分析計画の実サービス確認 | 固定応答テスト後にVertex AIだけを1回確認し、SQL生成・BigQuery buildは別の費用確認後に1件だけ実行する |
+
+Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張は
+[PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)で完了し、その後のprovider schema回帰は
+[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)で修正済みです。Security workflowが検出した
+`sqlparse`のHIGH脆弱性3件も[PR #415](https://github.com/Yukihide-Mitsuoka/repchat/pull/415)で0件になりました。
 
 ## 完了：Phase 1の技術基盤と実環境検証
 
