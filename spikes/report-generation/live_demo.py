@@ -1931,6 +1931,13 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError, LiveDemoError, planner.PlannerError) as error:
             self._send_json(400, {"error": str(error)})
             return
+        except Exception as error:  # noqa: BLE001 — keep the browser connection intact
+            print(f"request validation failed: {type(error).__name__}", flush=True)
+            self._send_json(
+                500,
+                {"error": "生成または実行に失敗しました。端末ログを確認してください。"},
+            )
+            return
         self.send_response(200)
         self._headers("application/x-ndjson; charset=utf-8")
         self.end_headers()

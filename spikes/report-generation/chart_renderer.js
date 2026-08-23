@@ -39,10 +39,19 @@ function standardChartCategoryWidth(categories) {
   return Math.min(132, Math.max(72, longest * 7 + 12));
 }
 
+function standardChartCategoryOrientation(categories) {
+  const labels = categories.map((category) => String(category ?? ''));
+  if (labels.length < 9) return 'horizontal';
+  const dateLike = labels.filter((label) => /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(label)).length;
+  const compact = labels.every((label) => label.length <= 18);
+  const denseDateLike = dateLike >= Math.max(3, Math.ceil(labels.length / 2));
+  return denseDateLike || compact ? 'vertical' : 'horizontal';
+}
+
 function standardChartGrid(horizontal = false, spacing = {}) {
   const base = horizontal
-    ? { left: 64, right: 24, top: 36, bottom: 42, containLabel: true }
-    : { left: 52, right: 24, top: 36, bottom: 42, containLabel: true };
+    ? { left: 64, right: 40, top: 44, bottom: 42, containLabel: true }
+    : { left: 52, right: 40, top: 44, bottom: 42, containLabel: true };
   return { ...base, ...spacing };
 }
 
@@ -100,6 +109,7 @@ function standardChartBase({ horizontal = false, legend = false, tooltip = true 
 function standardBarOption(result, mode) {
   const metricColumns = result.columns.slice(1);
   const categories = result.rows.map((row) => String(row[0] ?? ''));
+  const vertical = standardChartCategoryOrientation(categories) === 'vertical';
   const units = metricColumns.map((column) => metricUnit(column) || column);
   const unitIndexes = new Map();
   const unitColumns = [];
@@ -110,17 +120,20 @@ function standardBarOption(result, mode) {
     }
   });
   const multipleUnits = unitColumns.length > 1;
-  const bottomAxisCount = multipleUnits ? Math.ceil(unitColumns.length / 2) : 1;
-  const topAxisCount = multipleUnits ? Math.floor(unitColumns.length / 2) : 0;
+  const primaryAxisCount = multipleUnits ? Math.ceil(unitColumns.length / 2) : 1;
+  const secondaryAxisCount = multipleUnits ? Math.floor(unitColumns.length / 2) : 0;
   const axes = unitColumns.map(({ unit, column }, index) =>
     standardChartValueAxis(
       column,
-      index % 2 === 0 ? 'bottom' : 'top',
-      Math.floor(index / 2) * 28,
+      vertical
+        ? (index % 2 === 0 ? 'left' : 'right')
+        : (index % 2 === 0 ? 'bottom' : 'top'),
+      Math.floor(index / 2) * (vertical ? 58 : 28),
       unit || standardChartUnit(column),
     ),
   );
   const canStack = mode === 'stacked' && !multipleUnits;
+  const labelPosition = vertical ? (canStack ? 'insideTop' : 'top') : (canStack ? 'inside' : 'right');
   const series = metricColumns.map((column, seriesIndex) => {
     const axisIndex = multipleUnits ? unitIndexes.get(units[seriesIndex]) : 0;
     const values = result.rows.map((row) => standardChartNumber(row[seriesIndex + 1]));
@@ -136,23 +149,44 @@ function standardBarOption(result, mode) {
       barCategoryGap: '28%',
       emphasis: {
         focus: 'series',
-        label: { show: true, position: canStack ? 'inside' : 'right', distance: 8 },
+        label: { show: true, position: labelPosition, distance: 8 },
       },
       label: {
         show: false,
-        position: canStack ? 'inside' : 'right',
+        position: labelPosition,
         distance: 8,
         formatter: (params) => standardChartFormat(params.value, column),
         color: canStack ? '#fff' : '#344054',
         textBorderColor: canStack ? '#344054' : undefined,
         textBorderWidth: canStack ? 2 : 0,
       },
-      labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
+      labelLayout: { hideOverlap: true, moveOverlap: vertical ? 'shiftX' : 'shiftY' },
     };
   });
-  const option = standardChartBase({ horizontal: true, legend: metricColumns.length > 1 });
+  const option = standardChartBase({ horizontal: !vertical, legend: metricColumns.length > 1 });
+  if (vertical) {
+    option.grid = standardChartGrid(false, {
+      left: 52 + Math.max(0, primaryAxisCount - 1) * 58,
+      right: 40 + Math.max(0, secondaryAxisCount - 1) * 58,
+      top: 44,
+      bottom: categories.length > 8 ? 64 : 42,
+    });
+    option.xAxis = standardChartCategoryAxis(categories, {
+      rotate: categories.length > 8 ? 35 : 0,
+      formatter: (value) => standardChartLabel(value, 12),
+    });
+    option.yAxis = axes.map((axis) => ({ ...axis, gridIndex: 0 }));
+    option.series = series.map((item, index) => ({
+      ...item,
+      xAxisIndex: 0,
+      yAxisIndex: multipleUnits ? unitIndexes.get(units[index]) : 0,
+    }));
+    return option;
+  }
+  const bottomAxisCount = primaryAxisCount;
+  const topAxisCount = secondaryAxisCount;
   option.grid = standardChartGrid(true, {
-    top: 36 + topAxisCount * 24,
+    top: 44 + topAxisCount * 24,
     bottom: 36 + bottomAxisCount * 24,
   });
   option.xAxis = axes.map((axis) => ({ ...axis, gridIndex: 0 }));
@@ -353,6 +387,8 @@ function standardChartHeight(result) {
   if (result.visualization === 'bar' || result.visualization === 'grouped_bar' || result.visualization === 'stacked_bar') {
     const units = new Set(result.columns.slice(1).map((column) => metricUnit(column) || column));
     const axisSpace = units.size > 1 ? 64 : 0;
+    const categories = result.rows.map((row) => String(row[0] ?? ''));
+    if (standardChartCategoryOrientation(categories) === 'vertical') return Math.max(340, 300 + axisSpace);
     return Math.max(300, result.rows.length * (result.visualization === 'grouped_bar' ? 48 : 38) + 120 + axisSpace);
   }
   if (result.visualization === 'sankey') return 440;

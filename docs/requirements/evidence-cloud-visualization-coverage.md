@@ -50,7 +50,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
 | `scorecard` / `kpi_group` | Big Value | 対応 | 1〜4件の定義済みKPIを1行で返す |
-| `bar` / `grouped_bar` / `stacked_bar` | Bar Chart | 部分対応 | 横棒、grouped、stackedのwide形式。100% stackedは未対応 |
+| `bar` / `grouped_bar` / `stacked_bar` | Bar Chart | 部分対応 | 区分数とラベル密度に応じた縦棒／横棒、grouped、stackedのwide形式。100% stackedは未対応 |
 | `line` / `multi_line` | Line Chart | 部分対応 | 1〜4系列。複数系列は色付き独立縦軸で値を表示する |
 | `area` / `stacked_area` | Area Chart | 部分対応 | 基本areaとwide形式のstacked area。100% stackedは未対応 |
 | `histogram` | Histogram | 対応 | numericの階級下限と度数を返す |
@@ -72,7 +72,7 @@ plannerの許可値は
 | Evidence component | 公式に掲載される主なvariant | RepChat | 現在の根拠・不足 |
 |---|---|---|---|
 | Area Chart | basic、stacked、100% stacked | 部分対応 | basicとstackedに対応。100% stackedは未対応 |
-| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、groupedに対応。100%、任意orientation、longは未対応 |
+| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。100% stacked、利用者が任意に固定するorientation、longは未対応 |
 | Box Plot | basic、horizontal | 未対応 | quartile／whiskerの結果契約とrendererがない |
 | Bubble Chart | single／multiple series | 部分対応 | single seriesのx、y、sizeに対応。複数seriesは未対応 |
 | Histogram | default | 対応 | numericの階級下限と度数を検査して描画する |
