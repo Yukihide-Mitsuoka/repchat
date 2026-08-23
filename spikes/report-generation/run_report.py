@@ -103,6 +103,10 @@ def prompt_rules(metrics: str) -> str:
 - **指標定義に無い語を求められたら、推測でSQLを書かない。** `sql` を空文字にし、
   `undefined_terms` にその語を入れて返す（ADR-0013 C5）。**別の指標の式を流用して代用しない。**
   読み手には、定義済みの数字と推測された数字の区別がつかないため。
+- `undefined_terms` が空でない場合は、`clarification_question` に、利用者が回答すれば対象を
+  確定できる確認質問を日本語1文で返す。対象URL、ページ一覧、イベント名、計算式など、
+  不足している条件を具体的に尋ね、推奨値や暗黙の既定値は入れない。
+- `undefined_terms` が空の場合は `clarification_question` を空文字にする。
 - ただし判定は**字面ではなく意味**で行う。**同義として挙げられた語は、その指標を指している。**
 - **定義済みの指標を、上のテーブルの列で絞り込む・分割するのは「代用」ではない**（例:
   「商品を見たセッション数」は、セッション数を `event_name = 'view_item'` で絞ったもの）。
@@ -115,7 +119,8 @@ def prompt_rules(metrics: str) -> str:
   `page_location` の文字列から必要なパスを取り出す場合は、`REGEXP_EXTRACT` などBigQueryで
   実行可能な標準関数を使い、scheme・host・query・fragmentを分析仕様に従って扱う。未対応の
   方言関数を別の固定SQLへ置換するのではなく、同じ出力契約を保つSQLとして生成する。
-- 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...]}} の形で返す。
+- 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...],
+  "clarification_question": "..."}} の形で返す。
   reason は日本語1文。
 """
 
@@ -127,6 +132,7 @@ _JSON_SCHEMA = {
         # ADR-0013 C5. The model must be able to say "this term is not defined"
         # instead of guessing, so refusal needs somewhere to go in the response.
         "undefined_terms": {"type": "array", "items": {"type": "string"}},
+        "clarification_question": {"type": "string"},
     },
     "required": ["sql", "reason", "undefined_terms"],
 }
@@ -197,15 +203,40 @@ def generate_request(client, model: str, request: str, rules: str):
         config=types.GenerateContentConfig(
             system_instruction=rules,
             response_mime_type="application/json",
-            response_schema={**_JSON_SCHEMA, "propertyOrdering": ["sql", "reason", "undefined_terms"]},
+            response_schema={
+                **_JSON_SCHEMA,
+                "propertyOrdering": [
+                    "sql",
+                    "reason",
+                    "undefined_terms",
+                    "clarification_question",
+                ],
+            },
         ),
     )
-    return json.loads(resp.text), token_counts(resp.usage_metadata)
+    answer = json.loads(resp.text)
+    # Keep compatibility with providers/models that omit this optional field.
+    answer.setdefault("clarification_question", "")
+    return answer, token_counts(resp.usage_metadata)
 
 
-def generate(client, model: str, section: dict, period: dict, rules: str):
+def generate(
+    client,
+    model: str,
+    section: dict,
+    period: dict,
+    rules: str,
+    clarification_answer: str | None = None,
+):
     """Generate SQL for the original GA4 report contract."""
-    return generate_request(client, model, generation_request(section, period), rules)
+    request = generation_request(section, period)
+    if clarification_answer:
+        request += (
+            "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
+            "回答にない条件は推測しない）\n"
+            f"{clarification_answer.strip()}"
+        )
+    return generate_request(client, model, request, rules)
 
 
 def repair_request(analysis_request: str, sql: str, diagnostic: str) -> str:

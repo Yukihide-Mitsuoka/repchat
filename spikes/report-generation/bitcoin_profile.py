@@ -57,7 +57,9 @@ def prompt_rules() -> str:
 - 列の別名は ASCII snake_case にする。
 - SELECT 文のみ。DDL/DML は書かない。
 - 上の定義だけで答えられない語は推測せず、sql を空文字にし、undefined_terms に入れる。
-- 結果は JSON で {{"sql":"...","reason":"...","undefined_terms":[]}} の形で返す。
+- undefined_terms が空でない場合は、clarification_question に不足している対象条件を尋ねる
+  日本語1文を返す。undefined_terms が空の場合は空文字にする。
+- 結果は JSON で {{"sql":"...","reason":"...","undefined_terms":[],"clarification_question":"..."}} の形で返す。
 """
 
 

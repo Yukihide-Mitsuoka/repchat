@@ -100,7 +100,12 @@ print(json.dumps({
     pricing: [1.5, 7.5],
     legacy_pricing: [1.5, 9],
     has_temperature: false,
-    answer: { sql: 'SELECT 1 AS value', reason: '確認', undefined_terms: [] },
+    answer: {
+      sql: 'SELECT 1 AS value',
+      reason: '確認',
+      undefined_terms: [],
+      clarification_question: '',
+    },
     usage: { input_tokens: 10, output_tokens: 12 },
     legacy_usage: { input_tokens: 10, output_tokens: 5 },
     calls: 2,
@@ -450,4 +455,35 @@ print(json.dumps({
   } finally {
     fs.rmSync(outputDir, { recursive: true, force: true });
   }
+});
+
+test('clarification answers are appended as explicit conditions without changing the section contract', () => {
+  const result = loadRunReport(`
+import sys
+import types
+captured = {}
+google = types.ModuleType("google")
+genai = types.ModuleType("google.genai")
+class Config:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+genai.types = types.SimpleNamespace(GenerateContentConfig=Config)
+google.genai = genai
+sys.modules["google"] = google
+sys.modules["google.genai"] = genai
+class Models:
+    def generate_content(self, **kwargs):
+        captured.update(kwargs)
+        return types.SimpleNamespace(
+            text='{"sql":"SELECT 1 AS value","reason":"確認","undefined_terms":[],"clarification_question":""}',
+            usage_metadata=types.SimpleNamespace(prompt_token_count=1, candidates_token_count=1),
+        )
+section={"text":"登録ページのセッション数","compare":"execution","component":"table"}
+module["generate"](types.SimpleNamespace(models=Models()), module["DEFAULT_MODEL"], section, {"from":"20210101","to":"20210131"}, "rules", clarification_answer="対象URLは /signup です")
+print(json.dumps({"request":captured["contents"],"has_answer":"対象URLは /signup です" in captured["contents"],"no_guess":"回答にない条件は推測しない" in captured["contents"]}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.has_answer, true);
+  assert.equal(output.no_guess, true);
+  assert.equal(typeof output.request, 'string');
 });

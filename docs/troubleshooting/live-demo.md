@@ -2,13 +2,50 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-22
+updated: 2026-08-23
 ---
 
 # ライブデモのトラブルシューティング
 
 この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
 BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
+
+## 未定義語の確認質問に回答して再生成する
+
+「登録関連ページ」「対象URL」「イベント名」のように、データソースの契約だけでは対象を確定できない語が
+含まれる場合、SQL生成AIは推測せず、未定義語と具体的な確認質問を返します。画面の「回答して再生成」から
+URL、ページ一覧、イベント名、または計算定義を入力すると、その回答だけを追加条件として同じ分析仕様を
+Vertex AIへ再送します。回答にない条件の補完、固定SQLへの置換、自動再試行はありません。BigQueryは再生成された
+SQLの安全検査・dry run・結果形状検査を通過した場合だけ実行されます。
+
+## 費用承認後の実サービス検証
+
+固定応答テストだけでは実Vertex AIの構造化応答、BigQueryのdry run・実行、会議報告の根拠検証を確認できません。
+費用を承認した担当者が、次のランナーを一度だけ実行してdashboard・insight・会議報告を各1経路確認できます。
+
+```bash
+gcloud auth application-default login
+python3 spikes/report-generation/verify_live_services.py \
+  --project <project> \
+  --output /private/tmp/repchat-live-verification.json \
+  --accept-cost
+```
+
+`--accept-cost`がない場合はGoogleクライアントを作成せず終了します。ランナーはAIが作った計画・相談候補を
+そのまま使い、固定パネル・固定SQL・数値の代用はしません。出力JSONには実行ステージ、件数、列名、可視化種別、
+SQLハッシュ、行数、検証状態、推定費用だけを保存し、SQL本文・取得行・会議報告本文は保存しません。未定義語や
+検証エラーで止まった場合も、その理由を品質記録へ残して自動再実行しません。
+
+## `make doctor`の時間とHTTP round-tripの切り分け
+
+`make doctor`の長時間化は、`setup-github.sh`の5秒ラッパーtimeoutではなく、`test_template_inheritance_plan.py`が
+テストごとに一時Gitリポジトリを作り、Git subprocessを多数起動することが主因です。ローカル計測ではこのモジュールが
+約65秒、ラッパー単体は約3秒でした。timeoutを延長したり再試行したりせず、遅いテストを別ジョブへ分離できるように
+計測値を記録します。
+
+HTTP round-tripの断続的な失敗は、テストが`0.0.0.0`へlistenerを開こうとして、サンドボックスや並列実行環境の
+loopback制約に触れることが原因でした。`serve`は本番の既定bindを維持しつつ、テストは`127.0.0.1`を明示して
+cleanupまで確認します。これにより本番のCloud Run向けbindを変えず、テストのlistener割当を隔離します。
 
 ## データソースが変わった場合の扱い
 

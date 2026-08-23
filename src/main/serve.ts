@@ -14,16 +14,23 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-/** Start `handler` as an HTTP server on `port` (0 = an ephemeral port). */
+/**
+ * Start `handler` as an HTTP server on `port` (0 = an ephemeral port).
+ *
+ * Deploy composition roots keep the default `0.0.0.0` binding required by
+ * Cloud Run. Tests and local callers can opt into loopback so a self-check
+ * never races with another process or exposes a test listener broadly.
+ */
 export function serve(
   handler: (req: Request) => Promise<Response>,
   port: number,
+  host = '0.0.0.0',
 ): Promise<RunningServer> {
   const server = createServer((nodeReq, nodeRes) => {
     void respond(handler, nodeReq, nodeRes);
   });
   return new Promise((resolve) => {
-    server.listen(port, () => {
+    server.listen(port, host, () => {
       const addr = server.address();
       resolve({
         port: typeof addr === 'object' && addr !== null ? addr.port : port,

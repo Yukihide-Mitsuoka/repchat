@@ -694,9 +694,78 @@ if(window.innerWidth<=1180 && $("inspector-toggle").getAttribute("aria-expanded"
 if(window.innerWidth<=960 && $("sidebar-toggle").getAttribute("aria-expanded")==="true")toggleSidebar();
 """
 CHART_RENDERER = (HERE / "chart_renderer.js").read_text(encoding="utf-8")
+CLARIFICATION_MARKUP = r"""
+<section id="clarification-panel" class="panel hidden" aria-labelledby="clarification-title"><h2 id="clarification-title">追加の定義が必要です</h2><p id="clarification-terms" class="notice warning"></p><p id="clarification-question" class="lead"></p><label for="clarification-answer">対象条件を回答してください</label><textarea id="clarification-answer" rows="3" maxlength="800" placeholder="例: 対象URLは /signup と /register、イベント名は sign_up です"></textarea><div class="actions"><button id="clarification-submit" type="button">回答して再生成</button><span class="cost">回答内容だけを条件に使い、回答にない条件は推測しない。BigQueryはSQL確定後にのみ実行します。</span></div></section>
+"""
+HTML = HTML.replace(
+    '<section id="output" class="hidden">',
+    CLARIFICATION_MARKUP + '<section id="output" class="hidden">',
+    1,
+)
+FOLLOWUP_SCRIPT = r"""
+let clarificationRequest = null;
+const originalQueryHandle = handle;
+handle = function followupAwareHandle(event) {
+  if (event.type === "refusal") {
+    clarificationRequest = event;
+    $("clarification-terms").textContent = `未定義: ${event.undefined_terms.join("、")}`;
+    $("clarification-question").textContent = event.clarification_question ||
+      "対象URL、ページ一覧、イベント名、または指標の計算定義を具体的に指定してください。";
+    $("clarification-answer").value = "";
+    $("clarification-panel").className = "panel";
+  }
+  originalQueryHandle(event);
+};
+async function runClarifiedQuery() {
+  if (!clarificationRequest) return;
+  const answer = $("clarification-answer").value.trim();
+  if (!answer) {
+    $("message").className = "notice error";
+    $("message").textContent = "確認質問への回答を入力してください。";
+    return;
+  }
+  let operation;
+  try {
+    operation = startActiveRequest();
+  } catch (error) {
+    $("message").className = "notice error";
+    $("message").textContent = error.message;
+    return;
+  }
+  $("clarification-submit").disabled = true;
+  $("clarification-panel").className = "panel hidden";
+  $("run-status").textContent = "再確認中";
+  $("message").className = "notice";
+  $("message").textContent = "回答を反映してVertex AIへ再確認しています。";
+  $("output").className = "hidden";
+  clearResult();
+  stage("generate");
+  try {
+    await stream(
+      "/api/query",
+      $("question").value.trim(),
+      handle,
+      $("dataset-profile").value,
+      {analysis_specification: pendingInsightSpecification, clarification_answer: answer},
+      operation,
+    );
+    clarificationRequest = null;
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      $("message").className = "notice error";
+      $("message").textContent = error.message;
+      finish("エラー");
+    }
+  } finally {
+    $("clarification-submit").disabled = false;
+    finishActiveRequest(operation);
+  }
+}
+$("clarification-submit").onclick = runClarifiedQuery;
+"""
 HTML = HTML.replace(
     "</script></body>",
-    CHART_RENDERER + "\n" + WORKSPACE_POLISH_SCRIPT + "\n</script></body>",
+    CHART_RENDERER + "\n" + WORKSPACE_POLISH_SCRIPT + "\n" + FOLLOWUP_SCRIPT + "\n</script></body>",
 )
 HTML = HTML.replace(
     "<script>\nconst $=",
@@ -1344,6 +1413,7 @@ class LiveQueryEngine:
         emit: Callable[[dict], None],
         profile: str = "ga4",
         analysis_specification: dict | None = None,
+        clarification_answer: str | None = None,
         request_id: str | None = None,
     ) -> None:
         cancel_event = self._begin_operation(request_id)
@@ -1359,7 +1429,12 @@ class LiveQueryEngine:
             except (ValueError, planner.PlannerError) as error:
                 raise LiveDemoError(str(error)) from error
             self._run_section(
-                section, period, emit, profile=profile, cancel_event=cancel_event
+                section,
+                period,
+                emit,
+                context={"clarification_answer": clarification_answer or ""},
+                profile=profile,
+                cancel_event=cancel_event,
             )
         finally:
             self._finish_operation()
@@ -1612,17 +1687,34 @@ class LiveQueryEngine:
             }
         )
         if profile == "bitcoin":
+            request = bitcoin.generation_request(section, period)
+            if extra.get("clarification_answer"):
+                request += (
+                    "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
+                    "回答にない条件は推測しない）\n"
+                    f"{extra['clarification_answer'].strip()}"
+                )
             answer, usage = report.generate_request(
                 self.client,
                 self.model,
-                bitcoin.generation_request(section, period),
+                request,
                 self.bitcoin_rules,
             )
             allowed_dataset = bitcoin.DATASET
         else:
-            answer, usage = report.generate(
-                self.client, self.model, section, period, self.rules
-            )
+            if extra.get("clarification_answer"):
+                answer, usage = report.generate(
+                    self.client,
+                    self.model,
+                    section,
+                    period,
+                    self.rules,
+                    clarification_answer=extra["clarification_answer"],
+                )
+            else:
+                answer, usage = report.generate(
+                    self.client, self.model, section, period, self.rules
+                )
             allowed_dataset = report.DATASET
         cost = (
             usage["input_tokens"] * report.PRICING[self.model][0]
@@ -1636,6 +1728,7 @@ class LiveQueryEngine:
                     "type": "refusal",
                     "reason": answer.get("reason", ""),
                     "undefined_terms": undefined,
+                    "clarification_question": answer.get("clarification_question", ""),
                     "cost_jpy": round(cost, 3),
                 }
             )
@@ -1845,6 +1938,9 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             analysis_specification = (
                 body.get("analysis_specification") if isinstance(body, dict) else None
             )
+            clarification_answer = (
+                body.get("clarification_answer") if isinstance(body, dict) else None
+            )
             revision_instruction = (
                 body.get("revision_instruction") if isinstance(body, dict) else None
             )
@@ -1860,6 +1956,12 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
                 analysis_specification, dict
             ):
                 raise ValueError("analysis_specification must be an object")
+            if clarification_answer is not None and (
+                not isinstance(clarification_answer, str)
+                or not clarification_answer.strip()
+                or len(clarification_answer) > 800
+            ):
+                raise ValueError("clarification_answer must be short text")
             if revision_instruction is not None and (
                 not isinstance(revision_instruction, str)
                 or not revision_instruction.strip()
@@ -1976,6 +2078,8 @@ class LiveDemoHandler(BaseHTTPRequestHandler):
             else:
                 if analysis_specification is not None:
                     request_kwargs["analysis_specification"] = analysis_specification
+                if clarification_answer is not None:
+                    request_kwargs["clarification_answer"] = clarification_answer
                 self.engine.query(question, emit, **request_kwargs)
         except LiveDemoError as error:
             try:
