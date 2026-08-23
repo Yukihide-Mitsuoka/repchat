@@ -337,14 +337,41 @@ function standardHeatmapOption(result) {
   const xValues = [...new Set(result.rows.map((row) => String(row[0])))];
   const yValues = [...new Set(result.rows.map((row) => String(row[1])))];
   const values = result.rows.map((row) => standardChartNumber(row[2]) ?? 0);
+  const cellCount = xValues.length * yValues.length;
+  const dense = cellCount > 60 || yValues.length > 24;
+  const zoomed = yValues.length > 24;
+  const visibleCategories = Math.min(24, yValues.length);
+  const visiblePercent = Math.min(100, Math.max(20, (visibleCategories / Math.max(yValues.length, 1)) * 100));
+  const xLabelLength = xValues.length > 8 ? 14 : 20;
+  const yLabelLength = 28;
   return {
     ...standardChartBase({ tooltip: true }),
-    grid: { left: 130, right: 80, top: 48, bottom: 70, containLabel: true },
+    grid: { left: 190, right: zoomed ? 42 : 80, top: 48, bottom: 82, containLabel: true },
     tooltip: { position: 'top', formatter: (params) => `${xValues[params.value[0]]} / ${yValues[params.value[1]]}: ${standardChartFormat(params.value[2], result.columns[2])}` },
-    xAxis: standardChartCategoryAxis(xValues, { rotate: xValues.length > 8 ? 35 : 0 }),
-    yAxis: standardChartCategoryAxis(yValues),
+    xAxis: standardChartCategoryAxis(xValues, {
+      rotate: xValues.length > 8 ? 35 : 0,
+      formatter: (value) => standardChartLabel(value, xLabelLength),
+    }),
+    yAxis: standardChartCategoryAxis(yValues, {
+      width: 176,
+      overflow: 'truncate',
+      formatter: (value) => standardChartLabel(value, yLabelLength),
+      interval: zoomed ? 0 : 'auto',
+    }),
     visualMap: { min: Math.min(...values, 0), max: Math.max(...values, 1), calculable: true, orient: 'horizontal', left: 'center', bottom: 8, inRange: { color: ['#eaf2f8', '#3973c6'] } },
-    series: [{ type: 'heatmap', data: result.rows.map((row) => [xValues.indexOf(String(row[0])), yValues.indexOf(String(row[1])), standardChartNumber(row[2]) ?? 0]), label: { show: true, formatter: (params) => standardChartFormat(params.value[2], result.columns[2]) }, emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.25)' } } }],
+    dataZoom: zoomed ? [
+      { type: 'slider', yAxisIndex: 0, right: 8, top: 48, bottom: 82, start: 0, end: visiblePercent, filterMode: 'none' },
+      { type: 'inside', yAxisIndex: 0, start: 0, end: visiblePercent, filterMode: 'none' },
+    ] : undefined,
+    series: [{
+      type: 'heatmap',
+      data: result.rows.map((row) => [xValues.indexOf(String(row[0])), yValues.indexOf(String(row[1])), standardChartNumber(row[2]) ?? 0]),
+      label: { show: !dense, formatter: (params) => standardChartFormat(params.value[2], result.columns[2]) },
+      emphasis: {
+        itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.25)' },
+        label: { show: true, formatter: (params) => standardChartFormat(params.value[2], result.columns[2]) },
+      },
+    }],
   };
 }
 
@@ -393,6 +420,10 @@ function standardChartHeight(result) {
   }
   if (result.visualization === 'sankey') return 440;
   if (result.visualization === 'calendar_heatmap') return 280;
+  if (result.visualization === 'heatmap') {
+    const yCount = new Set(result.rows.map((row) => String(row[1]))).size;
+    return Math.max(380, Math.min(560, 140 + Math.min(yCount, 24) * 18));
+  }
   return 380;
 }
 
