@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.1...v1.20.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **demo:** use chart space and reduce bar noise ([#431](https://github.com/Yukihide-Mitsuoka/repchat/issues/431)) ([222666e](https://github.com/Yukihide-Mitsuoka/repchat/commit/222666e87eda6ec49a913c21aaf2b6f015a51d11))
+* **planner:** trust structured chart dimensions ([#430](https://github.com/Yukihide-Mitsuoka/repchat/issues/430)) ([c98a383](https://github.com/Yukihide-Mitsuoka/repchat/commit/c98a38387caf1183d80863d12b6000fb9485a1c0))
+
 ## [1.20.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.0...v1.20.1) (2026-08-22)
 
 
