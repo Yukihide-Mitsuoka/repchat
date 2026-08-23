@@ -227,6 +227,37 @@ print(json.dumps(errors,ensure_ascii=False))`,
   ]);
 });
 
+test('structured dimensions remain authoritative when execution prose uses natural language', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+raw={
+ "objective_summary":"ページごとの購入成果を判断する","audience":"責任者","comparison":"ページ間比較",
+ "hypotheses":["閲覧ページによって購入成果に差がある"],"clarifications":[],"panels":[{
+  "title":"閲覧ページ別の購入成果","kpi":"購入件数","chart":"bar","decision":"改善対象ページを判断する",
+  "reason":"閲覧ページごとの差を確認するため",
+  "execution_prompt":"2021年1月のURLごとの購入成果を比較する",
+  "dimensions":["ページ"],"measures":["購入件数"],"layout_row":1,"layout_weight":1
+ }]}
+answers={"audience":"責任者","comparison":"ページ間比較","business_goal":"購入成果改善"}
+plan=p.normalize_dashboard_plan(raw,"2021年1月のページ別購入成果を分析する",{"from":"20210101","to":"20210131","label":"2021年1月"},answers)
+panel=plan["panels"][0]
+print(json.dumps({"dimensions":panel["dimensions"],"measures":panel["measures"],"prompt":panel["execution_prompt"]},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    dimensions: ['ページ'],
+    measures: ['購入件数'],
+    prompt: '2021年1月のURLごとの購入成果を比較する',
+  });
+});
+
 test('invalid Sankey output explains expected counts and returns an AI-authored correction', () => {
   const result = spawnSync(
     'python3',
@@ -518,6 +549,32 @@ print(json.dumps({
       '分析相談の候補理由が空です。',
       'AIが生成したbar仕様を描画できません。必要なのは区分軸1件・指標1件ですが、AI出力は区分軸0件・指標1件でした。',
     ],
+  });
+});
+
+test('consultation keeps structured dimensions when prose uses a synonym', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+recommendation={
+ "title":"URL別の購入成果","objective":"改善対象を判断する","dimensions":["ページ"],"measures":["購入件数"],
+ "comparison":"URL間比較","chart":"bar","execution_prompt":"2021年1月のURL別の購入成果を比較する",
+ "reason":"閲覧単位の差を確認するため"
+}
+confirmed=p.confirm_analysis_specification(recommendation)
+print(json.dumps({"dimensions":confirmed["dimensions"],"measures":confirmed["measures"],"prompt":confirmed["execution_prompt"]},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    dimensions: ['ページ'],
+    measures: ['購入件数'],
+    prompt: '2021年1月のURL別の購入成果を比較する',
   });
 });
 

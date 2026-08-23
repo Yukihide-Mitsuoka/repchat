@@ -352,7 +352,8 @@ def dashboard_planning_request(
 - 目的を意思決定へ言い換え、検証可能な仮説を最大3件にする。
 - 固定済みの分析候補から選ばず、目的と仮説から分析仕様そのものを新規に考える。
 - 各パネルには構造化出力schemaで要求された分析仕様と、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
-- execution_promptにはSQLを書かない。対象期間、dimensionsとmeasuresの全項目、比較、必要な出力列が分かる仕様にする。
+- execution_promptにはSQLを書かない。対象期間、比較、必要な出力の意図が分かる自然な仕様にする。
+  dimensionsとmeasuresは構造化フィールドを正本とし、execution_promptで表示名を逐語的に繰り返す必要はない。
 - 比較や派生指標が意思決定に有用なら候補として提案してよい。ただし、データソースから確認できる
   期間・粒度・指標で実行できるかを判断し、追加の範囲や定義が必要ならclarificationsで確認する。
   確認前のexecution_promptやmeasuresには未確認の実行条件を含めず、確認済みなら必要な期間と出力列を
@@ -602,16 +603,6 @@ def normalize_dashboard_plan(
             flags=re.IGNORECASE,
         ):
             raise PlannerError("分析計画の実行仕様にはSQLを書けません。")
-        compact_prompt = "".join(prompt.lower().split())
-        missing = [
-            term
-            for term in dimensions + measures
-            if "".join(term.lower().split()) not in compact_prompt
-        ]
-        if missing:
-            raise PlannerError(
-                "分析計画の実行仕様に区分軸・指標がありません: " + "、".join(missing)
-            )
         prompt_key = "".join(prompt.lower().split())
         if prompt_key in seen_prompts:
             raise PlannerError("分析計画に重複した実行仕様があります。")
@@ -773,6 +764,7 @@ def consultation_request(
 - 最後に、分析目的を具体化する短い確認質問を1件だけ書く。
 - 文脈にない指標・列・因果関係・取得済みでない数値を捏造しない。
 - SQLは書かない。execution_promptは、別工程のSQL生成AIへ渡す1行の日本語仕様にする。
+  dimensionsとmeasuresは構造化フィールドを正本とし、自然な言い換えを許容する。
 - 固定例から選択したように見せず、今回の目的に対する考察をassistant_messageとreasonへ明示する。
 """
 
@@ -825,16 +817,6 @@ def confirm_analysis_specification(raw: dict) -> dict:
         flags=re.IGNORECASE,
     ):
         raise PlannerError("分析相談の実行依頼にはSQLを書けません。")
-    compact_prompt = "".join(execution_prompt.lower().split())
-    missing = [
-        term
-        for term in dimensions + measures
-        if "".join(term.lower().split()) not in compact_prompt
-    ]
-    if missing:
-        raise PlannerError(
-            "分析相談の実行依頼に区分軸・指標がありません: " + "、".join(missing)
-        )
     canonical = json.dumps(
         recommendation, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     )
