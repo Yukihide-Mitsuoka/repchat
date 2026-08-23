@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-08-23 | LOG-0103 | 未定義語は推測せず、単一インサイトの停止時にAI生成の確認質問を画面へ渡し、利用者の回答だけを同じ分析仕様へ追加して再生成する。実サービス検証は`--accept-cost`を必須にした専用ランナーでdashboard・insight・会議報告を各1回実行し、SQL本文・取得行・報告本文を保存せず品質メタデータだけ記録する。HTTP round-tripは本番の`0.0.0.0`既定bindを維持し、loopbackテストだけ`127.0.0.1`へ明示する。 | [live demo](../spikes/report-generation/live_demo.py), [verification runner](../spikes/report-generation/verify_live_services.py), [troubleshooting](../docs/troubleshooting/live-demo.md) |
 | 2026-08-23 | LOG-0102 | 未定義指標の単一インサイトは推測でSQLを生成せず停止する既存契約を維持し、画面には計算定義または対象条件（URL・イベント・ページ一覧など）を指定して再質問する案内だけを追加する。固定のページ判定や指標代用は追加しない | [live demo](../spikes/report-generation/live_demo.py), [live demo tests](../tests/spikes/report-generation/live-demo.test.ts) |
 | 2026-08-23 | LOG-0101 | 高カーディナリティのヒートマップは、全セルの値・長い区分ラベルを常時描画せず、軸ラベルを省略せずに読める範囲へ整え、縦軸dataZoomとセル選択時の値表示で全結果へ到達できるようにする。SQL結果は切り捨てず、取得データとツールチップを正本とする | [chart renderer](../spikes/report-generation/chart_renderer.js), [live demo tests](../tests/spikes/report-generation/live-demo.test.ts) |
 | 2026-08-23 | LOG-0100 | BigQueryのURLパス抽出は、未対応の`NET.PARSE_URL`を生成SQLに残さず、データソース方言ルールで`REGEXP_EXTRACT`等の実行可能な標準関数へAI自身が書き直す。固定SQL置換やデータ依存フォールバックは追加しない | [SQL generation](../spikes/report-generation/run_report.py), [troubleshooting](../docs/troubleshooting/live-demo.md) |

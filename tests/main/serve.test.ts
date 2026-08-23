@@ -10,7 +10,7 @@ async function withServer(
   handler: (req: Request) => Promise<Response>,
   fn: (base: string) => Promise<void>,
 ): Promise<void> {
-  const server = await serve(handler, 0);
+  const server = await serve(handler, 0, '127.0.0.1');
   try {
     await fn(`http://127.0.0.1:${server.port}`);
   } finally {

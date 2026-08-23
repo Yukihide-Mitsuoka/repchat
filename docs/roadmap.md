@@ -41,9 +41,9 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 | 優先 | 課題 | 次の完了条件 |
 |---:|---|---|
-| 保守時 | [#315 `make doctor` wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 外部I/Oまたは待機条件を特定し、timeout延長や再試行ではなく無外部I/Oの再現テストと原因修正を行う |
-| 再発時 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | 4件同時失敗時の未省略例外を取得し、listener割当・cleanup・並列実行の原因を確定して再現テストを追加する |
-| 費用承認後 | #374/#410で拡張したAI分析計画の実サービス確認 | 固定応答テスト後にVertex AIだけを1回確認し、SQL生成・BigQuery buildは別の費用確認後に1件だけ実行する |
+| 保守時 | [#315 `make doctor` wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 原因を`test_template_inheritance_plan.py`の一時Gitリポジトリ反復（約65秒）と特定。timeout延長・再試行はせず、遅いスイートの分離を次の保守作業にする |
+| 再発時 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | `serve`の本番bindを維持し、round-tripテストは`127.0.0.1`を明示してlistener割当とcleanupを隔離。5回連続の再現確認を行った |
+| 費用承認後 | #374/#410で拡張したAI分析計画の実サービス確認 | `spikes/report-generation/verify_live_services.py`で、費用承認後にdashboard・insight・会議報告を各1回実行し、SQL本文・取得行を保存せず品質メタデータを記録する |
 
 Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張は
 [PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)で完了し、その後のprovider schema回帰は

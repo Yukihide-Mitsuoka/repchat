@@ -542,6 +542,11 @@ test('single-graph progress shows the dynamic stop reason before stage details',
   assert.doesNotMatch(progress, /質問を送信すると、ここに処理状況が表示されます。/);
   assert.match(html, /未定義のため停止:/);
   assert.match(html, /指標の計算定義または対象条件（URL・イベント・ページ一覧など）を具体的に指定/);
+  assert.match(html, /id="clarification-panel"/);
+  assert.match(html, /id="clarification-question"/);
+  assert.match(html, /id="clarification-submit"/);
+  assert.match(html, /clarification_answer/);
+  assert.match(html, /回答にない条件は推測しない/);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
