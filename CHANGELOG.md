@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.2...v1.20.3) (2026-08-23)
+
+
+### Bug Fixes
+
+* **demo:** adapt chart layout and preserve dashboard errors ([#433](https://github.com/Yukihide-Mitsuoka/repchat/issues/433)) ([260db2f](https://github.com/Yukihide-Mitsuoka/repchat/commit/260db2fdccd4231da632080a9c5104380b3a774c))
+* **demo:** harden insight SQL and dense heatmaps ([#435](https://github.com/Yukihide-Mitsuoka/repchat/issues/435)) ([debed30](https://github.com/Yukihide-Mitsuoka/repchat/commit/debed30f8c2cc718fe496c2877e3de2dd69f83ef))
+
 ## [1.20.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.1...v1.20.2) (2026-08-23)
 
 
