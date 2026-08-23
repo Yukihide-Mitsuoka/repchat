@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-08-23 | LOG-0102 | 未定義指標の単一インサイトは推測でSQLを生成せず停止する既存契約を維持し、画面には計算定義または対象条件（URL・イベント・ページ一覧など）を指定して再質問する案内だけを追加する。固定のページ判定や指標代用は追加しない | [live demo](../spikes/report-generation/live_demo.py), [live demo tests](../tests/spikes/report-generation/live-demo.test.ts) |
 | 2026-08-23 | LOG-0101 | 高カーディナリティのヒートマップは、全セルの値・長い区分ラベルを常時描画せず、軸ラベルを省略せずに読める範囲へ整え、縦軸dataZoomとセル選択時の値表示で全結果へ到達できるようにする。SQL結果は切り捨てず、取得データとツールチップを正本とする | [chart renderer](../spikes/report-generation/chart_renderer.js), [live demo tests](../tests/spikes/report-generation/live-demo.test.ts) |
 | 2026-08-23 | LOG-0100 | BigQueryのURLパス抽出は、未対応の`NET.PARSE_URL`を生成SQLに残さず、データソース方言ルールで`REGEXP_EXTRACT`等の実行可能な標準関数へAI自身が書き直す。固定SQL置換やデータ依存フォールバックは追加しない | [SQL generation](../spikes/report-generation/run_report.py), [troubleshooting](../docs/troubleshooting/live-demo.md) |
 | 2026-08-23 | LOG-0099 | 棒グラフの向きは分析テーマやデモデータへ依存させず、共有のカテゴリ密度判定で区分数・日付らしさ・ラベル長から自動決定する。密な短い区分は縦棒、少数または長い区分は横棒とし、同じ判定を描画とカード高さで再利用する | [chart renderer](../spikes/report-generation/chart_renderer.js), [visualization coverage](../docs/requirements/evidence-cloud-visualization-coverage.md) |

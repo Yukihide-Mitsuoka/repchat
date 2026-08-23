@@ -541,6 +541,7 @@ test('single-graph progress shows the dynamic stop reason before stage details',
   assert.ok(progress.indexOf('id="message"') < progress.indexOf('<ol class="stages">'));
   assert.doesNotMatch(progress, /質問を送信すると、ここに処理状況が表示されます。/);
   assert.match(html, /未定義のため停止:/);
+  assert.match(html, /指標の計算定義または対象条件（URL・イベント・ページ一覧など）を具体的に指定/);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
