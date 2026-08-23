@@ -1017,6 +1017,34 @@ finally:s.shutdown();s.server_close();t.join()
   assert.equal(observed.oversized_status, 400);
 });
 
+test('dashboard validation turns unexpected errors into a JSON response', () => {
+  const result = python(`
+import json,threading,urllib.error,urllib.request
+question="2021年1月の購入課題を分析するダッシュボードを作って"
+raw={"objective_summary":"購入課題を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"answers":{"audience":"責任者"},"clarifications":[],"panels":[{"title":"購入規模","kpi":"購入件数","chart":"scorecard","decision":"規模を判断する","reason":"基準値が必要","execution_prompt":"2021年1月の購入件数を集計する","dimensions":[],"measures":["購入件数"],"layout_row":1,"layout_weight":1}]}
+plan=m.planner.normalize_dashboard_plan(raw,question,m.period_for_question(question),raw["answers"])
+def unexpected(*_args):raise RuntimeError("unexpected validation failure")
+m.dashboard_sections_for_plan=unexpected
+s=m.create_server("127.0.0.1",0,object());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+request=urllib.request.Request(base+"/api/dashboard",data=json.dumps({"question":question,"analysis_plan":plan},ensure_ascii=False).encode(),headers={"content-type":"application/json","origin":base},method="POST")
+try:
+ status=0
+ try:urllib.request.urlopen(request)
+ except urllib.error.HTTPError as error:
+  status=error.code;body=json.loads(error.read().decode())
+ print(json.dumps({"status":status,"error":body["error"]},ensure_ascii=False))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(
+    JSON.parse(result.stdout.split('\n').find((line) => line.startsWith('{')) ?? ''),
+    {
+      status: 500,
+      error: '生成または実行に失敗しました。端末ログを確認してください。',
+    },
+  );
+});
+
 test('planning HTTP boundary requires a valid current plan and revision instruction together', () => {
   const result = python(`
 import threading,urllib.error,urllib.request
@@ -1467,8 +1495,10 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(parsed.bar.series[0].emphasis.label.show, true);
   assert.equal(parsed.grouped_bar.xAxis[0].type, 'value');
   assert.equal(parsed.grouped_bar.grid.left, 64);
+  assert.equal(parsed.grouped_bar.grid.right, 40, '右側の余白を共通設定で確保する');
   assert.equal(parsed.grouped_bar.grid.bottom, 60);
   assert.equal(parsed.scatter.grid.left, 52);
+  assert.equal(parsed.scatter.grid.top, 44, '上側の余白を共通設定で確保する');
   assert.equal(parsed.scatter.grid.bottom, 42);
   assert.equal(parsed.multi_line.yAxis.length, 2);
   assert.equal(parsed.multi_line.yAxis[0].name, 'sessions');
@@ -1487,9 +1517,38 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(JSON.stringify(grouped.series.map((series: any) => series.xAxisIndex)), '[0,0,1]');
   assert.equal(grouped.series[0].label.show, false, '棒ごとの値ラベルは常時表示しない');
   assert.equal(grouped.series[0].emphasis.label.show, true, '選択中の棒は値を確認できる');
-  assert.equal(grouped.grid.top, 60, '上側の単位軸に必要な余白だけを確保する');
+  assert.equal(grouped.grid.top, 68, '上側の単位軸に必要な余白だけを確保する');
   assert.equal(grouped.grid.bottom, 60, '下側の単位軸に必要な余白だけを確保する');
   assert.equal(grouped.yAxis.axisLabel.width, 72, '短い区分軸は余白を詰める');
+
+  const dense = vm.runInNewContext(
+    `${source};standardChartOption({visualization:'bar',columns:['date','sessions'],rows:${JSON.stringify(
+      Array.from({ length: 10 }, (_, index) => [
+        `2021-01-${String(index + 1).padStart(2, '0')}`,
+        index + 1,
+      ]),
+    )}})`,
+    {
+      metricUnit: () => 'セッション',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as Record<string, any>;
+  assert.equal(dense.xAxis.type, 'category', '密な日付区分は横軸に並べる');
+  assert.equal(dense.yAxis[0].type, 'value', '密な日付区分は縦棒の値軸を使う');
+  assert.equal(dense.xAxis.axisLabel.rotate, 35, '密な日付ラベルは傾けて読みやすくする');
+  assert.equal(dense.grid.bottom, 64, '密な日付ラベルのために下側の余白を確保する');
+
+  const compact = vm.runInNewContext(
+    `${source};standardChartOption({visualization:'stacked_bar',columns:['channel','sessions','repeat_sessions'],rows:${JSON.stringify(
+      Array.from({ length: 10 }, (_, index) => [`channel-${index + 1}`, index + 1, index]),
+    )}})`,
+    {
+      metricUnit: () => 'セッション',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as Record<string, any>;
+  assert.equal(compact.xAxis.type, 'category', '日付以外の密な短い区分も同じ判定を使う');
+  assert.equal(compact.yAxis[0].type, 'value');
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {
