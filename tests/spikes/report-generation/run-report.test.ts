@@ -135,6 +135,8 @@ print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
   assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
   assert.match(output.request, /未確認の期間・派生指標が含まれる場合は、推測で列を追加せず/);
   assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
+  assert.match(output.rules, /NET\.PARSE_URL/);
+  assert.match(output.rules, /REGEXP_EXTRACT/);
 });
 
 test('only BigQuery compiler BadRequest diagnostics are repairable', () => {

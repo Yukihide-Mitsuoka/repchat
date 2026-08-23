@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-08-23 | LOG-0100 | BigQueryのURLパス抽出は、未対応の`NET.PARSE_URL`を生成SQLに残さず、データソース方言ルールで`REGEXP_EXTRACT`等の実行可能な標準関数へAI自身が書き直す。固定SQL置換やデータ依存フォールバックは追加しない | [SQL generation](../spikes/report-generation/run_report.py), [troubleshooting](../docs/troubleshooting/live-demo.md) |
 | 2026-08-23 | LOG-0099 | 棒グラフの向きは分析テーマやデモデータへ依存させず、共有のカテゴリ密度判定で区分数・日付らしさ・ラベル長から自動決定する。密な短い区分は縦棒、少数または長い区分は横棒とし、同じ判定を描画とカード高さで再利用する | [chart renderer](../spikes/report-generation/chart_renderer.js), [visualization coverage](../docs/requirements/evidence-cloud-visualization-coverage.md) |
 | 2026-08-20 | LOG-0098 | 継続的依存スキャンで検出された修正済みhigh advisoryへ対応するため、ローカルデモのpin済み`sqlparse`を0.5.5から0.6.0へ更新する。0.6.0はPython 3.10以上を要求し、このリポジトリのPython 3.13要件を満たす。スキャンを抑制せずupgradeで解消し、SQL整形後の4スペース階層と表示専用境界は既存回帰テストで維持する | [requirements](../spikes/report-generation/requirements.txt) |
 | 2026-08-14 | LOG-0097 | Node.js 24移行を保護workflow境界へ手動移植し、5つのJavaScript ActionをFoundation承認済みmajorとcommit SHAへ更新する。trigger、permission、inputは維持し、継承可能な回帰テストで今後の旧major再混入を拒否する | [Issue #384](https://github.com/Yukihide-Mitsuoka/repchat/issues/384) |

@@ -111,6 +111,10 @@ def prompt_rules(metrics: str) -> str:
 - `event_params` の値は、その `events_*` を直接読む最初のCTEでスカラー列として抽出する。
   後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない。BigQueryが相関を
   de-correlateできない構造になる場合は、先に `UNNEST` して必要なキーを抽出したCTEへ変換する。
+- URLやページパスを抽出するときは、BigQuery Standard SQLに存在しない `NET.PARSE_URL` を使わない。
+  `page_location` の文字列から必要なパスを取り出す場合は、`REGEXP_EXTRACT` などBigQueryで
+  実行可能な標準関数を使い、scheme・host・query・fragmentを分析仕様に従って扱う。未対応の
+  方言関数を別の固定SQLへ置換するのではなく、同じ出力契約を保つSQLとして生成する。
 - 結果は JSON で {{"sql": "...", "reason": "...", "undefined_terms": [...]}} の形で返す。
   reason は日本語1文。
 """
@@ -212,6 +216,8 @@ def repair_request(analysis_request: str, sql: str, diagnostic: str) -> str:
 使用する関数と構文は、選択されたデータソースのSQL方言・実行環境で利用可能なものに限ること。
 診断に未対応の関数や構文が含まれる場合は、同じ分析仕様を保ったまま、そのデータソースで利用可能な
 表現へ修正すること。
+BigQueryで `NET.PARSE_URL` が未対応と診断された場合は、その関数を残したり別の固定SQLへ置換したりせず、
+`REGEXP_EXTRACT` などBigQuery Standard SQLで利用可能な関数によるURLパス抽出へ書き直すこと。
 
 確定済み分析仕様:
 {analysis_request}
