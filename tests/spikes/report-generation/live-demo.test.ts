@@ -541,6 +541,7 @@ test('single-graph progress shows the dynamic stop reason before stage details',
   assert.ok(progress.indexOf('id="message"') < progress.indexOf('<ol class="stages">'));
   assert.doesNotMatch(progress, /質問を送信すると、ここに処理状況が表示されます。/);
   assert.match(html, /未定義のため停止:/);
+  assert.match(html, /指標の計算定義または対象条件（URL・イベント・ページ一覧など）を具体的に指定/);
 });
 
 test('dashboard-specific KPI, funnel, and trend panels render from fixed results', () => {
@@ -1505,6 +1506,35 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(parsed.donut.series[0].type, 'pie');
   assert.equal(parsed.funnel.series[0].sort, 'none');
   assert.equal(parsed.sankey.series[0].type, 'sankey');
+  assert.equal(parsed.heatmap.series[0].label.show, true, '疎なヒートマップはセル値を確認できる');
+  assert.equal(
+    parsed.heatmap.dataZoom,
+    undefined,
+    '疎なヒートマップには不要なスクロールを付けない',
+  );
+
+  const denseHeatmap = vm.runInNewContext(
+    `${source};standardChartOption({visualization:'heatmap',columns:['device','page','sessions'],rows:${JSON.stringify(
+      Array.from({ length: 100 }, (_, index) => [
+        ['desktop', 'mobile', 'tablet'][index % 3],
+        `page-${index + 1}`,
+        index + 1,
+      ]),
+    )}})`,
+    {
+      metricUnit: () => 'セッション',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as Record<string, any>;
+  assert.equal(
+    denseHeatmap.series[0].label.show,
+    false,
+    '密なヒートマップはセル値を常時表示しない',
+  );
+  assert.equal(denseHeatmap.series[0].emphasis.label.show, true, '選択したセルは値を確認できる');
+  assert.equal(denseHeatmap.dataZoom.length, 2, '多数の区分は縦軸スクロールで確認できる');
+  assert.equal(denseHeatmap.yAxis.axisLabel.width, 176, '長い区分ラベルを軸内に収める');
+  assert.equal(denseHeatmap.yAxis.axisLabel.interval, 0, 'スクロール中の表示区分を省略しない');
 
   const grouped = vm.runInNewContext(
     `${source};standardChartOption({visualization:'grouped_bar',columns:['channel','new_sessions','repeat_sessions','purchases'],rows:[['organic',100,20,3]]})`,
