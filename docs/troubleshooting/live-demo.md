@@ -2,7 +2,7 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-23
+updated: 2026-08-27
 ---
 
 # ライブデモのトラブルシューティング
@@ -39,9 +39,12 @@ SQLハッシュ、行数、検証状態、推定費用だけを保存し、SQL�
 ## `make doctor`の時間とHTTP round-tripの切り分け
 
 `make doctor`の長時間化は、`setup-github.sh`の5秒ラッパーtimeoutではなく、`test_template_inheritance_plan.py`が
-テストごとに一時Gitリポジトリを作り、Git subprocessを多数起動することが主因です。ローカル計測ではこのモジュールが
-約65秒、ラッパー単体は約3秒でした。timeoutを延長したり再試行したりせず、遅いテストを別ジョブへ分離できるように
-計測値を記録します。
+テストごとに一時Gitリポジトリを作り、Git subprocessを多数起動することが主因です。2026-08-27のローカル計測では
+wrapper moduleが約2.3秒、inheritance plan moduleが約51.6秒でした。
+
+通常の`make doctor`はfast foundation suiteだけを実行します。一時Gitリポジトリを使う回帰テストは
+`make doctor-slow`で実行し、CIでも独立した`doctor-slow` jobとして必ず確認します。slow suiteをskipせず、timeout延長と
+retryも行いません。
 
 HTTP round-tripの断続的な失敗は、テストが`0.0.0.0`へlistenerを開こうとして、サンドボックスや並列実行環境の
 loopback制約に触れることが原因でした。`serve`は本番の既定bindを維持しつつ、テストは`127.0.0.1`を明示して

@@ -6,7 +6,7 @@
 # Tests run .ts directly via Node >=24 type stripping (tsconfig erasableSyntaxOnly).
 
 .PHONY: setup format lint test test-unit test-integration coverage build run \
-        security-scan sbom clean help doctor \
+        security-scan sbom clean help doctor doctor-slow \
         deploy destroy infra-plan demo demo-live
 
 FILE ?=
@@ -70,6 +70,9 @@ doctor: ## Self-check the template: metadata invariants + guard-hook tests (foun
 	@bash tests/template-sync-boundary.test.sh
 	@bash scripts/tests/pr-size-policy.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
+
+doctor-slow: ## Run foundation tests that create temporary Git repositories
+	@python3 scripts/foundation_test_runner.py --suite slow
 
 demo: demo-live ## Open the AI-planned live demo
 
