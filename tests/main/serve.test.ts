@@ -69,3 +69,27 @@ test('a throwing handler becomes a generic 500, not a crash or a hang', async ()
     assert.deepEqual(await res.json(), { error: 'internal error' }); // detail not leaked
   });
 });
+
+test('listener allocation failure rejects with the underlying socket error', async () => {
+  const handler = async (): Promise<Response> => new Response('ok');
+  const first = await serve(handler, 0, '127.0.0.1');
+  try {
+    await assert.rejects(serve(handler, first.port, '127.0.0.1'), (error: unknown) => {
+      assert.equal((error as NodeJS.ErrnoException).code, 'EADDRINUSE');
+      return true;
+    });
+  } finally {
+    await first.close();
+  }
+});
+
+test('close releases the listener and remains safe when repeated', async () => {
+  const handler = async (): Promise<Response> => new Response('ok');
+  const first = await serve(handler, 0, '127.0.0.1');
+  const port = first.port;
+
+  await Promise.all([first.close(), first.close()]);
+
+  const replacement = await serve(handler, port, '127.0.0.1');
+  await replacement.close();
+});
