@@ -112,6 +112,63 @@ print(json.dumps({
   });
 });
 
+test('SQL structured responses are bounded and expose stable finish diagnostics without retry', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+google = types.ModuleType("google")
+genai = types.ModuleType("google.genai")
+class Config:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+genai.types = types.SimpleNamespace(GenerateContentConfig=Config)
+google.genai = genai
+sys.modules["google"] = google
+sys.modules["google.genai"] = genai
+responses = [
+    types.SimpleNamespace(
+        text='{"sql":"SELECT',
+        candidates=[types.SimpleNamespace(finish_reason="MAX_TOKENS")],
+    ),
+    types.SimpleNamespace(
+        text='{"sql":',
+        candidates=[types.SimpleNamespace(finish_reason="STOP")],
+    ),
+    types.SimpleNamespace(
+        text='blocked body must not be exposed',
+        candidates=[types.SimpleNamespace(finish_reason="SAFETY")],
+    ),
+]
+calls = 0
+limits = []
+class Models:
+    def generate_content(self, **kwargs):
+        global calls
+        limits.append(kwargs["config"].max_output_tokens)
+        response = responses[calls]
+        calls += 1
+        return response
+client = types.SimpleNamespace(models=Models())
+errors = []
+for _ in responses:
+    try:
+        module["generate_request"](client, "test-model", "質問", "規則")
+    except ValueError as error:
+        errors.append(str(error))
+print(json.dumps({"calls":calls,"limits":limits,"errors":errors}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: 3,
+    limits: [8192, 8192, 8192],
+    errors: [
+      'SQL生成が出力上限までに完了しませんでした。今回のVertex AI呼出しは自動再実行していません。',
+      'SQL生成JSONを解釈できませんでした。今回のVertex AI呼出しは自動再実行していません。',
+      'SQL生成を完了できませんでした（終了理由: SAFETY）。今回のVertex AI呼出しは自動再実行していません。',
+    ],
+  });
+});
+
 test('SQL repair keeps the confirmed analysis contract and warehouse diagnostic', () => {
   const result = loadRunReport(`
 section = {

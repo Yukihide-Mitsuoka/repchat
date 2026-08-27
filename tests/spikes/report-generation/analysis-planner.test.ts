@@ -714,6 +714,59 @@ print(json.dumps({"calls":calls,"first":first,"without_thoughts":without_thought
   });
 });
 
+test('planner structured responses are bounded and expose stable finish diagnostics without retry', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import importlib.util,json,sys,types
+sys.path.insert(0,${JSON.stringify(path.dirname(PLANNER))})
+spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+responses=[]
+for finish,text in [("MAX_TOKENS",'{"panels":'),("STOP",'{"panels":'),("SAFETY",'blocked body must not be exposed')]:
+ responses.append(types.SimpleNamespace(text=text,candidates=[types.SimpleNamespace(finish_reason=finish)]))
+for finish,text in [("MAX_TOKENS",'{"recommendations":'),("STOP",'{"recommendations":'),("SAFETY",'blocked body must not be exposed')]:
+ responses.append(types.SimpleNamespace(text=text,candidates=[types.SimpleNamespace(finish_reason=finish)]))
+calls=0;limits=[]
+class Models:
+ def generate_content(self,**kwargs):
+  global calls
+  limits.append(kwargs["config"].max_output_tokens)
+  response=responses[calls];calls+=1;return response
+client=types.SimpleNamespace(models=Models())
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+errors=[]
+for _ in range(3):
+ try:p.propose_dashboard(client,"test-model","目的",period,"指標定義",{})
+ except p.PlannerError as error:errors.append(str(error))
+for _ in range(3):
+ try:p.propose_consultation(client,"test-model","質問",[],"文脈","ga4")
+ except p.PlannerError as error:errors.append(str(error))
+print(json.dumps({"calls":calls,"limits":limits,"errors":errors},ensure_ascii=False))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    calls: 6,
+    limits: [32768, 32768, 32768, 8192, 8192, 8192],
+    errors: [
+      'Vertex AIの分析計画が出力上限までに完了しませんでした。現在案は保持し、自動再実行していません。',
+      'Vertex AIの分析計画JSONを解釈できませんでした。現在案は保持し、自動再実行していません。',
+      'Vertex AIが分析計画の生成を完了できませんでした（終了理由: SAFETY）。現在案は保持し、自動再実行していません。',
+      'Vertex AIの分析相談が出力上限までに完了しませんでした。現在案は保持し、自動再実行していません。',
+      'Vertex AIの分析相談JSONを解釈できませんでした。現在案は保持し、自動再実行していません。',
+      'Vertex AIが分析相談の生成を完了できませんでした（終了理由: SAFETY）。現在案は保持し、自動再実行していません。',
+    ],
+  });
+});
+
 test('confirmed dynamic plan requires a non-empty answer for every displayed clarification', () => {
   const result = spawnSync(
     'python3',
