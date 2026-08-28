@@ -15,10 +15,12 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "bar",
     "grouped_bar",
     "stacked_bar",
+    "percent_stacked_bar",
     "line",
     "multi_line",
     "area",
     "stacked_area",
+    "percent_stacked_area",
     "histogram",
     "donut",
     "calendar_heatmap",
@@ -33,6 +35,8 @@ DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
 MAX_SANKEY_PAGES = 4
 MAX_SANKEY_PATHS = 10
 MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_PAGES - 1)
+MAX_CALENDAR_YEARS = 5
+MAX_CALENDAR_ROWS = MAX_CALENDAR_YEARS * 366
 # Initial dashboard output is exactly INITIAL_PANEL_COUNT panels; revisions are
 # locally validated at 1..MAX_PANEL_COUNT. Consultation is provider- and
 # locally-bounded at 1..4 recommendations. Token budgets cover those different
@@ -45,13 +49,15 @@ DASHBOARD_ROW_LIMITS = {
     "bar": 30,
     "grouped_bar": 20,
     "stacked_bar": 20,
+    "percent_stacked_bar": 20,
     "line": 100,
     "multi_line": 100,
     "area": 100,
     "stacked_area": 100,
+    "percent_stacked_area": 100,
     "histogram": 30,
     "donut": 12,
-    "calendar_heatmap": 366,
+    "calendar_heatmap": MAX_CALENDAR_ROWS,
     "scatter": 100,
     "bubble": 100,
     "funnel": 12,
@@ -65,15 +71,17 @@ CHART_SHAPE_CONTRACTS = {
     "bar": (1, 1, 1, 1),
     "grouped_bar": (1, 1, 2, 4),
     "stacked_bar": (1, 1, 2, 4),
+    "percent_stacked_bar": (1, 1, 2, 4),
     "line": (1, 1, 1, 1),
     "multi_line": (1, 1, 2, 4),
     "area": (1, 1, 1, 1),
     "stacked_area": (1, 1, 2, 4),
+    "percent_stacked_area": (1, 1, 2, 4),
     "histogram": (1, 1, 1, 1),
     "donut": (1, 1, 1, 1),
     "calendar_heatmap": (1, 1, 1, 1),
-    "scatter": (1, 1, 2, 2),
-    "bubble": (1, 1, 3, 3),
+    "scatter": (1, 2, 2, 2),
+    "bubble": (1, 2, 3, 3),
     "funnel": (1, 1, 1, 1),
     "heatmap": (2, 2, 1, 1),
     "table": (0, 4, 1, 4),

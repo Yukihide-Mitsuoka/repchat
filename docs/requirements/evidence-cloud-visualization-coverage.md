@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-08-15
+updated: 2026-08-28
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -45,17 +45,17 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる18種類
+### 2.1 現在AI plannerが選べる20種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
 | `scorecard` / `kpi_group` | Big Value | 対応 | 1〜4件の定義済みKPIを1行で返す |
-| `bar` / `grouped_bar` / `stacked_bar` | Bar Chart | 部分対応 | 区分数とラベル密度に応じた縦棒／横棒、grouped、stackedのwide形式。100% stackedは未対応 |
+| `bar` / `grouped_bar` / `stacked_bar` / `percent_stacked_bar` | Bar Chart | 部分対応 | 区分数とラベル密度に応じた縦棒／横棒、grouped、stacked、100% stackedのwide形式。利用者指定orientationは未対応 |
 | `line` / `multi_line` | Line Chart | 部分対応 | 1〜4系列。複数系列は色付き独立縦軸で値を表示する |
-| `area` / `stacked_area` | Area Chart | 部分対応 | 基本areaとwide形式のstacked area。100% stackedは未対応 |
+| `area` / `stacked_area` / `percent_stacked_area` | Area Chart | 対応 | 基本area、stacked area、100% stacked areaのwide形式 |
 | `histogram` | Histogram | 対応 | numericの階級下限と度数を返す |
-| `calendar_heatmap` | Calendar Heatmap | 対応 | 日付と1指標を最大366日まで返す |
-| `scatter` / `bubble` | Scatter / Bubble Chart | 部分対応 | category、x、y、任意のsizeを返す。複数seriesは未対応 |
+| `calendar_heatmap` | Calendar Heatmap | 対応 | 日付と1指標を最大5年まで返し、年ごとにcalendarを分ける |
+| `scatter` / `bubble` | Scatter / Bubble Chart | 対応 | category、任意のseries、x、y、任意のsizeを返す |
 | `funnel` | Funnel Chart | 部分対応 | 順序付きstageと非負値を返す |
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
 | `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。Evidence固有の高度な表機能は対象外 |
@@ -71,14 +71,14 @@ plannerの許可値は
 
 | Evidence component | 公式に掲載される主なvariant | RepChat | 現在の根拠・不足 |
 |---|---|---|---|
-| Area Chart | basic、stacked、100% stacked | 部分対応 | basicとstackedに対応。100% stackedは未対応 |
-| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。100% stacked、利用者が任意に固定するorientation、longは未対応 |
+| Area Chart | basic、stacked、100% stacked | 対応 | basic、stacked、100% stackedへ対応 |
+| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、100% stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。利用者が任意に固定するorientation、longは未対応 |
 | Box Plot | basic、horizontal | 未対応 | quartile／whiskerの結果契約とrendererがない |
-| Bubble Chart | single／multiple series | 部分対応 | single seriesのx、y、sizeに対応。複数seriesは未対応 |
+| Bubble Chart | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Histogram | default | 対応 | numericの階級下限と度数を検査して描画する |
 | Line Chart | single、multiple series、multiple Y columns | 部分対応 | 1〜4系列と独立縦軸に対応。series別chart typeは未対応 |
-| Scatter Plot | single／multiple series | 部分対応 | single seriesのx、yに対応。複数seriesは未対応 |
-| Calendar Heatmap | single year、multi-year | 部分対応 | date、valueの最大366日へ対応。multi-year区切りは未対応 |
+| Scatter Plot | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
+| Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
 | Funnel Chart | default、side aligned | 部分対応 | 任意の順序付きstageに対応。orientationは未対応 |
 | Sankey Diagram | horizontal、vertical | 部分対応 | 上位10経路・最大4ページの段階付き回遊に対応。verticalと一般flowは未対応 |
@@ -130,9 +130,9 @@ accessibility欠落につながるため、初期方針にはしない。RepChat
 
 ## 7. 現在の要約
 
-RepChatのlocal demoでは、18個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
-扱える。Evidenceのvariantをすべて再現したことは意味せず、map、Box Plot、Calendar Heatmapのmulti-year表示、
-Sparkline、Mixed-Type Charts、任意Custom EChartsは未対応である。
+RepChatのlocal demoでは、20個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
+扱える。Evidenceのvariantをすべて再現したことは意味せず、map、Box Plot、Sparkline、Mixed-Type Charts、
+任意Custom EChartsは未対応である。
 
 したがって、AIが利用者の要望を考察しても、現時点のplannerへEvidence全種類を選ばせてはならない。
 先に各chartの結果形状とrendererを実装し、end-to-end契約を試験したものだけをAIの許可enumへ加える。

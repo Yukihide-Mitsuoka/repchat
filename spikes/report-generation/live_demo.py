@@ -839,10 +839,12 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "bar": "table",
         "grouped_bar": "grouped_bar",
         "stacked_bar": "stacked_bar",
+        "percent_stacked_bar": "percent_stacked_bar",
         "line": "line",
         "multi_line": "multi_line",
         "area": "area",
         "stacked_area": "stacked_area",
+        "percent_stacked_area": "percent_stacked_area",
         "histogram": "histogram",
         "donut": "donut",
         "calendar_heatmap": "calendar_heatmap",
@@ -882,7 +884,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "bar":
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["category", "metric_value"]
-    elif chart in {"grouped_bar", "stacked_bar"}:
+    elif chart in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "category",
@@ -900,7 +902,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "area":
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["event_date", "metric_value"]
-    elif chart == "stacked_area":
+    elif chart in {"stacked_area", "percent_stacked_area"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "event_date",
@@ -920,7 +922,11 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         if chart == "bubble":
             value_columns.append("size_value")
         section["shape"] = {"rows": "項目ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["category", *value_columns]
+        section["source_columns"] = [
+            "category",
+            *(["series"] if len(dimensions) == 2 else []),
+            *value_columns,
+        ]
     elif chart == "funnel":
         section["shape"] = {"rows": "段階ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["stage", "metric_value"]
@@ -963,7 +969,9 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "同一sourceとtargetの組はSUMして1行に集約する",
             "URLをnode名に使う場合はscheme、host、query、fragmentを除いたpage pathを表示名にする",
         ]
-    if chart not in {"line", "multi_line", "area", "stacked_area", "table"}:
+    if chart not in {
+        "line", "multi_line", "area", "stacked_area", "percent_stacked_area", "table"
+    }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
         aliases = "、".join(nonnull_metric_columns)
@@ -973,7 +981,10 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         )
     if chart not in {"scorecard", "kpi_group"}:
         max_rows = section["max_result_rows"]
-        if chart in {"line", "multi_line", "area", "stacked_area", "calendar_heatmap"}:
+        if chart in {
+            "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
+            "calendar_heatmap",
+        }:
             ordering = "event_dateの昇順"
         elif chart == "histogram":
             ordering = "bin_startの昇順"
@@ -1188,11 +1199,11 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and all(field_type in numeric for field_type in types)
     elif planned == "bar":
         valid = valid and types[1] in numeric
-    elif planned in {"grouped_bar", "stacked_bar"}:
+    elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and all(field_type in numeric for field_type in types[1:])
     elif planned in {"line", "area", "calendar_heatmap"}:
         valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
-    elif planned in {"multi_line", "stacked_area"}:
+    elif planned in {"multi_line", "stacked_area", "percent_stacked_area"}:
         valid = (
             valid
             and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
@@ -1203,7 +1214,12 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
     elif planned == "donut":
         valid = valid and types[1] in numeric
     elif planned in {"scatter", "bubble"}:
-        valid = valid and all(field_type in numeric for field_type in types[1:])
+        dimension_count = section.get("dimension_count", 1)
+        valid = (
+            valid
+            and (dimension_count == 1 or types[1] == "STRING")
+            and all(field_type in numeric for field_type in types[dimension_count:])
+        )
     elif planned == "funnel":
         valid = valid and types[1] in numeric
     elif planned == "heatmap":
@@ -1285,7 +1301,7 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         )
     elif planned == "bar":
         valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
-    elif planned in {"grouped_bar", "stacked_bar"}:
+    elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and 3 <= width <= 5 and all(
             all(finite(value) and value >= 0 for value in row[1:]) for row in rows
         )
@@ -1303,7 +1319,7 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and all(nullable_finite(value) for value in row[1:])
             for row in rows
         )
-    elif planned == "stacked_area":
+    elif planned in {"stacked_area", "percent_stacked_area"}:
         valid = valid and 3 <= width <= 5 and all(
             isinstance(row[0], (date, datetime))
             and all(finite(value) and value >= 0 for value in row[1:])
@@ -1320,10 +1336,18 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             isinstance(row[0], (date, datetime)) and finite(row[1]) for row in rows
         )
     elif planned == "scatter":
-        valid = valid and width == 3 and all(finite(row[1]) and finite(row[2]) for row in rows)
+        dimension_count = section.get("dimension_count", 1)
+        valid = valid and width == dimension_count + 2 and all(
+            (dimension_count == 1 or isinstance(row[1], str))
+            and all(finite(value) for value in row[dimension_count:])
+            for row in rows
+        )
     elif planned == "bubble":
-        valid = valid and width == 4 and all(
-            finite(row[1]) and finite(row[2]) and finite(row[3]) and row[3] >= 0
+        dimension_count = section.get("dimension_count", 1)
+        valid = valid and width == dimension_count + 3 and all(
+            (dimension_count == 1 or isinstance(row[1], str))
+            and all(finite(value) for value in row[dimension_count:])
+            and row[-1] >= 0
             for row in rows
         )
     elif planned == "funnel":
