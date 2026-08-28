@@ -846,6 +846,7 @@ function renderAdvancedResultTable(result, box, options = {}) {
   let page = 0;
 
   function render() {
+    options.beforeRender?.();
     const rows = standardTableRows(result.rows, query, sortIndex, sortDirection);
     const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
     page = Math.min(page, pageCount - 1);
@@ -870,6 +871,7 @@ function renderAdvancedResultTable(result, box, options = {}) {
       const tableRow = body.insertRow();
       row.forEach((value, index) => {
         const cell = tableRow.insertCell();
+        if (options.renderCell?.(cell, value, row, index)) return;
         const delta = options.deltaIndex === index && Number.isFinite(Number(value));
         const formatted = numericColumns.includes(index) ? chartValue(value, result.columns[index]) : value ?? '';
         cell.textContent = delta ? `${Number(value) > 0 ? '↑' : Number(value) < 0 ? '↓' : '→'} ${formatted}` : formatted;
@@ -926,6 +928,54 @@ function renderComparisonResultTable(result, box) {
   renderAdvancedResultTable(result, box, { deltaIndex: result.columns.length - 1 });
 }
 
+function standardSparklineTableResult(result) {
+  const groups = new Map();
+  result.rows.forEach(([category, eventDate, value]) => {
+    if (!groups.has(category)) groups.set(category, []);
+    groups.get(category).push([String(eventDate), value]);
+  });
+  const rows = [...groups].map(([category, values]) => {
+    values.sort((left, right) => left[0].localeCompare(right[0]));
+    const latest = [...values].reverse().find((item) => item[1] !== null)?.[1] ?? null;
+    const row = [category, latest, `${values.length}点`];
+    row.sparklineValues = values;
+    return row;
+  });
+  return { ...result, visualization: 'table', columns: [result.columns[0], result.columns[2], '推移'], rows };
+}
+
+function renderSparklineResultTable(result, box) {
+  const transformed = standardSparklineTableResult(result);
+  let instances = [];
+  renderAdvancedResultTable(transformed, box, {
+    beforeRender: () => {
+      instances.forEach((instance) => instance.dispose());
+      instances = [];
+    },
+    renderCell: (cell, _value, row, index) => {
+      if (index !== 2) return false;
+      const host = Object.assign(document.createElement('div'), { className: 'advanced-table-sparkline' });
+      host.setAttribute('role', 'img');
+      host.setAttribute('aria-label', `${row[0]}の推移`);
+      cell.replaceChildren(host);
+      try {
+        const instance = chartLibrary.init(host, null, { renderer: 'svg' });
+        instance.setOption({
+          animation: false,
+          grid: { left: 2, right: 2, top: 3, bottom: 3 },
+          xAxis: { type: 'category', show: false, data: row.sparklineValues.map((item) => item[0]) },
+          yAxis: { type: 'value', show: false, scale: true },
+          series: [{ type: 'line', showSymbol: false, connectNulls: false, data: row.sparklineValues.map((item) => item[1]), lineStyle: { color: standardChartPalette[0], width: 2 }, areaStyle: { color: '#dbeafe', opacity: 0.45 } }],
+        });
+        instances.push(instance);
+      } catch (_error) {
+        host.textContent = '描画失敗';
+      }
+      return true;
+    },
+  });
+}
+
 function graph(result, box = $('chart')) {
   box.replaceChildren();
   if (!result.rows.length) {
@@ -950,6 +1000,10 @@ function graph(result, box = $('chart')) {
   }
   if (result.visualization === 'comparison_table') {
     renderComparisonResultTable(result, box);
+    return;
+  }
+  if (result.visualization === 'sparkline_table') {
+    renderSparklineResultTable(result, box);
     return;
   }
   renderStandardChart(result, box);
