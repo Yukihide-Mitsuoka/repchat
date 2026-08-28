@@ -1350,14 +1350,20 @@ test('every supported AI chart becomes an explicit SQL output contract', () => {
 charts={
  "scorecard":([], ["値"]),"kpi_group":([], ["値1","値2"]),
  "bar":(["区分"],["値"]),"grouped_bar":(["区分"],["値1","値2"]),
- "stacked_bar":(["区分"],["値1","値2"]),"line":(["日付"],["値"]),
+ "stacked_bar":(["区分"],["値1","値2"]),"percent_stacked_bar":(["区分"],["値1","値2"]),
+ "line":(["日付"],["値"]),
  "area":(["日付"],["値"]),"stacked_area":(["日付"],["値1","値2"]),
+ "percent_stacked_area":(["日付"],["値1","値2"]),
  "histogram":(["階級"],["度数"]),"donut":(["区分"],["値"]),
  "calendar_heatmap":(["日付"],["値"]),
  "multi_line":(["日付"],["値1","値2"]),"scatter":(["項目"],["X","Y"]),
  "bubble":(["項目"],["X","Y","大きさ"]),"funnel":(["段階"],["値"]),
+ "funnel_horizontal":(["段階"],["値"]),
  "heatmap":(["縦","横"],["値"]),"table":(["区分"],["値"]),
  "sankey":(["遷移元","遷移先"],["流量"]),
+ "sankey_vertical":(["遷移元","遷移先"],["流量"]),
+ "flow_sankey":(["遷移元","遷移先"],["流量"]),
+ "flow_sankey_vertical":(["遷移元","遷移先"],["流量"]),
 }
 contracts={}
 for index,(chart,(dimensions,measures)) in enumerate(charts.items(),1):
@@ -1368,7 +1374,7 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.contracts).length, 18);
+  assert.equal(Object.keys(output.contracts).length, 24);
   assert.deepEqual(output.contracts.grouped_bar.columns, ['category', 'metric_1', 'metric_2']);
   assert.deepEqual(output.contracts.bubble.columns, [
     'category',
@@ -1381,6 +1387,51 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
   assert.ok(Object.values(output.contracts).every((contract: any) => contract.limit > 0));
 });
 
+test('all current planner capabilities reach an explicit SQL contract and browser renderer', () => {
+  const result = python(`
+contracts={}
+for index,chart in enumerate(m.planner.SUPPORTED_DASHBOARD_CHARTS,1):
+ min_dimensions,_,min_measures,_=m.planner.CHART_SHAPE_CONTRACTS[chart]
+ panel={"id":f"P{index}","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":[f"区分{i}" for i in range(min_dimensions)],"measures":[f"指標{i}" for i in range(min_measures)]}
+ section=m.planned_analysis_section(panel)
+ contracts[chart]={"component":section["component"],"columns":section["source_columns"],"limit":section["max_result_rows"]}
+print(json.dumps(contracts,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const contracts = JSON.parse(result.stdout) as Record<string, any>;
+  assert.equal(Object.keys(contracts).length, 42);
+  assert.ok(Object.values(contracts).every((contract) => contract.columns.length > 0));
+  assert.ok(Object.values(contracts).every((contract) => contract.limit > 0));
+
+  const renderer = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const specialized = new Set([
+    'scorecard',
+    'kpi_group',
+    'table',
+    'pivot_table',
+    'comparison_table',
+    'sparkline_table',
+  ]);
+  for (const chart of Object.keys(contracts)) {
+    if (specialized.has(chart)) continue;
+    assert.ok(
+      renderer.includes(`case '${chart}'`) || renderer.includes(`'${chart}'`),
+      `missing browser renderer for ${chart}`,
+    );
+  }
+  for (const name of [
+    'renderAdvancedResultTable',
+    'renderPivotResultTable',
+    'renderComparisonResultTable',
+    'renderSparklineResultTable',
+  ]) {
+    assert.ok(renderer.includes(`function ${name}(`), `missing specialized renderer ${name}`);
+  }
+});
+
 test('all AI chart contracts have explicit result validation and browser renderers', () => {
   const result = python(`
 from datetime import date
@@ -1390,9 +1441,11 @@ cases={
  "bar":([("A",1)], ["区分","値"]),
  "grouped_bar":([("A",1,2)], ["区分","値1","値2"]),
  "stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
+ "percent_stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
  "line":([(date(2021,1,1),1),(date(2021,1,2),None)], ["日付","値"]),
  "area":([(date(2021,1,1),1)], ["日付","値"]),
  "stacked_area":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
+ "percent_stacked_area":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
  "histogram":([(0,3),(10,5)], ["階級下限","度数"]),
  "donut":([("A",3),("B",2)], ["区分","値"]),
  "calendar_heatmap":([(date(2021,1,1),3)], ["日付","値"]),
@@ -1400,9 +1453,13 @@ cases={
  "scatter":([("A",1,2)], ["項目","X","Y"]),
  "bubble":([("A",1,2,3)], ["項目","X","Y","大きさ"]),
  "funnel":([("1. 閲覧",10)], ["段階","値"]),
+ "funnel_horizontal":([("1. 閲覧",10)], ["段階","値"]),
  "heatmap":([("月","午前",10)], ["縦","横","値"]),
  "table":([("A",1)], ["区分","値"]),
  "sankey":([("1. /","2. /shop",10),("2. /shop","3. /cart",5),("3. /cart","4. /thanks",2)], ["遷移元","遷移先","流量"]),
+ "sankey_vertical":([("1. /","2. /shop",10)], ["遷移元","遷移先","流量"]),
+ "flow_sankey":([("広告","商品",10)], ["遷移元","遷移先","流量"]),
+ "flow_sankey_vertical":([("広告","商品",10)], ["遷移元","遷移先","流量"]),
 }
 rendered={}
 for chart,(rows,columns) in cases.items():
@@ -1413,7 +1470,7 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.rendered).length, 18);
+  assert.equal(Object.keys(output.rendered).length, 24);
   assert.equal(output.rendered.scorecard, 'scalar');
   assert.equal(output.rendered.grouped_bar, 'grouped_bar');
   assert.equal(output.rendered.sankey, 'sankey');
@@ -1584,6 +1641,592 @@ test('standard chart renderer creates ECharts options for every supported chart'
   ) as Record<string, any>;
   assert.equal(compact.xAxis.type, 'category', '日付以外の密な短い区分も同じ判定を使う');
   assert.equal(compact.yAxis[0].type, 'value');
+});
+
+test('series variants normalize percentages, split scatter series, and render each calendar year', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      bar: standardChartOption({visualization:'percent_stacked_bar',columns:['device','new','repeat'],rows:[['mobile',3,1]]}),
+      area: standardChartOption({visualization:'percent_stacked_area',columns:['date','new','repeat'],rows:[['2021-01-01',3,1]]}),
+      scatter: standardChartOption({visualization:'scatter',columns:['page','series','x','y'],rows:[['/','mobile',1,2],['/shop','desktop',3,4]]}),
+      calendar: standardChartOption({visualization:'calendar_heatmap',columns:['date','value'],rows:[['2020-12-31',1],['2021-01-01',2]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.bar.series[0].stack, 'percent');
+  assert.equal(parsed.bar.xAxis[0].max, 100);
+  assert.equal(parsed.area.series[0].stack, 'percent');
+  assert.equal(parsed.area.yAxis[0].max, 100);
+  assert.deepEqual(
+    parsed.scatter.series.map((series: any) => series.name),
+    ['mobile', 'desktop'],
+  );
+  assert.equal(parsed.calendar.calendar.length, 2);
+  assert.equal(parsed.calendar.series.length, 2);
+});
+
+test('multi-series scatter and bubble use a second dimension in every execution guard', () => {
+  const result = python(`
+cases={
+ "scatter":(["ページ","デバイス"],["閲覧数","滞在時間"],[('A','mobile',1,2)]),
+ "bubble":(["チャネル","デバイス"],["閲覧数","滞在時間","ユーザー数"],[('A','desktop',1,2,3)]),
+}
+accepted={}
+for chart,(dimensions,measures,rows) in cases.items():
+ section=m.planned_analysis_section({"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":dimensions,"measures":measures})
+ schema=[(name,"STRING" if index < 2 else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    scatter: { columns: ['category', 'series', 'x_value', 'y_value'], rendered: 'scatter' },
+    bubble: {
+      columns: ['category', 'series', 'x_value', 'y_value', 'size_value'],
+      rendered: 'bubble',
+    },
+  });
+});
+
+test('funnel and Sankey orientation variants keep distinct guarded render contracts', () => {
+  const result = python(`
+cases={
+ "funnel_horizontal":([("1. 閲覧",10)],["stage","metric_value"]),
+ "sankey_vertical":([("1. /","2. /shop",10)],["source","target","metric_value"]),
+ "flow_sankey":([("広告","商品",10),("商品","購入",3)],["source","target","metric_value"]),
+ "flow_sankey_vertical":([("広告","商品",10),("商品","購入",3)],["source","target","metric_value"]),
+}
+accepted={}
+for chart,(rows,columns) in cases.items():
+ section={"title":chart,"planned_visualization":chart}
+ accepted[chart]=m.dashboard_visualization(section,rows,columns)
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    funnel_horizontal: 'funnel_horizontal',
+    sankey_vertical: 'sankey_vertical',
+    flow_sankey: 'flow_sankey',
+    flow_sankey_vertical: 'flow_sankey_vertical',
+  });
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      funnel: standardChartOption({visualization:'funnel_horizontal',columns:['stage','value'],rows:[['1. view',10]]}),
+      staged: standardChartOption({visualization:'sankey_vertical',columns:['source','target','value'],rows:[['1. /','2. /shop',10]]}),
+      flow: standardChartOption({visualization:'flow_sankey',columns:['source','target','value'],rows:[['広告','商品',10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.funnel.series[0].orient, 'horizontal');
+  assert.equal(parsed.staged.series[0].orient, 'vertical');
+  assert.equal(parsed.flow.series[0].orient, 'horizontal');
+  assert.equal(parsed.flow.series[0].data[0].name, '広告');
+  const heights = vm.runInNewContext(
+    `${source};JSON.stringify(['sankey','sankey_vertical','flow_sankey','flow_sankey_vertical'].map(visualization=>standardChartHeight({visualization,columns:['source','target','value'],rows:[['A','B',1]]})))`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  assert.deepEqual(JSON.parse(heights), [440, 440, 440, 440]);
+});
+
+test('general Sankey rejects cycles, duplicate edges, and self links', () => {
+  const result = python(`
+cases=[
+ [("A","B",1),("B","A",1)],
+ [("A","B",1),("A","B",2)],
+ [("A","A",1)],
+]
+accepted=[]
+for rows in cases:
+ try:m.dashboard_visualization({"title":"flow","planned_visualization":"flow_sankey"},rows,["source","target","metric_value"])
+ except m.LiveDemoError:accepted.append(False)
+ else:accepted.append(True)
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [false, false, false]);
+});
+
+test('annotations, sparkline, mixed type, and delta keep guarded data contracts', () => {
+  const result = python(`
+from datetime import date
+cases={
+ "annotated_line":({"dimensions":["日付","注釈"],"measures":["購入件数"]},[(date(2021,1,1),"施策開始",10)]),
+ "sparkline":({"dimensions":["日付"],"measures":["購入件数"]},[(date(2021,1,1),10)]),
+ "mixed_bar_line":({"dimensions":["日付"],"measures":["購入金額","購入件数"]},[(date(2021,1,1),1000,10)]),
+ "delta":({"dimensions":[],"measures":["当月購入件数","前月購入件数"]},[(10,8)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ types=[]
+ for column in section["source_columns"]:
+  types.append((column,"DATE" if column=="event_date" else "STRING" if column in {"annotation_label","category"} else "INT64"))
+ m.validate_dashboard_dry_run_schema(section,types)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    annotated_line: {
+      columns: ['event_date', 'annotation_label', 'metric_value'],
+      rendered: 'annotated_line',
+    },
+    sparkline: { columns: ['event_date', 'metric_value'], rendered: 'sparkline' },
+    mixed_bar_line: { columns: ['category', 'metric_1', 'metric_2'], rendered: 'mixed_bar_line' },
+    delta: { columns: ['current_value', 'comparison_value'], rendered: 'delta' },
+  });
+});
+
+test('annotations, sparkline, mixed type, and delta render distinct ECharts options', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      annotated: standardChartOption({visualization:'annotated_line',columns:['date','annotation','value'],rows:[['2021-01-01','施策開始',10],['2021-01-02','',12]]}),
+      sparkline: standardChartOption({visualization:'sparkline',columns:['date','value'],rows:[['2021-01-01',10],['2021-01-02',12]]}),
+      mixed: standardChartOption({visualization:'mixed_bar_line',columns:['date','sales','orders'],rows:[['2021-01-01',1000,10]]}),
+      delta: standardChartOption({visualization:'delta',columns:['current','previous'],rows:[[10,8]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.annotated.series[0].markPoint.data[0].name, '施策開始');
+  assert.equal(parsed.sparkline.xAxis.show, false);
+  assert.deepEqual(
+    parsed.mixed.series.map((series: any) => series.type),
+    ['bar', 'line'],
+  );
+  assert.equal(parsed.delta.graphic[2].style.text, '+2');
+});
+
+test('box plot, treemap, and pie keep guarded data contracts', () => {
+  const result = python(`
+cases={
+ "box_plot":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
+ "box_plot_horizontal":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
+ "treemap":({"dimensions":["部門","商品"],"measures":["売上"]},[("衣料","帽子",10)]),
+ "pie":({"dimensions":["チャネル"],"measures":["売上"]},[("organic",10)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ dimension_count=len(shape["dimensions"])
+ schema=[(name,"STRING" if index < dimension_count else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    box_plot: {
+      columns: ['category', 'min_value', 'q1_value', 'median_value', 'q3_value', 'max_value'],
+      rendered: 'box_plot',
+    },
+    box_plot_horizontal: {
+      columns: ['category', 'min_value', 'q1_value', 'median_value', 'q3_value', 'max_value'],
+      rendered: 'box_plot_horizontal',
+    },
+    treemap: { columns: ['level_1', 'level_2', 'metric_value'], rendered: 'treemap' },
+    pie: { columns: ['category', 'metric_value'], rendered: 'pie' },
+  });
+});
+
+test('box plot, treemap, and pie create standard ECharts options', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      box: standardChartOption({visualization:'box_plot',columns:['device','min','q1','median','q3','max'],rows:[['mobile',1,2,3,4,5]]}),
+      horizontal: standardChartOption({visualization:'box_plot_horizontal',columns:['device','min','q1','median','q3','max'],rows:[['mobile',1,2,3,4,5]]}),
+      tree: standardChartOption({visualization:'treemap',columns:['department','product','sales'],rows:[['clothes','hat',10],['clothes','shirt',20]]}),
+      pie: standardChartOption({visualization:'pie',columns:['channel','sales'],rows:[['organic',10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.box.series[0].type, 'boxplot');
+  assert.equal(parsed.horizontal.xAxis.type, 'value');
+  assert.equal(parsed.tree.series[0].data[0].children.length, 2);
+  assert.deepEqual(parsed.pie.series[0].radius, ['0%', '72%']);
+});
+
+test('box plot rejects unordered five-number summaries', () => {
+  const result = python(`
+try:m.dashboard_visualization({"title":"box","planned_visualization":"box_plot"},[("mobile",1,4,3,2,5)],["category","min_value","q1_value","median_value","q3_value","max_value"])
+except m.LiveDemoError:print("rejected")
+else:print("accepted")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'rejected');
+});
+
+test('area and US maps require warehouse-provided GeoJSON shapes', () => {
+  const result = python(`
+shape='{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}'
+cases={"area_map":("Tokyo",shape,10),"us_map":("CA",shape,20)}
+accepted={}
+for chart,row in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":["地域","地理境界"],"measures":["値"]}
+ section=m.planned_analysis_section(panel)
+ m.validate_dashboard_dry_run_schema(section,[("region_id","STRING"),("geometry_geojson","STRING"),("metric_value","INT64")])
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,[row],section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    area_map: { columns: ['region_id', 'geometry_geojson', 'metric_value'], rendered: 'area_map' },
+    us_map: { columns: ['region_id', 'geometry_geojson', 'metric_value'], rendered: 'us_map' },
+  });
+});
+
+test('area maps reject malformed shapes and invalid US region codes', () => {
+  const result = python(`
+cases=[("area_map",("Tokyo","not-json",10)),("us_map",("California",'{"type":"Polygon","coordinates":[]}',10))]
+accepted=[]
+for chart,row in cases:
+ try:m.dashboard_visualization({"title":chart,"planned_visualization":chart},[row],["region_id","geometry_geojson","metric_value"])
+ except m.LiveDemoError:accepted.append(False)
+ else:accepted.append(True)
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [false, false]);
+});
+
+test('area map renderer builds and registers a data-provided geographic map', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const geometry = JSON.stringify({
+    type: 'Polygon',
+    coordinates: [
+      [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 0],
+      ],
+    ],
+  });
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      geo: standardMapGeoJson({visualization:'area_map',columns:['region','geometry','value'],rows:[['Tokyo',${JSON.stringify(geometry)},10]]}),
+      option: standardChartOption({visualization:'area_map',columns:['region','geometry','value'],rows:[['Tokyo',${JSON.stringify(geometry)},10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.geo.features[0].properties.name, 'Tokyo');
+  assert.equal(parsed.option.series[0].type, 'map');
+  assert.equal(parsed.option.series[0].map, parsed.option.geo.map);
+  assert.match(source, /registerMap\(standardMapName\(result\), standardMapGeoJson\(result\)\)/);
+});
+
+test('point, bubble, and base maps validate geographic layers end to end', () => {
+  const result = python(`
+geometry='{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"world"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}]}'
+cases={
+ "point_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","値"]},[("A",geometry,35,139,10)]),
+ "bubble_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("A",geometry,35,139,20,10)]),
+ "base_map":({"dimensions":["layer","地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("area","world",'{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',None,None,None,10),("point","A",None,35,139,None,10)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ dimension_count=len(shape["dimensions"])
+ schema=[(name,"STRING" if index < dimension_count else "FLOAT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]=m.dashboard_visualization(section,rows,section["source_columns"])
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    point_map: 'point_map',
+    bubble_map: 'bubble_map',
+    base_map: 'base_map',
+  });
+});
+
+test('point and base map renderers use one registered query-provided geography', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const geometry = JSON.stringify({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'world' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [0, 0],
+              [1, 0],
+              [1, 1],
+              [0, 0],
+            ],
+          ],
+        },
+      },
+    ],
+  });
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      point: standardChartOption({visualization:'point_map',columns:['name','geometry','lat','long','value'],rows:[['A',${JSON.stringify(geometry)},35,139,10]]}),
+      bubble: standardChartOption({visualization:'bubble_map',columns:['name','geometry','lat','long','size','value'],rows:[['A',${JSON.stringify(geometry)},35,139,20,10]]}),
+      base: standardChartOption({visualization:'base_map',columns:['layer','name','geometry','lat','long','size','value'],rows:[['area','world','{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',null,null,null,10],['point','A',null,35,139,null,10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.point.series[0].type, 'scatter');
+  assert.equal(parsed.bubble.series[0].type, 'effectScatter');
+  assert.deepEqual(
+    parsed.base.series.map((series: any) => series.type),
+    ['map', 'scatter'],
+  );
+});
+
+test('reference line and area keep validated result contracts', () => {
+  const result = python(`
+from datetime import date
+cases={
+ "reference_line":({"measures":["実績","目標"]},[(date(2021,1,1),10,12)]),
+ "reference_area":({"measures":["実績","下限","上限"]},[(date(2021,1,1),10,8,12)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":["日付"],**shape}
+ section=m.planned_analysis_section(panel)
+ schema=[(name,"DATE" if index == 0 else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    reference_line: {
+      columns: ['category', 'metric_value', 'reference_value'],
+      rendered: 'reference_line',
+    },
+    reference_area: {
+      columns: ['category', 'metric_value', 'lower_value', 'upper_value'],
+      rendered: 'reference_area',
+    },
+  });
+});
+
+test('advanced table filters, stably sorts, exports, and exposes bounded controls', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const state = vm.runInNewContext(
+    `${source};JSON.stringify({
+      filtered: standardTableRows([['東京',10],['大阪',2],['東京支店',10]],'東京',null,1).map(item=>item.row),
+      sorted: standardTableRows([['東京',10],['大阪',2],['東京支店',10]],'',1,1).map(item=>item.row),
+      numeric: standardTableNumericColumns([['東京',10],['大阪',2]],2),
+      csv: standardTableCsv(['地域','値'],[['A"B',10]]),
+    })`,
+  ) as string;
+  assert.deepEqual(JSON.parse(state), {
+    filtered: [
+      ['東京', 10],
+      ['東京支店', 10],
+    ],
+    sorted: [
+      ['大阪', 2],
+      ['東京', 10],
+      ['東京支店', 10],
+    ],
+    numeric: [1],
+    csv: '"地域","値"\n"A""B","10"',
+  });
+  for (const expected of [
+    'function renderAdvancedResultTable(',
+    "placeholder: '表を検索'",
+    "textContent: 'CSV'",
+    "textContent: '全画面'",
+    'const pageSize = 10',
+    "cell.setAttribute('aria-sort'",
+  ])
+    assert.ok(source.includes(expected), `missing advanced table control: ${expected}`);
+});
+
+test('pivot table validates long data and preserves missing combinations', () => {
+  const validated = python(`
+section=m.planned_analysis_section({"id":"P","title":"地域別年次成果","chart":"pivot_table","decision":"判断","execution_prompt":"分析","dimensions":["地域","年"],"measures":["売上","件数"]})
+m.validate_dashboard_dry_run_schema(section,[("row_dimension","STRING"),("pivot_dimension","INT64"),("metric_1","FLOAT64"),("metric_2","INT64")])
+try:m.dashboard_visualization(section,[("東",2024,10,1),("東",2024,20,2)],section["source_columns"])
+except m.LiveDemoError:duplicate="rejected"
+else:duplicate="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,[("東",2024,10,1),("西",2025,20,2)],section["source_columns"]),"duplicate":duplicate},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['row_dimension', 'pivot_dimension', 'metric_1', 'metric_2'],
+    rendered: 'pivot_table',
+    duplicate: 'rejected',
+  });
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const transformed = vm.runInNewContext(
+    `${source};JSON.stringify(standardPivotTableResult({visualization:'pivot_table',columns:['地域','年','売上'],rows:[['東','2024',10],['西','2025',20]]}))`,
+  ) as string;
+  assert.deepEqual(JSON.parse(transformed), {
+    visualization: 'table',
+    columns: ['地域', '2024 / 売上', '2025 / 売上'],
+    rows: [
+      ['東', 10, null],
+      ['西', null, 20],
+    ],
+  });
+});
+
+test('comparison table verifies deltas without assigning good or bad semantics', () => {
+  const validated = python(`
+section=m.planned_analysis_section({"id":"P","title":"前年差","chart":"comparison_table","decision":"判断","execution_prompt":"分析","dimensions":["地域"],"measures":["現在値","比較値","差分"]})
+m.validate_dashboard_dry_run_schema(section,[("dimension_1","STRING"),("current_value","FLOAT64"),("comparison_value","FLOAT64"),("delta_value","FLOAT64")])
+accepted=m.dashboard_visualization(section,[("東",120,100,20),("西",80,100,-20)],section["source_columns"])
+try:m.dashboard_visualization(section,[("東",120,100,10)],section["source_columns"])
+except m.LiveDemoError:invalid="rejected"
+else:invalid="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"invalid":invalid},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['dimension_1', 'current_value', 'comparison_value', 'delta_value'],
+    rendered: 'comparison_table',
+    invalid: 'rejected',
+  });
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  assert.match(source, /deltaIndex: result\.columns\.length - 1/);
+  assert.match(source, /advanced-table-delta/);
+  assert.doesNotMatch(source, /delta-positive|delta-negative|good|bad/);
+});
+
+test('sparkline table validates long time-series data and groups it for ECharts', () => {
+  const validated = python(`
+from datetime import date
+section=m.planned_analysis_section({"id":"P","title":"カテゴリ推移","chart":"sparkline_table","decision":"判断","execution_prompt":"分析","dimensions":["カテゴリ","日付"],"measures":["値"]})
+m.validate_dashboard_dry_run_schema(section,[("category","STRING"),("event_date","DATE"),("metric_value","FLOAT64")])
+accepted=m.dashboard_visualization(section,[("A",date(2021,1,1),10),("A",date(2021,1,2),None)],section["source_columns"])
+try:m.dashboard_visualization(section,[("A",date(2021,1,1),10),("A",date(2021,1,1),20)],section["source_columns"])
+except m.LiveDemoError:duplicate="rejected"
+else:duplicate="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"duplicate":duplicate},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['category', 'event_date', 'metric_value'],
+    rendered: 'sparkline_table',
+    duplicate: 'rejected',
+  });
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const grouped = vm.runInNewContext(
+    `${source};JSON.stringify(standardSparklineTableResult({visualization:'sparkline_table',columns:['区分','日付','値'],rows:[['A','2021-01-02',20],['A','2021-01-01',10],['B','2021-01-01',null]]}).rows.map(row=>({cells:[...row],series:row.sparklineValues})))`,
+  ) as string;
+  assert.deepEqual(JSON.parse(grouped), [
+    {
+      cells: ['A', 20, '2点'],
+      series: [
+        ['2021-01-01', 10],
+        ['2021-01-02', 20],
+      ],
+    },
+    { cells: ['B', null, '1点'], series: [['2021-01-01', null]] },
+  ]);
+  assert.match(source, /chartLibrary\.init\(host, null, \{ renderer: 'svg' \}\)/);
+});
+
+test('reference area rejects inverted bounds and renders a bounded band', () => {
+  const result = python(`
+from datetime import date
+try:m.dashboard_visualization({"title":"range","planned_visualization":"reference_area"},[(date(2021,1,1),10,12,8)],["category","metric_value","lower_value","upper_value"])
+except m.LiveDemoError:print("rejected")
+else:print("accepted")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'rejected');
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      line: standardChartOption({visualization:'reference_line',columns:['date','actual','target'],rows:[['2021-01-01',10,12]]}),
+      area: standardChartOption({visualization:'reference_area',columns:['date','actual','low','high'],rows:[['2021-01-01',10,8,12]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.line.series[1].lineStyle.type, 'dashed');
+  assert.equal(parsed.area.series[2].stack, 'reference-range');
+  assert.deepEqual(parsed.area.series[2].data, [4]);
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {

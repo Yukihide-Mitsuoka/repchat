@@ -2,7 +2,7 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 
 # ライブデモのトラブルシューティング
@@ -48,7 +48,9 @@ retryも行いません。
 
 HTTP round-tripの断続的な失敗は、テストが`0.0.0.0`へlistenerを開こうとして、サンドボックスや並列実行環境の
 loopback制約に触れることが原因でした。`serve`は本番の既定bindを維持しつつ、テストは`127.0.0.1`を明示して
-cleanupまで確認します。これにより本番のCloud Run向けbindを変えず、テストのlistener割当を隔離します。
+cleanupまで確認します。listener割当に失敗した場合は`serve()`が元のsocket errorをreject理由として返すため、
+`EADDRINUSE`等をテスト出力で識別できます。closeは最初のPromiseを再利用し、完了後に同じportへ再bindできることを
+検証します。これにより本番のCloud Run向けbindを変えず、listener割当とcleanupを個別に診断できます。
 
 ## データソースが変わった場合の扱い
 

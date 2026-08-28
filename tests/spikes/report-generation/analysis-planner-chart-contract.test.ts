@@ -23,14 +23,14 @@ test('renderer capabilities are represented by one chart and shape contract', ()
 schema=p._visualization_response_schema(p.SUPPORTED_DASHBOARD_CHARTS,seed="依頼A")
 variants=schema["anyOf"]
 print(json.dumps({
- "charts":[item["properties"]["chart"]["enum"][0] for item in variants],
+ "charts":[chart for item in variants for chart in item["properties"]["chart"]["enum"]],
  "contracts":{
-  item["properties"]["chart"]["enum"][0]:[
+  chart:[
    item["properties"]["dimensions"]["minItems"],
    item["properties"]["dimensions"]["maxItems"],
    item["properties"]["measures"]["minItems"],
    item["properties"]["measures"]["maxItems"],
-  ] for item in variants
+  ] for item in variants for chart in item["properties"]["chart"]["enum"]
  },
  "row_limits":p.DASHBOARD_ROW_LIMITS,
 },ensure_ascii=False))
@@ -45,11 +45,37 @@ print(json.dumps({
   assert.deepEqual(output.contracts.grouped_bar, [1, 1, 2, 4]);
   assert.deepEqual(output.contracts.area, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.stacked_area, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.percent_stacked_bar, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.percent_stacked_area, [1, 1, 2, 4]);
   assert.deepEqual(output.contracts.histogram, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.donut, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.calendar_heatmap, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.scatter, [1, 2, 2, 2]);
+  assert.deepEqual(output.contracts.bubble, [1, 2, 3, 3]);
+  assert.deepEqual(output.contracts.funnel_horizontal, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.pivot_table, [2, 2, 1, 4]);
+  assert.deepEqual(output.contracts.comparison_table, [1, 4, 3, 3]);
+  assert.deepEqual(output.contracts.sparkline_table, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.sankey_vertical, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.flow_sankey, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.flow_sankey_vertical, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.annotated_line, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.sparkline, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.mixed_bar_line, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.delta, [0, 0, 2, 2]);
+  assert.deepEqual(output.contracts.box_plot, [1, 1, 5, 5]);
+  assert.deepEqual(output.contracts.box_plot_horizontal, [1, 1, 5, 5]);
+  assert.deepEqual(output.contracts.treemap, [1, 4, 1, 1]);
+  assert.deepEqual(output.contracts.pie, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.area_map, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.us_map, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.point_map, [2, 2, 3, 3]);
+  assert.deepEqual(output.contracts.bubble_map, [2, 2, 4, 4]);
+  assert.deepEqual(output.contracts.base_map, [3, 3, 4, 4]);
+  assert.deepEqual(output.contracts.reference_line, [1, 1, 2, 2]);
+  assert.deepEqual(output.contracts.reference_area, [1, 1, 3, 3]);
 });
 
 test('chart order is deterministic per request and unrelated to declaration order', () => {

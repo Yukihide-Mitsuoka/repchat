@@ -16,6 +16,9 @@ DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
 MAX_BYTES_BILLED = 20 * 1024**3  # 20 GiB — the sample month is far under this
 DEFAULT_MODEL = "gemini-3.6-flash"
 USD_JPY = 155.0
+# One response contains one SQL statement, one reason, and bounded refusal
+# metadata. Keep a finite budget without shortening complex generated SQL.
+SQL_MAX_OUTPUT_TOKENS = 8192
 PRICING = {
     "gemini-3.6-flash": (1.50, 7.50),
     "gemini-3.5-flash": (1.50, 9.00),
@@ -138,6 +141,72 @@ _JSON_SCHEMA = {
 }
 
 
+class StructuredResponseError(ValueError):
+    """A bounded classification that never retains generated response text."""
+
+    def __init__(self, kind: str, *, finish_reason: str | None = None):
+        super().__init__(kind)
+        self.kind = kind
+        self.finish_reason = finish_reason
+
+
+def _load_structured_json(response):
+    candidates = getattr(response, "candidates", None) or []
+    reason = getattr(candidates[0], "finish_reason", None) if candidates else None
+    value = getattr(reason, "value", None)
+    name = getattr(reason, "name", None)
+    raw_reason = (
+        value
+        if isinstance(value, str)
+        else name
+        if isinstance(name, str)
+        else reason
+    )
+    finish_reason = None
+    if raw_reason is not None:
+        normalized = str(raw_reason).upper().removeprefix("FINISHREASON.")
+        finish_reason = (
+            normalized if re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized) else "OTHER"
+        )
+    if finish_reason == "MAX_TOKENS":
+        raise StructuredResponseError("max_tokens", finish_reason=finish_reason)
+    if finish_reason not in {None, "STOP"}:
+        raise StructuredResponseError("finish_reason", finish_reason=finish_reason)
+    try:
+        response_text = response.text
+    except (AttributeError, TypeError, ValueError) as error:
+        raise StructuredResponseError("missing_text") from error
+    if not isinstance(response_text, str) or not response_text.strip():
+        raise StructuredResponseError("missing_text")
+    try:
+        return json.loads(response_text)
+    except (json.JSONDecodeError, TypeError) as error:
+        raise StructuredResponseError("malformed_json") from error
+
+
+class SQLGenerationError(ValueError):
+    """A generated SQL response failure safe to show in the local UI."""
+
+
+def _load_sql_response(response) -> dict:
+    try:
+        return _load_structured_json(response)
+    except StructuredResponseError as error:
+        suffix = "今回のVertex AI呼出しは自動再実行していません。"
+        if error.kind == "max_tokens":
+            message = f"SQL生成が出力上限までに完了しませんでした。{suffix}"
+        elif error.kind == "finish_reason":
+            message = (
+                "SQL生成を完了できませんでした"
+                f"（終了理由: {error.finish_reason}）。{suffix}"
+            )
+        elif error.kind == "missing_text":
+            message = f"SQL生成JSONを受け取れませんでした。{suffix}"
+        else:
+            message = f"SQL生成JSONを解釈できませんでした。{suffix}"
+        raise SQLGenerationError(message) from error
+
+
 # In production the customer's existing hand-made report fixes the shape of
 # each section; here the spec stands in for it. Without this the model answers
 # correctly but with extra context columns, which is not wrong — just not the
@@ -203,6 +272,7 @@ def generate_request(client, model: str, request: str, rules: str):
         config=types.GenerateContentConfig(
             system_instruction=rules,
             response_mime_type="application/json",
+            max_output_tokens=SQL_MAX_OUTPUT_TOKENS,
             response_schema={
                 **_JSON_SCHEMA,
                 "propertyOrdering": [
@@ -214,7 +284,7 @@ def generate_request(client, model: str, request: str, rules: str):
             },
         ),
     )
-    answer = json.loads(resp.text)
+    answer = _load_sql_response(resp)
     # Keep compatibility with providers/models that omit this optional field.
     answer.setdefault("clarification_question", "")
     return answer, token_counts(resp.usage_metadata)

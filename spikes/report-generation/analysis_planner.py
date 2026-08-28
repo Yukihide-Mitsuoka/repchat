@@ -15,43 +15,102 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "bar",
     "grouped_bar",
     "stacked_bar",
+    "percent_stacked_bar",
     "line",
     "multi_line",
     "area",
     "stacked_area",
+    "percent_stacked_area",
     "histogram",
     "donut",
     "calendar_heatmap",
     "scatter",
     "bubble",
     "funnel",
+    "funnel_horizontal",
     "heatmap",
     "table",
+    "pivot_table",
+    "comparison_table",
+    "sparkline_table",
     "sankey",
+    "sankey_vertical",
+    "flow_sankey",
+    "flow_sankey_vertical",
+    "annotated_line",
+    "sparkline",
+    "mixed_bar_line",
+    "delta",
+    "box_plot",
+    "box_plot_horizontal",
+    "treemap",
+    "pie",
+    "area_map",
+    "us_map",
+    "point_map",
+    "bubble_map",
+    "base_map",
+    "reference_line",
+    "reference_area",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
+SANKEY_CHARTS = STAGED_SANKEY_CHARTS | {"flow_sankey", "flow_sankey_vertical"}
 MAX_SANKEY_PAGES = 4
 MAX_SANKEY_PATHS = 10
 MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_PAGES - 1)
+MAX_FLOW_SANKEY_EDGES = 50
+MAX_CALENDAR_YEARS = 5
+MAX_CALENDAR_ROWS = MAX_CALENDAR_YEARS * 366
+# Initial dashboard output is exactly INITIAL_PANEL_COUNT panels; revisions are
+# locally validated at 1..MAX_PANEL_COUNT. Consultation is provider- and
+# locally-bounded at 1..4 recommendations. Token budgets cover those different
+# cardinalities without leaving either paid response unbounded.
+DASHBOARD_MAX_OUTPUT_TOKENS = 32768
+CONSULTATION_MAX_OUTPUT_TOKENS = 8192
 DASHBOARD_ROW_LIMITS = {
     "scorecard": 1,
     "kpi_group": 1,
     "bar": 30,
     "grouped_bar": 20,
     "stacked_bar": 20,
+    "percent_stacked_bar": 20,
     "line": 100,
     "multi_line": 100,
     "area": 100,
     "stacked_area": 100,
+    "percent_stacked_area": 100,
     "histogram": 30,
     "donut": 12,
-    "calendar_heatmap": 366,
+    "calendar_heatmap": MAX_CALENDAR_ROWS,
     "scatter": 100,
     "bubble": 100,
     "funnel": 12,
+    "funnel_horizontal": 12,
     "heatmap": 100,
     "table": 100,
+    "pivot_table": 100,
+    "comparison_table": 100,
+    "sparkline_table": 100,
     "sankey": MAX_SANKEY_EDGE_ROWS,
+    "sankey_vertical": MAX_SANKEY_EDGE_ROWS,
+    "flow_sankey": MAX_FLOW_SANKEY_EDGES,
+    "flow_sankey_vertical": MAX_FLOW_SANKEY_EDGES,
+    "annotated_line": 100,
+    "sparkline": 100,
+    "mixed_bar_line": 100,
+    "delta": 1,
+    "box_plot": 30,
+    "box_plot_horizontal": 30,
+    "treemap": 100,
+    "pie": 12,
+    "area_map": 100,
+    "us_map": 60,
+    "point_map": 100,
+    "bubble_map": 100,
+    "base_map": 100,
+    "reference_line": 100,
+    "reference_area": 100,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -59,19 +118,43 @@ CHART_SHAPE_CONTRACTS = {
     "bar": (1, 1, 1, 1),
     "grouped_bar": (1, 1, 2, 4),
     "stacked_bar": (1, 1, 2, 4),
+    "percent_stacked_bar": (1, 1, 2, 4),
     "line": (1, 1, 1, 1),
     "multi_line": (1, 1, 2, 4),
     "area": (1, 1, 1, 1),
     "stacked_area": (1, 1, 2, 4),
+    "percent_stacked_area": (1, 1, 2, 4),
     "histogram": (1, 1, 1, 1),
     "donut": (1, 1, 1, 1),
     "calendar_heatmap": (1, 1, 1, 1),
-    "scatter": (1, 1, 2, 2),
-    "bubble": (1, 1, 3, 3),
+    "scatter": (1, 2, 2, 2),
+    "bubble": (1, 2, 3, 3),
     "funnel": (1, 1, 1, 1),
+    "funnel_horizontal": (1, 1, 1, 1),
     "heatmap": (2, 2, 1, 1),
     "table": (0, 4, 1, 4),
+    "pivot_table": (2, 2, 1, 4),
+    "comparison_table": (1, 4, 3, 3),
+    "sparkline_table": (2, 2, 1, 1),
     "sankey": (2, 2, 1, 1),
+    "sankey_vertical": (2, 2, 1, 1),
+    "flow_sankey": (2, 2, 1, 1),
+    "flow_sankey_vertical": (2, 2, 1, 1),
+    "annotated_line": (2, 2, 1, 1),
+    "sparkline": (1, 1, 1, 1),
+    "mixed_bar_line": (1, 1, 2, 4),
+    "delta": (0, 0, 2, 2),
+    "box_plot": (1, 1, 5, 5),
+    "box_plot_horizontal": (1, 1, 5, 5),
+    "treemap": (1, 4, 1, 1),
+    "pie": (1, 1, 1, 1),
+    "area_map": (2, 2, 1, 1),
+    "us_map": (2, 2, 1, 1),
+    "point_map": (2, 2, 3, 3),
+    "bubble_map": (2, 2, 4, 4),
+    "base_map": (3, 3, 4, 4),
+    "reference_line": (1, 1, 2, 2),
+    "reference_area": (1, 1, 3, 3),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
@@ -134,11 +217,12 @@ def _visualization_response_schema(
     charts: tuple[str, ...], *, seed: str = ""
 ) -> dict:
     """Constrain chart and result shape together without prompt heuristics."""
-    variants = []
+    grouped: dict[tuple[int, int, int, int], list[str]] = {}
     for chart in _neutral_chart_order(charts, seed):
-        min_dimensions, max_dimensions, min_measures, max_measures = (
-            CHART_SHAPE_CONTRACTS[chart]
-        )
+        grouped.setdefault(CHART_SHAPE_CONTRACTS[chart], []).append(chart)
+    variants = []
+    for contract, compatible_charts in grouped.items():
+        min_dimensions, max_dimensions, min_measures, max_measures = contract
         variants.append(
             {
                 "type": "object",
@@ -146,7 +230,7 @@ def _visualization_response_schema(
                     "chart": {
                         "type": "string",
                         "format": "enum",
-                        "enum": [chart],
+                        "enum": compatible_charts,
                     },
                     "dimensions": {
                         "type": "array",
@@ -254,6 +338,68 @@ class PlannerError(ValueError):
     def __init__(self, message: str, *, suggested_instruction: str | None = None):
         super().__init__(message)
         self.suggested_instruction = suggested_instruction
+
+
+class StructuredResponseError(ValueError):
+    """A bounded classification that never retains generated response text."""
+
+    def __init__(self, kind: str, *, finish_reason: str | None = None):
+        super().__init__(kind)
+        self.kind = kind
+        self.finish_reason = finish_reason
+
+
+def _load_structured_json(response):
+    candidates = getattr(response, "candidates", None) or []
+    reason = getattr(candidates[0], "finish_reason", None) if candidates else None
+    value = getattr(reason, "value", None)
+    name = getattr(reason, "name", None)
+    raw_reason = (
+        value
+        if isinstance(value, str)
+        else name
+        if isinstance(name, str)
+        else reason
+    )
+    finish_reason = None
+    if raw_reason is not None:
+        normalized = str(raw_reason).upper().removeprefix("FINISHREASON.")
+        finish_reason = (
+            normalized if re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized) else "OTHER"
+        )
+    if finish_reason == "MAX_TOKENS":
+        raise StructuredResponseError("max_tokens", finish_reason=finish_reason)
+    if finish_reason not in {None, "STOP"}:
+        raise StructuredResponseError("finish_reason", finish_reason=finish_reason)
+    try:
+        response_text = response.text
+    except (AttributeError, TypeError, ValueError) as error:
+        raise StructuredResponseError("missing_text") from error
+    if not isinstance(response_text, str) or not response_text.strip():
+        raise StructuredResponseError("missing_text")
+    try:
+        return json.loads(response_text)
+    except (json.JSONDecodeError, TypeError) as error:
+        raise StructuredResponseError("malformed_json") from error
+
+
+def _load_planner_response(response, label: str):
+    try:
+        return _load_structured_json(response)
+    except StructuredResponseError as error:
+        suffix = "現在案は保持し、自動再実行していません。"
+        if error.kind == "max_tokens":
+            message = f"Vertex AIの{label}が出力上限までに完了しませんでした。{suffix}"
+        elif error.kind == "finish_reason":
+            message = (
+                f"Vertex AIが{label}の生成を完了できませんでした"
+                f"（終了理由: {error.finish_reason}）。{suffix}"
+            )
+        elif error.kind == "missing_text":
+            message = f"Vertex AIから{label}JSONを受け取れませんでした。{suffix}"
+        else:
+            message = f"Vertex AIの{label}JSONを解釈できませんでした。{suffix}"
+        raise PlannerError(message) from error
 
 
 def _response_schema(answers: dict[str, str]) -> dict:
@@ -547,7 +693,7 @@ def normalize_dashboard_plan(
         panel["dimensions"] = _panel_terms(
             item.get("dimensions"),
             "区分軸",
-            allow_role_duplicates=panel["chart"] == "sankey",
+            allow_role_duplicates=panel["chart"] in SANKEY_CHARTS,
         )
         panel["measures"] = _panel_terms(item.get("measures"), "指標", minimum=1)
         undefined_metrics = [
@@ -585,7 +731,7 @@ def normalize_dashboard_plan(
             _validate_chart_shape(panel["chart"], dimensions, measures)
         except PlannerError as error:
             suggestion = panel["execution_prompt"].rstrip("。")
-            if panel["chart"] == "sankey" and measures:
+            if panel["chart"] in STAGED_SANKEY_CHARTS and measures:
                 if not re.search(r"(?:上位|トップ)\s*\d+", suggestion):
                     suggestion += "。経路は上位10件に絞って"
                 suggestion += (
@@ -652,6 +798,7 @@ def propose_dashboard(
         config=types.GenerateContentConfig(
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
             response_mime_type="application/json",
+            max_output_tokens=DASHBOARD_MAX_OUTPUT_TOKENS,
             response_schema=_dashboard_response_schema(
                 answers,
                 revising=current_plan is not None,
@@ -660,25 +807,7 @@ def propose_dashboard(
             ),
         ),
     )
-    try:
-        response_text = response.text
-    except (AttributeError, ValueError) as error:
-        raise PlannerError(
-            "Vertex AIから分析計画JSONを受け取れませんでした。"
-            "現在案は保持し、自動再実行していません。"
-        ) from error
-    if not isinstance(response_text, str) or not response_text.strip():
-        raise PlannerError(
-            "Vertex AIから分析計画JSONを受け取れませんでした。"
-            "現在案は保持し、自動再実行していません。"
-        )
-    try:
-        raw = json.loads(response_text)
-    except json.JSONDecodeError as error:
-        raise PlannerError(
-            "Vertex AIの分析計画JSONを解釈できませんでした。"
-            "現在案は保持し、自動再実行していません。"
-        ) from error
+    raw = _load_planner_response(response, "分析計画")
     return normalize_dashboard_plan(
         raw, objective, period, answers, allowed_metrics=metric_names
     ), token_counts(response.usage_metadata)
@@ -778,11 +907,16 @@ def _bounded_consultation_text(value, label: str, limit: int = 500) -> str:
     return text
 
 
-def _consultation_terms(value, label: str, *, minimum: int = 0) -> list[str]:
+def _consultation_terms(
+    value, label: str, *, minimum: int = 0, allow_role_duplicates: bool = False
+) -> list[str]:
     if not isinstance(value, list) or not minimum <= len(value) <= 4:
         raise PlannerError(f"分析相談の{label}は{minimum}〜4件にしてください。")
     terms = [_bounded_consultation_text(item, label, 80) for item in value]
-    if len({"".join(item.lower().split()) for item in terms}) != len(terms):
+    if (
+        not allow_role_duplicates
+        and len({"".join(item.lower().split()) for item in terms}) != len(terms)
+    ):
         raise PlannerError(f"分析相談の{label}に重複があります。")
     return terms
 
@@ -800,13 +934,17 @@ def confirm_analysis_specification(raw: dict) -> dict:
         )
         for field in CONSULTATION_TEXT_FIELDS
     }
-    recommendation["dimensions"] = _consultation_terms(raw.get("dimensions"), "区分軸")
-    recommendation["measures"] = _consultation_terms(
-        raw.get("measures"), "指標", minimum=1
-    )
     chart = recommendation["chart"]
     if chart not in CONSULTATION_CHARTS:
         raise PlannerError("分析相談の可視化種別が未対応です。")
+    recommendation["dimensions"] = _consultation_terms(
+        raw.get("dimensions"),
+        "区分軸",
+        allow_role_duplicates=chart in SANKEY_CHARTS,
+    )
+    recommendation["measures"] = _consultation_terms(
+        raw.get("measures"), "指標", minimum=1
+    )
     dimensions = recommendation["dimensions"]
     measures = recommendation["measures"]
     _validate_chart_shape(chart, dimensions, measures)
@@ -882,11 +1020,12 @@ def propose_consultation(
                 "日本語BIアナリスト。"
             ),
             response_mime_type="application/json",
+            max_output_tokens=CONSULTATION_MAX_OUTPUT_TOKENS,
             response_schema=_consultation_schema(seed=f"{profile}\n{question}"),
         ),
     )
     return normalize_consultation(
-        json.loads(response.text)
+        _load_planner_response(response, "分析相談")
     ), token_counts(response.usage_metadata)
 
 

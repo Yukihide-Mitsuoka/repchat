@@ -29,19 +29,28 @@ export function serve(
   const server = createServer((nodeReq, nodeRes) => {
     void respond(handler, nodeReq, nodeRes);
   });
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    const rejectListen = (error: Error): void => reject(error);
+    server.once('error', rejectListen);
     server.listen(port, host, () => {
+      server.off('error', rejectListen);
       const addr = server.address();
+      let closePromise: Promise<void> | undefined;
       resolve({
         port: typeof addr === 'object' && addr !== null ? addr.port : port,
-        close: () =>
-          new Promise<void>((res) => {
-            server.close(() => res());
+        close: () => {
+          closePromise ??= new Promise<void>((closeResolve, closeReject) => {
+            server.close((error) => {
+              if (error) closeReject(error);
+              else closeResolve();
+            });
             // close() alone waits for idle keep-alive sockets to time out, which
             // a client's connection pool holds open — enough to hang shutdown
             // (and a CI test run) indefinitely. Drop them so close() completes.
             server.closeAllConnections();
-          }),
+          });
+          return closePromise;
+        },
       });
     });
   });

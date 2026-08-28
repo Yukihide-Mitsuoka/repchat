@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-08-15
+updated: 2026-08-28
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -13,7 +13,7 @@ updated: 2026-08-15
 選べる必要がある。この文書は、Evidence Cloudで利用できるEvidenceの可視化を基準に、RepChatの
 現在のend-to-end対応を整理する。
 
-一次資料は2026-08-11時点の[Evidence All Components](https://docs.evidence.dev/components/all-components)と
+一次資料は2026-08-28時点の[Evidence All Components](https://docs.evidence.dev/components/all-components)と
 [Custom ECharts](https://docs.evidence.dev/components/charts/custom-echarts)である。Evidence Cloudのeditorは
 Evidence projectを扱うが、公式の可視化component一覧はEvidence Docsにあるため、製品名と描画基盤を区別する。
 
@@ -45,22 +45,37 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる18種類
+### 2.1 現在AI plannerが選べる42種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
 | `scorecard` / `kpi_group` | Big Value | 対応 | 1〜4件の定義済みKPIを1行で返す |
-| `bar` / `grouped_bar` / `stacked_bar` | Bar Chart | 部分対応 | 区分数とラベル密度に応じた縦棒／横棒、grouped、stackedのwide形式。100% stackedは未対応 |
+| `bar` / `grouped_bar` / `stacked_bar` / `percent_stacked_bar` | Bar Chart | 部分対応 | 区分数とラベル密度に応じた縦棒／横棒、grouped、stacked、100% stackedのwide形式。利用者指定orientationは未対応 |
 | `line` / `multi_line` | Line Chart | 部分対応 | 1〜4系列。複数系列は色付き独立縦軸で値を表示する |
-| `area` / `stacked_area` | Area Chart | 部分対応 | 基本areaとwide形式のstacked area。100% stackedは未対応 |
+| `area` / `stacked_area` / `percent_stacked_area` | Area Chart | 対応 | 基本area、stacked area、100% stacked areaのwide形式 |
 | `histogram` | Histogram | 対応 | numericの階級下限と度数を返す |
-| `calendar_heatmap` | Calendar Heatmap | 対応 | 日付と1指標を最大366日まで返す |
-| `scatter` / `bubble` | Scatter / Bubble Chart | 部分対応 | category、x、y、任意のsizeを返す。複数seriesは未対応 |
-| `funnel` | Funnel Chart | 部分対応 | 順序付きstageと非負値を返す |
+| `calendar_heatmap` | Calendar Heatmap | 対応 | 日付と1指標を最大5年まで返し、年ごとにcalendarを分ける |
+| `scatter` / `bubble` | Scatter / Bubble Chart | 対応 | category、任意のseries、x、y、任意のsizeを返す |
+| `funnel` / `funnel_horizontal` | Funnel Chart | 対応 | 順序付きstageと非負値を返し、縦向き／横向きを選ぶ |
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
-| `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。Evidence固有の高度な表機能は対象外 |
-| `sankey` | Sankey Diagram | 部分対応 | 上位10経路、最大4ページの段階付きサイト回遊に限定する |
+| `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、数値バーに対応 |
+| `pivot_table` | Data Table Pivoting | 対応 | 行区分、列区分、1〜4指標のlong形式を検査し、欠損組合せを空欄に保ってwide表示する |
+| `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分、現在値、比較値、差分を返し、差分の算術整合性を検査して増減方向を中立色で表示する |
+| `sparkline_table` | Data Table Sparkline | 対応 | 区分、日付、値のlong形式を検査し、区分ごとの最新値とECharts sparklineを表示する |
+| `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
+| `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
+| `annotated_line` | Annotations | 部分対応 | 日付、任意の注釈ラベル、1指標を返し、根拠のある時点だけをpin表示する |
+| `sparkline` | Sparkline | 対応 | 日付と1指標を返し、最新値と軸を省略した小型時系列を表示する |
+| `mixed_bar_line` | Mixed-Type Charts | 対応 | 1区分軸と2〜4指標を返し、第1系列をbar、残りをlineで描く |
+| `delta` | Delta | 対応 | 現在値と比較値を1行で返し、良否を推測せず符号付き差分を中立色で示す |
+| `box_plot` / `box_plot_horizontal` | Box Plot | 対応 | 区分、最小、第1四分位、中央値、第3四分位、最大を昇順で返す |
+| `treemap` | Custom ECharts Treemap例 | 対応 | 1〜4階層と非負値を返し、末端までの階層を宣言的に描く |
+| `pie` | Custom ECharts Pie例 | 対応 | 12区分までの非負値を全円で描く |
+| `area_map` / `us_map` | Area Map / US Map | 対応 | 地域ID、Polygon/MultiPolygon GeoJSON、非負値をwarehouseから返す |
+| `point_map` / `bubble_map` | Point Map / Bubble Map | 対応 | query提供の地理境界、地点名、緯度経度、値と任意のsizeを返す |
+| `base_map` | Base Map | 対応 | area／point／bubbleの複数layerを同じquery結果で返す |
+| `reference_line` / `reference_area` | Annotations | 対応 | 実績と基準値、または実績と下限・上限を区分ごとに返す |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -71,17 +86,17 @@ plannerの許可値は
 
 | Evidence component | 公式に掲載される主なvariant | RepChat | 現在の根拠・不足 |
 |---|---|---|---|
-| Area Chart | basic、stacked、100% stacked | 部分対応 | basicとstackedに対応。100% stackedは未対応 |
-| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。100% stacked、利用者が任意に固定するorientation、longは未対応 |
-| Box Plot | basic、horizontal | 未対応 | quartile／whiskerの結果契約とrendererがない |
-| Bubble Chart | single／multiple series | 部分対応 | single seriesのx、y、sizeに対応。複数seriesは未対応 |
+| Area Chart | basic、stacked、100% stacked | 対応 | basic、stacked、100% stackedへ対応 |
+| Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、100% stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。利用者が任意に固定するorientation、longは未対応 |
+| Box Plot | basic、horizontal | 対応 | 五数要約の順序を検査し、縦向き／横向きを描画する |
+| Bubble Chart | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Histogram | default | 対応 | numericの階級下限と度数を検査して描画する |
-| Line Chart | single、multiple series、multiple Y columns | 部分対応 | 1〜4系列と独立縦軸に対応。series別chart typeは未対応 |
-| Scatter Plot | single／multiple series | 部分対応 | single seriesのx、yに対応。複数seriesは未対応 |
-| Calendar Heatmap | single year、multi-year | 部分対応 | date、valueの最大366日へ対応。multi-year区切りは未対応 |
+| Line Chart | single、multiple series、multiple Y columns | 対応 | 1〜4系列と独立縦軸、bar＋lineのseries別typeへ対応 |
+| Scatter Plot | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
+| Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
-| Funnel Chart | default、side aligned | 部分対応 | 任意の順序付きstageに対応。orientationは未対応 |
-| Sankey Diagram | horizontal、vertical | 部分対応 | 上位10経路・最大4ページの段階付き回遊に対応。verticalと一般flowは未対応 |
+| Funnel Chart | default、side aligned | 対応 | 任意の順序付きstageを縦向き／横向きで描画する |
+| Sankey Diagram | horizontal、vertical | 対応 | 段階付き回遊と一般的な非循環flowを縦向き／横向きで描画する |
 
 標準chart componentはこの11種類に、§4のAnnotations、Sparkline、Mixed-Type Chartsと、§6のCustom
 EChartsを加えた15種類である。
@@ -90,23 +105,23 @@ EChartsを加えた15種類である。
 
 | Evidence component | RepChat | 現在の根拠・不足 |
 |---|---|---|
-| Annotations | 未対応 | x/y reference line、reference area、根拠revisionとの対応がない |
-| Sparkline | 未対応 | scorecard内の小型時系列rendererがない |
-| Mixed-Type Charts | 未対応 | bar＋line等のseries別type契約がない |
+| Annotations | 対応 | 実データpoint、reference line、上下限reference areaを検証済み列契約から描画する |
+| Sparkline | 対応 | 最新値を伴う小型時系列を独立した検証済みcomponentとして描画する |
+| Mixed-Type Charts | 対応 | 第1系列bar＋残りlineの宣言的な列契約を持つ |
 | Big Value | 対応 | 1行1列のscalarと、既知のKPI pairを描画できる |
 | Value | 部分対応 | 数値formatはあるが、Evidenceのinline Value componentとしては生成しない |
-| Data Table | 対応 | 取得データをtable表示できる。Evidenceの全機能は未対応 |
-| Delta | 未対応 | 比較値、方向、良否色の意味契約がない |
+| Data Table | 対応 | 検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、交互行、数値バー、pivot、算術検証済みcomparison/delta、ECharts sparklineを備える。計算指標とgroupingは通常の自然言語SQL生成で扱い、rendererが集計値を推測しない |
+| Delta | 対応 | 現在値、比較値、符号付き差分を表示し、指標定義なしに良否を推測しない |
 
 ## 5. map component
 
 | Evidence component | RepChat | 現在の不足 |
 |---|---|---|
-| Area Map | 未対応 | region key、shape、value、地理境界の契約がない |
-| Bubble Map | 未対応 | latitude、longitude、sizeの契約がない |
-| Point Map | 未対応 | latitude、longitude、categoryの契約がない |
-| Base Map | 未対応 | layerとtile／shape sourceの契約がない |
-| US Map | 未対応 | US地域codeとvalueの契約がない |
+| Area Map | 対応 | region key、GeoJSON Polygon/MultiPolygon、非負valueを検査して描画する |
+| Bubble Map | 対応 | query提供GeoJSON、地点名、緯度経度、非負size／valueを検査して描画する |
+| Point Map | 対応 | query提供GeoJSON、地点名、緯度経度、非負valueを検査して描画する |
+| Base Map | 対応 | query提供GeoJSON上にarea、point、bubbleの検証済みlayerを重ねる |
+| US Map | 対応 | 2文字の州・地域code、GeoJSON境界、非負valueを検査して描画する |
 
 ## 6. Custom ECharts
 
@@ -114,10 +129,10 @@ Evidenceの公式ページには、Custom ECharts例として次が掲載され�
 
 | 公式例・拡張枠 | RepChat | 現在の不足 |
 |---|---|---|
-| Treemap | 未対応 | hierarchy、name、value契約がない |
-| Pie Chart | 未対応 | Donutとは独立した表示契約をまだ持たない |
+| Treemap | 対応 | 1〜4階層の空でない項目名と非負値を検査して描画する |
+| Pie Chart | 対応 | Donutと独立した全円表示契約を持つ |
 | Donut Chart | 部分対応 | name、非負value、最大12区分、割合tooltip、中心合計を描画する |
-| Custom Funnel | 部分対応 | 固定購入funnelだけで、ECharts configは生成しない |
+| Custom Funnel | 対応 | 順序接頭辞を持つ任意の段階と非負値を検査し、縦向き／横向きを描画する |
 | Advanced／任意ECharts | 未対応 | 任意JavaScript configは安全性、再現性、accessibilityを保証できない |
 
 Pie ChartとDonut ChartはEvidenceの独立した標準componentではなく、Custom EChartsの公式例である。
@@ -130,12 +145,13 @@ accessibility欠落につながるため、初期方針にはしない。RepChat
 
 ## 7. 現在の要約
 
-RepChatのlocal demoでは、18個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
-扱える。Evidenceのvariantをすべて再現したことは意味せず、map、Box Plot、Calendar Heatmapのmulti-year表示、
-Sparkline、Mixed-Type Charts、任意Custom EChartsは未対応である。
+RepChatのlocal demoでは、42個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
+扱える。2026-08-28に同じECharts assetとrendererへ42種類の代表fixtureを渡してブラウザ確認し、描画エラーと
+横方向overflowが0件であることを確認した。縦向きSankey 2種類はカード上限と同じ440pxへ揃えた。
+任意Custom EChartsだけは、AI生成JavaScriptを実行する安全性・再現性・accessibilityを保証できないため、
+意図的に許可していない。
 
-したがって、AIが利用者の要望を考察しても、現時点のplannerへEvidence全種類を選ばせてはならない。
-先に各chartの結果形状とrendererを実装し、end-to-end契約を試験したものだけをAIの許可enumへ加える。
+AIには、各chartの結果形状とrendererを実装しend-to-end契約を試験した42種類だけを許可enumとして渡す。
 許可enumと指標定義は依頼ごとに中立な順序へ変換し、列挙順を提案順位として使わせない。
 初回提案数と上限は管理者ポリシーとして設定でき、デモ既定値はそれぞれ6件と20件である。例えば上限を15件へ
 変更できる。この件数境界は費用と画面密度を制御するものであり、AIが何を分析するかは固定しない。

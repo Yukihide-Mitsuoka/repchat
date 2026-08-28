@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.21.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.3...v1.21.0) (2026-08-23)
+
+
+### Features
+
+* **demo:** add clarification flow and live verification ([#436](https://github.com/Yukihide-Mitsuoka/repchat/issues/436)) ([4dbe9fe](https://github.com/Yukihide-Mitsuoka/repchat/commit/4dbe9feaec426a73522476467a9d2e555fc99948))
+
 ## [1.20.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.2...v1.20.3) (2026-08-23)
 
 

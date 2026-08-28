@@ -478,6 +478,22 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .chart-table-scroll{align-self:start;width:100%;max-height:360px;overflow:auto}
 .chart-table-scroll table{width:max-content;min-width:100%;margin-top:0}
 .chart-table-scroll th,.chart-table-scroll td{max-width:320px;overflow-wrap:anywhere;vertical-align:top}
+.advanced-table{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;gap:8px}
+.advanced-table-toolbar{display:flex;align-items:center;gap:7px;min-width:0}
+.advanced-table-search{min-width:120px;max-width:240px;padding:6px 9px}
+.advanced-table-summary{margin-right:auto;color:#687386;font-size:10px;white-space:nowrap}
+.advanced-table-toolbar button,.advanced-table-pager button{width:auto;padding:5px 9px;font-size:10px}
+.advanced-table-scroll{flex:1;max-height:420px;border:1px solid #e5e9ee;border-radius:7px}
+.advanced-table-scroll thead{position:sticky;z-index:2;top:0;background:#f7f9fb}
+.advanced-table-scroll th:first-child,.advanced-table-scroll td:first-child{position:sticky;z-index:1;left:0;background:inherit}
+.advanced-table-scroll tbody tr:nth-child(even){background:#fafbfd}
+.advanced-table-scroll th button{width:100%;padding:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit}
+.advanced-table-scroll th[aria-sort="ascending"] button::after{content:"  ↑"}
+.advanced-table-scroll th[aria-sort="descending"] button::after{content:"  ↓"}
+.advanced-table-number{background:linear-gradient(90deg,#dbeafe var(--table-bar-width),transparent var(--table-bar-width));font-variant-numeric:tabular-nums;text-align:right}
+.advanced-table-delta{color:#315f86;font-weight:700}
+.advanced-table-sparkline{width:128px;height:36px}
+.advanced-table-pager{display:flex;align-items:center;justify-content:flex-end;gap:9px;color:#687386;font-size:10px}
 .metric{align-self:center;padding:20px 6px;font-size:48px;letter-spacing:-.04em}
 .kpi-pair{gap:10px;align-self:center;width:100%}
 .kpi-pair div{padding:17px 16px;border:1px solid #edf0f3;border-radius:9px;background:#f7f9fb}
@@ -839,19 +855,43 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "bar": "table",
         "grouped_bar": "grouped_bar",
         "stacked_bar": "stacked_bar",
+        "percent_stacked_bar": "percent_stacked_bar",
         "line": "line",
         "multi_line": "multi_line",
         "area": "area",
         "stacked_area": "stacked_area",
+        "percent_stacked_area": "percent_stacked_area",
         "histogram": "histogram",
         "donut": "donut",
         "calendar_heatmap": "calendar_heatmap",
         "scatter": "scatter",
         "bubble": "bubble",
         "funnel": "funnel",
+        "funnel_horizontal": "funnel_horizontal",
         "heatmap": "heatmap",
         "table": "table",
+        "pivot_table": "pivot_table",
+        "comparison_table": "comparison_table",
+        "sparkline_table": "sparkline_table",
         "sankey": "sankey",
+        "sankey_vertical": "sankey_vertical",
+        "flow_sankey": "flow_sankey",
+        "flow_sankey_vertical": "flow_sankey_vertical",
+        "annotated_line": "annotated_line",
+        "sparkline": "sparkline",
+        "mixed_bar_line": "mixed_bar_line",
+        "delta": "delta",
+        "box_plot": "box_plot",
+        "box_plot_horizontal": "box_plot_horizontal",
+        "treemap": "treemap",
+        "pie": "pie",
+        "area_map": "area_map",
+        "us_map": "us_map",
+        "point_map": "point_map",
+        "bubble_map": "bubble_map",
+        "base_map": "base_map",
+        "reference_line": "reference_line",
+        "reference_area": "reference_area",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -882,7 +922,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "bar":
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["category", "metric_value"]
-    elif chart in {"grouped_bar", "stacked_bar"}:
+    elif chart in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "category",
@@ -900,7 +940,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "area":
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["event_date", "metric_value"]
-    elif chart == "stacked_area":
+    elif chart in {"stacked_area", "percent_stacked_area"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "event_date",
@@ -920,8 +960,12 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         if chart == "bubble":
             value_columns.append("size_value")
         section["shape"] = {"rows": "項目ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["category", *value_columns]
-    elif chart == "funnel":
+        section["source_columns"] = [
+            "category",
+            *(["series"] if len(dimensions) == 2 else []),
+            *value_columns,
+        ]
+    elif chart in {"funnel", "funnel_horizontal"}:
         section["shape"] = {"rows": "段階ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["stage", "metric_value"]
         section["generation_requirements"] = [
@@ -933,16 +977,44 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "columns": dimensions + measures,
         }
         section["source_columns"] = ["x_category", "y_category", "metric_value"]
-    elif chart == "table":
+    elif chart in {"table", "pivot_table"}:
+        section["shape"] = {
+            "rows": "区分または集計単位ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = (
+            [
+                "row_dimension",
+                "pivot_dimension",
+                *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+            ]
+            if chart == "pivot_table"
+            else [
+                *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
+                *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+            ]
+        )
+    elif chart == "comparison_table":
         section["shape"] = {
             "rows": "区分または集計単位ごとに1行",
             "columns": dimensions + measures,
         }
         section["source_columns"] = [
             *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
-            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+            "current_value",
+            "comparison_value",
+            "delta_value",
         ]
-    elif chart == "sankey":
+        section["generation_requirements"] = [
+            "delta_valueはcurrent_value - comparison_valueと一致させる"
+        ]
+    elif chart == "sparkline_table":
+        section["shape"] = {
+            "rows": "区分と日付の組み合わせごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["category", "event_date", "metric_value"]
+    elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
             display_dimensions = [f"遷移元{dimensions[0]}", f"遷移先{dimensions[1]}"]
@@ -963,7 +1035,75 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "同一sourceとtargetの組はSUMして1行に集約する",
             "URLをnode名に使う場合はscheme、host、query、fragmentを除いたpage pathを表示名にする",
         ]
-    if chart not in {"line", "multi_line", "area", "stacked_area", "table"}:
+    elif chart in {"flow_sankey", "flow_sankey_vertical"}:
+        section["shape"] = {
+            "rows": "有向flowの接続ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["source", "target", "metric_value"]
+        section["generation_requirements"] = [
+            "sourceとtargetは空でない項目名にし、同じ項目を指定しない",
+            "同一sourceとtargetの組はSUMして1行に集約する",
+            "循環するflowを返さない",
+        ]
+    elif chart == "annotated_line":
+        section["shape"] = {
+            "rows": "日付ごとに1行。注釈がない日はannotation_labelをNULLにする",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
+    elif chart == "sparkline":
+        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["event_date", "metric_value"]
+    elif chart == "mixed_bar_line":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "category",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "delta":
+        section["shape"] = {"rows": "比較対象を含む1行", "columns": measures}
+        section["source_columns"] = ["current_value", "comparison_value"]
+    elif chart in {"box_plot", "box_plot_horizontal"}:
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "category", "min_value", "q1_value", "median_value", "q3_value", "max_value"
+        ]
+    elif chart == "treemap":
+        section["shape"] = {"rows": "階層の末端項目ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            *[f"level_{index}" for index in range(1, len(dimensions) + 1)],
+            "metric_value",
+        ]
+    elif chart == "pie":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value"]
+    elif chart in {"area_map", "us_map"}:
+        section["shape"] = {
+            "rows": "地域ごとに1行。地理境界はGeoJSON PolygonまたはMultiPolygon",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["region_id", "geometry_geojson", "metric_value"]
+    elif chart == "point_map":
+        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["point_name", "map_geojson", "latitude", "longitude", "metric_value"]
+    elif chart == "bubble_map":
+        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["point_name", "map_geojson", "latitude", "longitude", "size_value", "metric_value"]
+    elif chart == "base_map":
+        section["shape"] = {"rows": "地理layerの項目ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["layer_kind", "item_name", "geometry_geojson", "latitude", "longitude", "size_value", "metric_value"]
+    elif chart == "reference_line":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value", "reference_value"]
+    elif chart == "reference_area":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value", "lower_value", "upper_value"]
+    if chart not in {
+        "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
+        "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table",
+        "pivot_table", "sparkline_table"
+    }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
         aliases = "、".join(nonnull_metric_columns)
@@ -971,16 +1111,21 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             f"{aliases}はNULLを返さない。COUNT/COUNTIF以外の式は最終SELECT式全体を"
             "COALESCEまたはIFNULLで包む"
         )
-    if chart not in {"scorecard", "kpi_group"}:
+    if chart not in {"scorecard", "kpi_group", "delta"}:
         max_rows = section["max_result_rows"]
-        if chart in {"line", "multi_line", "area", "stacked_area", "calendar_heatmap"}:
+        if chart in {
+            "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
+            "calendar_heatmap", "annotated_line", "sparkline",
+        }:
             ordering = "event_dateの昇順"
         elif chart == "histogram":
             ordering = "bin_startの昇順"
-        elif chart == "sankey":
+        elif chart in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
             ordering = "metric_valueの降順"
-        elif chart == "funnel":
+        elif chart in {"funnel", "funnel_horizontal"}:
             ordering = "stageの昇順"
+        elif chart in {"reference_line", "reference_area"}:
+            ordering = "categoryの昇順"
         else:
             ordering = f"{section['source_columns'][-1]}の降順"
         section.setdefault("generation_requirements", []).append(
@@ -1155,7 +1300,7 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
                 f"{section['title']}のSQLに{planned}用のORDER BYとLIMIT "
                 f"{max_rows}以下がないためBigQueryへ送信しません。"
             )
-    if planned in {"scorecard", "kpi_group"}:
+    if planned in {"scorecard", "kpi_group", "delta"}:
         aggregate_pattern = re.compile(
             r"\b(?:COUNT|COUNTIF|SUM|AVG|MIN|MAX|ANY_VALUE|LOGICAL_AND|LOGICAL_OR|APPROX_[A-Z_]+)\s*\(",
             re.I,
@@ -1188,11 +1333,11 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and all(field_type in numeric for field_type in types)
     elif planned == "bar":
         valid = valid and types[1] in numeric
-    elif planned in {"grouped_bar", "stacked_bar"}:
+    elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and all(field_type in numeric for field_type in types[1:])
     elif planned in {"line", "area", "calendar_heatmap"}:
         valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
-    elif planned in {"multi_line", "stacked_area"}:
+    elif planned in {"multi_line", "stacked_area", "percent_stacked_area"}:
         valid = (
             valid
             and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
@@ -1203,18 +1348,89 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
     elif planned == "donut":
         valid = valid and types[1] in numeric
     elif planned in {"scatter", "bubble"}:
-        valid = valid and all(field_type in numeric for field_type in types[1:])
-    elif planned == "funnel":
+        dimension_count = section.get("dimension_count", 1)
+        valid = (
+            valid
+            and (dimension_count == 1 or types[1] == "STRING")
+            and all(field_type in numeric for field_type in types[dimension_count:])
+        )
+    elif planned in {"funnel", "funnel_horizontal"}:
         valid = valid and types[1] in numeric
     elif planned == "heatmap":
         valid = valid and types[2] in numeric
-    elif planned == "sankey":
+    elif planned in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
         valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
+    elif planned == "annotated_line":
+        valid = (
+            valid
+            and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
+            and types[1] == "STRING"
+            and types[2] in numeric
+        )
+    elif planned == "sparkline":
+        valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
+    elif planned == "mixed_bar_line":
+        valid = (
+            valid
+            and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
+            and all(field_type in numeric for field_type in types[1:])
+        )
+    elif planned == "delta":
+        valid = valid and len(types) == 2 and all(field_type in numeric for field_type in types)
+    elif planned in {"box_plot", "box_plot_horizontal"}:
+        valid = valid and types[0] == "STRING" and all(field_type in numeric for field_type in types[1:])
+    elif planned == "treemap":
+        dimension_count = section.get("dimension_count", 1)
+        valid = (
+            valid
+            and all(field_type == "STRING" for field_type in types[:dimension_count])
+            and types[-1] in numeric
+        )
+    elif planned == "pie":
+        valid = valid and types[0] == "STRING" and types[1] in numeric
+    elif planned in {"area_map", "us_map"}:
+        valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
+    elif planned == "point_map":
+        valid = valid and types[:2] == ["STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[2:]
+        )
+    elif planned == "bubble_map":
+        valid = valid and types[:2] == ["STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[2:]
+        )
+    elif planned == "base_map":
+        valid = valid and types[:3] == ["STRING", "STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[3:]
+        )
+    elif planned in {"reference_line", "reference_area"}:
+        valid = (
+            valid
+            and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
+            and all(field_type in numeric for field_type in types[1:])
+        )
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
         valid = valid and all(
             field_type in numeric for field_type in types[dimension_count:]
         )
+    elif planned == "pivot_table":
+        valid = (
+            valid
+            and all(
+                field_type in {"STRING", "DATE", "DATETIME", "TIMESTAMP"} | numeric
+                for field_type in types[:2]
+            )
+            and all(field_type in numeric for field_type in types[2:])
+        )
+    elif planned == "comparison_table":
+        dimension_count = section.get("dimension_count", 1)
+        valid = valid and all(
+            field_type in numeric for field_type in types[dimension_count:]
+        )
+    elif planned == "sparkline_table":
+        valid = valid and types[0] == "STRING" and types[1] in {
+            "DATE", "DATETIME", "TIMESTAMP"
+        } and types[2] in numeric
     if not valid:
         observed = "、".join(f"{name}:{field_type}" for name, field_type in schema)
         raise LiveDemoError(
@@ -1265,6 +1481,109 @@ def valid_sankey_result(rows: list[tuple]) -> bool:
     return all(len(nodes) <= MAX_SANKEY_PATHS for nodes in nodes_by_stage.values())
 
 
+def valid_flow_sankey_result(rows: list[tuple]) -> bool:
+    """Validate a bounded acyclic directed flow without page-navigation semantics."""
+    numeric = (int, float, Decimal)
+    if not rows or len(rows) > planner.MAX_FLOW_SANKEY_EDGES:
+        return False
+    if not all(
+        len(row) == 3
+        and isinstance(row[0], str)
+        and row[0].strip()
+        and isinstance(row[1], str)
+        and row[1].strip()
+        and row[0] != row[1]
+        and isinstance(row[2], numeric)
+        and math.isfinite(float(row[2]))
+        and row[2] >= 0
+        for row in rows
+    ):
+        return False
+    edges = {(row[0], row[1]) for row in rows}
+    if len(edges) != len(rows):
+        return False
+    nodes = {value for edge in edges for value in edge}
+    indegree = {node: 0 for node in nodes}
+    outgoing = {node: [] for node in nodes}
+    for source, target in edges:
+        outgoing[source].append(target)
+        indegree[target] += 1
+    pending = [node for node, count in indegree.items() if count == 0]
+    visited = 0
+    while pending:
+        source = pending.pop()
+        visited += 1
+        for target in outgoing[source]:
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                pending.append(target)
+    return visited == len(nodes)
+
+
+def valid_geojson_geometry(value: object) -> bool:
+    """Accept a closed GeoJSON Polygon/MultiPolygon supplied by the query result."""
+    if not isinstance(value, str):
+        return False
+    try:
+        geometry = json.loads(value)
+    except (TypeError, ValueError):
+        return False
+
+    def valid_ring(ring: object) -> bool:
+        return (
+            isinstance(ring, list)
+            and len(ring) >= 4
+            and ring[0] == ring[-1]
+            and all(
+                isinstance(point, list)
+                and len(point) >= 2
+                and all(isinstance(coordinate, (int, float)) for coordinate in point[:2])
+                and -180 <= point[0] <= 180
+                and -90 <= point[1] <= 90
+                for point in ring
+            )
+        )
+
+    if not isinstance(geometry, dict):
+        return False
+    coordinates = geometry.get("coordinates")
+    if geometry.get("type") == "Polygon":
+        polygons = [coordinates]
+    elif geometry.get("type") == "MultiPolygon":
+        polygons = coordinates
+    else:
+        return False
+    return bool(polygons) and all(
+        isinstance(polygon, list) and polygon and all(valid_ring(ring) for ring in polygon)
+        for polygon in polygons
+    )
+
+
+def valid_geojson_map(value: object) -> bool:
+    """Accept query-provided polygon geometry, Feature, or FeatureCollection."""
+    if valid_geojson_geometry(value):
+        return True
+    if not isinstance(value, str):
+        return False
+    try:
+        document = json.loads(value)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(document, dict):
+        return False
+    if document.get("type") == "Feature":
+        return valid_geojson_geometry(json.dumps(document.get("geometry")))
+    if document.get("type") != "FeatureCollection":
+        return False
+    features = document.get("features")
+    return bool(features) and all(
+        isinstance(feature, dict)
+        and feature.get("type") == "Feature"
+        and valid_geojson_geometry(json.dumps(feature.get("geometry")))
+        for feature in features
+    )
+
+
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
     """Validate the confirmed AI chart before selecting its renderer."""
     planned = section.get("planned_visualization")
@@ -1285,7 +1604,7 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         )
     elif planned == "bar":
         valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
-    elif planned in {"grouped_bar", "stacked_bar"}:
+    elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and 3 <= width <= 5 and all(
             all(finite(value) and value >= 0 for value in row[1:]) for row in rows
         )
@@ -1303,7 +1622,7 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and all(nullable_finite(value) for value in row[1:])
             for row in rows
         )
-    elif planned == "stacked_area":
+    elif planned in {"stacked_area", "percent_stacked_area"}:
         valid = valid and 3 <= width <= 5 and all(
             isinstance(row[0], (date, datetime))
             and all(finite(value) and value >= 0 for value in row[1:])
@@ -1320,20 +1639,173 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             isinstance(row[0], (date, datetime)) and finite(row[1]) for row in rows
         )
     elif planned == "scatter":
-        valid = valid and width == 3 and all(finite(row[1]) and finite(row[2]) for row in rows)
-    elif planned == "bubble":
-        valid = valid and width == 4 and all(
-            finite(row[1]) and finite(row[2]) and finite(row[3]) and row[3] >= 0
+        dimension_count = section.get("dimension_count", 1)
+        valid = valid and width == dimension_count + 2 and all(
+            (dimension_count == 1 or isinstance(row[1], str))
+            and all(finite(value) for value in row[dimension_count:])
             for row in rows
         )
-    elif planned == "funnel":
+    elif planned == "bubble":
+        dimension_count = section.get("dimension_count", 1)
+        valid = valid and width == dimension_count + 3 and all(
+            (dimension_count == 1 or isinstance(row[1], str))
+            and all(finite(value) for value in row[dimension_count:])
+            and row[-1] >= 0
+            for row in rows
+        )
+    elif planned in {"funnel", "funnel_horizontal"}:
         valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
     elif planned == "heatmap":
         valid = valid and width == 3 and all(finite(row[2]) for row in rows)
     elif planned == "table":
         valid = valid and width >= 1
-    elif planned == "sankey":
+    elif planned == "pivot_table":
+        pairs = [(row[0], row[1]) for row in rows]
+        valid = (
+            valid
+            and 3 <= width <= 6
+            and len(pairs) == len(set(pairs))
+            and all(
+                (isinstance(row[0], (str, date, datetime)) or finite(row[0]))
+                and (isinstance(row[1], (str, date, datetime)) or finite(row[1]))
+                and all(nullable_finite(value) for value in row[2:])
+                for row in rows
+            )
+        )
+    elif planned == "comparison_table":
+        valid = valid and 4 <= width <= 7 and all(
+            all(finite(value) for value in row[-3:])
+            and abs((row[-3] - row[-2]) - row[-1])
+            <= max(1e-9, abs(row[-3]) * 1e-9, abs(row[-2]) * 1e-9)
+            for row in rows
+        )
+    elif planned == "sparkline_table":
+        pairs = [(row[0], row[1]) for row in rows]
+        valid = (
+            valid
+            and width == 3
+            and len(pairs) == len(set(pairs))
+            and all(
+                isinstance(row[0], str)
+                and row[0].strip()
+                and isinstance(row[1], (date, datetime))
+                and nullable_finite(row[2])
+                for row in rows
+            )
+        )
+    elif planned in {"sankey", "sankey_vertical"}:
         valid = valid and (not rows or valid_sankey_result(rows))
+    elif planned in {"flow_sankey", "flow_sankey_vertical"}:
+        valid = valid and (not rows or valid_flow_sankey_result(rows))
+    elif planned == "annotated_line":
+        valid = valid and width == 3 and all(
+            isinstance(row[0], (date, datetime))
+            and (row[1] is None or isinstance(row[1], str))
+            and nullable_finite(row[2])
+            for row in rows
+        )
+    elif planned == "sparkline":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
+        )
+    elif planned == "mixed_bar_line":
+        valid = valid and 3 <= width <= 5 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(nullable_finite(value) for value in row[1:])
+            for row in rows
+        )
+    elif planned == "delta":
+        valid = valid and width == 2 and (
+            not rows or len(rows) == 1 and all(finite(value) for value in rows[0])
+        )
+    elif planned in {"box_plot", "box_plot_horizontal"}:
+        valid = valid and width == 6 and all(
+            isinstance(row[0], str)
+            and all(finite(value) for value in row[1:])
+            and list(row[1:]) == sorted(row[1:])
+            for row in rows
+        )
+    elif planned == "treemap":
+        dimension_count = section.get("dimension_count", width - 1)
+        paths = [tuple(row[:dimension_count]) for row in rows]
+        valid = (
+            valid
+            and 2 <= width <= 5
+            and len(paths) == len(set(paths))
+            and all(
+                all(isinstance(value, str) and value.strip() for value in row[:dimension_count])
+                and finite(row[-1]) and row[-1] >= 0
+                for row in rows
+            )
+        )
+    elif planned == "pie":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], str) and row[0].strip() and finite(row[1]) and row[1] >= 0
+            for row in rows
+        )
+    elif planned in {"area_map", "us_map"}:
+        region_ids = [row[0] for row in rows]
+        valid = (
+            valid
+            and width == 3
+            and len(region_ids) == len(set(region_ids))
+            and all(
+                isinstance(row[0], str)
+                and row[0].strip()
+                and (planned != "us_map" or re.fullmatch(r"[A-Z]{2}", row[0]))
+                and valid_geojson_geometry(row[1])
+                and finite(row[2]) and row[2] >= 0
+                for row in rows
+            )
+        )
+    elif planned in {"point_map", "bubble_map"}:
+        expected_width = 5 if planned == "point_map" else 6
+        geometry_values = [row[1] for row in rows if row[1] is not None]
+        valid = (
+            valid
+            and width == expected_width
+            and bool(geometry_values)
+            and all(valid_geojson_map(value) for value in geometry_values)
+            and all(
+                isinstance(row[0], str) and row[0].strip()
+                and (row[1] is None or isinstance(row[1], str))
+                and finite(row[2]) and -90 <= row[2] <= 90
+                and finite(row[3]) and -180 <= row[3] <= 180
+                and all(finite(value) and value >= 0 for value in row[4:])
+                for row in rows
+            )
+        )
+    elif planned == "base_map":
+        valid = valid and width == 7 and any(row[2] is not None for row in rows) and all(
+            isinstance(row[0], str)
+            and row[0] in {"area", "point", "bubble"}
+            and isinstance(row[1], str) and row[1].strip()
+            and (row[2] is None or valid_geojson_map(row[2]))
+            and finite(row[6]) and row[6] >= 0
+            and (
+                row[0] == "area" and valid_geojson_geometry(row[2])
+                and row[3] is None and row[4] is None and row[5] is None
+                or row[0] == "point" and finite(row[3]) and -90 <= row[3] <= 90
+                and finite(row[4]) and -180 <= row[4] <= 180 and row[5] is None
+                or row[0] == "bubble" and finite(row[3]) and -90 <= row[3] <= 90
+                and finite(row[4]) and -180 <= row[4] <= 180
+                and finite(row[5]) and row[5] >= 0
+            )
+            for row in rows
+        )
+    elif planned == "reference_line":
+        valid = valid and width == 3 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(finite(value) for value in row[1:])
+            for row in rows
+        )
+    elif planned == "reference_area":
+        valid = valid and width == 4 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(finite(value) for value in row[1:])
+            and row[2] <= row[3]
+            for row in rows
+        )
     else:
         valid = False
     if not valid:

@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-27
+updated: 2026-08-28
 ---
 
 # 開発引き継ぎ
@@ -80,7 +80,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 統制された生成・公開経路が安定 | [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | #180のrevision契約、SQL来歴・検証結果 |
 | 課金または本番オンボーディングへ着手 | [#194 課金区分と認証方式のオーナー決定](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)を専用grill-meで先に完了する。現在のデモはblockしない | [mission](../.ai/mission.md)、[positioning §6](positioning.md#6-missionmd-との残る不一致未解消) |
 | Slack利用が実顧客で確認された | オーナーがADR-0017を承認した後、検証済みrevisionのlink通知pilot用Issueを作る | ADR-0017。自由質問は#180と#188の完了後 |
-| HTTPテストの同時失敗が再発、または保守作業が明示的に優先された | [#169 serve round-trip flake調査](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | 失敗時の未省略ログ。再試行やassertion緩和は禁止 |
+| 完了したHTTP round-trip診断 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169)。テストlistenerを`127.0.0.1`へ隔離し、起動時socket errorを`serve()`のreject理由として保持する。closeは同じPromiseへ集約し、listener解放後の同一port再利用を回帰テストで確認する | `src/main/serve.ts`、`tests/main/serve.test.ts`、[troubleshooting](troubleshooting/live-demo.md) |
 
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
