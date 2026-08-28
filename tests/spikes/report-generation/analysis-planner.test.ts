@@ -192,7 +192,7 @@ print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_
     'flow_sankey',
     'flow_sankey_vertical',
   ]);
-  assert.equal(output.charts.length, 32);
+  assert.equal(output.charts.length, 34);
   assert.deepEqual(new Set(output.schema_charts), new Set(output.charts));
   assert.deepEqual(new Set(output.consultation_charts), new Set(output.charts));
   assert.deepEqual(output.bar_shape, {

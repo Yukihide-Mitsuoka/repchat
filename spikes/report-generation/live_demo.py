@@ -866,6 +866,8 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "box_plot_horizontal": "box_plot_horizontal",
         "treemap": "treemap",
         "pie": "pie",
+        "area_map": "area_map",
+        "us_map": "us_map",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -1024,6 +1026,12 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "pie":
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["category", "metric_value"]
+    elif chart in {"area_map", "us_map"}:
+        section["shape"] = {
+            "rows": "地域ごとに1行。地理境界はGeoJSON PolygonまたはMultiPolygon",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["region_id", "geometry_geojson", "metric_value"]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
         "annotated_line", "sparkline", "mixed_bar_line", "table"
@@ -1310,6 +1318,8 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         )
     elif planned == "pie":
         valid = valid and types[0] == "STRING" and types[1] in numeric
+    elif planned in {"area_map", "us_map"}:
+        valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
         valid = valid and all(
@@ -1402,6 +1412,45 @@ def valid_flow_sankey_result(rows: list[tuple]) -> bool:
             if indegree[target] == 0:
                 pending.append(target)
     return visited == len(nodes)
+
+
+def valid_geojson_geometry(value: object) -> bool:
+    """Accept a closed GeoJSON Polygon/MultiPolygon supplied by the query result."""
+    if not isinstance(value, str):
+        return False
+    try:
+        geometry = json.loads(value)
+    except (TypeError, ValueError):
+        return False
+
+    def valid_ring(ring: object) -> bool:
+        return (
+            isinstance(ring, list)
+            and len(ring) >= 4
+            and ring[0] == ring[-1]
+            and all(
+                isinstance(point, list)
+                and len(point) >= 2
+                and all(isinstance(coordinate, (int, float)) for coordinate in point[:2])
+                and -180 <= point[0] <= 180
+                and -90 <= point[1] <= 90
+                for point in ring
+            )
+        )
+
+    if not isinstance(geometry, dict):
+        return False
+    coordinates = geometry.get("coordinates")
+    if geometry.get("type") == "Polygon":
+        polygons = [coordinates]
+    elif geometry.get("type") == "MultiPolygon":
+        polygons = coordinates
+    else:
+        return False
+    return bool(polygons) and all(
+        isinstance(polygon, list) and polygon and all(valid_ring(ring) for ring in polygon)
+        for polygon in polygons
+    )
 
 
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
@@ -1528,6 +1577,21 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and width == 2 and all(
             isinstance(row[0], str) and row[0].strip() and finite(row[1]) and row[1] >= 0
             for row in rows
+        )
+    elif planned in {"area_map", "us_map"}:
+        region_ids = [row[0] for row in rows]
+        valid = (
+            valid
+            and width == 3
+            and len(region_ids) == len(set(region_ids))
+            and all(
+                isinstance(row[0], str)
+                and row[0].strip()
+                and (planned != "us_map" or re.fullmatch(r"[A-Z]{2}", row[0]))
+                and valid_geojson_geometry(row[1])
+                and finite(row[2]) and row[2] >= 0
+                for row in rows
+            )
         )
     else:
         valid = False

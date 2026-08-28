@@ -1844,6 +1844,73 @@ else:print("accepted")
   assert.equal(result.stdout.trim(), 'rejected');
 });
 
+test('area and US maps require warehouse-provided GeoJSON shapes', () => {
+  const result = python(`
+shape='{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}'
+cases={"area_map":("Tokyo",shape,10),"us_map":("CA",shape,20)}
+accepted={}
+for chart,row in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":["地域","地理境界"],"measures":["値"]}
+ section=m.planned_analysis_section(panel)
+ m.validate_dashboard_dry_run_schema(section,[("region_id","STRING"),("geometry_geojson","STRING"),("metric_value","INT64")])
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,[row],section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    area_map: { columns: ['region_id', 'geometry_geojson', 'metric_value'], rendered: 'area_map' },
+    us_map: { columns: ['region_id', 'geometry_geojson', 'metric_value'], rendered: 'us_map' },
+  });
+});
+
+test('area maps reject malformed shapes and invalid US region codes', () => {
+  const result = python(`
+cases=[("area_map",("Tokyo","not-json",10)),("us_map",("California",'{"type":"Polygon","coordinates":[]}',10))]
+accepted=[]
+for chart,row in cases:
+ try:m.dashboard_visualization({"title":chart,"planned_visualization":chart},[row],["region_id","geometry_geojson","metric_value"])
+ except m.LiveDemoError:accepted.append(False)
+ else:accepted.append(True)
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [false, false]);
+});
+
+test('area map renderer builds and registers a data-provided geographic map', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const geometry = JSON.stringify({
+    type: 'Polygon',
+    coordinates: [
+      [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 0],
+      ],
+    ],
+  });
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      geo: standardMapGeoJson({visualization:'area_map',columns:['region','geometry','value'],rows:[['Tokyo',${JSON.stringify(geometry)},10]]}),
+      option: standardChartOption({visualization:'area_map',columns:['region','geometry','value'],rows:[['Tokyo',${JSON.stringify(geometry)},10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.geo.features[0].properties.name, 'Tokyo');
+  assert.equal(parsed.option.series[0].type, 'map');
+  assert.equal(parsed.option.series[0].map, parsed.option.geo.map);
+  assert.match(source, /registerMap\(standardMapName\(result\), standardMapGeoJson\(result\)\)/);
+});
+
 test('live dashboard loads the standard chart library and renderer', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);
