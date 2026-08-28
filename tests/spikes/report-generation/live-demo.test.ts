@@ -2012,6 +2012,43 @@ print(json.dumps(accepted,ensure_ascii=False))
   });
 });
 
+test('advanced table filters, stably sorts, exports, and exposes bounded controls', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const state = vm.runInNewContext(
+    `${source};JSON.stringify({
+      filtered: standardTableRows([['東京',10],['大阪',2],['東京支店',10]],'東京',null,1).map(item=>item.row),
+      sorted: standardTableRows([['東京',10],['大阪',2],['東京支店',10]],'',1,1).map(item=>item.row),
+      numeric: standardTableNumericColumns([['東京',10],['大阪',2]],2),
+      csv: standardTableCsv(['地域','値'],[['A"B',10]]),
+    })`,
+  ) as string;
+  assert.deepEqual(JSON.parse(state), {
+    filtered: [
+      ['東京', 10],
+      ['東京支店', 10],
+    ],
+    sorted: [
+      ['大阪', 2],
+      ['東京', 10],
+      ['東京支店', 10],
+    ],
+    numeric: [1],
+    csv: '"地域","値"\n"A""B","10"',
+  });
+  for (const expected of [
+    'function renderAdvancedResultTable(',
+    "placeholder: '表を検索'",
+    "textContent: 'CSV'",
+    "textContent: '全画面'",
+    'const pageSize = 10',
+    "cell.setAttribute('aria-sort'",
+  ])
+    assert.ok(source.includes(expected), `missing advanced table control: ${expected}`);
+});
+
 test('reference area rejects inverted bounds and renders a bounded band', () => {
   const result = python(`
 from datetime import date

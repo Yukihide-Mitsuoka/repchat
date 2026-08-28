@@ -58,7 +58,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `scatter` / `bubble` | Scatter / Bubble Chart | 対応 | category、任意のseries、x、y、任意のsizeを返す |
 | `funnel` / `funnel_horizontal` | Funnel Chart | 対応 | 順序付きstageと非負値を返し、縦向き／横向きを選ぶ |
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
-| `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。Evidence固有の高度な表機能は対象外 |
+| `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、数値バーに対応 |
 | `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
@@ -107,7 +107,7 @@ EChartsを加えた15種類である。
 | Mixed-Type Charts | 対応 | 第1系列bar＋残りlineの宣言的な列契約を持つ |
 | Big Value | 対応 | 1行1列のscalarと、既知のKPI pairを描画できる |
 | Value | 部分対応 | 数値formatはあるが、Evidenceのinline Value componentとしては生成しない |
-| Data Table | 対応 | 取得データをtable表示できる。Evidenceの全機能は未対応 |
+| Data Table | 対応 | 検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、交互行、数値バーを備える。SQL側の期間比較、計算指標、groupingは通常の自然言語SQL生成で扱い、rendererが集計値を推測しない |
 | Delta | 対応 | 現在値、比較値、符号付き差分を表示し、指標定義なしに良否を推測しない |
 
 ## 5. map component

@@ -785,6 +785,120 @@ function renderStandardChart(result, box) {
   }
 }
 
+function standardTableRows(rows, query, sortIndex, sortDirection) {
+  const normalizedQuery = query.trim().toLocaleLowerCase('ja-JP');
+  const filtered = rows
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => !normalizedQuery || row.some((value) => String(value ?? '').toLocaleLowerCase('ja-JP').includes(normalizedQuery)));
+  if (sortIndex === null) return filtered;
+  return filtered.sort((left, right) => {
+    const a = left.row[sortIndex];
+    const b = right.row[sortIndex];
+    const numeric = Number.isFinite(Number(a)) && Number.isFinite(Number(b));
+    const comparison = numeric
+      ? Number(a) - Number(b)
+      : String(a ?? '').localeCompare(String(b ?? ''), 'ja-JP', { numeric: true });
+    return comparison === 0 ? left.index - right.index : comparison * sortDirection;
+  });
+}
+
+function standardTableNumericColumns(rows, width) {
+  return Array.from({ length: width }, (_, index) => index).filter((index) => {
+    const values = rows.map((row) => row[index]).filter((value) => value !== null && value !== undefined && value !== '');
+    return values.length > 0 && values.every((value) => Number.isFinite(Number(value)));
+  });
+}
+
+function standardTableCsv(columns, rows) {
+  const escape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+  return [columns, ...rows].map((row) => row.map(escape).join(',')).join('\n');
+}
+
+function downloadStandardTable(result, rows) {
+  const blob = new Blob([`\ufeff${standardTableCsv(result.columns, rows)}`], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'repchat-result.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function renderAdvancedResultTable(result, box) {
+  const shell = Object.assign(document.createElement('div'), { className: 'advanced-table' });
+  const toolbar = Object.assign(document.createElement('div'), { className: 'advanced-table-toolbar' });
+  const search = Object.assign(document.createElement('input'), {
+    className: 'advanced-table-search', type: 'search', placeholder: '表を検索', ariaLabel: '表を検索',
+  });
+  const summary = Object.assign(document.createElement('output'), { className: 'advanced-table-summary' });
+  const download = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: 'CSV' });
+  const fullscreen = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: '全画面' });
+  const scroll = Object.assign(document.createElement('div'), { className: 'chart-table-scroll advanced-table-scroll' });
+  const pager = Object.assign(document.createElement('nav'), { className: 'advanced-table-pager', ariaLabel: '表のページ送り' });
+  const previous = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: '前へ' });
+  const pageLabel = document.createElement('span');
+  const next = Object.assign(document.createElement('button'), { type: 'button', className: 'secondary', textContent: '次へ' });
+  const numericColumns = standardTableNumericColumns(result.rows, result.columns.length);
+  const maxima = new Map(numericColumns.map((index) => [index, Math.max(...result.rows.map((row) => Number(row[index]) || 0))]));
+  const pageSize = 10;
+  let query = '';
+  let sortIndex = null;
+  let sortDirection = 1;
+  let page = 0;
+
+  function render() {
+    const rows = standardTableRows(result.rows, query, sortIndex, sortDirection);
+    const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+    page = Math.min(page, pageCount - 1);
+    const visible = rows.slice(page * pageSize, (page + 1) * pageSize).map(({ row }) => row);
+    const tableElement = document.createElement('table');
+    const header = tableElement.createTHead().insertRow();
+    result.columns.forEach((column, index) => {
+      const cell = document.createElement('th');
+      const button = Object.assign(document.createElement('button'), { type: 'button', textContent: column });
+      cell.setAttribute('aria-sort', sortIndex !== index ? 'none' : sortDirection === 1 ? 'ascending' : 'descending');
+      button.onclick = () => {
+        sortDirection = sortIndex === index ? -sortDirection : 1;
+        sortIndex = index;
+        page = 0;
+        render();
+      };
+      cell.appendChild(button);
+      header.appendChild(cell);
+    });
+    const body = tableElement.createTBody();
+    visible.forEach((row) => {
+      const tableRow = body.insertRow();
+      row.forEach((value, index) => {
+        const cell = tableRow.insertCell();
+        cell.textContent = numericColumns.includes(index) ? chartValue(value, result.columns[index]) : value ?? '';
+        const maximum = maxima.get(index);
+        if (maximum > 0 && Number(value) >= 0) {
+          cell.className = 'advanced-table-number';
+          cell.style.setProperty('--table-bar-width', `${Math.min(100, Number(value) / maximum * 100)}%`);
+        }
+      });
+    });
+    scroll.replaceChildren(tableElement);
+    const first = rows.length ? page * pageSize + 1 : 0;
+    const last = Math.min((page + 1) * pageSize, rows.length);
+    summary.textContent = `${rows.length}行中 ${first}–${last}行`;
+    pageLabel.textContent = `${page + 1} / ${pageCount}`;
+    previous.disabled = page === 0;
+    next.disabled = page >= pageCount - 1;
+    download.onclick = () => downloadStandardTable(result, rows.map(({ row }) => row));
+  }
+
+  search.oninput = () => { query = search.value; page = 0; render(); };
+  previous.onclick = () => { page -= 1; render(); };
+  next.onclick = () => { page += 1; render(); };
+  fullscreen.onclick = () => shell.requestFullscreen?.();
+  toolbar.append(search, summary, download, fullscreen);
+  pager.append(previous, pageLabel, next);
+  shell.append(toolbar, scroll, pager);
+  box.appendChild(shell);
+  render();
+}
+
 function graph(result, box = $('chart')) {
   box.replaceChildren();
   if (!result.rows.length) {
@@ -800,7 +914,7 @@ function graph(result, box = $('chart')) {
     return;
   }
   if (result.visualization === 'table') {
-    renderResultTable(result, box);
+    renderAdvancedResultTable(result, box);
     return;
   }
   renderStandardChart(result, box);
