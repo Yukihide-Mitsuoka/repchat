@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const PLANNER = path.join(ROOT, 'spikes/report-generation/analysis_planner.py');
+const PYTHON_ENV = { ...process.env, PYTHONPATH: path.dirname(PLANNER) };
 
 test('analysis planner validates and freezes AI-authored panel specifications', () => {
   const result = spawnSync(
@@ -57,7 +58,7 @@ print(json.dumps({
  "errors":errors,
 },ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -90,7 +91,7 @@ request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定
 panels=p._dashboard_response_schema({})["properties"]["panels"]
 print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_PAGES}ページ" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -115,7 +116,7 @@ p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 print(json.dumps({"comparison_rule":"比較や派生指標が意思決定に有用なら候補として提案してよい" in request,"source_contract":"データソースから確認できる" in request,"clarifications":"clarificationsで確認する" in request},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -172,7 +173,7 @@ stable_variants=p._dashboard_response_schema({},seed="依頼0")["properties"]["p
 stable_order=[chart for variant in stable_variants for chart in variant["properties"]["chart"]["enum"]]
 print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_charts":schema_charts,"consultation_charts":consultation_charts,"bar_shape":bar_shape,"seeded_complete":all(set(order)==set(p.DASHBOARD_CHARTS) for order in seeded_orders),"seeded_variety":len({tuple(order) for order in seeded_orders})>1,"seeded_stable":seeded_orders[0]==stable_order,"dashboard_prompt_has_catalog":any(marker in request for marker in catalog_markers),"consultation_prompt_has_catalog":any(marker in consultation for marker in catalog_markers),"has_prompt_capability_constant":hasattr(p,"CHART_CAPABILITY_PROMPT"),"no_intent_pattern":"比較、構成比、時系列、偏り、フロー" not in request,"no_layout_heuristics":all(value not in request for value in layout_heuristics)},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -232,7 +233,7 @@ for dimensions,measures in [(["デバイス"],["購入金額"]),([], ["購入金
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps(errors,ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
@@ -262,7 +263,7 @@ plan=p.normalize_dashboard_plan(raw,"2021年1月のページ別購入成果を�
 panel=plan["panels"][0]
 print(json.dumps({"dimensions":panel["dimensions"],"measures":panel["measures"],"prompt":panel["execution_prompt"]},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -293,7 +294,7 @@ try:p.normalize_dashboard_plan(raw,"3ページのサイト回遊も作成して"
 except p.PlannerError as error:
  print(json.dumps({"message":str(error),"suggestion":error.suggested_instruction},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -336,7 +337,7 @@ plan,_usage=p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-mod
 panel_schema=p._dashboard_response_schema(answers,revising=True)["properties"]["panels"]
 print(json.dumps({"count":len(plan["panels"]),"titles":[item["title"] for item in plan["panels"]],"last_chart":plan["panels"][-1]["chart"],"clarification_zero_bound":observed_schema.get("maxItems")==0,"panel_bounds":[panel_schema.get("minItems"),panel_schema.get("maxItems")]},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -370,7 +371,7 @@ try:p.normalize_dashboard_plan(raw("heatmap"),"2021年1月のサイト内行動�
 except p.PlannerError as error:other_error=str(error)
 print(json.dumps({"dimensions":accepted["panels"][0]["dimensions"],"other_error":other_error},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -395,7 +396,7 @@ print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"i
       cwd: ROOT,
       encoding: 'utf8',
       env: {
-        ...process.env,
+        ...PYTHON_ENV,
         ANALYSIS_INITIAL_PANEL_COUNT: '5',
         ANALYSIS_MAX_PANEL_COUNT: '15',
       },
@@ -416,7 +417,7 @@ print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"i
       cwd: ROOT,
       encoding: 'utf8',
       env: {
-        ...process.env,
+        ...PYTHON_ENV,
         ANALYSIS_INITIAL_PANEL_COUNT: initial,
         ANALYSIS_MAX_PANEL_COUNT: maximum,
       },
@@ -437,7 +438,7 @@ p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{},current_plan={"objective_summary":"目的","audience":"責任者","comparison":"月内","hypotheses":[],"panels":[]},instruction="既存仕様を維持し、流入別も必要です")
 print(json.dumps({"fixed_context":hasattr(p,"ORGANIZATION_CONTEXT") or "demo-org-ec-v1" in request,"revision_heuristic":hasattr(p,"_is_add_only_instruction"),"returns_complete":"変更後の分析仕様をpanelsへすべて返す" in request},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -477,7 +478,7 @@ except p.PlannerError as error:errors.append(str(error))
 mixed,_usage=p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model",plan["objective"],period,"指標定義",plan["answers"],current_plan=plan,instruction="流入別を追加して分析3を削除して")
 print(json.dumps({"current_specs":all(value in request for value in ["現在の分析仕様","分析1","2021年1月の指標1を区分別に出して"]),"instruction":"流入別パネルを追加" in request,"operations":all(value in request for value in ["追加・変更・削除相談","変更後の分析仕様をpanelsへすべて返す","1〜20件"]),"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"mixed_allowed":len(mixed["panels"])==6,"errors":errors},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -543,7 +544,7 @@ print(json.dumps({
  "errors":errors,
 },ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -582,7 +583,7 @@ recommendation={
 confirmed=p.confirm_analysis_specification(recommendation)
 print(json.dumps({"dimensions":confirmed["dimensions"],"measures":confirmed["measures"],"prompt":confirmed["execution_prompt"]},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -647,7 +648,7 @@ for answers in answer_sets:
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -718,7 +719,7 @@ first=p.propose_dashboard(client,"test-model","目的",period,"指標定義",ans
 without_thoughts=p.propose_dashboard(client,"test-model","目的",period,"指標定義",answers)[1]
 print(json.dumps({"calls":calls,"first":first,"without_thoughts":without_thoughts},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -764,7 +765,7 @@ for _ in range(3):
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps({"calls":calls,"limits":limits,"errors":errors},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -807,7 +808,7 @@ except p.PlannerError as error:missing=str(error)
 accepted=p.confirm_dashboard_plan({**plan,"answers":{"business_goal":"購入件数の改善"}})
 print(json.dumps({"missing":missing,"status":accepted["status"],"answers":accepted["answers"]},ensure_ascii=False))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
@@ -833,7 +834,7 @@ plan["panels"]=[plan["panels"][0],plan["panels"][2]]
 confirmed=p.confirm_dashboard_plan(plan)
 print(json.dumps([[item["layout_row"],item["layout_weight"]] for item in confirmed["panels"]]))`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [
