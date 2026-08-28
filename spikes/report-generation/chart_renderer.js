@@ -426,6 +426,73 @@ function standardSankeyOption(result, vertical = false, navigation = true) {
   };
 }
 
+function standardAnnotatedLineOption(result) {
+  const lineResult = {
+    ...result,
+    columns: [result.columns[0], result.columns[2]],
+    rows: result.rows.map((row) => [row[0], row[2]]),
+  };
+  const option = standardLineOption(lineResult, 'line');
+  option.series[0].markPoint = {
+    symbol: 'pin',
+    symbolSize: 46,
+    data: result.rows.flatMap((row) => row[1] ? [{
+      name: String(row[1]),
+      coord: [String(row[0]).slice(0, 10), standardChartNumber(row[2])],
+      value: String(row[1]),
+    }] : []),
+    label: { formatter: (params) => standardChartLabel(params.name, 16) },
+  };
+  return option;
+}
+
+function standardSparklineOption(result) {
+  const values = result.rows.map((row) => standardChartNumber(row[1]));
+  const latest = values.at(-1);
+  return {
+    ...standardChartBase({ tooltip: true }),
+    grid: { left: 8, right: 8, top: 18, bottom: 8 },
+    xAxis: { type: 'category', show: false, data: result.rows.map((row) => String(row[0]).slice(0, 10)) },
+    yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
+    tooltip: { trigger: 'axis', formatter: standardChartTooltipFormatter },
+    graphic: latest === null || latest === undefined ? undefined : [{
+      type: 'text', right: 12, top: 4,
+      style: { text: standardChartFormat(latest, result.columns[1]), fontSize: 20, fontWeight: 600, fill: '#101828', textAlign: 'right' },
+    }],
+    series: [{
+      name: result.columns[1], type: 'line', data: values, showSymbol: false,
+      smooth: false, areaStyle: { opacity: 0.12 }, emphasis: { focus: 'series' },
+    }],
+  };
+}
+
+function standardMixedOption(result) {
+  const option = standardLineOption(result, 'line');
+  option.series = option.series.map((series, index) => index === 0 ? {
+    ...series, type: 'bar', showSymbol: false, barMaxWidth: 36,
+  } : series);
+  return option;
+}
+
+function standardDeltaOption(result) {
+  const current = standardChartNumber(result.rows[0][0]) ?? 0;
+  const comparison = standardChartNumber(result.rows[0][1]) ?? 0;
+  const delta = current - comparison;
+  const signedDelta = `${delta > 0 ? '+' : ''}${standardChartFormat(delta, result.columns[0])}`;
+  return {
+    ...standardChartBase({ tooltip: false }),
+    grid: undefined,
+    xAxis: undefined,
+    yAxis: undefined,
+    series: [],
+    graphic: [
+      { type: 'text', left: '8%', top: '26%', style: { text: `${result.columns[0]}\n${standardChartFormat(current, result.columns[0])}`, fontSize: 22, fontWeight: 600, lineHeight: 32, fill: '#101828' } },
+      { type: 'text', right: '8%', top: '26%', style: { text: `${result.columns[1]}\n${standardChartFormat(comparison, result.columns[1])}`, fontSize: 18, lineHeight: 30, fill: '#667085', textAlign: 'right' } },
+      { type: 'text', left: 'center', top: '68%', style: { text: signedDelta, fontSize: 20, fontWeight: 600, fill: delta === 0 ? '#667085' : delta > 0 ? '#3973c6' : '#d49a21', textAlign: 'center' } },
+    ],
+  };
+}
+
 function standardChartOption(result) {
   switch (result.visualization) {
     case 'bar': return standardBarOption(result, 'single');
@@ -450,11 +517,17 @@ function standardChartOption(result) {
     case 'sankey_vertical': return standardSankeyOption(result, true);
     case 'flow_sankey': return standardSankeyOption(result, false, false);
     case 'flow_sankey_vertical': return standardSankeyOption(result, true, false);
+    case 'annotated_line': return standardAnnotatedLineOption(result);
+    case 'sparkline': return standardSparklineOption(result);
+    case 'mixed_bar_line': return standardMixedOption(result);
+    case 'delta': return standardDeltaOption(result);
     default: throw new Error(`未対応のECharts可視化種別です: ${result.visualization}`);
   }
 }
 
 function standardChartHeight(result) {
+  if (result.visualization === 'sparkline') return 180;
+  if (result.visualization === 'delta') return 220;
   if (['bar', 'grouped_bar', 'stacked_bar', 'percent_stacked_bar'].includes(result.visualization)) {
     const units = new Set(result.columns.slice(1).map((column) => result.visualization === 'percent_stacked_bar' ? '%' : metricUnit(column) || column));
     const axisSpace = units.size > 1 ? 64 : 0;
