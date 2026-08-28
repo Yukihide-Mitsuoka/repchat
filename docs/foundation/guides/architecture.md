@@ -29,8 +29,8 @@ dependency/integration, changed data flow, new infrastructure component.
   agents. No binary diagram files (DOC-001).
 - Every diagram is followed by a prose paragraph stating what an agent should conclude
   from it (diagrams alone are ambiguous).
-- Module-level detail belongs in each module's `MODULE.md`, not here — here is the map,
-  there is the territory.
+- Keep system-level relationships here. Module-level detail belongs in each module's
+  `MODULE.md`.
 
 <!-- TEMPLATE: this directory starts empty except this README. Create modules.md with
      the first real module. -->

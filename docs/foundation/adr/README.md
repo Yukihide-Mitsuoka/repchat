@@ -42,5 +42,7 @@ broaden the search under ADR-0012 when relevance is uncertain.
 | [0014](0014-separate-inherited-agent-contracts-from-project-overlays.md) | Separate inherited agent contracts from project overlays | AI context, template inheritance, workflow ownership | accepted | 2026-07-29 |
 | [0015](0015-consolidate-inheritance-acceptance-in-one-reviewed-pr.md) | Consolidate inheritance acceptance in one reviewed PR | template inheritance, workflow ownership, review operations | accepted | 2026-08-08 |
 | [0016](0016-gate-private-fleet-automation-on-split-credentials.md) | Gate private fleet automation on split credentials | private repositories, template inheritance, fleet audit, credentials | accepted | 2026-08-09 |
+| [0017](0017-bound-implementation-complexity-with-meaningful-decomposition.md) | Bound implementation complexity with meaningful decomposition | code quality, maintainability, complexity, AI implementation | accepted | 2026-08-29 |
+| [0018](0018-integrate-a-lightweight-inherited-presentation-skill.md) | Integrate a lightweight inherited presentation skill | presentation authoring, AI context, template inheritance | accepted | 2026-08-29 |
 
 <!-- Append new ADRs to this table (newest last). -->
