@@ -389,6 +389,9 @@ Box Plotは区分ごとの最小値、第1四分位、中央値、第3四分位�
 Area MapとUS Mapは、特定デモ用の地域境界や外部tileへ依存しません。SQL結果が地域ID、閉じたGeoJSON
 PolygonまたはMultiPolygon、非負値を返した場合だけ、その実データ境界を登録してchoroplethを描画します。
 US Mapでは地域IDを2文字の大文字codeに限定します。
+Point MapとBubble Mapは、query提供のFeature／FeatureCollectionを地理基盤にし、地点名、緯度経度、
+非負値とBubbleの非負sizeを検査します。Base Mapは同じquery内の`area`、`point`、`bubble` layerを重ね、
+少なくとも1件の検証済み地理境界がない結果を描画しません。
 
 反復行動では遷移の単位を変える必要があります。将来の分析計画では`page_view_occurrence`、
 `form_attempt`、`spa_state`などを明示的に選べる余地を残します。これらは同一ページの再読込、

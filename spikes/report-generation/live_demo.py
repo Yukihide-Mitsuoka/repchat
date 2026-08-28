@@ -868,6 +868,9 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "pie": "pie",
         "area_map": "area_map",
         "us_map": "us_map",
+        "point_map": "point_map",
+        "bubble_map": "bubble_map",
+        "base_map": "base_map",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -1032,9 +1035,18 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "columns": dimensions + measures,
         }
         section["source_columns"] = ["region_id", "geometry_geojson", "metric_value"]
+    elif chart == "point_map":
+        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["point_name", "map_geojson", "latitude", "longitude", "metric_value"]
+    elif chart == "bubble_map":
+        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["point_name", "map_geojson", "latitude", "longitude", "size_value", "metric_value"]
+    elif chart == "base_map":
+        section["shape"] = {"rows": "地理layerの項目ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["layer_kind", "item_name", "geometry_geojson", "latitude", "longitude", "size_value", "metric_value"]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
-        "annotated_line", "sparkline", "mixed_bar_line", "table"
+        "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table"
     }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
@@ -1320,6 +1332,18 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and types[0] == "STRING" and types[1] in numeric
     elif planned in {"area_map", "us_map"}:
         valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
+    elif planned == "point_map":
+        valid = valid and types[:2] == ["STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[2:]
+        )
+    elif planned == "bubble_map":
+        valid = valid and types[:2] == ["STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[2:]
+        )
+    elif planned == "base_map":
+        valid = valid and types[:3] == ["STRING", "STRING", "STRING"] and all(
+            field_type in numeric for field_type in types[3:]
+        )
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
         valid = valid and all(
@@ -1450,6 +1474,31 @@ def valid_geojson_geometry(value: object) -> bool:
     return bool(polygons) and all(
         isinstance(polygon, list) and polygon and all(valid_ring(ring) for ring in polygon)
         for polygon in polygons
+    )
+
+
+def valid_geojson_map(value: object) -> bool:
+    """Accept query-provided polygon geometry, Feature, or FeatureCollection."""
+    if valid_geojson_geometry(value):
+        return True
+    if not isinstance(value, str):
+        return False
+    try:
+        document = json.loads(value)
+    except (TypeError, ValueError):
+        return False
+    if not isinstance(document, dict):
+        return False
+    if document.get("type") == "Feature":
+        return valid_geojson_geometry(json.dumps(document.get("geometry")))
+    if document.get("type") != "FeatureCollection":
+        return False
+    features = document.get("features")
+    return bool(features) and all(
+        isinstance(feature, dict)
+        and feature.get("type") == "Feature"
+        and valid_geojson_geometry(json.dumps(feature.get("geometry")))
+        for feature in features
     )
 
 
@@ -1592,6 +1641,41 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
                 and finite(row[2]) and row[2] >= 0
                 for row in rows
             )
+        )
+    elif planned in {"point_map", "bubble_map"}:
+        expected_width = 5 if planned == "point_map" else 6
+        geometry_values = [row[1] for row in rows if row[1] is not None]
+        valid = (
+            valid
+            and width == expected_width
+            and bool(geometry_values)
+            and all(valid_geojson_map(value) for value in geometry_values)
+            and all(
+                isinstance(row[0], str) and row[0].strip()
+                and (row[1] is None or isinstance(row[1], str))
+                and finite(row[2]) and -90 <= row[2] <= 90
+                and finite(row[3]) and -180 <= row[3] <= 180
+                and all(finite(value) and value >= 0 for value in row[4:])
+                for row in rows
+            )
+        )
+    elif planned == "base_map":
+        valid = valid and width == 7 and any(row[2] is not None for row in rows) and all(
+            isinstance(row[0], str)
+            and row[0] in {"area", "point", "bubble"}
+            and isinstance(row[1], str) and row[1].strip()
+            and (row[2] is None or valid_geojson_map(row[2]))
+            and finite(row[6]) and row[6] >= 0
+            and (
+                row[0] == "area" and valid_geojson_geometry(row[2])
+                and row[3] is None and row[4] is None and row[5] is None
+                or row[0] == "point" and finite(row[3]) and -90 <= row[3] <= 90
+                and finite(row[4]) and -180 <= row[4] <= 180 and row[5] is None
+                or row[0] == "bubble" and finite(row[3]) and -90 <= row[3] <= 90
+                and finite(row[4]) and -180 <= row[4] <= 180
+                and finite(row[5]) and row[5] >= 0
+            )
+            for row in rows
         )
     else:
         valid = False
