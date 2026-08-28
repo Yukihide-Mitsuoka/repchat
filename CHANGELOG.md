@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.22.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.21.0...v1.22.0) (2026-08-28)
+
+
+### Features
+
+* **demo:** add advanced table interactions ([#450](https://github.com/Yukihide-Mitsuoka/repchat/issues/450)) ([58eeff4](https://github.com/Yukihide-Mitsuoka/repchat/commit/58eeff41cd27041460ce5f0a35c4cf272e252218))
+* **demo:** add analytical chart components ([#445](https://github.com/Yukihide-Mitsuoka/repchat/issues/445)) ([f99c078](https://github.com/Yukihide-Mitsuoka/repchat/commit/f99c07841e4e911148aaf94fb91f9b99be7b631d))
+* **demo:** add data-driven area maps ([#447](https://github.com/Yukihide-Mitsuoka/repchat/issues/447)) ([dfc0868](https://github.com/Yukihide-Mitsuoka/repchat/commit/dfc0868eca294c94026720703afd9cc81938c729))
+* **demo:** add distribution and hierarchy charts ([#446](https://github.com/Yukihide-Mitsuoka/repchat/issues/446)) ([65101f9](https://github.com/Yukihide-Mitsuoka/repchat/commit/65101f9e91b2e067881079d22a61de2d4cfb0fc1))
+* **demo:** add ECharts sparkline tables ([#453](https://github.com/Yukihide-Mitsuoka/repchat/issues/453)) ([89300a6](https://github.com/Yukihide-Mitsuoka/repchat/commit/89300a61212cd809e488e73d66c197f28acb2710))
+* **demo:** add point and layered maps ([#448](https://github.com/Yukihide-Mitsuoka/repchat/issues/448)) ([1890255](https://github.com/Yukihide-Mitsuoka/repchat/commit/18902556287019f833049cf5398354c1373d1614))
+* **demo:** add reference annotations ([#449](https://github.com/Yukihide-Mitsuoka/repchat/issues/449)) ([527455f](https://github.com/Yukihide-Mitsuoka/repchat/commit/527455fa1b8c06127bdc42f403f1a4269d4cb29c))
+* **demo:** add validated pivot tables ([#451](https://github.com/Yukihide-Mitsuoka/repchat/issues/451)) ([8cdb876](https://github.com/Yukihide-Mitsuoka/repchat/commit/8cdb876ce5a1e84676d502e73d3016cfa8f1d3ca))
+* **demo:** add verified comparison tables ([#452](https://github.com/Yukihide-Mitsuoka/repchat/issues/452)) ([1323390](https://github.com/Yukihide-Mitsuoka/repchat/commit/1323390054a3cf83a42dd2114d97fd5f7cf7b93c))
+* **demo:** support chart orientation and general flows ([#444](https://github.com/Yukihide-Mitsuoka/repchat/issues/444)) ([738d021](https://github.com/Yukihide-Mitsuoka/repchat/commit/738d02184fac1dd0b2314edae9b62b890ca06f30)), closes [#442](https://github.com/Yukihide-Mitsuoka/repchat/issues/442)
+* **demo:** support Evidence series chart variants ([#443](https://github.com/Yukihide-Mitsuoka/repchat/issues/443)) ([4147ea9](https://github.com/Yukihide-Mitsuoka/repchat/commit/4147ea910fa4f9016fb5de802c6f45aa9343b56f)), closes [#442](https://github.com/Yukihide-Mitsuoka/repchat/issues/442)
+
+
+### Bug Fixes
+
+* diagnose HTTP listener allocation and cleanup ([#439](https://github.com/Yukihide-Mitsuoka/repchat/issues/439)) ([ce94963](https://github.com/Yukihide-Mitsuoka/repchat/commit/ce94963a219ca805e1a9a2a64978424a16c5992a)), closes [#169](https://github.com/Yukihide-Mitsuoka/repchat/issues/169)
+* standardize structured response diagnostics ([#440](https://github.com/Yukihide-Mitsuoka/repchat/issues/440)) ([a0dbdcf](https://github.com/Yukihide-Mitsuoka/repchat/commit/a0dbdcf0692cd4517ca33d0ae951697de4812285)), closes [#293](https://github.com/Yukihide-Mitsuoka/repchat/issues/293)
+
 ## [1.21.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.20.3...v1.21.0) (2026-08-23)
 
 
