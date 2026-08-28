@@ -650,6 +650,32 @@ function standardBaseMapOption(result) {
   };
 }
 
+function standardReferenceLineOption(result) {
+  const option = standardLineOption(result, 'line');
+  option.yAxis = [standardChartValueAxis(result.columns[1])];
+  option.series = option.series.map((series, index) => ({
+    ...series,
+    yAxisIndex: 0,
+    showSymbol: index === 0,
+    lineStyle: index === 0 ? series.lineStyle : { type: 'dashed', width: 2 },
+  }));
+  return option;
+}
+
+function standardReferenceAreaOption(result) {
+  const categories = result.rows.map((row) => String(row[0]).slice(0, 10));
+  const option = standardChartBase({ legend: true });
+  option.grid = standardChartGrid(false);
+  option.xAxis = standardChartCategoryAxis(categories);
+  option.yAxis = standardChartValueAxis(result.columns[1]);
+  option.series = [
+    { name: result.columns[1], type: 'line', data: result.rows.map((row) => standardChartNumber(row[1])), showSymbol: true, z: 3 },
+    { name: result.columns[2], type: 'line', data: result.rows.map((row) => standardChartNumber(row[2])), stack: 'reference-range', symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { opacity: 0 }, tooltip: { show: false } },
+    { name: `${result.columns[2]}–${result.columns[3]}`, type: 'line', data: result.rows.map((row) => (standardChartNumber(row[3]) ?? 0) - (standardChartNumber(row[2]) ?? 0)), stack: 'reference-range', symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: '#9dc0e8', opacity: 0.28 } },
+  ];
+  return option;
+}
+
 function standardChartOption(result) {
   switch (result.visualization) {
     case 'bar': return standardBarOption(result, 'single');
@@ -687,6 +713,8 @@ function standardChartOption(result) {
     case 'point_map': return standardPointMapOption(result);
     case 'bubble_map': return standardPointMapOption(result, true);
     case 'base_map': return standardBaseMapOption(result);
+    case 'reference_line': return standardReferenceLineOption(result);
+    case 'reference_area': return standardReferenceAreaOption(result);
     default: throw new Error(`未対応のECharts可視化種別です: ${result.visualization}`);
   }
 }

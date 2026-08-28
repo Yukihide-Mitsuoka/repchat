@@ -871,6 +871,8 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "point_map": "point_map",
         "bubble_map": "bubble_map",
         "base_map": "base_map",
+        "reference_line": "reference_line",
+        "reference_area": "reference_area",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -1044,6 +1046,12 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "base_map":
         section["shape"] = {"rows": "地理layerの項目ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["layer_kind", "item_name", "geometry_geojson", "latitude", "longitude", "size_value", "metric_value"]
+    elif chart == "reference_line":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value", "reference_value"]
+    elif chart == "reference_area":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value", "lower_value", "upper_value"]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
         "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table"
@@ -1068,6 +1076,8 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             ordering = "metric_valueの降順"
         elif chart in {"funnel", "funnel_horizontal"}:
             ordering = "stageの昇順"
+        elif chart in {"reference_line", "reference_area"}:
+            ordering = "categoryの昇順"
         else:
             ordering = f"{section['source_columns'][-1]}の降順"
         section.setdefault("generation_requirements", []).append(
@@ -1343,6 +1353,12 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
     elif planned == "base_map":
         valid = valid and types[:3] == ["STRING", "STRING", "STRING"] and all(
             field_type in numeric for field_type in types[3:]
+        )
+    elif planned in {"reference_line", "reference_area"}:
+        valid = (
+            valid
+            and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
+            and all(field_type in numeric for field_type in types[1:])
         )
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
@@ -1675,6 +1691,19 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
                 and finite(row[4]) and -180 <= row[4] <= 180
                 and finite(row[5]) and row[5] >= 0
             )
+            for row in rows
+        )
+    elif planned == "reference_line":
+        valid = valid and width == 3 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(finite(value) for value in row[1:])
+            for row in rows
+        )
+    elif planned == "reference_area":
+        valid = valid and width == 4 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(finite(value) for value in row[1:])
+            and row[2] <= row[3]
             for row in rows
         )
     else:

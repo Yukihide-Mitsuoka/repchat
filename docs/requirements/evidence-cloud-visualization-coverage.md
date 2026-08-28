@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる37種類
+### 2.1 現在AI plannerが選べる39種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -72,6 +72,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `area_map` / `us_map` | Area Map / US Map | 対応 | 地域ID、Polygon/MultiPolygon GeoJSON、非負値をwarehouseから返す |
 | `point_map` / `bubble_map` | Point Map / Bubble Map | 対応 | query提供の地理境界、地点名、緯度経度、値と任意のsizeを返す |
 | `base_map` | Base Map | 対応 | area／point／bubbleの複数layerを同じquery結果で返す |
+| `reference_line` / `reference_area` | Annotations | 対応 | 実績と基準値、または実績と下限・上限を区分ごとに返す |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -101,7 +102,7 @@ EChartsを加えた15種類である。
 
 | Evidence component | RepChat | 現在の根拠・不足 |
 |---|---|---|
-| Annotations | 部分対応 | 日付に紐づくpoint annotationへ対応。x/y reference line、reference area、根拠revisionとの対応は未実装 |
+| Annotations | 対応 | 実データpoint、reference line、上下限reference areaを検証済み列契約から描画する |
 | Sparkline | 対応 | 最新値を伴う小型時系列を独立した検証済みcomponentとして描画する |
 | Mixed-Type Charts | 対応 | 第1系列bar＋残りlineの宣言的な列契約を持つ |
 | Big Value | 対応 | 1行1列のscalarと、既知のKPI pairを描画できる |

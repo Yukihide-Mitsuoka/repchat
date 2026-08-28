@@ -392,6 +392,8 @@ US Mapでは地域IDを2文字の大文字codeに限定します。
 Point MapとBubble Mapは、query提供のFeature／FeatureCollectionを地理基盤にし、地点名、緯度経度、
 非負値とBubbleの非負sizeを検査します。Base Mapは同じquery内の`area`、`point`、`bubble` layerを重ね、
 少なくとも1件の検証済み地理境界がない結果を描画しません。
+Annotationsは実データ点の注釈に加え、区分ごとの実績・基準値を使うReference Lineと、実績・下限・上限を
+使うReference Areaへ対応します。範囲の下限が上限を超える結果は描画しません。
 
 反復行動では遷移の単位を変える必要があります。将来の分析計画では`page_view_occurrence`、
 `form_attempt`、`spa_state`などを明示的に選べる余地を残します。これらは同一ページの再読込、
