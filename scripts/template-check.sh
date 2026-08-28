@@ -42,8 +42,7 @@ if grep -rlnE '^## (id|name): .+ (title|description): ' .ai .skills docs CLAUDE.
 fi
 
 # 3. Foundation-level regression tests (ADR-0003 and ADR-0008).
-python3 scripts/foundation_test_runner.py --suite fast || \
-  err "Fast foundation regression tests failed"
+python3 -m unittest discover -s scripts/tests -p 'test_*.py' || err "Foundation regression tests failed"
 python3 scripts/github_governance.py validate --root . >/dev/null || err "GitHub governance policy is invalid"
 
 # 4. ADR-0007: validate the actual child contract, not only unit-test fixtures. The

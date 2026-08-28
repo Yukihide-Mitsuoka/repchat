@@ -31,6 +31,7 @@ Normative rules have stable prefixes; cite their IDs in commits, PRs, and review
 | [README.md](README.md) | — | Routing |
 | [mission.md](mission.md) | — | Purpose and success |
 | [guardrails.md](guardrails.md) | GR- | Prohibitions |
+| [contracts/foundation/maintainability.md](contracts/foundation/maintainability.md) | MNT- | Maintainable design and complexity |
 | [security.md](security.md) | SEC- | Security |
 | [architecture.md](architecture.md) | ARC- | Structure and boundaries |
 | [coding-rules.md](coding-rules.md) | COD- | Code rules |
@@ -77,12 +78,12 @@ Read only the task route; do not load every file by default.
 |------|-----------------|-------|
 | Any task (baseline) | `CLAUDE.md`, guardrails.md, explicit profile inputs, this file, `docs/development-handoff.md` when present | — |
 | Requirements definition | mission.md, documentation.md | `.skills/requirements.skill.md` |
-| New feature | workflow.md, architecture.md, coding-rules.md, testing.md | `.skills/feature.skill.md` |
-| Bug fix | workflow.md, testing.md | `.skills/bugfix.skill.md` |
-| Refactoring | architecture.md, coding-rules.md, testing.md | `.skills/refactor.skill.md` |
-| Architecture change | architecture.md, foundation ADR index, project ADR index when present, then relevant decisions through bounded discovery | `.skills/architecture.skill.md` |
+| New feature | workflow.md, MNT contract, architecture.md, coding-rules.md, testing.md | `.skills/feature.skill.md` |
+| Bug fix | workflow.md, MNT contract, testing.md | `.skills/bugfix.skill.md` |
+| Refactoring | MNT contract, architecture.md, coding-rules.md, testing.md | `.skills/refactor.skill.md` |
+| Architecture change | MNT contract, architecture.md, foundation ADR index, project ADR index when present, then relevant decisions through bounded discovery | `.skills/architecture.skill.md` |
 | Security work | security.md, `SECURITY.md` | `.skills/security.skill.md` |
 | Writing tests | testing.md | `.skills/test.skill.md` |
 | Documentation | documentation.md, foundation guide index, then the relevant guide through bounded discovery | `.skills/documentation.skill.md` |
-| Code review | review-checklist.md | `.skills/review.skill.md` |
+| Code review | MNT contract, review-checklist.md | `.skills/review.skill.md` |
 | Release | release.md, security.md | `.skills/release.skill.md` |

@@ -195,13 +195,55 @@ class ContextBudgetTest(unittest.TestCase):
         migrated = CANONICAL_GUARDRAILS in adapter
         if migrated:
             self.assertLessEqual(len(adapter.splitlines()), 20)
-        for rule_id in ("GR-001", "GR-010", "GR-020", "GR-030", "GR-040"):
+        rule_ids = [
+            "GR-001",
+            "GR-010",
+            "GR-020",
+            "GR-030",
+            "GR-040",
+        ]
+        if migrated:
+            rule_ids.append("GR-025")
+        for rule_id in rule_ids:
             with self.subTest(rule_id=rule_id):
                 if migrated:
                     self.assertNotIn(f"### {rule_id}:", adapter)
                 else:
                     self.assertIn(f"### {rule_id}:", adapter)
                 self.assertIn(f"### {rule_id}:", canonical)
+
+    def test_maintainability_policy_routes_one_canonical_stop_condition(self):
+        expected_references = {
+            ".skills/feature.skill.md": ("MNT-001", "MNT-002", "GR-025"),
+            ".skills/refactor.skill.md": ("MNT-001", "MNT-002", "MNT-003", "GR-025"),
+            ".ai/review-checklist.md": ("MNT-001", "MNT-002", "MNT-003", "GR-025"),
+        }
+
+        for relative_path, rule_ids in expected_references.items():
+            content = (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
+            with self.subTest(path=relative_path):
+                for rule_id in rule_ids:
+                    self.assertIn(rule_id, content)
+
+        route = (REPOSITORY_ROOT / ".ai/README.md").read_text(encoding="utf-8")
+        maintainability = (
+            REPOSITORY_ROOT / ".ai/contracts/foundation/maintainability.md"
+        ).read_text(
+            encoding="utf-8"
+        )
+        normalized_maintainability = " ".join(maintainability.split())
+        canonical = (REPOSITORY_ROOT / CANONICAL_GUARDRAILS).read_text(
+            encoding="utf-8"
+        )
+        normalized_canonical = " ".join(canonical.split())
+        for rule_id in ("MNT-001", "MNT-002", "MNT-003"):
+            self.assertIn(f"## {rule_id}:", maintainability)
+        self.assertGreaterEqual(route.count("MNT contract"), 5)
+        self.assertIn("approaches ~400 logical lines", normalized_maintainability)
+        self.assertIn("thin wrappers", normalized_maintainability)
+        self.assertIn("Generated/declarative", normalized_maintainability)
+        self.assertIn("exceeds ~800 logical lines", normalized_canonical)
+        self.assertIn("Cosmetic splits do not comply", normalized_canonical)
 
     def test_legacy_guardrail_body_does_not_add_canonical_copy_to_baseline(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
