@@ -1776,6 +1776,74 @@ test('annotations, sparkline, mixed type, and delta render distinct ECharts opti
   assert.equal(parsed.delta.graphic[2].style.text, '+2');
 });
 
+test('box plot, treemap, and pie keep guarded data contracts', () => {
+  const result = python(`
+cases={
+ "box_plot":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
+ "box_plot_horizontal":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
+ "treemap":({"dimensions":["部門","商品"],"measures":["売上"]},[("衣料","帽子",10)]),
+ "pie":({"dimensions":["チャネル"],"measures":["売上"]},[("organic",10)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ dimension_count=len(shape["dimensions"])
+ schema=[(name,"STRING" if index < dimension_count else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    box_plot: {
+      columns: ['category', 'min_value', 'q1_value', 'median_value', 'q3_value', 'max_value'],
+      rendered: 'box_plot',
+    },
+    box_plot_horizontal: {
+      columns: ['category', 'min_value', 'q1_value', 'median_value', 'q3_value', 'max_value'],
+      rendered: 'box_plot_horizontal',
+    },
+    treemap: { columns: ['level_1', 'level_2', 'metric_value'], rendered: 'treemap' },
+    pie: { columns: ['category', 'metric_value'], rendered: 'pie' },
+  });
+});
+
+test('box plot, treemap, and pie create standard ECharts options', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      box: standardChartOption({visualization:'box_plot',columns:['device','min','q1','median','q3','max'],rows:[['mobile',1,2,3,4,5]]}),
+      horizontal: standardChartOption({visualization:'box_plot_horizontal',columns:['device','min','q1','median','q3','max'],rows:[['mobile',1,2,3,4,5]]}),
+      tree: standardChartOption({visualization:'treemap',columns:['department','product','sales'],rows:[['clothes','hat',10],['clothes','shirt',20]]}),
+      pie: standardChartOption({visualization:'pie',columns:['channel','sales'],rows:[['organic',10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.box.series[0].type, 'boxplot');
+  assert.equal(parsed.horizontal.xAxis.type, 'value');
+  assert.equal(parsed.tree.series[0].data[0].children.length, 2);
+  assert.deepEqual(parsed.pie.series[0].radius, ['0%', '72%']);
+});
+
+test('box plot rejects unordered five-number summaries', () => {
+  const result = python(`
+try:m.dashboard_visualization({"title":"box","planned_visualization":"box_plot"},[("mobile",1,4,3,2,5)],["category","min_value","q1_value","median_value","q3_value","max_value"])
+except m.LiveDemoError:print("rejected")
+else:print("accepted")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'rejected');
+});
+
 test('live dashboard loads the standard chart library and renderer', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);

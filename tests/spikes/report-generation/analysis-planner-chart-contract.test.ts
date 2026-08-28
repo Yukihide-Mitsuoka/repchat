@@ -62,6 +62,10 @@ print(json.dumps({
   assert.deepEqual(output.contracts.sparkline, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.mixed_bar_line, [1, 1, 2, 4]);
   assert.deepEqual(output.contracts.delta, [0, 0, 2, 2]);
+  assert.deepEqual(output.contracts.box_plot, [1, 1, 5, 5]);
+  assert.deepEqual(output.contracts.box_plot_horizontal, [1, 1, 5, 5]);
+  assert.deepEqual(output.contracts.treemap, [1, 4, 1, 1]);
+  assert.deepEqual(output.contracts.pie, [1, 1, 1, 1]);
 });
 
 test('chart order is deterministic per request and unrelated to declaration order', () => {
