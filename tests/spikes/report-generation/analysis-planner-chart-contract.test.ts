@@ -45,9 +45,13 @@ print(json.dumps({
   assert.deepEqual(output.contracts.grouped_bar, [1, 1, 2, 4]);
   assert.deepEqual(output.contracts.area, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.stacked_area, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.percent_stacked_bar, [1, 1, 2, 4]);
+  assert.deepEqual(output.contracts.percent_stacked_area, [1, 1, 2, 4]);
   assert.deepEqual(output.contracts.histogram, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.donut, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.calendar_heatmap, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.scatter, [1, 2, 2, 2]);
+  assert.deepEqual(output.contracts.bubble, [1, 2, 3, 3]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
 });

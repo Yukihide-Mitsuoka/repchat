@@ -110,7 +110,8 @@ function standardBarOption(result, mode) {
   const metricColumns = result.columns.slice(1);
   const categories = result.rows.map((row) => String(row[0] ?? ''));
   const vertical = standardChartCategoryOrientation(categories) === 'vertical';
-  const units = metricColumns.map((column) => metricUnit(column) || column);
+  const percent = mode === 'percent';
+  const units = metricColumns.map((column) => percent ? '%' : metricUnit(column) || column);
   const unitIndexes = new Map();
   const unitColumns = [];
   units.forEach((unit, index) => {
@@ -132,18 +133,23 @@ function standardBarOption(result, mode) {
       unit || standardChartUnit(column),
     ),
   );
-  const canStack = mode === 'stacked' && !multipleUnits;
+  const canStack = (mode === 'stacked' || percent) && !multipleUnits;
   const labelPosition = vertical ? (canStack ? 'insideTop' : 'top') : (canStack ? 'inside' : 'right');
   const series = metricColumns.map((column, seriesIndex) => {
     const axisIndex = multipleUnits ? unitIndexes.get(units[seriesIndex]) : 0;
-    const values = result.rows.map((row) => standardChartNumber(row[seriesIndex + 1]));
+    const values = result.rows.map((row) => {
+      const value = standardChartNumber(row[seriesIndex + 1]);
+      if (!percent || value === null) return value;
+      const total = row.slice(1).reduce((sum, item) => sum + (standardChartNumber(item) ?? 0), 0);
+      return total > 0 ? value / total * 100 : 0;
+    });
     return {
       name: column,
       type: 'bar',
       data: values,
       yAxisIndex: multipleUnits ? axisIndex : undefined,
       xAxisIndex: multipleUnits ? axisIndex : undefined,
-      stack: canStack ? 'total' : undefined,
+      stack: canStack ? (percent ? 'percent' : 'total') : undefined,
       barMaxWidth: mode === 'grouped' ? 24 : 34,
       barGap: '30%',
       barCategoryGap: '28%',
@@ -164,6 +170,11 @@ function standardBarOption(result, mode) {
     };
   });
   const option = standardChartBase({ horizontal: !vertical, legend: metricColumns.length > 1 });
+  if (percent) axes.forEach((axis) => {
+    axis.min = 0;
+    axis.max = 100;
+    axis.axisLabel = { formatter: (value) => `${value}%`, hideOverlap: true };
+  });
   if (vertical) {
     option.grid = standardChartGrid(false, {
       left: 52 + Math.max(0, primaryAxisCount - 1) * 58,
@@ -206,28 +217,37 @@ function standardBarOption(result, mode) {
 function standardLineOption(result, mode) {
   const metricColumns = result.columns.slice(1);
   const categories = result.rows.map((row) => String(row[0]));
+  const percent = mode === 'percent_stacked_area';
+  const stacked = mode === 'stacked_area' || percent;
   const option = standardChartBase({ legend: metricColumns.length > 1 });
   option.grid = standardChartGrid(false);
   option.xAxis = standardChartCategoryAxis(categories, {
     formatter: (value) => standardChartLabel(value, 12),
   });
-  option.yAxis = metricColumns.map((column, index) => ({
+  option.yAxis = (stacked ? [metricColumns[0]] : metricColumns).map((column, index) => ({
     ...standardChartValueAxis(column, index % 2 === 0 ? 'left' : 'right', Math.floor(index / 2) * 58),
-    min: 'dataMin',
-    max: 'dataMax',
+    min: percent ? 0 : 'dataMin',
+    max: percent ? 100 : 'dataMax',
+    name: percent ? '%' : standardChartUnit(column),
+    axisLabel: percent ? { formatter: (value) => `${value}%`, hideOverlap: true } : standardChartValueAxis(column).axisLabel,
   }));
   option.series = metricColumns.map((column, index) => ({
     name: column,
     type: 'line',
-    yAxisIndex: index,
-    data: result.rows.map((row) => standardChartNumber(row[index + 1])),
+    yAxisIndex: stacked ? 0 : index,
+    data: result.rows.map((row) => {
+      const value = standardChartNumber(row[index + 1]);
+      if (!percent || value === null) return value;
+      const total = row.slice(1).reduce((sum, item) => sum + (standardChartNumber(item) ?? 0), 0);
+      return total > 0 ? value / total * 100 : 0;
+    }),
     showSymbol: true,
     symbol: 'circle',
     symbolSize: 7,
     connectNulls: false,
     smooth: false,
-    areaStyle: mode === 'area' || mode === 'stacked_area' ? { opacity: mode === 'stacked_area' ? 0.45 : 0.18 } : undefined,
-    stack: mode === 'stacked_area' ? 'total' : undefined,
+    areaStyle: mode === 'area' || stacked ? { opacity: stacked ? 0.45 : 0.18 } : undefined,
+    stack: stacked ? (percent ? 'percent' : 'total') : undefined,
     emphasis: { focus: 'series' },
   }));
   return option;
@@ -277,36 +297,53 @@ function standardCalendarOption(result) {
   const values = result.rows.map((row) => standardChartNumber(row[1]) ?? 0);
   const min = Math.min(...values, 0);
   const max = Math.max(...values, 1);
+  const years = [...new Set(dates.map((date) => date.slice(0, 4)))];
+  const calendars = years.map((year, index) => ({
+    top: 52 + index * 150, left: 44, right: 22, height: 116, range: year,
+    cellSize: ['auto', 16], splitLine: { show: true, lineStyle: { color: '#d9dee7' } },
+    itemStyle: { borderWidth: 1, borderColor: '#fff' },
+    dayLabel: { firstDay: 1, nameMap: 'ja' }, monthLabel: { nameMap: 'ja' },
+    yearLabel: { show: true },
+  }));
   return {
     ...standardChartBase({ tooltip: true }),
     grid: undefined,
     tooltip: { formatter: (params) => `${params.data?.[0] ?? ''}: ${standardChartFormat(params.data?.[1], result.columns[1])}` },
     visualMap: { min, max, calculable: true, orient: 'horizontal', left: 'center', top: 8, inRange: { color: ['#eaf2f8', '#3973c6'] } },
-    calendar: { top: 52, left: 44, right: 22, bottom: 26, range: [dates[0], dates.at(-1)], cellSize: ['auto', 22], splitLine: { show: true, lineStyle: { color: '#d9dee7' } }, itemStyle: { borderWidth: 1, borderColor: '#fff' }, dayLabel: { firstDay: 1, nameMap: 'ja' }, monthLabel: { nameMap: 'ja' } },
-    series: [{ type: 'heatmap', coordinateSystem: 'calendar', calendarIndex: 0, data: dates.map((date, index) => [date, values[index]]) }],
+    calendar: calendars,
+    series: years.map((year, calendarIndex) => ({
+      type: 'heatmap', coordinateSystem: 'calendar', calendarIndex,
+      data: dates.flatMap((date, index) => date.startsWith(year) ? [[date, values[index]]] : []),
+    })),
   };
 }
 
 function standardScatterOption(result, bubble) {
-  const xColumn = result.columns[1];
-  const yColumn = result.columns[2];
-  const sizeColumn = result.columns[3];
+  const multiple = result.columns.length === (bubble ? 5 : 4);
+  const valueOffset = multiple ? 2 : 1;
+  const xColumn = result.columns[valueOffset];
+  const yColumn = result.columns[valueOffset + 1];
+  const sizeColumn = result.columns[valueOffset + 2];
   const option = standardChartBase({ tooltip: true });
   option.grid = standardChartGrid(false);
   option.xAxis = { ...standardChartValueAxis(xColumn), nameLocation: 'middle', nameGap: 34 };
   option.yAxis = { ...standardChartValueAxis(yColumn), nameLocation: 'middle', nameGap: 52 };
   option.tooltip = { trigger: 'item', formatter: (params) => {
-    const row = result.rows[params.dataIndex];
-    return `${row[0]}<br>${xColumn}: ${standardChartFormat(row[1], xColumn)}<br>${yColumn}: ${standardChartFormat(row[2], yColumn)}${bubble ? `<br>${sizeColumn}: ${standardChartFormat(row[3], sizeColumn)}` : ''}`;
+    const row = params.data.raw;
+    const series = multiple ? `<br>${result.columns[1]}: ${row[1]}` : '';
+    return `${row[0]}${series}<br>${xColumn}: ${standardChartFormat(row[valueOffset], xColumn)}<br>${yColumn}: ${standardChartFormat(row[valueOffset + 1], yColumn)}${bubble ? `<br>${sizeColumn}: ${standardChartFormat(row[valueOffset + 2], sizeColumn)}` : ''}`;
   } };
-  const sizes = bubble ? result.rows.map((row) => Math.max(0, standardChartNumber(row[3]) ?? 0)) : [];
+  const sizes = bubble ? result.rows.map((row) => Math.max(0, standardChartNumber(row[valueOffset + 2]) ?? 0)) : [];
   const maxSize = Math.max(...sizes, 1);
-  option.series = [{
+  const seriesNames = multiple ? [...new Set(result.rows.map((row) => String(row[1])))] : [''];
+  option.legend = multiple ? { top: 8, type: 'scroll' } : undefined;
+  option.series = seriesNames.map((seriesName) => ({
+    name: seriesName || undefined,
     type: 'scatter',
-    data: result.rows.map((row, index) => ({ value: [standardChartNumber(row[1]), standardChartNumber(row[2])], symbolSize: bubble ? 8 + 34 * Math.sqrt(sizes[index] / maxSize) : 12, name: String(row[0]) })),
+    data: result.rows.flatMap((row, index) => !multiple || String(row[1]) === seriesName ? [{ value: [standardChartNumber(row[valueOffset]), standardChartNumber(row[valueOffset + 1])], symbolSize: bubble ? 8 + 34 * Math.sqrt(sizes[index] / maxSize) : 12, name: String(row[0]), raw: row }] : []),
     label: { show: true, formatter: (params) => standardChartLabel(params.data.name, 16), position: 'right' },
     emphasis: { focus: 'series', label: { show: true } },
-  }];
+  }));
   return option;
 }
 
@@ -393,11 +430,13 @@ function standardChartOption(result) {
     case 'bar': return standardBarOption(result, 'single');
     case 'grouped_bar': return standardBarOption(result, 'grouped');
     case 'stacked_bar': return standardBarOption(result, 'stacked');
+    case 'percent_stacked_bar': return standardBarOption(result, 'percent');
     case 'line': return standardLineOption(result, 'line');
     case 'multi_line': return standardLineOption(result, 'line');
     case 'trend': return standardLineOption(result, 'line');
     case 'area': return standardLineOption(result, 'area');
     case 'stacked_area': return standardLineOption(result, 'stacked_area');
+    case 'percent_stacked_area': return standardLineOption(result, 'percent_stacked_area');
     case 'histogram': return standardHistogramOption(result);
     case 'donut': return standardDonutOption(result);
     case 'calendar_heatmap': return standardCalendarOption(result);
@@ -411,15 +450,18 @@ function standardChartOption(result) {
 }
 
 function standardChartHeight(result) {
-  if (result.visualization === 'bar' || result.visualization === 'grouped_bar' || result.visualization === 'stacked_bar') {
-    const units = new Set(result.columns.slice(1).map((column) => metricUnit(column) || column));
+  if (['bar', 'grouped_bar', 'stacked_bar', 'percent_stacked_bar'].includes(result.visualization)) {
+    const units = new Set(result.columns.slice(1).map((column) => result.visualization === 'percent_stacked_bar' ? '%' : metricUnit(column) || column));
     const axisSpace = units.size > 1 ? 64 : 0;
     const categories = result.rows.map((row) => String(row[0] ?? ''));
     if (standardChartCategoryOrientation(categories) === 'vertical') return Math.max(340, 300 + axisSpace);
     return Math.max(300, result.rows.length * (result.visualization === 'grouped_bar' ? 48 : 38) + 120 + axisSpace);
   }
   if (result.visualization === 'sankey') return 440;
-  if (result.visualization === 'calendar_heatmap') return 280;
+  if (result.visualization === 'calendar_heatmap') {
+    const years = new Set(result.rows.map((row) => String(row[0]).slice(0, 4))).size;
+    return Math.max(280, 90 + years * 150);
+  }
   if (result.visualization === 'heatmap') {
     const yCount = new Set(result.rows.map((row) => String(row[1]))).size;
     return Math.max(380, Math.min(560, 140 + Math.min(yCount, 24) * 18));

@@ -1350,8 +1350,10 @@ test('every supported AI chart becomes an explicit SQL output contract', () => {
 charts={
  "scorecard":([], ["値"]),"kpi_group":([], ["値1","値2"]),
  "bar":(["区分"],["値"]),"grouped_bar":(["区分"],["値1","値2"]),
- "stacked_bar":(["区分"],["値1","値2"]),"line":(["日付"],["値"]),
+ "stacked_bar":(["区分"],["値1","値2"]),"percent_stacked_bar":(["区分"],["値1","値2"]),
+ "line":(["日付"],["値"]),
  "area":(["日付"],["値"]),"stacked_area":(["日付"],["値1","値2"]),
+ "percent_stacked_area":(["日付"],["値1","値2"]),
  "histogram":(["階級"],["度数"]),"donut":(["区分"],["値"]),
  "calendar_heatmap":(["日付"],["値"]),
  "multi_line":(["日付"],["値1","値2"]),"scatter":(["項目"],["X","Y"]),
@@ -1368,7 +1370,7 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.contracts).length, 18);
+  assert.equal(Object.keys(output.contracts).length, 20);
   assert.deepEqual(output.contracts.grouped_bar.columns, ['category', 'metric_1', 'metric_2']);
   assert.deepEqual(output.contracts.bubble.columns, [
     'category',
@@ -1390,9 +1392,11 @@ cases={
  "bar":([("A",1)], ["区分","値"]),
  "grouped_bar":([("A",1,2)], ["区分","値1","値2"]),
  "stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
+ "percent_stacked_bar":([("A",1,2)], ["区分","値1","値2"]),
  "line":([(date(2021,1,1),1),(date(2021,1,2),None)], ["日付","値"]),
  "area":([(date(2021,1,1),1)], ["日付","値"]),
  "stacked_area":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
+ "percent_stacked_area":([(date(2021,1,1),1,2)], ["日付","値1","値2"]),
  "histogram":([(0,3),(10,5)], ["階級下限","度数"]),
  "donut":([("A",3),("B",2)], ["区分","値"]),
  "calendar_heatmap":([(date(2021,1,1),3)], ["日付","値"]),
@@ -1413,7 +1417,7 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.rendered).length, 18);
+  assert.equal(Object.keys(output.rendered).length, 20);
   assert.equal(output.rendered.scorecard, 'scalar');
   assert.equal(output.rendered.grouped_bar, 'grouped_bar');
   assert.equal(output.rendered.sankey, 'sankey');
@@ -1584,6 +1588,61 @@ test('standard chart renderer creates ECharts options for every supported chart'
   ) as Record<string, any>;
   assert.equal(compact.xAxis.type, 'category', '日付以外の密な短い区分も同じ判定を使う');
   assert.equal(compact.yAxis[0].type, 'value');
+});
+
+test('series variants normalize percentages, split scatter series, and render each calendar year', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      bar: standardChartOption({visualization:'percent_stacked_bar',columns:['device','new','repeat'],rows:[['mobile',3,1]]}),
+      area: standardChartOption({visualization:'percent_stacked_area',columns:['date','new','repeat'],rows:[['2021-01-01',3,1]]}),
+      scatter: standardChartOption({visualization:'scatter',columns:['page','series','x','y'],rows:[['/','mobile',1,2],['/shop','desktop',3,4]]}),
+      calendar: standardChartOption({visualization:'calendar_heatmap',columns:['date','value'],rows:[['2020-12-31',1],['2021-01-01',2]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.bar.series[0].stack, 'percent');
+  assert.equal(parsed.bar.xAxis[0].max, 100);
+  assert.equal(parsed.area.series[0].stack, 'percent');
+  assert.equal(parsed.area.yAxis[0].max, 100);
+  assert.deepEqual(
+    parsed.scatter.series.map((series: any) => series.name),
+    ['mobile', 'desktop'],
+  );
+  assert.equal(parsed.calendar.calendar.length, 2);
+  assert.equal(parsed.calendar.series.length, 2);
+});
+
+test('multi-series scatter and bubble use a second dimension in every execution guard', () => {
+  const result = python(`
+cases={
+ "scatter":(["ページ","デバイス"],["閲覧数","滞在時間"],[('A','mobile',1,2)]),
+ "bubble":(["チャネル","デバイス"],["閲覧数","滞在時間","ユーザー数"],[('A','desktop',1,2,3)]),
+}
+accepted={}
+for chart,(dimensions,measures,rows) in cases.items():
+ section=m.planned_analysis_section({"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":dimensions,"measures":measures})
+ schema=[(name,"STRING" if index < 2 else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    scatter: { columns: ['category', 'series', 'x_value', 'y_value'], rendered: 'scatter' },
+    bubble: {
+      columns: ['category', 'series', 'x_value', 'y_value', 'size_value'],
+      rendered: 'bubble',
+    },
+  });
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {

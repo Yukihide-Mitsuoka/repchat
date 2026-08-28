@@ -137,7 +137,9 @@ shapes={
  "kpi_group":([], ["指標A","指標B"]),
  "grouped_bar":(["区分"], ["指標A","指標B"]),
  "stacked_bar":(["区分"], ["指標A","指標B"]),
+ "percent_stacked_bar":(["区分"], ["指標A","指標B"]),
  "multi_line":(["日付"], ["指標A","指標B"]),
+ "percent_stacked_area":(["日付"], ["指標A","指標B"]),
  "scatter":(["項目"], ["指標A","指標B"]),
  "bubble":(["項目"], ["指標A","指標B","指標C"]),
  "funnel":(["段階"], ["指標A"]),
@@ -172,13 +174,15 @@ print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_
     'kpi_group',
     'grouped_bar',
     'stacked_bar',
+    'percent_stacked_bar',
     'multi_line',
+    'percent_stacked_area',
     'scatter',
     'bubble',
     'funnel',
     'heatmap',
   ]);
-  assert.equal(output.charts.length, 18);
+  assert.equal(output.charts.length, 20);
   assert.deepEqual(output.schema_charts, output.charts);
   assert.deepEqual(output.consultation_charts, output.charts);
   assert.deepEqual(output.bar_shape, {
