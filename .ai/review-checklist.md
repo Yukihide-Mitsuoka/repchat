@@ -32,10 +32,16 @@ Used for: reviewing PRs, and mandatory **self-review** before opening a PR (WF-0
 - [ ] No new abstraction without a current second consumer (COD-051)
 - [ ] New/changed interfaces are deep (ARC-005): small surface, complexity hidden,
       passes the deletion test; no pass-through layers
+- [ ] Components have one owning layer and primary reason to change; decomposition is
+      by responsibility or stable boundary, not line count (MNT-001/MNT-002)
 
 ### REV-MNT: Maintainability
 - [ ] Code matches surrounding idioms (COD-050); naming per COD-002 and glossary
 - [ ] Functions within size/nesting bounds (COD-003); no dead/commented-out code
+- [ ] MNT-002 signals were evaluated; any GR-025 exception is human-approved and
+      documented; generated/declarative exemptions do not conceal behavior
+- [ ] Refactoring addresses evidence, preserves behavior, and adds no pass-through
+      boundary (MNT-003)
 - [ ] Duplication rule of three respected (COD-020)
 - [ ] A future agent could understand this diff without this conversation's context
 

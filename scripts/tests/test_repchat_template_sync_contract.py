@@ -36,6 +36,19 @@ class RepChatTemplateSyncContractTest(unittest.TestCase):
         self.assertNotIn(path, manifest["protected_paths"])
         self.assertNotIn(path, self.entries())
 
+    def test_new_foundation_test_support_is_inherited(self):
+        entries = self.entries()
+        manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+
+        for path in (
+            "scripts/run-foundation-tests.sh",
+            "scripts/tests/test_foundation_test_suite_selection.py",
+            "scripts/tests/test_presentation_skill_contract.py",
+        ):
+            self.assertIn(path, manifest["inherited_paths"])
+            self.assertNotIn(path, manifest["protected_paths"])
+            self.assertNotIn(path, entries)
+
     def test_project_release_history_and_codeql_invariant_are_target_owned(self):
         entries = self.entries()
         manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
@@ -55,6 +68,18 @@ class RepChatTemplateSyncContractTest(unittest.TestCase):
             manifest["inherited_paths"],
         )
         self.assertNotIn("scripts/tests/test_template_sync_ignore.py", entries)
+
+    def test_project_foundation_suite_split_is_target_owned(self):
+        entries = self.entries()
+        manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+
+        for path in (
+            "scripts/foundation_test_runner.py",
+            "scripts/tests/test_foundation_test_runner.py",
+        ):
+            self.assertIn(path, entries)
+            self.assertIn(path, manifest["protected_paths"])
+            self.assertNotIn(path, manifest["inherited_paths"])
 
 
 if __name__ == "__main__":

@@ -36,9 +36,11 @@
 .templatesyncignore
 # Release Please output and target-specific automation invariants belong to RepChat.
 CHANGELOG.md
+scripts/foundation_test_runner.py
 scripts/pr-size-policy.sh
 scripts/tests/pr-size-policy.test.sh
 scripts/tests/test_codeql_workflow.py
+scripts/tests/test_foundation_test_runner.py
 scripts/tests/test_repchat_template_sync_contract.py
 scripts/tests/test_template_sync_workflow.py
 CLAUDE.md

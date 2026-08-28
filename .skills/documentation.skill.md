@@ -29,7 +29,8 @@ current, unambiguous, in the right place, and no larger than needed.
    completely. One fact, one place — if the fact exists elsewhere, link to it instead of
    restating (DOC-001). Follow a project doc type's own README when present.
 4. Write for a reader with zero conversation context: purpose first, frontmatter set,
-   tables/lists over prose, absolute dates, runnable examples with fake credentials.
+   structure and representation chosen by DOC-003, absolute dates, runnable examples
+   with fake credentials.
 5. For APIs: document contract (inputs, outputs, errors, auth) not implementation;
    keep OpenAPI/schema files as the source, prose as commentary.
 6. Verify every command/example by running it; every link by resolving it.
@@ -42,8 +43,8 @@ current, unambiguous, in the right place, and no larger than needed.
   Description of the system → `docs/`. Module contract → MODULE.md. Front door → README.
 - **How long?** As short as completeness allows. If a section needs >2 screens,
   split by reader task, not by topic.
-- **Diagram?** Use Mermaid in Markdown (renders on GitHub, diffable, AI-writable) —
-  never binary images for structural diagrams.
+- **Diagram?** Use Mermaid only when it makes a relationship materially easier to
+  understand; state the conclusion in text. Never use binary structural diagrams.
 - **Doc contradicts code?** Behavior → trust code; intent → trust doc; then fix the
   wrong one and note it (DOC-040).
 
@@ -54,6 +55,6 @@ current, unambiguous, in the right place, and no larger than needed.
 ## Checklist
 - [ ] Facts verified against code; commands and links tested
 - [ ] One-fact-one-place respected; no near-duplicate content created
-- [ ] Frontmatter, structure, and style per DOC-001
+- [ ] Frontmatter, logical structure, and representation per DOC-001/DOC-003
 - [ ] Doc-update matrix fully satisfied for the triggering change
 - [ ] An agent with no context could act on this doc alone

@@ -66,7 +66,7 @@ clean: ## Remove build artifacts
 	@rm -rf dist coverage node_modules/.cache
 
 doctor: ## Self-check the template: metadata invariants + guard-hook tests (foundation-level, stack-independent)
-	@bash scripts/template-check.sh
+	@FOUNDATION_TEST_SUITE=fast bash scripts/template-check.sh
 	@bash tests/template-sync-boundary.test.sh
 	@bash scripts/tests/pr-size-policy.test.sh
 	@bash .claude/hooks/tests/guard-bash.test.sh
