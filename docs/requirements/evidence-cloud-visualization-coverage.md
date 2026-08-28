@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる40種類
+### 2.1 現在AI plannerが選べる41種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -60,6 +60,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
 | `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、数値バーに対応 |
 | `pivot_table` | Data Table Pivoting | 対応 | 行区分、列区分、1〜4指標のlong形式を検査し、欠損組合せを空欄に保ってwide表示する |
+| `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分、現在値、比較値、差分を返し、差分の算術整合性を検査して増減方向を中立色で表示する |
 | `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
@@ -108,7 +109,7 @@ EChartsを加えた15種類である。
 | Mixed-Type Charts | 対応 | 第1系列bar＋残りlineの宣言的な列契約を持つ |
 | Big Value | 対応 | 1行1列のscalarと、既知のKPI pairを描画できる |
 | Value | 部分対応 | 数値formatはあるが、Evidenceのinline Value componentとしては生成しない |
-| Data Table | 対応 | 検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、交互行、数値バー、検証済みlong形式からのpivotを備える。SQL側の期間比較、計算指標、groupingは通常の自然言語SQL生成で扱い、rendererが集計値を推測しない |
+| Data Table | 対応 | 検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、交互行、数値バー、pivot、算術検証済みcomparison/deltaを備える。計算指標とgroupingは通常の自然言語SQL生成で扱い、rendererが集計値を推測しない |
 | Delta | 対応 | 現在値、比較値、符号付き差分を表示し、指標定義なしに良否を推測しない |
 
 ## 5. map component
