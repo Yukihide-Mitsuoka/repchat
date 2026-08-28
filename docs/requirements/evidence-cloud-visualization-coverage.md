@@ -80,7 +80,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 plannerの許可値と形状・行数上限は
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
 [`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実行前のSQL・dry-run検証は
-[`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、実描画は
+[`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、結果形状検証は
+[`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、実描画は
 [`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、Evidence成果物への変換は
 [`run_report.py`](../../spikes/report-generation/run_report.py)の`evidence_component`を根拠とする。
 
