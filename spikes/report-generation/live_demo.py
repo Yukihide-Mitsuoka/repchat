@@ -862,6 +862,10 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "sparkline": "sparkline",
         "mixed_bar_line": "mixed_bar_line",
         "delta": "delta",
+        "box_plot": "box_plot",
+        "box_plot_horizontal": "box_plot_horizontal",
+        "treemap": "treemap",
+        "pie": "pie",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -1006,6 +1010,20 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     elif chart == "delta":
         section["shape"] = {"rows": "比較対象を含む1行", "columns": measures}
         section["source_columns"] = ["current_value", "comparison_value"]
+    elif chart in {"box_plot", "box_plot_horizontal"}:
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "category", "min_value", "q1_value", "median_value", "q3_value", "max_value"
+        ]
+    elif chart == "treemap":
+        section["shape"] = {"rows": "階層の末端項目ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            *[f"level_{index}" for index in range(1, len(dimensions) + 1)],
+            "metric_value",
+        ]
+    elif chart == "pie":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["category", "metric_value"]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
         "annotated_line", "sparkline", "mixed_bar_line", "table"
@@ -1281,6 +1299,17 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         )
     elif planned == "delta":
         valid = valid and len(types) == 2 and all(field_type in numeric for field_type in types)
+    elif planned in {"box_plot", "box_plot_horizontal"}:
+        valid = valid and types[0] == "STRING" and all(field_type in numeric for field_type in types[1:])
+    elif planned == "treemap":
+        dimension_count = section.get("dimension_count", 1)
+        valid = (
+            valid
+            and all(field_type == "STRING" for field_type in types[:dimension_count])
+            and types[-1] in numeric
+        )
+    elif planned == "pie":
+        valid = valid and types[0] == "STRING" and types[1] in numeric
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
         valid = valid and all(
@@ -1474,6 +1503,31 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
     elif planned == "delta":
         valid = valid and width == 2 and (
             not rows or len(rows) == 1 and all(finite(value) for value in rows[0])
+        )
+    elif planned in {"box_plot", "box_plot_horizontal"}:
+        valid = valid and width == 6 and all(
+            isinstance(row[0], str)
+            and all(finite(value) for value in row[1:])
+            and list(row[1:]) == sorted(row[1:])
+            for row in rows
+        )
+    elif planned == "treemap":
+        dimension_count = section.get("dimension_count", width - 1)
+        paths = [tuple(row[:dimension_count]) for row in rows]
+        valid = (
+            valid
+            and 2 <= width <= 5
+            and len(paths) == len(set(paths))
+            and all(
+                all(isinstance(value, str) and value.strip() for value in row[:dimension_count])
+                and finite(row[-1]) and row[-1] >= 0
+                for row in rows
+            )
+        )
+    elif planned == "pie":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], str) and row[0].strip() and finite(row[1]) and row[1] >= 0
+            for row in rows
         )
     else:
         valid = False

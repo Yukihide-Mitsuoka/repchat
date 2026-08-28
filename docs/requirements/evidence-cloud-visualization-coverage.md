@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる28種類
+### 2.1 現在AI plannerが選べる32種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -66,6 +66,9 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `sparkline` | Sparkline | 対応 | 日付と1指標を返し、最新値と軸を省略した小型時系列を表示する |
 | `mixed_bar_line` | Mixed-Type Charts | 対応 | 1区分軸と2〜4指標を返し、第1系列をbar、残りをlineで描く |
 | `delta` | Delta | 対応 | 現在値と比較値を1行で返し、良否を推測せず符号付き差分を中立色で示す |
+| `box_plot` / `box_plot_horizontal` | Box Plot | 対応 | 区分、最小、第1四分位、中央値、第3四分位、最大を昇順で返す |
+| `treemap` | Custom ECharts Treemap例 | 対応 | 1〜4階層と非負値を返し、末端までの階層を宣言的に描く |
+| `pie` | Custom ECharts Pie例 | 対応 | 12区分までの非負値を全円で描く |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -78,7 +81,7 @@ plannerの許可値は
 |---|---|---|---|
 | Area Chart | basic、stacked、100% stacked | 対応 | basic、stacked、100% stackedへ対応 |
 | Bar Chart | basic、stacked、100% stacked、grouped、horizontal各種、long | 部分対応 | basic、stacked、100% stacked、groupedと、区分数・ラベル密度から選ぶ縦棒／横棒に対応。利用者が任意に固定するorientation、longは未対応 |
-| Box Plot | basic、horizontal | 未対応 | quartile／whiskerの結果契約とrendererがない |
+| Box Plot | basic、horizontal | 対応 | 五数要約の順序を検査し、縦向き／横向きを描画する |
 | Bubble Chart | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Histogram | default | 対応 | numericの階級下限と度数を検査して描画する |
 | Line Chart | single、multiple series、multiple Y columns | 対応 | 1〜4系列と独立縦軸、bar＋lineのseries別typeへ対応 |
@@ -119,8 +122,8 @@ Evidenceの公式ページには、Custom ECharts例として次が掲載され�
 
 | 公式例・拡張枠 | RepChat | 現在の不足 |
 |---|---|---|
-| Treemap | 未対応 | hierarchy、name、value契約がない |
-| Pie Chart | 未対応 | Donutとは独立した表示契約をまだ持たない |
+| Treemap | 対応 | 1〜4階層の空でない項目名と非負値を検査して描画する |
+| Pie Chart | 対応 | Donutと独立した全円表示契約を持つ |
 | Donut Chart | 部分対応 | name、非負value、最大12区分、割合tooltip、中心合計を描画する |
 | Custom Funnel | 部分対応 | 固定購入funnelだけで、ECharts configは生成しない |
 | Advanced／任意ECharts | 未対応 | 任意JavaScript configは安全性、再現性、accessibilityを保証できない |

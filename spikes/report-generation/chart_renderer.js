@@ -493,6 +493,66 @@ function standardDeltaOption(result) {
   };
 }
 
+function standardBoxPlotOption(result, horizontal = false) {
+  const categories = result.rows.map((row) => String(row[0]));
+  const values = result.rows.map((row) => row.slice(1).map(standardChartNumber));
+  const categoryAxis = standardChartCategoryAxis(categories, {
+    formatter: (value) => standardChartLabel(value, 18),
+  });
+  const valueAxis = standardChartValueAxis(result.columns[3]);
+  return {
+    ...standardChartBase({ tooltip: true }),
+    grid: standardChartGrid(horizontal),
+    xAxis: horizontal ? valueAxis : categoryAxis,
+    yAxis: horizontal ? categoryAxis : valueAxis,
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => `${categories[params.dataIndex]}<br>${result.columns.slice(1).map((column, index) => `${column}: ${standardChartFormat(params.value[index], column)}`).join('<br>')}`,
+    },
+    series: [{ type: 'boxplot', data: values, itemStyle: { borderWidth: 2 }, emphasis: { focus: 'self' } }],
+  };
+}
+
+function standardTreemapOption(result) {
+  const dimensionCount = result.columns.length - 1;
+  const roots = [];
+  result.rows.forEach((row) => {
+    let children = roots;
+    row.slice(0, dimensionCount).forEach((rawName, index) => {
+      const name = String(rawName);
+      let node = children.find((item) => item.name === name);
+      if (!node) {
+        node = { name };
+        children.push(node);
+      }
+      if (index === dimensionCount - 1) node.value = standardChartNumber(row.at(-1));
+      else {
+        node.children ??= [];
+        children = node.children;
+      }
+    });
+  });
+  return {
+    ...standardChartBase({ tooltip: true }),
+    grid: undefined,
+    tooltip: { trigger: 'item', formatter: (params) => `${params.treePathInfo.map((item) => item.name).filter(Boolean).join(' / ')}<br>${standardChartFormat(params.value, result.columns.at(-1))}` },
+    series: [{
+      type: 'treemap', data: roots, roam: false, nodeClick: false,
+      breadcrumb: { show: dimensionCount > 1 },
+      label: { show: true, formatter: '{b}' },
+      upperLabel: { show: dimensionCount > 1, height: 24 },
+      levels: [{ itemStyle: { borderWidth: 0, gapWidth: 2 } }, { itemStyle: { borderWidth: 2, gapWidth: 2 } }],
+    }],
+  };
+}
+
+function standardPieOption(result) {
+  const option = standardDonutOption(result);
+  option.series[0].radius = ['0%', '72%'];
+  option.series[0].center = ['42%', '52%'];
+  return option;
+}
+
 function standardChartOption(result) {
   switch (result.visualization) {
     case 'bar': return standardBarOption(result, 'single');
@@ -521,6 +581,10 @@ function standardChartOption(result) {
     case 'sparkline': return standardSparklineOption(result);
     case 'mixed_bar_line': return standardMixedOption(result);
     case 'delta': return standardDeltaOption(result);
+    case 'box_plot': return standardBoxPlotOption(result);
+    case 'box_plot_horizontal': return standardBoxPlotOption(result, true);
+    case 'treemap': return standardTreemapOption(result);
+    case 'pie': return standardPieOption(result);
     default: throw new Error(`未対応のECharts可視化種別です: ${result.visualization}`);
   }
 }

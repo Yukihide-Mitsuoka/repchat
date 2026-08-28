@@ -38,6 +38,10 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "sparkline",
     "mixed_bar_line",
     "delta",
+    "box_plot",
+    "box_plot_horizontal",
+    "treemap",
+    "pie",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
 STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
@@ -83,6 +87,10 @@ DASHBOARD_ROW_LIMITS = {
     "sparkline": 100,
     "mixed_bar_line": 100,
     "delta": 1,
+    "box_plot": 30,
+    "box_plot_horizontal": 30,
+    "treemap": 100,
+    "pie": 12,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -113,6 +121,10 @@ CHART_SHAPE_CONTRACTS = {
     "sparkline": (1, 1, 1, 1),
     "mixed_bar_line": (1, 1, 2, 4),
     "delta": (0, 0, 2, 2),
+    "box_plot": (1, 1, 5, 5),
+    "box_plot_horizontal": (1, 1, 5, 5),
+    "treemap": (1, 4, 1, 1),
+    "pie": (1, 1, 1, 1),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
