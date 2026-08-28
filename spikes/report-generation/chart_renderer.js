@@ -553,6 +553,53 @@ function standardPieOption(result) {
   return option;
 }
 
+function standardMapName(result) {
+  let hash = 2166136261;
+  result.rows.forEach((row) => {
+    const value = `${row[0]}:${row[1]}`;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  });
+  return `repchat-map-${(hash >>> 0).toString(16)}`;
+}
+
+function standardMapGeoJson(result) {
+  return {
+    type: 'FeatureCollection',
+    features: result.rows.map((row) => ({
+      type: 'Feature',
+      properties: { name: String(row[0]) },
+      geometry: JSON.parse(row[1]),
+    })),
+  };
+}
+
+function standardAreaMapOption(result) {
+  const values = result.rows.map((row) => standardChartNumber(row[2]) ?? 0);
+  const map = standardMapName(result);
+  return {
+    ...standardChartBase({ tooltip: true }),
+    grid: undefined,
+    geo: {
+      map, roam: true, scaleLimit: { min: 1, max: 12 },
+      itemStyle: { areaColor: '#edf2f7', borderColor: '#fff', borderWidth: 1 },
+      emphasis: { itemStyle: { areaColor: '#9dc0e8' }, label: { show: true } },
+    },
+    visualMap: {
+      min: Math.min(...values, 0), max: Math.max(...values, 1), calculable: true,
+      orient: 'horizontal', left: 'center', bottom: 8,
+      inRange: { color: ['#eaf2f8', '#3973c6'] },
+    },
+    tooltip: { trigger: 'item', formatter: (params) => `${params.name}: ${standardChartFormat(params.value, result.columns[2])}` },
+    series: [{
+      name: result.columns[2], type: 'map', map, geoIndex: 0,
+      data: result.rows.map((row) => ({ name: String(row[0]), value: standardChartNumber(row[2]) })),
+    }],
+  };
+}
+
 function standardChartOption(result) {
   switch (result.visualization) {
     case 'bar': return standardBarOption(result, 'single');
@@ -585,11 +632,14 @@ function standardChartOption(result) {
     case 'box_plot_horizontal': return standardBoxPlotOption(result, true);
     case 'treemap': return standardTreemapOption(result);
     case 'pie': return standardPieOption(result);
+    case 'area_map': return standardAreaMapOption(result);
+    case 'us_map': return standardAreaMapOption(result);
     default: throw new Error(`未対応のECharts可視化種別です: ${result.visualization}`);
   }
 }
 
 function standardChartHeight(result) {
+  if (['area_map', 'us_map'].includes(result.visualization)) return 440;
   if (result.visualization === 'sparkline') return 180;
   if (result.visualization === 'delta') return 220;
   if (['bar', 'grouped_bar', 'stacked_bar', 'percent_stacked_bar'].includes(result.visualization)) {
@@ -637,6 +687,9 @@ function renderStandardChart(result, box) {
     instance = chartLibrary.init(host, null, { renderer: 'svg' });
     resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => instance.resize()) : null;
     resizeObserver?.observe(host);
+    if (['area_map', 'us_map'].includes(result.visualization)) {
+      chartLibrary.registerMap(standardMapName(result), standardMapGeoJson(result));
+    }
     instance.setOption(standardChartOption(result), { notMerge: true, lazyUpdate: false });
     instance.resize();
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => instance.resize());

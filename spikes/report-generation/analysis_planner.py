@@ -42,6 +42,8 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "box_plot_horizontal",
     "treemap",
     "pie",
+    "area_map",
+    "us_map",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
 STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
@@ -91,6 +93,8 @@ DASHBOARD_ROW_LIMITS = {
     "box_plot_horizontal": 30,
     "treemap": 100,
     "pie": 12,
+    "area_map": 100,
+    "us_map": 60,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -125,6 +129,8 @@ CHART_SHAPE_CONTRACTS = {
     "box_plot_horizontal": (1, 1, 5, 5),
     "treemap": (1, 4, 1, 1),
     "pie": (1, 1, 1, 1),
+    "area_map": (2, 2, 1, 1),
+    "us_map": (2, 2, 1, 1),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20

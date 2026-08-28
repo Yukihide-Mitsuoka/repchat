@@ -13,7 +13,7 @@ updated: 2026-08-28
 選べる必要がある。この文書は、Evidence Cloudで利用できるEvidenceの可視化を基準に、RepChatの
 現在のend-to-end対応を整理する。
 
-一次資料は2026-08-11時点の[Evidence All Components](https://docs.evidence.dev/components/all-components)と
+一次資料は2026-08-28時点の[Evidence All Components](https://docs.evidence.dev/components/all-components)と
 [Custom ECharts](https://docs.evidence.dev/components/charts/custom-echarts)である。Evidence Cloudのeditorは
 Evidence projectを扱うが、公式の可視化component一覧はEvidence Docsにあるため、製品名と描画基盤を区別する。
 
@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる32種類
+### 2.1 現在AI plannerが選べる34種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -69,6 +69,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `box_plot` / `box_plot_horizontal` | Box Plot | 対応 | 区分、最小、第1四分位、中央値、第3四分位、最大を昇順で返す |
 | `treemap` | Custom ECharts Treemap例 | 対応 | 1〜4階層と非負値を返し、末端までの階層を宣言的に描く |
 | `pie` | Custom ECharts Pie例 | 対応 | 12区分までの非負値を全円で描く |
+| `area_map` / `us_map` | Area Map / US Map | 対応 | 地域ID、Polygon/MultiPolygon GeoJSON、非負値をwarehouseから返す |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -110,11 +111,11 @@ EChartsを加えた15種類である。
 
 | Evidence component | RepChat | 現在の不足 |
 |---|---|---|
-| Area Map | 未対応 | region key、shape、value、地理境界の契約がない |
+| Area Map | 対応 | region key、GeoJSON Polygon/MultiPolygon、非負valueを検査して描画する |
 | Bubble Map | 未対応 | latitude、longitude、sizeの契約がない |
 | Point Map | 未対応 | latitude、longitude、categoryの契約がない |
 | Base Map | 未対応 | layerとtile／shape sourceの契約がない |
-| US Map | 未対応 | US地域codeとvalueの契約がない |
+| US Map | 対応 | 2文字の州・地域code、GeoJSON境界、非負valueを検査して描画する |
 
 ## 6. Custom ECharts
 

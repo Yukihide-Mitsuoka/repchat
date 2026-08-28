@@ -386,6 +386,9 @@ lineとして同じ区分軸で比較します。Deltaは現在値と比較値�
 Box Plotは区分ごとの最小値、第1四分位、中央値、第3四分位、最大値が昇順であることを検査し、縦向きと
 横向きを別の許可chartとして描きます。Treemapは1〜4階層の末端単位へ集約した非負値、Pieは最大12区分の
 非負値だけを受け付けます。
+Area MapとUS Mapは、特定デモ用の地域境界や外部tileへ依存しません。SQL結果が地域ID、閉じたGeoJSON
+PolygonまたはMultiPolygon、非負値を返した場合だけ、その実データ境界を登録してchoroplethを描画します。
+US Mapでは地域IDを2文字の大文字codeに限定します。
 
 反復行動では遷移の単位を変える必要があります。将来の分析計画では`page_view_occurrence`、
 `form_attempt`、`spa_state`などを明示的に選べる余地を残します。これらは同一ページの再読込、
