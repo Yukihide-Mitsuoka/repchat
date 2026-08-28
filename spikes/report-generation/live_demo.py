@@ -858,6 +858,10 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "sankey_vertical": "sankey_vertical",
         "flow_sankey": "flow_sankey",
         "flow_sankey_vertical": "flow_sankey_vertical",
+        "annotated_line": "annotated_line",
+        "sparkline": "sparkline",
+        "mixed_bar_line": "mixed_bar_line",
+        "delta": "delta",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -984,8 +988,27 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "同一sourceとtargetの組はSUMして1行に集約する",
             "循環するflowを返さない",
         ]
+    elif chart == "annotated_line":
+        section["shape"] = {
+            "rows": "日付ごとに1行。注釈がない日はannotation_labelをNULLにする",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
+    elif chart == "sparkline":
+        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = ["event_date", "metric_value"]
+    elif chart == "mixed_bar_line":
+        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        section["source_columns"] = [
+            "category",
+            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+        ]
+    elif chart == "delta":
+        section["shape"] = {"rows": "比較対象を含む1行", "columns": measures}
+        section["source_columns"] = ["current_value", "comparison_value"]
     if chart not in {
-        "line", "multi_line", "area", "stacked_area", "percent_stacked_area", "table"
+        "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
+        "annotated_line", "sparkline", "mixed_bar_line", "table"
     }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
@@ -994,11 +1017,11 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             f"{aliases}はNULLを返さない。COUNT/COUNTIF以外の式は最終SELECT式全体を"
             "COALESCEまたはIFNULLで包む"
         )
-    if chart not in {"scorecard", "kpi_group"}:
+    if chart not in {"scorecard", "kpi_group", "delta"}:
         max_rows = section["max_result_rows"]
         if chart in {
             "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
-            "calendar_heatmap",
+            "calendar_heatmap", "annotated_line", "sparkline",
         }:
             ordering = "event_dateの昇順"
         elif chart == "histogram":
@@ -1181,7 +1204,7 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
                 f"{section['title']}のSQLに{planned}用のORDER BYとLIMIT "
                 f"{max_rows}以下がないためBigQueryへ送信しません。"
             )
-    if planned in {"scorecard", "kpi_group"}:
+    if planned in {"scorecard", "kpi_group", "delta"}:
         aggregate_pattern = re.compile(
             r"\b(?:COUNT|COUNTIF|SUM|AVG|MIN|MAX|ANY_VALUE|LOGICAL_AND|LOGICAL_OR|APPROX_[A-Z_]+)\s*\(",
             re.I,
@@ -1241,6 +1264,23 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and types[2] in numeric
     elif planned in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
         valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
+    elif planned == "annotated_line":
+        valid = (
+            valid
+            and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
+            and types[1] == "STRING"
+            and types[2] in numeric
+        )
+    elif planned == "sparkline":
+        valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
+    elif planned == "mixed_bar_line":
+        valid = (
+            valid
+            and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
+            and all(field_type in numeric for field_type in types[1:])
+        )
+    elif planned == "delta":
+        valid = valid and len(types) == 2 and all(field_type in numeric for field_type in types)
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
         valid = valid and all(
@@ -1414,6 +1454,27 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and (not rows or valid_sankey_result(rows))
     elif planned in {"flow_sankey", "flow_sankey_vertical"}:
         valid = valid and (not rows or valid_flow_sankey_result(rows))
+    elif planned == "annotated_line":
+        valid = valid and width == 3 and all(
+            isinstance(row[0], (date, datetime))
+            and (row[1] is None or isinstance(row[1], str))
+            and nullable_finite(row[2])
+            for row in rows
+        )
+    elif planned == "sparkline":
+        valid = valid and width == 2 and all(
+            isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
+        )
+    elif planned == "mixed_bar_line":
+        valid = valid and 3 <= width <= 5 and all(
+            isinstance(row[0], (str, date, datetime))
+            and all(nullable_finite(value) for value in row[1:])
+            for row in rows
+        )
+    elif planned == "delta":
+        valid = valid and width == 2 and (
+            not rows or len(rows) == 1 and all(finite(value) for value in rows[0])
+        )
     else:
         valid = False
     if not valid:

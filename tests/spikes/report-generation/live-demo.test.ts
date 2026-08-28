@@ -1716,6 +1716,66 @@ print(json.dumps(accepted))
   assert.deepEqual(JSON.parse(result.stdout), [false, false, false]);
 });
 
+test('annotations, sparkline, mixed type, and delta keep guarded data contracts', () => {
+  const result = python(`
+from datetime import date
+cases={
+ "annotated_line":({"dimensions":["日付","注釈"],"measures":["購入件数"]},[(date(2021,1,1),"施策開始",10)]),
+ "sparkline":({"dimensions":["日付"],"measures":["購入件数"]},[(date(2021,1,1),10)]),
+ "mixed_bar_line":({"dimensions":["日付"],"measures":["購入金額","購入件数"]},[(date(2021,1,1),1000,10)]),
+ "delta":({"dimensions":[],"measures":["当月購入件数","前月購入件数"]},[(10,8)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ types=[]
+ for column in section["source_columns"]:
+  types.append((column,"DATE" if column=="event_date" else "STRING" if column in {"annotation_label","category"} else "INT64"))
+ m.validate_dashboard_dry_run_schema(section,types)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    annotated_line: {
+      columns: ['event_date', 'annotation_label', 'metric_value'],
+      rendered: 'annotated_line',
+    },
+    sparkline: { columns: ['event_date', 'metric_value'], rendered: 'sparkline' },
+    mixed_bar_line: { columns: ['category', 'metric_1', 'metric_2'], rendered: 'mixed_bar_line' },
+    delta: { columns: ['current_value', 'comparison_value'], rendered: 'delta' },
+  });
+});
+
+test('annotations, sparkline, mixed type, and delta render distinct ECharts options', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      annotated: standardChartOption({visualization:'annotated_line',columns:['date','annotation','value'],rows:[['2021-01-01','施策開始',10],['2021-01-02','',12]]}),
+      sparkline: standardChartOption({visualization:'sparkline',columns:['date','value'],rows:[['2021-01-01',10],['2021-01-02',12]]}),
+      mixed: standardChartOption({visualization:'mixed_bar_line',columns:['date','sales','orders'],rows:[['2021-01-01',1000,10]]}),
+      delta: standardChartOption({visualization:'delta',columns:['current','previous'],rows:[[10,8]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.annotated.series[0].markPoint.data[0].name, '施策開始');
+  assert.equal(parsed.sparkline.xAxis.show, false);
+  assert.deepEqual(
+    parsed.mixed.series.map((series: any) => series.type),
+    ['bar', 'line'],
+  );
+  assert.equal(parsed.delta.graphic[2].style.text, '+2');
+});
+
 test('live dashboard loads the standard chart library and renderer', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);

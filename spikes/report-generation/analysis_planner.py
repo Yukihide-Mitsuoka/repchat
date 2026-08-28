@@ -34,6 +34,10 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "sankey_vertical",
     "flow_sankey",
     "flow_sankey_vertical",
+    "annotated_line",
+    "sparkline",
+    "mixed_bar_line",
+    "delta",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
 STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
@@ -75,6 +79,10 @@ DASHBOARD_ROW_LIMITS = {
     "sankey_vertical": MAX_SANKEY_EDGE_ROWS,
     "flow_sankey": MAX_FLOW_SANKEY_EDGES,
     "flow_sankey_vertical": MAX_FLOW_SANKEY_EDGES,
+    "annotated_line": 100,
+    "sparkline": 100,
+    "mixed_bar_line": 100,
+    "delta": 1,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -101,6 +109,10 @@ CHART_SHAPE_CONTRACTS = {
     "sankey_vertical": (2, 2, 1, 1),
     "flow_sankey": (2, 2, 1, 1),
     "flow_sankey_vertical": (2, 2, 1, 1),
+    "annotated_line": (2, 2, 1, 1),
+    "sparkline": (1, 1, 1, 1),
+    "mixed_bar_line": (1, 1, 2, 4),
+    "delta": (0, 0, 2, 2),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20

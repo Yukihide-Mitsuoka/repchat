@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる24種類
+### 2.1 現在AI plannerが選べる28種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -62,6 +62,10 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
+| `annotated_line` | Annotations | 部分対応 | 日付、任意の注釈ラベル、1指標を返し、根拠のある時点だけをpin表示する |
+| `sparkline` | Sparkline | 対応 | 日付と1指標を返し、最新値と軸を省略した小型時系列を表示する |
+| `mixed_bar_line` | Mixed-Type Charts | 対応 | 1区分軸と2〜4指標を返し、第1系列をbar、残りをlineで描く |
+| `delta` | Delta | 対応 | 現在値と比較値を1行で返し、良否を推測せず符号付き差分を中立色で示す |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -77,7 +81,7 @@ plannerの許可値は
 | Box Plot | basic、horizontal | 未対応 | quartile／whiskerの結果契約とrendererがない |
 | Bubble Chart | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Histogram | default | 対応 | numericの階級下限と度数を検査して描画する |
-| Line Chart | single、multiple series、multiple Y columns | 部分対応 | 1〜4系列と独立縦軸に対応。series別chart typeは未対応 |
+| Line Chart | single、multiple series、multiple Y columns | 対応 | 1〜4系列と独立縦軸、bar＋lineのseries別typeへ対応 |
 | Scatter Plot | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
@@ -91,13 +95,13 @@ EChartsを加えた15種類である。
 
 | Evidence component | RepChat | 現在の根拠・不足 |
 |---|---|---|
-| Annotations | 未対応 | x/y reference line、reference area、根拠revisionとの対応がない |
-| Sparkline | 未対応 | scorecard内の小型時系列rendererがない |
-| Mixed-Type Charts | 未対応 | bar＋line等のseries別type契約がない |
+| Annotations | 部分対応 | 日付に紐づくpoint annotationへ対応。x/y reference line、reference area、根拠revisionとの対応は未実装 |
+| Sparkline | 対応 | 最新値を伴う小型時系列を独立した検証済みcomponentとして描画する |
+| Mixed-Type Charts | 対応 | 第1系列bar＋残りlineの宣言的な列契約を持つ |
 | Big Value | 対応 | 1行1列のscalarと、既知のKPI pairを描画できる |
 | Value | 部分対応 | 数値formatはあるが、Evidenceのinline Value componentとしては生成しない |
 | Data Table | 対応 | 取得データをtable表示できる。Evidenceの全機能は未対応 |
-| Delta | 未対応 | 比較値、方向、良否色の意味契約がない |
+| Delta | 対応 | 現在値、比較値、符号付き差分を表示し、指標定義なしに良否を推測しない |
 
 ## 5. map component
 
