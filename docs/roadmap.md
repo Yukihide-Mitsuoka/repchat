@@ -41,12 +41,17 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 | 優先 | 課題 | 次の完了条件 |
 |---:|---|---|
-| 保守時 | [#315 `make doctor` wrapper timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 原因を`test_template_inheritance_plan.py`の一時Gitリポジトリ反復（約65秒）と特定。timeout延長・再試行はせず、遅いスイートの分離を次の保守作業にする |
+| 完了 | [#315 `make doctor` timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 一時Gitリポジトリを反復する試験を`make doctor-slow`へ分離し、fast／slowの両suiteをCIで独立実行する。timeout延長・retry・skipは追加しない |
+| 再発時 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | `serve`の本番bindを維持し、round-tripテストは`127.0.0.1`を明示してlistener割当とcleanupを隔離。5回連続の再現確認を行った |
 | 費用承認後 | #374/#410で拡張したAI分析計画の実サービス確認 | `spikes/report-generation/verify_live_services.py`で、費用承認後にdashboard・insight・会議報告を各1回実行し、SQL本文・取得行を保存せず品質メタデータを記録する |
 
 Issue [#169](https://github.com/Yukihide-Mitsuoka/repchat/issues/169)は、本番の`0.0.0.0`既定bindを維持したまま
 テストlistenerを`127.0.0.1`へ隔離し、起動時socket errorのrejectと冪等なcleanupを回帰テストへ固定した。
 retry、assertion緩和、固定portへの変更は行っていない。
+
+Issue [#315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)の遅いfoundation回帰テストは、
+`make doctor`のfast suiteと`make doctor-slow`の一時Gitリポジトリsuiteへ分離した。両suiteはCIで独立して
+実行し、timeout延長、retry、skipは追加していない。
 
 Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張は
 [PR #411](https://github.com/Yukihide-Mitsuoka/repchat/pull/411)で完了し、その後のprovider schema回帰は

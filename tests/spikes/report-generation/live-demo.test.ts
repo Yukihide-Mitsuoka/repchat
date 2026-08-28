@@ -1387,6 +1387,51 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
   assert.ok(Object.values(output.contracts).every((contract: any) => contract.limit > 0));
 });
 
+test('all current planner capabilities reach an explicit SQL contract and browser renderer', () => {
+  const result = python(`
+contracts={}
+for index,chart in enumerate(m.planner.SUPPORTED_DASHBOARD_CHARTS,1):
+ min_dimensions,_,min_measures,_=m.planner.CHART_SHAPE_CONTRACTS[chart]
+ panel={"id":f"P{index}","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":[f"区分{i}" for i in range(min_dimensions)],"measures":[f"指標{i}" for i in range(min_measures)]}
+ section=m.planned_analysis_section(panel)
+ contracts[chart]={"component":section["component"],"columns":section["source_columns"],"limit":section["max_result_rows"]}
+print(json.dumps(contracts,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const contracts = JSON.parse(result.stdout) as Record<string, any>;
+  assert.equal(Object.keys(contracts).length, 42);
+  assert.ok(Object.values(contracts).every((contract) => contract.columns.length > 0));
+  assert.ok(Object.values(contracts).every((contract) => contract.limit > 0));
+
+  const renderer = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const specialized = new Set([
+    'scorecard',
+    'kpi_group',
+    'table',
+    'pivot_table',
+    'comparison_table',
+    'sparkline_table',
+  ]);
+  for (const chart of Object.keys(contracts)) {
+    if (specialized.has(chart)) continue;
+    assert.ok(
+      renderer.includes(`case '${chart}'`) || renderer.includes(`'${chart}'`),
+      `missing browser renderer for ${chart}`,
+    );
+  }
+  for (const name of [
+    'renderAdvancedResultTable',
+    'renderPivotResultTable',
+    'renderComparisonResultTable',
+    'renderSparklineResultTable',
+  ]) {
+    assert.ok(renderer.includes(`function ${name}(`), `missing specialized renderer ${name}`);
+  }
+});
+
 test('all AI chart contracts have explicit result validation and browser renderers', () => {
   const result = python(`
 from datetime import date
@@ -1696,6 +1741,15 @@ print(json.dumps(accepted,ensure_ascii=False))
   assert.equal(parsed.staged.series[0].orient, 'vertical');
   assert.equal(parsed.flow.series[0].orient, 'horizontal');
   assert.equal(parsed.flow.series[0].data[0].name, '広告');
+  const heights = vm.runInNewContext(
+    `${source};JSON.stringify(['sankey','sankey_vertical','flow_sankey','flow_sankey_vertical'].map(visualization=>standardChartHeight({visualization,columns:['source','target','value'],rows:[['A','B',1]]})))`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  assert.deepEqual(JSON.parse(heights), [440, 440, 440, 440]);
 });
 
 test('general Sankey rejects cycles, duplicate edges, and self links', () => {
