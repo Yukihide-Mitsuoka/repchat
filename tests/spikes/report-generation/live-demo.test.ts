@@ -1983,6 +1983,66 @@ test('point and base map renderers use one registered query-provided geography',
   );
 });
 
+test('reference line and area keep validated result contracts', () => {
+  const result = python(`
+from datetime import date
+cases={
+ "reference_line":({"measures":["実績","目標"]},[(date(2021,1,1),10,12)]),
+ "reference_area":({"measures":["実績","下限","上限"]},[(date(2021,1,1),10,8,12)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析","dimensions":["日付"],**shape}
+ section=m.planned_analysis_section(panel)
+ schema=[(name,"DATE" if index == 0 else "INT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]={"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,rows,section["source_columns"])}
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    reference_line: {
+      columns: ['category', 'metric_value', 'reference_value'],
+      rendered: 'reference_line',
+    },
+    reference_area: {
+      columns: ['category', 'metric_value', 'lower_value', 'upper_value'],
+      rendered: 'reference_area',
+    },
+  });
+});
+
+test('reference area rejects inverted bounds and renders a bounded band', () => {
+  const result = python(`
+from datetime import date
+try:m.dashboard_visualization({"title":"range","planned_visualization":"reference_area"},[(date(2021,1,1),10,12,8)],["category","metric_value","lower_value","upper_value"])
+except m.LiveDemoError:print("rejected")
+else:print("accepted")
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'rejected');
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      line: standardChartOption({visualization:'reference_line',columns:['date','actual','target'],rows:[['2021-01-01',10,12]]}),
+      area: standardChartOption({visualization:'reference_area',columns:['date','actual','low','high'],rows:[['2021-01-01',10,8,12]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.line.series[1].lineStyle.type, 'dashed');
+  assert.equal(parsed.area.series[2].stack, 'reference-range');
+  assert.deepEqual(parsed.area.series[2].data, [4]);
+});
+
 test('live dashboard loads the standard chart library and renderer', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);

@@ -47,6 +47,8 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "point_map",
     "bubble_map",
     "base_map",
+    "reference_line",
+    "reference_area",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
 STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
@@ -101,6 +103,8 @@ DASHBOARD_ROW_LIMITS = {
     "point_map": 100,
     "bubble_map": 100,
     "base_map": 100,
+    "reference_line": 100,
+    "reference_area": 100,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -140,6 +144,8 @@ CHART_SHAPE_CONTRACTS = {
     "point_map": (2, 2, 3, 3),
     "bubble_map": (2, 2, 4, 4),
     "base_map": (3, 3, 4, 4),
+    "reference_line": (1, 1, 2, 2),
+    "reference_area": (1, 1, 3, 3),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
