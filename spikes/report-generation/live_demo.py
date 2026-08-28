@@ -868,6 +868,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "funnel_horizontal": "funnel_horizontal",
         "heatmap": "heatmap",
         "table": "table",
+        "pivot_table": "pivot_table",
         "sankey": "sankey",
         "sankey_vertical": "sankey_vertical",
         "flow_sankey": "flow_sankey",
@@ -972,15 +973,23 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "columns": dimensions + measures,
         }
         section["source_columns"] = ["x_category", "y_category", "metric_value"]
-    elif chart == "table":
+    elif chart in {"table", "pivot_table"}:
         section["shape"] = {
             "rows": "区分または集計単位ごとに1行",
             "columns": dimensions + measures,
         }
-        section["source_columns"] = [
-            *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
-            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
-        ]
+        section["source_columns"] = (
+            [
+                "row_dimension",
+                "pivot_dimension",
+                *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+            ]
+            if chart == "pivot_table"
+            else [
+                *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
+                *[f"metric_{index}" for index in range(1, len(measures) + 1)],
+            ]
+        )
     elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
@@ -1068,7 +1077,8 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         section["source_columns"] = ["category", "metric_value", "lower_value", "upper_value"]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
-        "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table"
+        "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table",
+        "pivot_table"
     }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
@@ -1379,6 +1389,15 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and all(
             field_type in numeric for field_type in types[dimension_count:]
         )
+    elif planned == "pivot_table":
+        valid = (
+            valid
+            and all(
+                field_type in {"STRING", "DATE", "DATETIME", "TIMESTAMP"} | numeric
+                for field_type in types[:2]
+            )
+            and all(field_type in numeric for field_type in types[2:])
+        )
     if not valid:
         observed = "、".join(f"{name}:{field_type}" for name, field_type in schema)
         raise LiveDemoError(
@@ -1607,6 +1626,19 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and width == 3 and all(finite(row[2]) for row in rows)
     elif planned == "table":
         valid = valid and width >= 1
+    elif planned == "pivot_table":
+        pairs = [(row[0], row[1]) for row in rows]
+        valid = (
+            valid
+            and 3 <= width <= 6
+            and len(pairs) == len(set(pairs))
+            and all(
+                (isinstance(row[0], (str, date, datetime)) or finite(row[0]))
+                and (isinstance(row[1], (str, date, datetime)) or finite(row[1]))
+                and all(nullable_finite(value) for value in row[2:])
+                for row in rows
+            )
+        )
     elif planned in {"sankey", "sankey_vertical"}:
         valid = valid and (not rows or valid_sankey_result(rows))
     elif planned in {"flow_sankey", "flow_sankey_vertical"}:
