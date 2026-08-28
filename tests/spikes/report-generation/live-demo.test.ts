@@ -2082,6 +2082,31 @@ print(json.dumps({"columns":section["source_columns"],"rendered":m.dashboard_vis
   });
 });
 
+test('comparison table verifies deltas without assigning good or bad semantics', () => {
+  const validated = python(`
+section=m.planned_analysis_section({"id":"P","title":"前年差","chart":"comparison_table","decision":"判断","execution_prompt":"分析","dimensions":["地域"],"measures":["現在値","比較値","差分"]})
+m.validate_dashboard_dry_run_schema(section,[("dimension_1","STRING"),("current_value","FLOAT64"),("comparison_value","FLOAT64"),("delta_value","FLOAT64")])
+accepted=m.dashboard_visualization(section,[("東",120,100,20),("西",80,100,-20)],section["source_columns"])
+try:m.dashboard_visualization(section,[("東",120,100,10)],section["source_columns"])
+except m.LiveDemoError:invalid="rejected"
+else:invalid="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"invalid":invalid},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['dimension_1', 'current_value', 'comparison_value', 'delta_value'],
+    rendered: 'comparison_table',
+    invalid: 'rejected',
+  });
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  assert.match(source, /deltaIndex: result\.columns\.length - 1/);
+  assert.match(source, /advanced-table-delta/);
+  assert.doesNotMatch(source, /delta-positive|delta-negative|good|bad/);
+});
+
 test('reference area rejects inverted bounds and renders a bounded band', () => {
   const result = python(`
 from datetime import date

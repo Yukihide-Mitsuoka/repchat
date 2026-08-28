@@ -823,7 +823,7 @@ function downloadStandardTable(result, rows) {
   URL.revokeObjectURL(link.href);
 }
 
-function renderAdvancedResultTable(result, box) {
+function renderAdvancedResultTable(result, box, options = {}) {
   const shell = Object.assign(document.createElement('div'), { className: 'advanced-table' });
   const toolbar = Object.assign(document.createElement('div'), { className: 'advanced-table-toolbar' });
   const search = Object.assign(document.createElement('input'), {
@@ -870,7 +870,10 @@ function renderAdvancedResultTable(result, box) {
       const tableRow = body.insertRow();
       row.forEach((value, index) => {
         const cell = tableRow.insertCell();
-        cell.textContent = numericColumns.includes(index) ? chartValue(value, result.columns[index]) : value ?? '';
+        const delta = options.deltaIndex === index && Number.isFinite(Number(value));
+        const formatted = numericColumns.includes(index) ? chartValue(value, result.columns[index]) : value ?? '';
+        cell.textContent = delta ? `${Number(value) > 0 ? '↑' : Number(value) < 0 ? '↓' : '→'} ${formatted}` : formatted;
+        if (delta) cell.classList.add('advanced-table-delta');
         const maximum = maxima.get(index);
         if (maximum > 0 && Number(value) >= 0) {
           cell.className = 'advanced-table-number';
@@ -919,6 +922,10 @@ function renderPivotResultTable(result, box) {
   renderAdvancedResultTable(standardPivotTableResult(result), box);
 }
 
+function renderComparisonResultTable(result, box) {
+  renderAdvancedResultTable(result, box, { deltaIndex: result.columns.length - 1 });
+}
+
 function graph(result, box = $('chart')) {
   box.replaceChildren();
   if (!result.rows.length) {
@@ -939,6 +946,10 @@ function graph(result, box = $('chart')) {
   }
   if (result.visualization === 'pivot_table') {
     renderPivotResultTable(result, box);
+    return;
+  }
+  if (result.visualization === 'comparison_table') {
+    renderComparisonResultTable(result, box);
     return;
   }
   renderStandardChart(result, box);
