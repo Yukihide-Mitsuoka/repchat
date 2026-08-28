@@ -1911,6 +1911,78 @@ test('area map renderer builds and registers a data-provided geographic map', ()
   assert.match(source, /registerMap\(standardMapName\(result\), standardMapGeoJson\(result\)\)/);
 });
 
+test('point, bubble, and base maps validate geographic layers end to end', () => {
+  const result = python(`
+geometry='{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"world"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}]}'
+cases={
+ "point_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","値"]},[("A",geometry,35,139,10)]),
+ "bubble_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("A",geometry,35,139,20,10)]),
+ "base_map":({"dimensions":["layer","地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("area","world",'{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',None,None,None,10),("point","A",None,35,139,None,10)]),
+}
+accepted={}
+for chart,(shape,rows) in cases.items():
+ panel={"id":"P","title":chart,"chart":chart,"decision":"判断","execution_prompt":"分析",**shape}
+ section=m.planned_analysis_section(panel)
+ dimension_count=len(shape["dimensions"])
+ schema=[(name,"STRING" if index < dimension_count else "FLOAT64") for index,name in enumerate(section["source_columns"])]
+ m.validate_dashboard_dry_run_schema(section,schema)
+ accepted[chart]=m.dashboard_visualization(section,rows,section["source_columns"])
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    point_map: 'point_map',
+    bubble_map: 'bubble_map',
+    base_map: 'base_map',
+  });
+});
+
+test('point and base map renderers use one registered query-provided geography', () => {
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const geometry = JSON.stringify({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: { name: 'world' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [0, 0],
+              [1, 0],
+              [1, 1],
+              [0, 0],
+            ],
+          ],
+        },
+      },
+    ],
+  });
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      point: standardChartOption({visualization:'point_map',columns:['name','geometry','lat','long','value'],rows:[['A',${JSON.stringify(geometry)},35,139,10]]}),
+      bubble: standardChartOption({visualization:'bubble_map',columns:['name','geometry','lat','long','size','value'],rows:[['A',${JSON.stringify(geometry)},35,139,20,10]]}),
+      base: standardChartOption({visualization:'base_map',columns:['layer','name','geometry','lat','long','size','value'],rows:[['area','world','{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',null,null,null,10],['point','A',null,35,139,null,10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.point.series[0].type, 'scatter');
+  assert.equal(parsed.bubble.series[0].type, 'effectScatter');
+  assert.deepEqual(
+    parsed.base.series.map((series: any) => series.type),
+    ['map', 'scatter'],
+  );
+});
+
 test('live dashboard loads the standard chart library and renderer', () => {
   const rendered = python('print(m.HTML)');
   assert.equal(rendered.status, 0, rendered.stderr);

@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる34種類
+### 2.1 現在AI plannerが選べる37種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -70,6 +70,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `treemap` | Custom ECharts Treemap例 | 対応 | 1〜4階層と非負値を返し、末端までの階層を宣言的に描く |
 | `pie` | Custom ECharts Pie例 | 対応 | 12区分までの非負値を全円で描く |
 | `area_map` / `us_map` | Area Map / US Map | 対応 | 地域ID、Polygon/MultiPolygon GeoJSON、非負値をwarehouseから返す |
+| `point_map` / `bubble_map` | Point Map / Bubble Map | 対応 | query提供の地理境界、地点名、緯度経度、値と任意のsizeを返す |
+| `base_map` | Base Map | 対応 | area／point／bubbleの複数layerを同じquery結果で返す |
 
 plannerの許可値は
 [`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
@@ -112,9 +114,9 @@ EChartsを加えた15種類である。
 | Evidence component | RepChat | 現在の不足 |
 |---|---|---|
 | Area Map | 対応 | region key、GeoJSON Polygon/MultiPolygon、非負valueを検査して描画する |
-| Bubble Map | 未対応 | latitude、longitude、sizeの契約がない |
-| Point Map | 未対応 | latitude、longitude、categoryの契約がない |
-| Base Map | 未対応 | layerとtile／shape sourceの契約がない |
+| Bubble Map | 対応 | query提供GeoJSON、地点名、緯度経度、非負size／valueを検査して描画する |
+| Point Map | 対応 | query提供GeoJSON、地点名、緯度経度、非負valueを検査して描画する |
+| Base Map | 対応 | query提供GeoJSON上にarea、point、bubbleの検証済みlayerを重ねる |
 | US Map | 対応 | 2文字の州・地域code、GeoJSON境界、非負valueを検査して描画する |
 
 ## 6. Custom ECharts
