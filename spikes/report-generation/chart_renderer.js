@@ -899,6 +899,26 @@ function renderAdvancedResultTable(result, box) {
   render();
 }
 
+function standardPivotTableResult(result) {
+  const rowValues = [...new Set(result.rows.map((row) => String(row[0])))];
+  const pivotValues = [...new Set(result.rows.map((row) => String(row[1])))];
+  const measureColumns = result.columns.slice(2);
+  const lookup = new Map(result.rows.map((row) => [`${String(row[0])}\u0000${String(row[1])}`, row.slice(2)]));
+  const columns = [
+    result.columns[0],
+    ...pivotValues.flatMap((pivot) => measureColumns.map((measure) => `${pivot} / ${measure}`)),
+  ];
+  const rows = rowValues.map((rowValue) => [
+    rowValue,
+    ...pivotValues.flatMap((pivot) => lookup.get(`${rowValue}\u0000${pivot}`) ?? measureColumns.map(() => null)),
+  ]);
+  return { ...result, visualization: 'table', columns, rows };
+}
+
+function renderPivotResultTable(result, box) {
+  renderAdvancedResultTable(standardPivotTableResult(result), box);
+}
+
 function graph(result, box = $('chart')) {
   box.replaceChildren();
   if (!result.rows.length) {
@@ -915,6 +935,10 @@ function graph(result, box = $('chart')) {
   }
   if (result.visualization === 'table') {
     renderAdvancedResultTable(result, box);
+    return;
+  }
+  if (result.visualization === 'pivot_table') {
+    renderPivotResultTable(result, box);
     return;
   }
   renderStandardChart(result, box);

@@ -2049,6 +2049,39 @@ test('advanced table filters, stably sorts, exports, and exposes bounded control
     assert.ok(source.includes(expected), `missing advanced table control: ${expected}`);
 });
 
+test('pivot table validates long data and preserves missing combinations', () => {
+  const validated = python(`
+section=m.planned_analysis_section({"id":"P","title":"地域別年次成果","chart":"pivot_table","decision":"判断","execution_prompt":"分析","dimensions":["地域","年"],"measures":["売上","件数"]})
+m.validate_dashboard_dry_run_schema(section,[("row_dimension","STRING"),("pivot_dimension","INT64"),("metric_1","FLOAT64"),("metric_2","INT64")])
+try:m.dashboard_visualization(section,[("東",2024,10,1),("東",2024,20,2)],section["source_columns"])
+except m.LiveDemoError:duplicate="rejected"
+else:duplicate="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":m.dashboard_visualization(section,[("東",2024,10,1),("西",2025,20,2)],section["source_columns"]),"duplicate":duplicate},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['row_dimension', 'pivot_dimension', 'metric_1', 'metric_2'],
+    rendered: 'pivot_table',
+    duplicate: 'rejected',
+  });
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const transformed = vm.runInNewContext(
+    `${source};JSON.stringify(standardPivotTableResult({visualization:'pivot_table',columns:['地域','年','売上'],rows:[['東','2024',10],['西','2025',20]]}))`,
+  ) as string;
+  assert.deepEqual(JSON.parse(transformed), {
+    visualization: 'table',
+    columns: ['地域', '2024 / 売上', '2025 / 売上'],
+    rows: [
+      ['東', 10, null],
+      ['西', null, 20],
+    ],
+  });
+});
+
 test('reference area rejects inverted bounds and renders a bounded band', () => {
   const result = python(`
 from datetime import date

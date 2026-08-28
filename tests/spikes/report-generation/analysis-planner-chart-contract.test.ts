@@ -54,6 +54,7 @@ print(json.dumps({
   assert.deepEqual(output.contracts.bubble, [1, 2, 3, 3]);
   assert.deepEqual(output.contracts.funnel_horizontal, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.pivot_table, [2, 2, 1, 4]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey_vertical, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.flow_sankey, [2, 2, 1, 1]);
