@@ -77,9 +77,10 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `base_map` | Base Map | 対応 | area／point／bubbleの複数layerを同じquery結果で返す |
 | `reference_line` / `reference_area` | Annotations | 対応 | 実績と基準値、または実績と下限・上限を区分ごとに返す |
 
-plannerの許可値は
-[`analysis_planner.py`](../../spikes/report-generation/analysis_planner.py)の`DASHBOARD_CHARTS`、
-実描画は[`live_demo.py`](../../spikes/report-generation/live_demo.py)の`graph`、Evidence成果物への変換は
+plannerの許可値と形状・行数上限は
+[`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
+[`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実描画は
+[`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、Evidence成果物への変換は
 [`run_report.py`](../../spikes/report-generation/run_report.py)の`evidence_component`を根拠とする。
 
 ## 3. 標準chart component
