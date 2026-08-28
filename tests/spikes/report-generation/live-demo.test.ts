@@ -2107,6 +2107,43 @@ print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"inval
   assert.doesNotMatch(source, /delta-positive|delta-negative|good|bad/);
 });
 
+test('sparkline table validates long time-series data and groups it for ECharts', () => {
+  const validated = python(`
+from datetime import date
+section=m.planned_analysis_section({"id":"P","title":"カテゴリ推移","chart":"sparkline_table","decision":"判断","execution_prompt":"分析","dimensions":["カテゴリ","日付"],"measures":["値"]})
+m.validate_dashboard_dry_run_schema(section,[("category","STRING"),("event_date","DATE"),("metric_value","FLOAT64")])
+accepted=m.dashboard_visualization(section,[("A",date(2021,1,1),10),("A",date(2021,1,2),None)],section["source_columns"])
+try:m.dashboard_visualization(section,[("A",date(2021,1,1),10),("A",date(2021,1,1),20)],section["source_columns"])
+except m.LiveDemoError:duplicate="rejected"
+else:duplicate="accepted"
+print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"duplicate":duplicate},ensure_ascii=False))
+`);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.deepEqual(JSON.parse(validated.stdout), {
+    columns: ['category', 'event_date', 'metric_value'],
+    rendered: 'sparkline_table',
+    duplicate: 'rejected',
+  });
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const grouped = vm.runInNewContext(
+    `${source};JSON.stringify(standardSparklineTableResult({visualization:'sparkline_table',columns:['区分','日付','値'],rows:[['A','2021-01-02',20],['A','2021-01-01',10],['B','2021-01-01',null]]}).rows.map(row=>({cells:[...row],series:row.sparklineValues})))`,
+  ) as string;
+  assert.deepEqual(JSON.parse(grouped), [
+    {
+      cells: ['A', 20, '2点'],
+      series: [
+        ['2021-01-01', 10],
+        ['2021-01-02', 20],
+      ],
+    },
+    { cells: ['B', null, '1点'], series: [['2021-01-01', null]] },
+  ]);
+  assert.match(source, /chartLibrary\.init\(host, null, \{ renderer: 'svg' \}\)/);
+});
+
 test('reference area rejects inverted bounds and renders a bounded band', () => {
   const result = python(`
 from datetime import date

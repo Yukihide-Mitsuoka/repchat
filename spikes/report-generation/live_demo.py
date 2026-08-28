@@ -492,6 +492,7 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .advanced-table-scroll th[aria-sort="descending"] button::after{content:"  ↓"}
 .advanced-table-number{background:linear-gradient(90deg,#dbeafe var(--table-bar-width),transparent var(--table-bar-width));font-variant-numeric:tabular-nums;text-align:right}
 .advanced-table-delta{color:#315f86;font-weight:700}
+.advanced-table-sparkline{width:128px;height:36px}
 .advanced-table-pager{display:flex;align-items:center;justify-content:flex-end;gap:9px;color:#687386;font-size:10px}
 .metric{align-self:center;padding:20px 6px;font-size:48px;letter-spacing:-.04em}
 .kpi-pair{gap:10px;align-self:center;width:100%}
@@ -871,6 +872,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "table": "table",
         "pivot_table": "pivot_table",
         "comparison_table": "comparison_table",
+        "sparkline_table": "sparkline_table",
         "sankey": "sankey",
         "sankey_vertical": "sankey_vertical",
         "flow_sankey": "flow_sankey",
@@ -1006,6 +1008,12 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         section["generation_requirements"] = [
             "delta_valueはcurrent_value - comparison_valueと一致させる"
         ]
+    elif chart == "sparkline_table":
+        section["shape"] = {
+            "rows": "区分と日付の組み合わせごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["category", "event_date", "metric_value"]
     elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
@@ -1094,7 +1102,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
         "annotated_line", "sparkline", "mixed_bar_line", "base_map", "table",
-        "pivot_table"
+        "pivot_table", "sparkline_table"
     }:
         nonnull_metric_columns = section["source_columns"][len(dimensions) :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
@@ -1419,6 +1427,10 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         valid = valid and all(
             field_type in numeric for field_type in types[dimension_count:]
         )
+    elif planned == "sparkline_table":
+        valid = valid and types[0] == "STRING" and types[1] in {
+            "DATE", "DATETIME", "TIMESTAMP"
+        } and types[2] in numeric
     if not valid:
         observed = "、".join(f"{name}:{field_type}" for name, field_type in schema)
         raise LiveDemoError(
@@ -1666,6 +1678,20 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and abs((row[-3] - row[-2]) - row[-1])
             <= max(1e-9, abs(row[-3]) * 1e-9, abs(row[-2]) * 1e-9)
             for row in rows
+        )
+    elif planned == "sparkline_table":
+        pairs = [(row[0], row[1]) for row in rows]
+        valid = (
+            valid
+            and width == 3
+            and len(pairs) == len(set(pairs))
+            and all(
+                isinstance(row[0], str)
+                and row[0].strip()
+                and isinstance(row[1], (date, datetime))
+                and nullable_finite(row[2])
+                for row in rows
+            )
         )
     elif planned in {"sankey", "sankey_vertical"}:
         valid = valid and (not rows or valid_sankey_result(rows))
