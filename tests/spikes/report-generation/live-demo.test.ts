@@ -1358,8 +1358,12 @@ charts={
  "calendar_heatmap":(["日付"],["値"]),
  "multi_line":(["日付"],["値1","値2"]),"scatter":(["項目"],["X","Y"]),
  "bubble":(["項目"],["X","Y","大きさ"]),"funnel":(["段階"],["値"]),
+ "funnel_horizontal":(["段階"],["値"]),
  "heatmap":(["縦","横"],["値"]),"table":(["区分"],["値"]),
  "sankey":(["遷移元","遷移先"],["流量"]),
+ "sankey_vertical":(["遷移元","遷移先"],["流量"]),
+ "flow_sankey":(["遷移元","遷移先"],["流量"]),
+ "flow_sankey_vertical":(["遷移元","遷移先"],["流量"]),
 }
 contracts={}
 for index,(chart,(dimensions,measures)) in enumerate(charts.items(),1):
@@ -1370,7 +1374,7 @@ print(json.dumps({"contracts":contracts,"max_pages":m.planned_analysis_section({
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.contracts).length, 20);
+  assert.equal(Object.keys(output.contracts).length, 24);
   assert.deepEqual(output.contracts.grouped_bar.columns, ['category', 'metric_1', 'metric_2']);
   assert.deepEqual(output.contracts.bubble.columns, [
     'category',
@@ -1404,9 +1408,13 @@ cases={
  "scatter":([("A",1,2)], ["項目","X","Y"]),
  "bubble":([("A",1,2,3)], ["項目","X","Y","大きさ"]),
  "funnel":([("1. 閲覧",10)], ["段階","値"]),
+ "funnel_horizontal":([("1. 閲覧",10)], ["段階","値"]),
  "heatmap":([("月","午前",10)], ["縦","横","値"]),
  "table":([("A",1)], ["区分","値"]),
  "sankey":([("1. /","2. /shop",10),("2. /shop","3. /cart",5),("3. /cart","4. /thanks",2)], ["遷移元","遷移先","流量"]),
+ "sankey_vertical":([("1. /","2. /shop",10)], ["遷移元","遷移先","流量"]),
+ "flow_sankey":([("広告","商品",10)], ["遷移元","遷移先","流量"]),
+ "flow_sankey_vertical":([("広告","商品",10)], ["遷移元","遷移先","流量"]),
 }
 rendered={}
 for chart,(rows,columns) in cases.items():
@@ -1417,7 +1425,7 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(Object.keys(output.rendered).length, 20);
+  assert.equal(Object.keys(output.rendered).length, 24);
   assert.equal(output.rendered.scorecard, 'scalar');
   assert.equal(output.rendered.grouped_bar, 'grouped_bar');
   assert.equal(output.rendered.sankey, 'sankey');
@@ -1643,6 +1651,69 @@ print(json.dumps(accepted,ensure_ascii=False))
       rendered: 'bubble',
     },
   });
+});
+
+test('funnel and Sankey orientation variants keep distinct guarded render contracts', () => {
+  const result = python(`
+cases={
+ "funnel_horizontal":([("1. 閲覧",10)],["stage","metric_value"]),
+ "sankey_vertical":([("1. /","2. /shop",10)],["source","target","metric_value"]),
+ "flow_sankey":([("広告","商品",10),("商品","購入",3)],["source","target","metric_value"]),
+ "flow_sankey_vertical":([("広告","商品",10),("商品","購入",3)],["source","target","metric_value"]),
+}
+accepted={}
+for chart,(rows,columns) in cases.items():
+ section={"title":chart,"planned_visualization":chart}
+ accepted[chart]=m.dashboard_visualization(section,rows,columns)
+print(json.dumps(accepted,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    funnel_horizontal: 'funnel_horizontal',
+    sankey_vertical: 'sankey_vertical',
+    flow_sankey: 'flow_sankey',
+    flow_sankey_vertical: 'flow_sankey_vertical',
+  });
+
+  const source = readFileSync(
+    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
+    'utf8',
+  );
+  const options = vm.runInNewContext(
+    `${source};JSON.stringify({
+      funnel: standardChartOption({visualization:'funnel_horizontal',columns:['stage','value'],rows:[['1. view',10]]}),
+      staged: standardChartOption({visualization:'sankey_vertical',columns:['source','target','value'],rows:[['1. /','2. /shop',10]]}),
+      flow: standardChartOption({visualization:'flow_sankey',columns:['source','target','value'],rows:[['広告','商品',10]]}),
+    })`,
+    {
+      chartValue: (value: unknown) => String(value ?? '—'),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(options) as Record<string, any>;
+  assert.equal(parsed.funnel.series[0].orient, 'horizontal');
+  assert.equal(parsed.staged.series[0].orient, 'vertical');
+  assert.equal(parsed.flow.series[0].orient, 'horizontal');
+  assert.equal(parsed.flow.series[0].data[0].name, '広告');
+});
+
+test('general Sankey rejects cycles, duplicate edges, and self links', () => {
+  const result = python(`
+cases=[
+ [("A","B",1),("B","A",1)],
+ [("A","B",1),("A","B",2)],
+ [("A","A",1)],
+]
+accepted=[]
+for rows in cases:
+ try:m.dashboard_visualization({"title":"flow","planned_visualization":"flow_sankey"},rows,["source","target","metric_value"])
+ except m.LiveDemoError:accepted.append(False)
+ else:accepted.append(True)
+print(json.dumps(accepted))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [false, false, false]);
 });
 
 test('live dashboard loads the standard chart library and renderer', () => {

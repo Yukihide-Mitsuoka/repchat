@@ -45,7 +45,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる20種類
+### 2.1 現在AI plannerが選べる24種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -56,10 +56,11 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `histogram` | Histogram | 対応 | numericの階級下限と度数を返す |
 | `calendar_heatmap` | Calendar Heatmap | 対応 | 日付と1指標を最大5年まで返し、年ごとにcalendarを分ける |
 | `scatter` / `bubble` | Scatter / Bubble Chart | 対応 | category、任意のseries、x、y、任意のsizeを返す |
-| `funnel` | Funnel Chart | 部分対応 | 順序付きstageと非負値を返す |
+| `funnel` / `funnel_horizontal` | Funnel Chart | 対応 | 順序付きstageと非負値を返し、縦向き／横向きを選ぶ |
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
 | `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。Evidence固有の高度な表機能は対象外 |
-| `sankey` | Sankey Diagram | 部分対応 | 上位10経路、最大4ページの段階付きサイト回遊に限定する |
+| `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
+| `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
 
 plannerの許可値は
@@ -80,8 +81,8 @@ plannerの許可値は
 | Scatter Plot | single／multiple series | 対応 | 1区分軸のsingle seriesと、2区分軸のmultiple seriesへ対応 |
 | Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
-| Funnel Chart | default、side aligned | 部分対応 | 任意の順序付きstageに対応。orientationは未対応 |
-| Sankey Diagram | horizontal、vertical | 部分対応 | 上位10経路・最大4ページの段階付き回遊に対応。verticalと一般flowは未対応 |
+| Funnel Chart | default、side aligned | 対応 | 任意の順序付きstageを縦向き／横向きで描画する |
+| Sankey Diagram | horizontal、vertical | 対応 | 段階付き回遊と一般的な非循環flowを縦向き／横向きで描画する |
 
 標準chart componentはこの11種類に、§4のAnnotations、Sparkline、Mixed-Type Chartsと、§6のCustom
 EChartsを加えた15種類である。
@@ -130,7 +131,7 @@ accessibility欠落につながるため、初期方針にはしない。RepChat
 
 ## 7. 現在の要約
 
-RepChatのlocal demoでは、20個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
+RepChatのlocal demoでは、24個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
 扱える。Evidenceのvariantをすべて再現したことは意味せず、map、Box Plot、Sparkline、Mixed-Type Charts、
 任意Custom EChartsは未対応である。
 
