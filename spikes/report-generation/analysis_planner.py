@@ -27,14 +27,21 @@ SUPPORTED_DASHBOARD_CHARTS = (
     "scatter",
     "bubble",
     "funnel",
+    "funnel_horizontal",
     "heatmap",
     "table",
     "sankey",
+    "sankey_vertical",
+    "flow_sankey",
+    "flow_sankey_vertical",
 )
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
+SANKEY_CHARTS = STAGED_SANKEY_CHARTS | {"flow_sankey", "flow_sankey_vertical"}
 MAX_SANKEY_PAGES = 4
 MAX_SANKEY_PATHS = 10
 MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_PAGES - 1)
+MAX_FLOW_SANKEY_EDGES = 50
 MAX_CALENDAR_YEARS = 5
 MAX_CALENDAR_ROWS = MAX_CALENDAR_YEARS * 366
 # Initial dashboard output is exactly INITIAL_PANEL_COUNT panels; revisions are
@@ -61,9 +68,13 @@ DASHBOARD_ROW_LIMITS = {
     "scatter": 100,
     "bubble": 100,
     "funnel": 12,
+    "funnel_horizontal": 12,
     "heatmap": 100,
     "table": 100,
     "sankey": MAX_SANKEY_EDGE_ROWS,
+    "sankey_vertical": MAX_SANKEY_EDGE_ROWS,
+    "flow_sankey": MAX_FLOW_SANKEY_EDGES,
+    "flow_sankey_vertical": MAX_FLOW_SANKEY_EDGES,
 }
 CHART_SHAPE_CONTRACTS = {
     "scorecard": (0, 0, 1, 1),
@@ -83,9 +94,13 @@ CHART_SHAPE_CONTRACTS = {
     "scatter": (1, 2, 2, 2),
     "bubble": (1, 2, 3, 3),
     "funnel": (1, 1, 1, 1),
+    "funnel_horizontal": (1, 1, 1, 1),
     "heatmap": (2, 2, 1, 1),
     "table": (0, 4, 1, 4),
     "sankey": (2, 2, 1, 1),
+    "sankey_vertical": (2, 2, 1, 1),
+    "flow_sankey": (2, 2, 1, 1),
+    "flow_sankey_vertical": (2, 2, 1, 1),
 }
 DEFAULT_INITIAL_PANEL_COUNT = 6
 DEFAULT_MAX_PANEL_COUNT = 20
@@ -148,11 +163,12 @@ def _visualization_response_schema(
     charts: tuple[str, ...], *, seed: str = ""
 ) -> dict:
     """Constrain chart and result shape together without prompt heuristics."""
-    variants = []
+    grouped: dict[tuple[int, int, int, int], list[str]] = {}
     for chart in _neutral_chart_order(charts, seed):
-        min_dimensions, max_dimensions, min_measures, max_measures = (
-            CHART_SHAPE_CONTRACTS[chart]
-        )
+        grouped.setdefault(CHART_SHAPE_CONTRACTS[chart], []).append(chart)
+    variants = []
+    for contract, compatible_charts in grouped.items():
+        min_dimensions, max_dimensions, min_measures, max_measures = contract
         variants.append(
             {
                 "type": "object",
@@ -160,7 +176,7 @@ def _visualization_response_schema(
                     "chart": {
                         "type": "string",
                         "format": "enum",
-                        "enum": [chart],
+                        "enum": compatible_charts,
                     },
                     "dimensions": {
                         "type": "array",
@@ -623,7 +639,7 @@ def normalize_dashboard_plan(
         panel["dimensions"] = _panel_terms(
             item.get("dimensions"),
             "区分軸",
-            allow_role_duplicates=panel["chart"] == "sankey",
+            allow_role_duplicates=panel["chart"] in SANKEY_CHARTS,
         )
         panel["measures"] = _panel_terms(item.get("measures"), "指標", minimum=1)
         undefined_metrics = [
@@ -661,7 +677,7 @@ def normalize_dashboard_plan(
             _validate_chart_shape(panel["chart"], dimensions, measures)
         except PlannerError as error:
             suggestion = panel["execution_prompt"].rstrip("。")
-            if panel["chart"] == "sankey" and measures:
+            if panel["chart"] in STAGED_SANKEY_CHARTS and measures:
                 if not re.search(r"(?:上位|トップ)\s*\d+", suggestion):
                     suggestion += "。経路は上位10件に絞って"
                 suggestion += (
@@ -837,11 +853,16 @@ def _bounded_consultation_text(value, label: str, limit: int = 500) -> str:
     return text
 
 
-def _consultation_terms(value, label: str, *, minimum: int = 0) -> list[str]:
+def _consultation_terms(
+    value, label: str, *, minimum: int = 0, allow_role_duplicates: bool = False
+) -> list[str]:
     if not isinstance(value, list) or not minimum <= len(value) <= 4:
         raise PlannerError(f"分析相談の{label}は{minimum}〜4件にしてください。")
     terms = [_bounded_consultation_text(item, label, 80) for item in value]
-    if len({"".join(item.lower().split()) for item in terms}) != len(terms):
+    if (
+        not allow_role_duplicates
+        and len({"".join(item.lower().split()) for item in terms}) != len(terms)
+    ):
         raise PlannerError(f"分析相談の{label}に重複があります。")
     return terms
 
@@ -859,13 +880,17 @@ def confirm_analysis_specification(raw: dict) -> dict:
         )
         for field in CONSULTATION_TEXT_FIELDS
     }
-    recommendation["dimensions"] = _consultation_terms(raw.get("dimensions"), "区分軸")
-    recommendation["measures"] = _consultation_terms(
-        raw.get("measures"), "指標", minimum=1
-    )
     chart = recommendation["chart"]
     if chart not in CONSULTATION_CHARTS:
         raise PlannerError("分析相談の可視化種別が未対応です。")
+    recommendation["dimensions"] = _consultation_terms(
+        raw.get("dimensions"),
+        "区分軸",
+        allow_role_duplicates=chart in SANKEY_CHARTS,
+    )
+    recommendation["measures"] = _consultation_terms(
+        raw.get("measures"), "指標", minimum=1
+    )
     dimensions = recommendation["dimensions"]
     measures = recommendation["measures"]
     _validate_chart_shape(chart, dimensions, measures)

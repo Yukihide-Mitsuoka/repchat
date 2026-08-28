@@ -23,14 +23,14 @@ test('renderer capabilities are represented by one chart and shape contract', ()
 schema=p._visualization_response_schema(p.SUPPORTED_DASHBOARD_CHARTS,seed="依頼A")
 variants=schema["anyOf"]
 print(json.dumps({
- "charts":[item["properties"]["chart"]["enum"][0] for item in variants],
+ "charts":[chart for item in variants for chart in item["properties"]["chart"]["enum"]],
  "contracts":{
-  item["properties"]["chart"]["enum"][0]:[
+  chart:[
    item["properties"]["dimensions"]["minItems"],
    item["properties"]["dimensions"]["maxItems"],
    item["properties"]["measures"]["minItems"],
    item["properties"]["measures"]["maxItems"],
-  ] for item in variants
+  ] for item in variants for chart in item["properties"]["chart"]["enum"]
  },
  "row_limits":p.DASHBOARD_ROW_LIMITS,
 },ensure_ascii=False))
@@ -52,8 +52,12 @@ print(json.dumps({
   assert.deepEqual(output.contracts.calendar_heatmap, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.scatter, [1, 2, 2, 2]);
   assert.deepEqual(output.contracts.bubble, [1, 2, 3, 3]);
+  assert.deepEqual(output.contracts.funnel_horizontal, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.sankey_vertical, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.flow_sankey, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.flow_sankey_vertical, [2, 2, 1, 1]);
 });
 
 test('chart order is deterministic per request and unrelated to declaration order', () => {

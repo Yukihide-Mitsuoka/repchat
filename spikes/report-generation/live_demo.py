@@ -851,9 +851,13 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
         "scatter": "scatter",
         "bubble": "bubble",
         "funnel": "funnel",
+        "funnel_horizontal": "funnel_horizontal",
         "heatmap": "heatmap",
         "table": "table",
         "sankey": "sankey",
+        "sankey_vertical": "sankey_vertical",
+        "flow_sankey": "flow_sankey",
+        "flow_sankey_vertical": "flow_sankey_vertical",
     }
     chart = panel.get("chart")
     if chart not in component_for_chart:
@@ -927,7 +931,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             *(["series"] if len(dimensions) == 2 else []),
             *value_columns,
         ]
-    elif chart == "funnel":
+    elif chart in {"funnel", "funnel_horizontal"}:
         section["shape"] = {"rows": "段階ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["stage", "metric_value"]
         section["generation_requirements"] = [
@@ -948,7 +952,7 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
             *[f"metric_{index}" for index in range(1, len(measures) + 1)],
         ]
-    elif chart == "sankey":
+    elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
             display_dimensions = [f"遷移元{dimensions[0]}", f"遷移先{dimensions[1]}"]
@@ -969,6 +973,17 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             "同一sourceとtargetの組はSUMして1行に集約する",
             "URLをnode名に使う場合はscheme、host、query、fragmentを除いたpage pathを表示名にする",
         ]
+    elif chart in {"flow_sankey", "flow_sankey_vertical"}:
+        section["shape"] = {
+            "rows": "有向flowの接続ごとに1行",
+            "columns": dimensions + measures,
+        }
+        section["source_columns"] = ["source", "target", "metric_value"]
+        section["generation_requirements"] = [
+            "sourceとtargetは空でない項目名にし、同じ項目を指定しない",
+            "同一sourceとtargetの組はSUMして1行に集約する",
+            "循環するflowを返さない",
+        ]
     if chart not in {
         "line", "multi_line", "area", "stacked_area", "percent_stacked_area", "table"
     }:
@@ -988,9 +1003,9 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
             ordering = "event_dateの昇順"
         elif chart == "histogram":
             ordering = "bin_startの昇順"
-        elif chart == "sankey":
+        elif chart in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
             ordering = "metric_valueの降順"
-        elif chart == "funnel":
+        elif chart in {"funnel", "funnel_horizontal"}:
             ordering = "stageの昇順"
         else:
             ordering = f"{section['source_columns'][-1]}の降順"
@@ -1220,11 +1235,11 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
             and (dimension_count == 1 or types[1] == "STRING")
             and all(field_type in numeric for field_type in types[dimension_count:])
         )
-    elif planned == "funnel":
+    elif planned in {"funnel", "funnel_horizontal"}:
         valid = valid and types[1] in numeric
     elif planned == "heatmap":
         valid = valid and types[2] in numeric
-    elif planned == "sankey":
+    elif planned in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
         valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
@@ -1279,6 +1294,45 @@ def valid_sankey_result(rows: list[tuple]) -> bool:
         nodes_by_stage.setdefault(stage(source), set()).add(source)
         nodes_by_stage.setdefault(stage(target), set()).add(target)
     return all(len(nodes) <= MAX_SANKEY_PATHS for nodes in nodes_by_stage.values())
+
+
+def valid_flow_sankey_result(rows: list[tuple]) -> bool:
+    """Validate a bounded acyclic directed flow without page-navigation semantics."""
+    numeric = (int, float, Decimal)
+    if not rows or len(rows) > planner.MAX_FLOW_SANKEY_EDGES:
+        return False
+    if not all(
+        len(row) == 3
+        and isinstance(row[0], str)
+        and row[0].strip()
+        and isinstance(row[1], str)
+        and row[1].strip()
+        and row[0] != row[1]
+        and isinstance(row[2], numeric)
+        and math.isfinite(float(row[2]))
+        and row[2] >= 0
+        for row in rows
+    ):
+        return False
+    edges = {(row[0], row[1]) for row in rows}
+    if len(edges) != len(rows):
+        return False
+    nodes = {value for edge in edges for value in edge}
+    indegree = {node: 0 for node in nodes}
+    outgoing = {node: [] for node in nodes}
+    for source, target in edges:
+        outgoing[source].append(target)
+        indegree[target] += 1
+    pending = [node for node, count in indegree.items() if count == 0]
+    visited = 0
+    while pending:
+        source = pending.pop()
+        visited += 1
+        for target in outgoing[source]:
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                pending.append(target)
+    return visited == len(nodes)
 
 
 def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]) -> str:
@@ -1350,14 +1404,16 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and row[-1] >= 0
             for row in rows
         )
-    elif planned == "funnel":
+    elif planned in {"funnel", "funnel_horizontal"}:
         valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
     elif planned == "heatmap":
         valid = valid and width == 3 and all(finite(row[2]) for row in rows)
     elif planned == "table":
         valid = valid and width >= 1
-    elif planned == "sankey":
+    elif planned in {"sankey", "sankey_vertical"}:
         valid = valid and (not rows or valid_sankey_result(rows))
+    elif planned in {"flow_sankey", "flow_sankey_vertical"}:
+        valid = valid and (not rows or valid_flow_sankey_result(rows))
     else:
         valid = False
     if not valid:

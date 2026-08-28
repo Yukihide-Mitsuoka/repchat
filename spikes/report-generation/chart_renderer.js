@@ -347,13 +347,14 @@ function standardScatterOption(result, bubble) {
   return option;
 }
 
-function standardFunnelOption(result) {
+function standardFunnelOption(result, horizontal = false) {
   return {
     ...standardChartBase({ tooltip: true }),
     grid: undefined,
     tooltip: { trigger: 'item', formatter: (params) => `${params.name}: ${standardChartFormat(params.value, result.columns[1])}` },
     series: [{
       type: 'funnel',
+      orient: horizontal ? 'horizontal' : 'vertical',
       left: '10%',
       top: 30,
       bottom: 20,
@@ -412,8 +413,8 @@ function standardHeatmapOption(result) {
   };
 }
 
-function standardSankeyOption(result) {
-  const canonical = (value) => String(value).replace(/^\d+\.\s*(入口:\s*)?/, '').replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0] || '/';
+function standardSankeyOption(result, vertical = false, navigation = true) {
+  const canonical = (value) => navigation ? String(value).replace(/^\d+\.\s*(入口:\s*)?/, '').replace(/^https?:\/\/[^/]+/i, '').split(/[?#]/)[0] || '/' : String(value);
   const nodeNames = [...new Set(result.rows.flatMap((row) => [String(row[0]), String(row[1])]))];
   const nodes = nodeNames.map((name, index) => ({ name, itemStyle: { color: standardChartPalette[index % standardChartPalette.length] }, label: { formatter: () => canonical(name), overflow: 'truncate' } }));
   const links = result.rows.map((row) => ({ source: String(row[0]), target: String(row[1]), value: standardChartNumber(row[2]) ?? 0 }));
@@ -421,7 +422,7 @@ function standardSankeyOption(result) {
     ...standardChartBase({ tooltip: true }),
     grid: undefined,
     tooltip: { trigger: 'item', formatter: (params) => params.dataType === 'edge' ? `${canonical(params.data.source)} → ${canonical(params.data.target)}<br>${standardChartFormat(params.data.value, result.columns[2])}` : `${canonical(params.name)}` },
-    series: [{ type: 'sankey', left: 10, right: 150, top: 24, bottom: 24, nodeWidth: 14, nodeGap: 12, draggable: false, layoutIterations: 32, nodeAlign: 'justify', emphasis: { focus: 'adjacency' }, data: nodes, links, lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.55 }, label: { color: '#344054', fontSize: 11 } }],
+    series: [{ type: 'sankey', orient: vertical ? 'vertical' : 'horizontal', left: 24, right: vertical ? 24 : 150, top: 24, bottom: vertical ? 80 : 24, nodeWidth: 14, nodeGap: 12, draggable: false, layoutIterations: 32, nodeAlign: 'justify', emphasis: { focus: 'adjacency' }, data: nodes, links, lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.55 }, label: { color: '#344054', fontSize: 11, position: vertical ? 'bottom' : 'right' } }],
   };
 }
 
@@ -443,8 +444,12 @@ function standardChartOption(result) {
     case 'scatter': return standardScatterOption(result, false);
     case 'bubble': return standardScatterOption(result, true);
     case 'funnel': return standardFunnelOption(result);
+    case 'funnel_horizontal': return standardFunnelOption(result, true);
     case 'heatmap': return standardHeatmapOption(result);
     case 'sankey': return standardSankeyOption(result);
+    case 'sankey_vertical': return standardSankeyOption(result, true);
+    case 'flow_sankey': return standardSankeyOption(result, false, false);
+    case 'flow_sankey_vertical': return standardSankeyOption(result, true, false);
     default: throw new Error(`未対応のECharts可視化種別です: ${result.visualization}`);
   }
 }
@@ -457,7 +462,8 @@ function standardChartHeight(result) {
     if (standardChartCategoryOrientation(categories) === 'vertical') return Math.max(340, 300 + axisSpace);
     return Math.max(300, result.rows.length * (result.visualization === 'grouped_bar' ? 48 : 38) + 120 + axisSpace);
   }
-  if (result.visualization === 'sankey') return 440;
+  if (['sankey', 'flow_sankey'].includes(result.visualization)) return 440;
+  if (['sankey_vertical', 'flow_sankey_vertical'].includes(result.visualization)) return 560;
   if (result.visualization === 'calendar_heatmap') {
     const years = new Set(result.rows.map((row) => String(row[0]).slice(0, 4))).size;
     return Math.max(280, 90 + years * 150);
