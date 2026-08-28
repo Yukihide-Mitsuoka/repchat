@@ -132,7 +132,7 @@ Evidenceの公式ページには、Custom ECharts例として次が掲載され�
 | Treemap | 対応 | 1〜4階層の空でない項目名と非負値を検査して描画する |
 | Pie Chart | 対応 | Donutと独立した全円表示契約を持つ |
 | Donut Chart | 部分対応 | name、非負value、最大12区分、割合tooltip、中心合計を描画する |
-| Custom Funnel | 部分対応 | 固定購入funnelだけで、ECharts configは生成しない |
+| Custom Funnel | 対応 | 順序接頭辞を持つ任意の段階と非負値を検査し、縦向き／横向きを描画する |
 | Advanced／任意ECharts | 未対応 | 任意JavaScript configは安全性、再現性、accessibilityを保証できない |
 
 Pie ChartとDonut ChartはEvidenceの独立した標準componentではなく、Custom EChartsの公式例である。
@@ -145,12 +145,13 @@ accessibility欠落につながるため、初期方針にはしない。RepChat
 
 ## 7. 現在の要約
 
-RepChatのlocal demoでは、24個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
-扱える。Evidenceのvariantをすべて再現したことは意味せず、map、Box Plot、Sparkline、Mixed-Type Charts、
-任意Custom EChartsは未対応である。
+RepChatのlocal demoでは、42個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
+扱える。2026-08-28に同じECharts assetとrendererへ42種類の代表fixtureを渡してブラウザ確認し、描画エラーと
+横方向overflowが0件であることを確認した。縦向きSankey 2種類はカード上限と同じ440pxへ揃えた。
+任意Custom EChartsだけは、AI生成JavaScriptを実行する安全性・再現性・accessibilityを保証できないため、
+意図的に許可していない。
 
-したがって、AIが利用者の要望を考察しても、現時点のplannerへEvidence全種類を選ばせてはならない。
-先に各chartの結果形状とrendererを実装し、end-to-end契約を試験したものだけをAIの許可enumへ加える。
+AIには、各chartの結果形状とrendererを実装しend-to-end契約を試験した42種類だけを許可enumとして渡す。
 許可enumと指標定義は依頼ごとに中立な順序へ変換し、列挙順を提案順位として使わせない。
 初回提案数と上限は管理者ポリシーとして設定でき、デモ既定値はそれぞれ6件と20件である。例えば上限を15件へ
 変更できる。この件数境界は費用と画面密度を制御するものであり、AIが何を分析するかは固定しない。

@@ -731,7 +731,7 @@ function standardChartHeight(result) {
     return Math.max(300, result.rows.length * (result.visualization === 'grouped_bar' ? 48 : 38) + 120 + axisSpace);
   }
   if (['sankey', 'flow_sankey'].includes(result.visualization)) return 440;
-  if (['sankey_vertical', 'flow_sankey_vertical'].includes(result.visualization)) return 560;
+  if (['sankey_vertical', 'flow_sankey_vertical'].includes(result.visualization)) return 440;
   if (result.visualization === 'calendar_heatmap') {
     const years = new Set(result.rows.map((row) => String(row[0]).slice(0, 4))).size;
     return Math.max(280, 90 + years * 150);
