@@ -21,13 +21,16 @@ unchanged behavior**.
 ## Process
 1. Verify green baseline; assess coverage of the target code specifically.
 2. (If needed) add characterization tests — separate PR.
-3. Refactor in small mechanical steps: rename → move → extract → inline. Run
+3. For decomposition, name each responsibility, boundary, dependency direction, and
+   independent test surface first (MNT-001). Reject extractions that only lower line
+   count, scatter one responsibility, or add pass-through wrappers (MNT-002/GR-025).
+4. Refactor in small mechanical steps: rename → move → extract → inline. Run
    `make test-unit` after each step; commit each step separately.
-4. Keep public contracts frozen: MODULE.md APIs, wire formats, CLI flags, persisted
+5. Keep public contracts frozen: MODULE.md APIs, wire formats, CLI flags, persisted
    data. If a contract must change, that is not a refactor — use architecture.skill.md.
-5. Delete what the refactor obsoleted (old helpers, dead branches, stale comments).
-6. Run `make test` + `make lint`; confirm coverage did not drop (TST-003).
-7. PR titled `refactor(scope): ...`, description states "no behavior change" and the
+6. Delete what the refactor obsoleted (old helpers, dead branches, stale comments).
+7. Run `make test` + `make lint`; confirm coverage did not drop (TST-003).
+8. PR titled `refactor(scope): ...`, description states "no behavior change" and the
    structural goal achieved.
 
 ## Decision criteria
@@ -39,6 +42,8 @@ unchanged behavior**.
   intermediate state is green and shippable.
 - **Worth it?** Skip refactors that only satisfy taste (COD-050/COD-051): each PR must
   name a concrete maintenance cost it removes.
+- **Large but cohesive?** MNT-002 is a review signal, not an automatic split. Record why
+  cohesion is safer; beyond GR-025, obtain the documented human-approved exception.
 
 ## Outputs
 - PR(s) with unchanged behavior, green unchanged tests, structural goal met.
@@ -48,5 +53,6 @@ unchanged behavior**.
 - [ ] Baseline was green; every intermediate commit is green
 - [ ] No public contract changed; no behavior change (assertions untouched)
 - [ ] Stated structural goal achieved and named in the PR
+- [ ] New boundaries own behavior; no cosmetic split or pass-through layer (MNT-003)
 - [ ] Dead code removed; no new TODOs without issues
 - [ ] Coverage did not decrease; lint clean

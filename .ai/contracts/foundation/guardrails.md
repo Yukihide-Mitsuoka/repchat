@@ -89,6 +89,12 @@ See COD-040.
 If a change alters behavior described in README, `docs/`, or `.ai/`, the same PR MUST
 update those documents (doc-update matrix: `documentation.md` DOC-030).
 
+### GR-025: Never continue unreviewed complexity growth
+MUST NOT add handwritten behavior after a source component exceeds ~800 logical lines
+without MNT-002 decomposition or a human-approved exception documented in the linked
+issue or ADR and PR. Cosmetic splits do not comply; MNT-002 exemptions apply.
+- **Instead**: split at a cohesive test boundary or document why cohesion is safer.
+
 ## Security posture
 
 ### GR-030: Never lower the security level

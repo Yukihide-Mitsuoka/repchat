@@ -41,9 +41,10 @@ if grep -rlnE '^## (id|name): .+ (title|description): ' .ai .skills docs CLAUDE.
   err "^ file(s) above contain collapsed YAML frontmatter — run mdformat with mdformat-frontmatter (see LOG-0007)"
 fi
 
-# 3. Foundation-level regression tests (ADR-0003 and ADR-0008).
-python3 scripts/foundation_test_runner.py --suite fast || \
-  err "Fast foundation regression tests failed"
+# 3. Foundation-level regression tests (ADR-0003 and ADR-0008). The default runs all
+# tests. A descendant may explicitly select its protected local fast/slow runner without
+# changing this inherited file; the selector validates the bounded contract.
+bash scripts/run-foundation-tests.sh || err "Foundation regression tests failed"
 python3 scripts/github_governance.py validate --root . >/dev/null || err "GitHub governance policy is invalid"
 
 # 4. ADR-0007: validate the actual child contract, not only unit-test fixtures. The

@@ -21,16 +21,19 @@ meeting the Definition of Done (WF-090).
 ## Process
 1. Restate the goal and acceptance criteria; list assumptions.
 2. Classify impact (ARC-020). Architectural → switch to architecture.skill.md first.
-3. Plan the seam: which layer does each piece belong to? New use case in
+3. Define the design checkpoint (MNT-001): responsibility, inputs, outputs, invariants,
+   failure modes, owning layer, dependencies, smallest viable design, and expected size
+   or decomposition. If MNT-002 or GR-025 applies, resolve it before adding behavior.
+4. Plan the seam: which layer does each piece belong to? New use case in
    `application/`, domain logic in `domain/`, I/O in `infrastructure/` adapters.
-4. Create branch `feat/<issue>-<slug>`.
-5. Implement in thin vertical slices: domain → application → interface, committing
+5. Create branch `feat/<issue>-<slug>`.
+6. Implement in thin vertical slices: domain → application → interface, committing
    per slice with tests in the same commit.
-6. Cover error paths and boundaries (TST-002), not just the happy path.
-7. Update docs per the doc-update matrix (DOC-030): MODULE.md, `docs/api/`,
+7. Cover error paths and boundaries (TST-002), not just the happy path.
+8. Update docs per the doc-update matrix (DOC-030): MODULE.md, `docs/api/`,
    `.env.example`, glossary.
-8. Run `make format && make lint && make test`.
-9. Self-review with review.skill.md; then open the PR with the template fully filled.
+9. Run `make format && make lint && make test`.
+10. Self-review with review.skill.md; then open the PR with the template fully filled.
 
 ## Decision criteria
 - **Where does logic go?** If it needs I/O → infrastructure. If it orchestrates →
@@ -39,6 +42,9 @@ meeting the Definition of Done (WF-090).
   roll back. Flag default: off.
 - **Split the PR?** If diff will exceed GR-020 limits, split: (1) preparation/refactor
   PR, (2) feature PR. Never mix the two (COD-021).
+- **Split the component?** Use MNT-002. File count is not the goal: retain a
+  cohesive component with a stated reason, or extract a real responsibility and stable
+  test boundary. GR-025 is a stop condition, not permission for cosmetic splitting.
 - **New dependency?** Only via COD-040 protocol; prefer stdlib/existing deps.
 
 ## Outputs
@@ -50,6 +56,7 @@ meeting the Definition of Done (WF-090).
 - [ ] Acceptance criteria demonstrably met (state how each is verified)
 - [ ] All new public behavior has tests; error paths covered
 - [ ] Dependency direction respected (ARC-002); no cross-module internal imports
+- [ ] Complexity checkpoint resolved without cosmetic splitting (MNT-001/MNT-002/GR-025)
 - [ ] Doc-update matrix satisfied (DOC-030)
 - [ ] Diff within size limits (GR-020); no unrelated changes
 - [ ] `make format`, `make lint`, `make test` all green — output reported verbatim

@@ -61,4 +61,4 @@ existing solution, so design and acceptance testing can proceed without re-askin
 - [ ] Ideal requirements derived before reconciliation with the implementation
 - [ ] Every requirement has an ID, priority, trace, and objective verification method
 - [ ] Every applicable template section completed; non-scope and open questions explicit
-- [ ] DOC-002 prose and project language/placement rules satisfied
+- [ ] DOC-002/DOC-003 prose, structure, and project language/placement rules satisfied

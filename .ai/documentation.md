@@ -14,10 +14,8 @@ and **optimized for AI readers** — explicit, structured, unambiguous.
 
 - One fact in one place; link (`[text](path)`) instead of repeating. Duplication causes
   contradiction drift.
-- Match form to content: use tables and nested lists actively where the content is
-  genuinely structured (comparisons, enumerations, mappings) and a table fits, and keep
-  prose for reasoning; the caveat is overuse, not use — do not tabulate where a table does
-  not fit (DOC-002). Absolute dates ("2026-07-02"), never "recently".
+- Match form to content using DOC-003. Use absolute dates ("2026-07-02"), never
+  "recently".
 - Every doc starts with YAML frontmatter (`id`, `title`, plus `status`/`updated` where
   meaningful) and states its purpose in the first paragraph.
 - Concrete examples for every rule or API. Fake credentials only (GR-002).
@@ -55,16 +53,49 @@ build on this rule.
     at bounded concurrency; it does not reduce total work and can fill to capacity."
 - **No decoration or softening.** Name the thing directly. No filler intensifiers
   ("powerful", "seamless") and no softening ("just", "simply", "a bit").
-- **Conclusion first.** State the result, then its support. Remove roundabout lead-ins.
-- **Structure carries meaning.** Semantic hierarchy → heading depth and nested-list
-  indentation (as code uses indentation). Structured data (comparisons, attribute sets,
-  mappings) → tables: use one actively wherever the content is genuinely structured and a
-  table fits. The caveat is overuse, not use — do not tabulate where a table does not fit
-  (a one-row table, or a table that restates a single sentence, is prose). Match the form
-  to the content.
+- **Conclusion first.** State the requested result or action before supporting detail
+  when it is known. Do not add a generic narrative introduction.
 - **Define once, reference after.** Each term, assumption, and constraint is defined a
   single time, in a dedicated section near the top, then referenced by name. Restating a
   definition is a defect (this is DOC-001 applied to prose).
+
+## DOC-003: Reader-centered logical documentation
+
+Apply this rule when authoring or substantially revising a document. A clear document
+lets its intended reader identify the purpose, answer or required action, basis, and
+next step with low ambiguity, then update the document from authoritative sources.
+
+- **Start from the reader's task.** State the audience, purpose, scope, and successful
+  outcome when they are not obvious. A reader without conversation history must be able
+  to use the document.
+- **Choose the opening by document type.** Analytical and decision documents lead with
+  the answer, then reasons and evidence. Procedures lead with the task outcome,
+  prerequisites, ordered actions, verification, and recovery. References lead with the
+  contract and then lookup details. Situation–Complication–Question–Answer is optional;
+  use it only when the context is needed to understand the answer.
+- **Make the logic testable.** A parent statement summarizes its children. Peer sections
+  use one classification criterion and level of abstraction, and follow a deliberate
+  order such as dependency, time, structure, or importance. Minimize overlap and cover
+  what the reader needs; label representative or incomplete sets instead of claiming
+  they are mutually exclusive and collectively exhaustive (MECE).
+- **Separate statement status.** Distinguish verified fact, inference, accepted decision,
+  proposal, assumption, and unresolved question. Give claims their measurement, source,
+  standard, or explicit reasoning (DOC-002).
+- **Write direct, parallel prose.** Prefer active voice when the actor matters, place an
+  applicability condition before its instruction, and keep terms and grammar parallel
+  within a list. Use one main claim per sentence and paragraph without separating an
+  applicable condition from its action.
+- **Match representation to the relationship.** Use numbered lists for ordered actions,
+  bullets for peer items, tables for repeated multi-attribute comparisons, and prose for
+  reasoning. Use a Mermaid diagram only when it makes a relationship materially easier
+  to understand; state its conclusion and essential conditions in equivalent text.
+- **Keep hierarchy shallow and semantic.** Headings answer recognizable questions and
+  do not skip levels. Group content only by a meaningful reader task or logical category;
+  do not create empty headings or deep indentation solely to shorten items.
+- **Do not optimize for mechanical limits.** Item counts, sentence or paragraph length,
+  MECE, emphasis, tables, and diagrams are review signals, not mandatory limits. Do not
+  split meaning to meet a character count, bold every important phrase, or replace clear
+  prose with formatting.
 
 ## DOC-010: Document inventory and ownership
 

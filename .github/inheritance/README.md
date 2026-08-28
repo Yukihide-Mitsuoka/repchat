@@ -104,6 +104,14 @@ targets outside the canonical Foundation repository. A target that does not appl
 use an explicit repository-owned `not applicable` implementation; silent template
 no-ops are not valid downstream checks.
 
+`scripts/template-check.sh` runs the complete Foundation regression suite by default.
+A descendant that owns a reviewed `scripts/foundation_test_runner.py` may set
+`FOUNDATION_TEST_SUITE=fast` or `slow` from its protected Makefile or workflow. The
+inherited selector accepts only `all`, `fast`, or `slow`, requires the local runner for
+a non-default value, and never evaluates a command supplied through the environment.
+The descendant must execute every excluded slow test through another required check; a
+faster `doctor` must not reduce test coverage.
+
 ## Propagate a parent change
 
 Apply each row in order. Do not prepare a grandchild from an unmerged intermediate

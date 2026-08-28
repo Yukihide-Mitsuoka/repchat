@@ -38,14 +38,19 @@ class FoundationTestRunnerTest(unittest.TestCase):
 
     def test_doctor_and_ci_keep_both_suites_wired(self):
         template_check = (ROOT / "scripts/template-check.sh").read_text(encoding="utf-8")
+        selector = (ROOT / "scripts/run-foundation-tests.sh").read_text(
+            encoding="utf-8"
+        )
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
-        self.assertIn("foundation_test_runner.py --suite fast", template_check)
-        self.assertNotIn(
-            "python3 -m unittest discover -s scripts/tests -p 'test_*.py'",
-            template_check,
+        self.assertIn("bash scripts/run-foundation-tests.sh", template_check)
+        self.assertIn(
+            "FOUNDATION_TEST_SUITE=fast bash scripts/template-check.sh",
+            makefile,
         )
+        self.assertIn('suite="${FOUNDATION_TEST_SUITE:-all}"', selector)
+        self.assertIn('runner="scripts/foundation_test_runner.py"', selector)
         self.assertIn("doctor-slow:", makefile)
         self.assertIn("foundation_test_runner.py --suite slow", makefile)
         self.assertIn("doctor-slow:", workflow)

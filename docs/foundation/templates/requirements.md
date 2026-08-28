@@ -9,11 +9,11 @@ updated: {{YYYY-MM-DD}}
   FOUNDATION TEMPLATE. Copy to docs/requirements.md (whole project) or
   docs/requirements/<initiative>.md (one initiative), then replace every {{...}} and
   delete the guidance comments. Procedure and rationale: .skills/requirements.skill.md.
-  Style is binding — DOC-002: objective, conclusion-first, structure carries meaning,
-  define once and reference. After template instantiation, translate every heading and
-  table label in the copied document and fill it in Japanese. Use another language only
-  when the repository owner or an external contract explicitly requires it. Keep this
-  foundation-owned template file in English (ADR-0005).
+  Style is binding — use DOC-002 for objective, literal prose and DOC-003 for
+  reader-centered logical structure. After template instantiation, translate every
+  heading and table label in the copied document and fill it in Japanese. Use another
+  language only when the repository owner or an external contract explicitly requires
+  it. Keep this foundation-owned template file in English (ADR-0005).
 -->
 
 # Requirements — {{PROJECT_OR_FEATURE_NAME}}

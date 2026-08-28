@@ -15,6 +15,8 @@ in `CLAUDE.md`, `.ai/`, and `.skills/`.
   checks. Fix hook failures; never bypass them.
 - `.skills/*.skill.md` is the vendor-neutral skill source. `.claude/skills/` contains
   only native wrappers. Follow the wrapper maintenance contract in
-  [`.skills/README.md`](../.skills/README.md).
+  [`.skills/README.md`](../.skills/README.md). ADR-0014 Foundation skills may instead
+  use a canonical body under `.ai/contracts/foundation/skills/`; their wrappers load
+  that inherited body directly.
 - Store only durable, non-derivable, non-secret facts in runtime memory.
 - Follow WF-040 for subagents and parallel work: one task, one branch, one agent.
