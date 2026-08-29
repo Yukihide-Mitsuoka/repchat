@@ -4,7 +4,6 @@
 from __future__ import annotations
 import argparse
 import calendar
-import hashlib
 import json
 import re
 import shutil
@@ -17,6 +16,7 @@ from pathlib import Path
 from typing import Callable
 import analysis_planner as planner
 import bitcoin_profile as bitcoin
+import dashboard_build
 import meeting_report as meeting
 import run_report as report
 import section_execution
@@ -42,42 +42,14 @@ METRIC_UNITS = {
 }
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
+
+
 def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
-    """Lay out AI-authored panels without encoding any analysis topic."""
-    if not panels:
-        raise LiveDemoError("ダッシュボード計画にパネルがありません。")
-    grouped: dict[int, list[dict]] = {}
-    for panel in panels:
-        row = panel.get("layout_row")
-        weight = panel.get("layout_weight")
-        if (
-            isinstance(row, bool)
-            or not isinstance(row, int)
-            or row < 1
-            or isinstance(weight, bool)
-            or not isinstance(weight, int)
-            or not 1 <= weight <= 100
-        ):
-            raise LiveDemoError("AIが考察したダッシュボード配置がありません。")
-        grouped.setdefault(row, []).append(panel)
-    row_numbers = list(grouped)
-    if row_numbers != sorted(row_numbers) or any(
-        len(group) > 4 for group in grouped.values()
-    ):
-        raise LiveDemoError("AIが考察したダッシュボード行が描画仕様と一致しません。")
-    rows: list[dict] = []
-    for row_number in row_numbers:
-        group = grouped[row_number]
-        total = sum(item["layout_weight"] for item in group)
-        shares = [round(item["layout_weight"] * 100 / total, 4) for item in group]
-        shares[-1] = round(100 - sum(shares[:-1]), 4)
-        rows.append(
-            {
-                "panel_ids": [item["id"] for item in group],
-                "shares": shares,
-            }
-        )
-    return rows
+    """Preserve the live demo's public layout validation error contract."""
+    try:
+        return dashboard_build.dashboard_layout_rows_for_plan(panels)
+    except dashboard_build.DashboardBuildError as error:
+        raise LiveDemoError(str(error)) from error
 
 
 def running_in_demo_venv() -> bool:
@@ -876,18 +848,17 @@ def analysis_section_for_specification(
 
 
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
-    """Turn AI-authored analysis specifications into guarded generation sections."""
-    if "ダッシュボード" not in question:
-        raise LiveDemoError("依頼に「ダッシュボード」を含めてください。")
-    period = period_for_question(question)
-    if plan.get("period") != period:
-        raise LiveDemoError("確定した分析仕様の対象期間が依頼文と一致しません。")
-    sections = [planned_analysis_section(panel) for panel in plan.get("panels", [])]
-    if not 1 <= len(sections) <= planner.MAX_PANEL_COUNT:
-        raise LiveDemoError(
-            f"確定した分析パネルは1〜{planner.MAX_PANEL_COUNT}件にしてください。"
+    """Preserve the live demo's public section construction error contract."""
+    try:
+        return dashboard_build.dashboard_sections_for_plan(
+            question,
+            plan,
+            period_for_question=period_for_question,
+            planned_analysis_section=planned_analysis_section,
+            max_panel_count=planner.MAX_PANEL_COUNT,
         )
-    return period, sections
+    except dashboard_build.DashboardBuildError as error:
+        raise LiveDemoError(str(error)) from error
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
@@ -1089,6 +1060,7 @@ class LiveQueryEngine:
         finally:
             self._finish_operation()
 
+
     def dashboard(
         self,
         question: str,
@@ -1100,115 +1072,27 @@ class LiveQueryEngine:
         cancel_event = self._begin_operation(request_id)
         try:
             self.latest_dashboard = None
-            if analysis_plan is None:
-                raise LiveDemoError(
-                    "AIが作成した分析仕様を確定してからbuildしてください。"
-                )
             try:
-                confirmed = planner.confirm_dashboard_plan(analysis_plan)
-            except planner.PlannerError as error:
+                dashboard_build.build_dashboard(
+                    question,
+                    analysis_plan,
+                    emit,
+                    metric_definitions=(
+                        self.metric_definitions if analysis_plan is not None else {}
+                    ),
+                    sections_for_plan=dashboard_sections_for_plan,
+                    layout_rows_for_plan=dashboard_layout_rows_for_plan,
+                    run_section=self._run_section,
+                    check_cancelled=lambda: self._check_cancelled(cancel_event),
+                    store_bundle=lambda bundle: setattr(
+                        self, "latest_dashboard", bundle
+                    ),
+                )
+            except dashboard_build.DashboardBuildError as error:
                 raise LiveDemoError(str(error)) from error
-            period, sections = dashboard_sections_for_plan(question, confirmed)
-            layout_rows = dashboard_layout_rows_for_plan(confirmed["panels"])
-            emit(
-                {
-                    "type": "dashboard_plan",
-                    "period": period["label"],
-                    "plan_revision": confirmed["revision"],
-                    "organization_context_revision": confirmed[
-                        "organization_context_revision"
-                    ],
-                    "panels": [
-                        {
-                            "id": section["id"],
-                            "title": section["title"],
-                            "purpose": section["purpose"],
-                            "chart": section.get("planned_visualization"),
-                        }
-                        for section in sections
-                    ],
-                    "layout_rows": layout_rows,
-                }
-            )
-            total_cost = 0.0
-            evidence_panels = []
-            for index, section in enumerate(sections, start=1):
-                self._check_cancelled(cancel_event)
-                context = {
-                    "operation": "dashboard",
-                    "panel_id": section["id"],
-                    "panel_index": index,
-                    "panel_count": len(sections),
-                    "title": section["title"],
-                    "purpose": section["purpose"],
-                }
-                evidence = {
-                    "id": section["id"],
-                    "title": section["title"],
-                    "purpose": section["purpose"],
-                    "period": period["label"],
-                }
-
-                def capture(event: dict) -> None:
-                    emit(event)
-                    if event.get("type") == "sql":
-                        evidence["sql_sha256"] = event["sql_sha256"]
-                    elif event.get("type") == "result":
-                        evidence.update(
-                            {
-                                "columns": event["columns"],
-                                "rows": event["rows"],
-                                "visualization": event["visualization"],
-                                "verification": event["verification"],
-                            }
-                        )
-
-                total_cost += self._run_section(section, period, capture, context)
-                if "rows" in evidence:
-                    if evidence.get("visualization") == "funnel":
-                        evidence["derived_metrics"] = meeting.funnel_conversion_metrics(
-                            evidence["columns"], evidence["rows"]
-                        )
-                    result_canonical = json.dumps(
-                        evidence, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                    )
-                    evidence["result_revision"] = (
-                        "result-"
-                        + hashlib.sha256(result_canonical.encode()).hexdigest()[:12]
-                    )
-                    evidence_panels.append(evidence)
-            bundle = {
-                    "plan_revision": confirmed["revision"],
-                    "organization_context_revision": confirmed[
-                        "organization_context_revision"
-                    ],
-                    "organization_context": confirmed["organization_context"],
-                    "analysis_specification": {
-                        "revision": confirmed["revision"],
-                        "objective": confirmed["objective_summary"],
-                        "audience": confirmed["audience"],
-                        "comparison": confirmed["comparison"],
-                        "period": confirmed["period"],
-                        "hypotheses": confirmed["hypotheses"],
-                    },
-                    "metric_definitions": self.metric_definitions,
-                    "panels": evidence_panels,
-            }
-            canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)
-            bundle["build_revision"] = (
-                "build-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
-            )
-            self.latest_dashboard = bundle
-            emit(
-                {
-                    "type": "dashboard_complete",
-                    "panel_count": len(sections),
-                    "cost_jpy": round(total_cost, 3),
-                    "build_revision": bundle["build_revision"],
-                }
-            )
         finally:
             self._finish_operation()
+
 
     def meeting_report(
         self,
