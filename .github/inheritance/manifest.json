@@ -64,6 +64,7 @@
     "scripts/tests/test_objective_prose_policy.py",
     "scripts/tests/test_pr_size_policy.py",
     "scripts/tests/test_presentation_skill_contract.py",
+    "scripts/tests/test_private_repository_workflows.py",
     "scripts/tests/test_readme_ownership.py",
     "scripts/tests/test_setup_github_wrapper.py",
     "scripts/tests/test_template_sync_ignore.py",
