@@ -8,19 +8,17 @@ import json
 import re
 import shutil
 import sys
-import threading
 import webbrowser
 from datetime import date
 from pathlib import Path
-from typing import Callable
 import analysis_planner as planner
 import analysis_workflows
 import bitcoin_profile as bitcoin
 import dashboard_build
+import live_engine
 import live_http
 import meeting_report as meeting
 import run_report as report
-import section_execution
 import sql_contract_validation as sql_contracts
 import visualization_results
 import visualization_sections
@@ -916,251 +914,35 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         raise LiveDemoError(str(error)) from error
 
 
-class LiveQueryEngine:
-    def __init__(self, project: str, model: str = report.DEFAULT_MODEL):
-        from google import genai
-        from google.cloud import bigquery
-        self.model = model
-        self.metric_definitions = json.loads(
-            (HERE / "metrics.json").read_text(encoding="utf-8")
-        )
-        self.metrics = report.metrics_block(HERE / "metrics.json")
-        self.rules = report.prompt_rules(self.metrics)
-        self.bitcoin_rules = bitcoin.prompt_rules()
-        self.client = genai.Client(vertexai=True, project=project, location="global")
-        self.bq = bigquery.Client(project=project)
-        self.lock = threading.Lock()
-        self.operation_state_lock = threading.Lock()
-        self.active_request_id = None
-        self.active_cancel_event = None
-        self.active_done_event = None
-        self.latest_dashboard = None
+class LiveQueryEngine(live_engine.LiveQueryEngine):
+    """Bind the reusable engine lifecycle to the live demo's public contracts."""
 
-    def _ensure_operation_state(self) -> None:
-        if not hasattr(self, "operation_state_lock"):
-            self.operation_state_lock = threading.Lock()
-            self.active_request_id = None
-            self.active_cancel_event = None
-            self.active_done_event = None
-
-    def _begin_operation(self, request_id: str | None) -> threading.Event:
-        self._ensure_operation_state()
-        if not self.lock.acquire(blocking=False):
-            raise LiveDemoError("別の問い合わせを処理中です。完了後に再送してください。")
-        cancel_event, done_event = threading.Event(), threading.Event()
-        with self.operation_state_lock:
-            self.active_request_id = request_id
-            self.active_cancel_event = cancel_event
-            self.active_done_event = done_event
-        return cancel_event
-
-    def _finish_operation(self) -> None:
-        with self.operation_state_lock:
-            done_event = self.active_done_event
-            self.active_request_id = None
-            self.active_cancel_event = None
-            self.active_done_event = None
-        self.lock.release()
-        if done_event is not None:
-            done_event.set()
+    here = HERE
+    max_result_rows = MAX_RESULT_ROWS
+    error_type = LiveDemoError
+    cancelled_error_type = LiveDemoCancelled
 
     @staticmethod
-    def _check_cancelled(cancel_event: threading.Event) -> None:
-        if cancel_event.is_set():
-            raise LiveDemoCancelled("処理を停止しました。")
+    def resolve_analysis_section(
+        question: str, specification: dict, profile: str
+    ) -> tuple[dict, dict]:
+        return analysis_section_for_specification(question, specification, profile)
 
-    def cancel(self, request_id: str) -> bool:
-        """Request cancellation and wait until the active operation releases its lock."""
-        self._ensure_operation_state()
-        with self.operation_state_lock:
-            if request_id != self.active_request_id or self.active_cancel_event is None:
-                return False
-            self.active_cancel_event.set()
-            done_event = self.active_done_event
-        return bool(done_event and done_event.wait(timeout=180))
+    @staticmethod
+    def consultation_context(metrics: str, profile: str) -> str:
+        return analysis_consultation_context(metrics, profile)
 
-    def query(
-        self,
-        question: str,
-        emit: Callable[[dict], None],
-        profile: str = "ga4",
-        analysis_specification: dict | None = None,
-        clarification_answer: str | None = None,
-        request_id: str | None = None,
-    ) -> None:
-        cancel_event = self._begin_operation(request_id)
-        try:
-            try:
-                analysis_workflows.run_single_analysis(
-                    question,
-                    analysis_specification,
-                    emit,
-                    profile=profile,
-                    clarification_answer=clarification_answer,
-                    resolve_section=analysis_section_for_specification,
-                    run_section=self._run_section,
-                    cancel_event=cancel_event,
-                )
-            except analysis_workflows.AnalysisWorkflowError as error:
-                raise LiveDemoError(
-                    str(error),
-                    suggested_instruction=error.suggested_instruction,
-                ) from error
-        finally:
-            self._finish_operation()
+    @staticmethod
+    def sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
+        return dashboard_sections_for_plan(question, plan)
 
-    def consult(
-        self,
-        question: str,
-        history: list[dict[str, str]],
-        emit: Callable[[dict], None],
-        profile: str = "ga4",
-        request_id: str | None = None,
-    ) -> None:
-        """Create history-aware analysis specifications without querying BigQuery."""
-        cancel_event = self._begin_operation(request_id)
-        try:
-            try:
-                analysis_workflows.consult(
-                    self.client,
-                    self.model,
-                    self.metrics,
-                    question,
-                    history,
-                    profile,
-                    emit,
-                    context_for_profile=analysis_consultation_context,
-                    check_cancelled=lambda: self._check_cancelled(cancel_event),
-                )
-            except analysis_workflows.AnalysisWorkflowError as error:
-                raise LiveDemoError(
-                    str(error),
-                    suggested_instruction=error.suggested_instruction,
-                ) from error
-        finally:
-            self._finish_operation()
+    @staticmethod
+    def layout_rows_for_plan(panels: list[dict]) -> list[dict]:
+        return dashboard_layout_rows_for_plan(panels)
 
-
-    def dashboard(
-        self,
-        question: str,
-        emit: Callable[[dict], None],
-        analysis_plan: dict | None = None,
-        request_id: str | None = None,
-    ) -> None:
-        """Build only a confirmed AI-authored dashboard plan."""
-        cancel_event = self._begin_operation(request_id)
-        try:
-            self.latest_dashboard = None
-            try:
-                dashboard_build.build_dashboard(
-                    question,
-                    analysis_plan,
-                    emit,
-                    metric_definitions=(
-                        self.metric_definitions if analysis_plan is not None else {}
-                    ),
-                    sections_for_plan=dashboard_sections_for_plan,
-                    layout_rows_for_plan=dashboard_layout_rows_for_plan,
-                    run_section=self._run_section,
-                    check_cancelled=lambda: self._check_cancelled(cancel_event),
-                    store_bundle=lambda bundle: setattr(
-                        self, "latest_dashboard", bundle
-                    ),
-                )
-            except dashboard_build.DashboardBuildError as error:
-                raise LiveDemoError(str(error)) from error
-        finally:
-            self._finish_operation()
-
-
-    def meeting_report(
-        self,
-        build_revision: str,
-        emit: Callable[[dict], None],
-        request_id: str | None = None,
-    ) -> None:
-        """Generate a cited draft from the latest completed dashboard bundle."""
-        cancel_event = self._begin_operation(request_id)
-        try:
-            try:
-                analysis_workflows.generate_meeting_report(
-                    self.client,
-                    self.model,
-                    self.latest_dashboard,
-                    build_revision,
-                    emit,
-                    check_cancelled=lambda: self._check_cancelled(cancel_event),
-                )
-            except analysis_workflows.AnalysisWorkflowError as error:
-                raise LiveDemoError(
-                    str(error),
-                    suggested_instruction=error.suggested_instruction,
-                ) from error
-        finally:
-            self._finish_operation()
-
-    def plan(
-        self,
-        question: str,
-        answers: dict[str, str],
-        emit: Callable[[dict], None],
-        analysis_plan: dict | None = None,
-        revision_instruction: str | None = None,
-        request_id: str | None = None,
-    ) -> None:
-        """Propose a reviewable plan without running any warehouse query."""
-        cancel_event = self._begin_operation(request_id)
-        try:
-            try:
-                analysis_workflows.plan_dashboard(
-                    self.client,
-                    self.model,
-                    self.metrics,
-                    question,
-                    answers,
-                    emit,
-                    analysis_plan=analysis_plan,
-                    revision_instruction=revision_instruction,
-                    period_for_question=period_for_question,
-                    context_for_profile=analysis_consultation_context,
-                    check_cancelled=lambda: self._check_cancelled(cancel_event),
-                )
-            except analysis_workflows.AnalysisWorkflowError as error:
-                raise LiveDemoError(
-                    str(error),
-                    suggested_instruction=error.suggested_instruction,
-                ) from error
-        finally:
-            self._finish_operation()
-
-
-    def _run_section(
-        self,
-        section: dict,
-        period: dict[str, str],
-        emit: Callable[[dict], None],
-        context: dict | None = None,
-        profile: str = "ga4",
-        cancel_event: threading.Event | None = None,
-    ) -> float:
-        """Run one panel while preserving the live demo's public error contract."""
-        try:
-            return section_execution.run_section(
-                section,
-                period,
-                emit,
-                client=self.client,
-                bq=self.bq,
-                model=self.model,
-                rules=self.rules if profile != "bitcoin" else "",
-                bitcoin_rules=self.bitcoin_rules if profile == "bitcoin" else "",
-                max_result_rows=MAX_RESULT_ROWS,
-                context=context,
-                profile=profile,
-            )
-        except section_execution.SectionExecutionError as error:
-            raise LiveDemoError(str(error)) from error
+    @staticmethod
+    def period_for_question(question: str) -> dict[str, str]:
+        return period_for_question(question)
 
 
 LiveDemoHandler = live_http.LiveHTTPHandler
