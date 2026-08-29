@@ -88,7 +88,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、単一処理のロック・キャンセル・各workflowへの接続は
 [`live_engine.py`](../../spikes/report-generation/live_engine.py)、localhostの入力検証とNDJSON配信は
 [`live_http.py`](../../spikes/report-generation/live_http.py)、実描画は
-[`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、Evidence成果物への変換は
+[`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、ライブ画面の基礎HTML文書は
+[`live_ui_base.py`](../../spikes/report-generation/live_ui_base.py)、Evidence成果物への変換は
 [`run_report.py`](../../spikes/report-generation/run_report.py)の`evidence_component`を根拠とする。
 
 ## 3. 標準chart component
