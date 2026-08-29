@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import os
 import re
-from analysis_planner_contracts import PlannerError, build_plan_schemas
+from analysis_planner_contracts import (
+    PlannerError,
+    build_clarification_response_schema,
+    build_consultation_schema,
+    build_dashboard_response_schema,
+    build_plan_schemas,
+    neutral_chart_order as _neutral_chart_order,
+    visualization_response_schema as _visualization_response_schema,
+)
 from analysis_planner_prompts import (
     build_consultation_request,
     build_dashboard_planning_request,
@@ -78,59 +85,9 @@ if INITIAL_PANEL_COUNT > MAX_PANEL_COUNT:
     )
 
 
-def _neutral_chart_order(charts: tuple[str, ...], seed: str) -> tuple[str, ...]:
-    """Return a reproducible order unrelated to chart semantics or source order."""
-    if not seed:
-        return charts
-    return tuple(
-        sorted(
-            charts,
-            key=lambda chart: hashlib.sha256(f"{seed}\0{chart}".encode()).digest(),
-        )
-    )
-
-
 def _defined_metric_names(metrics: str) -> tuple[str, ...]:
     """Extract only customer-defined metric names from the rendered definition block."""
     return tuple(dict.fromkeys(re.findall(r'^- 指標「([^」]+)」', metrics, re.MULTILINE)))
-
-
-def _visualization_response_schema(
-    charts: tuple[str, ...], *, seed: str = ""
-) -> dict:
-    """Constrain chart and result shape together without prompt heuristics."""
-    grouped: dict[tuple[int, int, int, int], list[str]] = {}
-    for chart in _neutral_chart_order(charts, seed):
-        grouped.setdefault(CHART_SHAPE_CONTRACTS[chart], []).append(chart)
-    variants = []
-    for contract, compatible_charts in grouped.items():
-        min_dimensions, max_dimensions, min_measures, max_measures = contract
-        variants.append(
-            {
-                "type": "object",
-                "properties": {
-                    "chart": {
-                        "type": "string",
-                        "format": "enum",
-                        "enum": compatible_charts,
-                    },
-                    "dimensions": {
-                        "type": "array",
-                        "minItems": min_dimensions,
-                        "maxItems": max_dimensions,
-                        "items": {"type": "string"},
-                    },
-                    "measures": {
-                        "type": "array",
-                        "minItems": min_measures,
-                        "maxItems": max_measures,
-                        "items": {"type": "string"},
-                    },
-                },
-                "required": ["chart", "dimensions", "measures"],
-            }
-        )
-    return {"anyOf": variants}
 
 
 PLAN_SCHEMA, DYNAMIC_PLAN_SCHEMA = build_plan_schemas(
@@ -159,21 +116,9 @@ def _load_planner_response(response, label: str):
 
 def _response_schema(answers: dict[str, str]) -> dict:
     """Constrain clarification output to fields that still need an answer."""
-    unanswered = [field for field in CLARIFICATION_FIELDS if field not in answers]
-    schema = copy.deepcopy(PLAN_SCHEMA)
-    clarifications = schema["properties"]["clarifications"]
-    # Vertex structured output can reject an array schema whose maxItems is 0.
-    # When every field is answered, omit that API-level bound and let the
-    # normalizer below reject any repeated or unsupported clarification.
-    if unanswered:
-        clarifications["maxItems"] = len(unanswered)
-    if len(unanswered) == len(CLARIFICATION_FIELDS):
-        clarifications["minItems"] = 1
-    if unanswered:
-        field_schema = clarifications["items"]["properties"]["field"]
-        field_schema["format"] = "enum"
-        field_schema["enum"] = unanswered
-    return schema
+    return build_clarification_response_schema(
+        PLAN_SCHEMA, CLARIFICATION_FIELDS, answers
+    )
 
 
 def _dashboard_response_schema(
@@ -184,26 +129,16 @@ def _dashboard_response_schema(
     metric_names: tuple[str, ...] = (),
 ) -> dict:
     """Constrain an initial or revised AI-authored dashboard."""
-    schema = _response_schema(answers)
-    schema["properties"]["panels"] = copy.deepcopy(
-        DYNAMIC_PLAN_SCHEMA["properties"]["panels"]
+    return build_dashboard_response_schema(
+        PLAN_SCHEMA,
+        DYNAMIC_PLAN_SCHEMA,
+        CLARIFICATION_FIELDS,
+        DASHBOARD_CHARTS,
+        answers,
+        revising=revising,
+        seed=seed,
+        metric_names=metric_names,
     )
-    schema["properties"]["panels"]["items"]["properties"]["visualization"] = (
-        _visualization_response_schema(DASHBOARD_CHARTS, seed=seed)
-    )
-    if metric_names:
-        schema["properties"]["panels"]["description"] = (
-            "measuresは次の定義済み指標名だけを使う: "
-            + "、".join(_neutral_chart_order(metric_names, seed))
-        )
-    if revising:
-        # Vertex can reject otherwise valid structured-output schemas as too
-        # complex when a nested array has a long item-count limit. Revisions
-        # can grow to MAX_PANEL_COUNT, so keep that policy in the strict local
-        # normalizer instead of sending minItems/maxItems to the provider.
-        schema["properties"]["panels"].pop("minItems", None)
-        schema["properties"]["panels"].pop("maxItems", None)
-    return schema
 
 
 def dashboard_planning_request(
@@ -544,40 +479,9 @@ CONSULTATION_FIELDS = CONSULTATION_TEXT_FIELDS + CONSULTATION_LIST_FIELDS
 
 
 def _consultation_schema(seed: str = "") -> dict:
-    recommendation_properties = {
-        field: {"type": "string"} for field in CONSULTATION_TEXT_FIELDS
-        if field != "chart"
-    }
-    recommendation_properties["visualization"] = _visualization_response_schema(
-        CONSULTATION_CHARTS, seed=seed
+    return build_consultation_schema(
+        CONSULTATION_TEXT_FIELDS, CONSULTATION_CHARTS, seed=seed
     )
-    return {
-        "type": "object",
-        "properties": {
-            "assistant_message": {"type": "string"},
-            "recommendations": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 4,
-                "items": {
-                    "type": "object",
-                    "properties": recommendation_properties,
-                    "required": [
-                        field
-                        for field in CONSULTATION_TEXT_FIELDS
-                        if field != "chart"
-                    ]
-                    + ["visualization"],
-                },
-            },
-            "follow_up_question": {"type": "string"},
-        },
-        "required": [
-            "assistant_message",
-            "recommendations",
-            "follow_up_question",
-        ],
-    }
 
 
 def consultation_request(
