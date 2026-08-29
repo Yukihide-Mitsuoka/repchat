@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.0...v1.22.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **ci:** skip public-only security jobs in private repos ([#485](https://github.com/Yukihide-Mitsuoka/repchat/issues/485)) ([7ef02e7](https://github.com/Yukihide-Mitsuoka/repchat/commit/7ef02e740e330389ea98fe33d8b92062fe945b39))
+
 ## [1.22.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.21.0...v1.22.0) (2026-08-28)
 
 
