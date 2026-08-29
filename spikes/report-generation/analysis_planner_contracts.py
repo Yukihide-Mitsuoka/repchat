@@ -5,6 +5,14 @@ from __future__ import annotations
 import copy
 
 
+class PlannerError(ValueError):
+    """A planner contract violation safe to show in the local UI."""
+
+    def __init__(self, message: str, *, suggested_instruction: str | None = None):
+        super().__init__(message)
+        self.suggested_instruction = suggested_instruction
+
+
 def build_plan_schemas(
     initial_panel_count: int, visualization_schema: dict
 ) -> tuple[dict, dict]:
