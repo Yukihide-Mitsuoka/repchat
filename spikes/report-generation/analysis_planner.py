@@ -7,6 +7,10 @@ import hashlib
 import json
 import os
 import re
+from structured_response import (
+    StructuredResponseError,
+    load_structured_json as _load_structured_json,
+)
 from visualization_contracts import (
     CHART_SHAPE_CONTRACTS,
     DASHBOARD_ROW_LIMITS,
@@ -211,49 +215,6 @@ class PlannerError(ValueError):
     def __init__(self, message: str, *, suggested_instruction: str | None = None):
         super().__init__(message)
         self.suggested_instruction = suggested_instruction
-
-
-class StructuredResponseError(ValueError):
-    """A bounded classification that never retains generated response text."""
-
-    def __init__(self, kind: str, *, finish_reason: str | None = None):
-        super().__init__(kind)
-        self.kind = kind
-        self.finish_reason = finish_reason
-
-
-def _load_structured_json(response):
-    candidates = getattr(response, "candidates", None) or []
-    reason = getattr(candidates[0], "finish_reason", None) if candidates else None
-    value = getattr(reason, "value", None)
-    name = getattr(reason, "name", None)
-    raw_reason = (
-        value
-        if isinstance(value, str)
-        else name
-        if isinstance(name, str)
-        else reason
-    )
-    finish_reason = None
-    if raw_reason is not None:
-        normalized = str(raw_reason).upper().removeprefix("FINISHREASON.")
-        finish_reason = (
-            normalized if re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized) else "OTHER"
-        )
-    if finish_reason == "MAX_TOKENS":
-        raise StructuredResponseError("max_tokens", finish_reason=finish_reason)
-    if finish_reason not in {None, "STOP"}:
-        raise StructuredResponseError("finish_reason", finish_reason=finish_reason)
-    try:
-        response_text = response.text
-    except (AttributeError, TypeError, ValueError) as error:
-        raise StructuredResponseError("missing_text") from error
-    if not isinstance(response_text, str) or not response_text.strip():
-        raise StructuredResponseError("missing_text")
-    try:
-        return json.loads(response_text)
-    except (json.JSONDecodeError, TypeError) as error:
-        raise StructuredResponseError("malformed_json") from error
 
 
 def _load_planner_response(response, label: str):

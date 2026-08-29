@@ -78,7 +78,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `reference_line` / `reference_area` | Annotations | 対応 | 実績と基準値、または実績と下限・上限を区分ごとに返す |
 
 相談・単一分析・計画・会議報告のAIワークフローは
-[`analysis_workflows.py`](../../spikes/report-generation/analysis_workflows.py)、plannerの許可値と形状・行数上限は
+[`analysis_workflows.py`](../../spikes/report-generation/analysis_workflows.py)、plannerとSQL生成担当に共通するstructured response診断は
+[`structured_response.py`](../../spikes/report-generation/structured_response.py)、plannerの許可値と形状・行数上限は
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
 [`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実行前のSQL・dry-run検証は
 [`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、結果形状検証は
