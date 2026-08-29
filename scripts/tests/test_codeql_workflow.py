@@ -11,6 +11,7 @@ CODEQL_ACTION = re.compile(
 )
 SUPPORTED_CODEQL_SHA = "5595ccaf912efad79be6eef63a5619ff05969be3"
 SUPPORTED_CODEQL_VERSION = "v4.37.6"
+PUBLIC_ONLY = "if: github.event.repository.visibility == 'public'"
 
 
 def _has(pattern: str, *roots: str) -> bool:
@@ -25,6 +26,17 @@ def _has(pattern: str, *roots: str) -> bool:
 
 
 class CodeQLWorkflowTest(unittest.TestCase):
+    def test_plan_limited_security_jobs_are_public_only(self) -> None:
+        for path, job in (
+            (".github/workflows/codeql.yml", "analyze"),
+            (".github/workflows/scorecard.yml", "analysis"),
+        ):
+            with self.subTest(path=path):
+                workflow = (ROOT / path).read_text(encoding="utf-8")
+                job_body = workflow.split(f"  {job}:\n", maxsplit=1)[1]
+
+                self.assertIn(f"    {PUBLIC_ONLY}\n", job_body)
+
     def test_codeql_actions_use_supported_v4_digest(self) -> None:
         expected = {
             ".github/workflows/codeql.yml": {"init", "autobuild", "analyze"},
