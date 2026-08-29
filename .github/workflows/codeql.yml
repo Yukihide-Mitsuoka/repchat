@@ -14,6 +14,9 @@ permissions:
 
 jobs:
   analyze:
+    # Private repositories require GitHub Code Security, which is not available on
+    # every plan. Portable secret, dependency, and license scans remain enabled.
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     permissions:
       security-events: write
