@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 import analysis_planner as planner
+import analysis_workflows
 import bitcoin_profile as bitcoin
 import dashboard_build
 import meeting_report as meeting
@@ -58,21 +59,8 @@ def running_in_demo_venv() -> bool:
 
 
 def analysis_consultation_context(metrics: str, profile: str) -> str:
-    """Expose schema semantics, not a menu of prewritten analyses, to the planner."""
-    if profile == "bitcoin":
-        return "利用可能期間は2024年1月〜12月。\n" + bitcoin.prompt_rules()
-    return f"""利用可能期間は2020年11月〜2021年1月。未指定時は2021年1月を提案に使う。
-BigQuery GA4 exportの主な列:
-- event_date, event_timestamp, event_name, user_pseudo_id
-- traffic_source.medium, device.category, ecommerce.transaction_id, ecommerce.purchase_revenue
-- event_params ARRAY<STRUCT<key STRING, value STRUCT<string_value STRING, int_value INT64, double_value FLOAT64>>>
-- items ARRAY<STRUCT<item_id STRING, item_name STRING, item_category STRING, price FLOAT64, quantity INT64>>
-利用できる主な切り口:
-- 日付、流入medium、device category、event_name、page_locationから正規化したpage_path、商品属性
-- セッション内の時系列、入口、連続ページ遷移、イベント到達段階
-定義済み指標:
-{metrics}
-指標定義にない語は推測せず、追加定義が必要だと説明する。"""
+    """Preserve the public planner-context helper used by the live demo."""
+    return analysis_workflows.consultation_context(metrics, profile)
 
 HTML = r"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
@@ -833,18 +821,17 @@ def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict
 def analysis_section_for_specification(
     question: str, analysis_specification: dict, profile: str
 ) -> tuple[dict, dict]:
-    """Freeze one selected AI proposal before SQL generation."""
-    confirmed = planner.confirm_analysis_specification(analysis_specification)
-    if question.strip() != confirmed["execution_prompt"]:
-        raise LiveDemoError(
-            "分析依頼がAIの分析仕様から変更されています。変更内容を再度相談してください。"
+    """Preserve the public single-analysis specification error contract."""
+    try:
+        return analysis_workflows.analysis_section_for_specification(
+            question,
+            analysis_specification,
+            profile,
+            ga4_period_for_question=period_for_question,
+            planned_analysis_section=planned_analysis_section,
         )
-    period = (
-        bitcoin.period_for_question(question)
-        if profile == "bitcoin"
-        else period_for_question(question)
-    )
-    return period, planned_analysis_section(confirmed, "I1")
+    except analysis_workflows.AnalysisWorkflowError as error:
+        raise LiveDemoError(str(error)) from error
 
 
 def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
@@ -1003,24 +990,22 @@ class LiveQueryEngine:
     ) -> None:
         cancel_event = self._begin_operation(request_id)
         try:
-            if analysis_specification is None:
-                raise LiveDemoError(
-                    "AIが作成した分析仕様を選択してからbuildしてください。"
-                )
             try:
-                period, section = analysis_section_for_specification(
-                    question, analysis_specification, profile
+                analysis_workflows.run_single_analysis(
+                    question,
+                    analysis_specification,
+                    emit,
+                    profile=profile,
+                    clarification_answer=clarification_answer,
+                    resolve_section=analysis_section_for_specification,
+                    run_section=self._run_section,
+                    cancel_event=cancel_event,
                 )
-            except (ValueError, planner.PlannerError) as error:
-                raise LiveDemoError(str(error)) from error
-            self._run_section(
-                section,
-                period,
-                emit,
-                context={"clarification_answer": clarification_answer or ""},
-                profile=profile,
-                cancel_event=cancel_event,
-            )
+            except analysis_workflows.AnalysisWorkflowError as error:
+                raise LiveDemoError(
+                    str(error),
+                    suggested_instruction=error.suggested_instruction,
+                ) from error
         finally:
             self._finish_operation()
 
@@ -1035,28 +1020,23 @@ class LiveQueryEngine:
         """Create history-aware analysis specifications without querying BigQuery."""
         cancel_event = self._begin_operation(request_id)
         try:
-            emit({"type": "consultation_stage", "message": "分析目的と利用可能なデータを照合中です。"})
-            consultation, usage = planner.propose_consultation(
-                self.client,
-                self.model,
-                question,
-                history,
-                analysis_consultation_context(self.metrics, profile),
-                profile,
-            )
-            self._check_cancelled(cancel_event)
-            cost = (
-                usage["input_tokens"] * report.PRICING[self.model][0]
-                + usage["output_tokens"] * report.PRICING[self.model][1]
-            ) / 1e6 * report.USD_JPY
-            emit({"type": "consultation", **consultation, "cost_jpy": round(cost, 3)})
-        except planner.PlannerError as error:
-            raise LiveDemoError(
-                str(error),
-                suggested_instruction=error.suggested_instruction,
-            ) from error
-        except ValueError as error:
-            raise LiveDemoError(str(error)) from error
+            try:
+                analysis_workflows.consult(
+                    self.client,
+                    self.model,
+                    self.metrics,
+                    question,
+                    history,
+                    profile,
+                    emit,
+                    context_for_profile=analysis_consultation_context,
+                    check_cancelled=lambda: self._check_cancelled(cancel_event),
+                )
+            except analysis_workflows.AnalysisWorkflowError as error:
+                raise LiveDemoError(
+                    str(error),
+                    suggested_instruction=error.suggested_instruction,
+                ) from error
         finally:
             self._finish_operation()
 
@@ -1103,19 +1083,20 @@ class LiveQueryEngine:
         """Generate a cited draft from the latest completed dashboard bundle."""
         cancel_event = self._begin_operation(request_id)
         try:
-            bundle = self.latest_dashboard
-            if not bundle or bundle.get("build_revision") != build_revision:
-                raise LiveDemoError("指定したbuild revisionの根拠bundleがありません。")
-            emit({"type": "report_stage", "message": "根拠と不確実性を整理中です。"})
-            draft, usage = meeting.generate(self.client, self.model, bundle)
-            self._check_cancelled(cancel_event)
-            cost = (
-                usage["input_tokens"] * report.PRICING[self.model][0]
-                + usage["output_tokens"] * report.PRICING[self.model][1]
-            ) / 1e6 * report.USD_JPY
-            emit({"type": "meeting_report", "report": draft, "cost_jpy": round(cost, 3)})
-        except (ValueError, meeting.ReportError) as error:
-            raise LiveDemoError(str(error)) from error
+            try:
+                analysis_workflows.generate_meeting_report(
+                    self.client,
+                    self.model,
+                    self.latest_dashboard,
+                    build_revision,
+                    emit,
+                    check_cancelled=lambda: self._check_cancelled(cancel_event),
+                )
+            except analysis_workflows.AnalysisWorkflowError as error:
+                raise LiveDemoError(
+                    str(error),
+                    suggested_instruction=error.suggested_instruction,
+                ) from error
         finally:
             self._finish_operation()
 
@@ -1131,34 +1112,25 @@ class LiveQueryEngine:
         """Propose a reviewable plan without running any warehouse query."""
         cancel_event = self._begin_operation(request_id)
         try:
-            period = period_for_question(question)
-            current_plan = (
-                planner.confirm_dashboard_plan(analysis_plan) if analysis_plan else None
-            )
-            emit({"type": "plan_stage", "message": "分析目的と指標定義を照合中です。"})
-            plan, usage = planner.propose_dashboard(
-                self.client,
-                self.model,
-                question,
-                period,
-                analysis_consultation_context(self.metrics, "ga4"),
-                answers,
-                current_plan=current_plan,
-                instruction=revision_instruction,
-            )
-            self._check_cancelled(cancel_event)
-            cost = (
-                usage["input_tokens"] * report.PRICING[self.model][0]
-                + usage["output_tokens"] * report.PRICING[self.model][1]
-            ) / 1e6 * report.USD_JPY
-            emit({"type": "plan", "plan": plan, "cost_jpy": round(cost, 3)})
-        except planner.PlannerError as error:
-            raise LiveDemoError(
-                str(error),
-                suggested_instruction=error.suggested_instruction,
-            ) from error
-        except ValueError as error:
-            raise LiveDemoError(str(error)) from error
+            try:
+                analysis_workflows.plan_dashboard(
+                    self.client,
+                    self.model,
+                    self.metrics,
+                    question,
+                    answers,
+                    emit,
+                    analysis_plan=analysis_plan,
+                    revision_instruction=revision_instruction,
+                    period_for_question=period_for_question,
+                    context_for_profile=analysis_consultation_context,
+                    check_cancelled=lambda: self._check_cancelled(cancel_event),
+                )
+            except analysis_workflows.AnalysisWorkflowError as error:
+                raise LiveDemoError(
+                    str(error),
+                    suggested_instruction=error.suggested_instruction,
+                ) from error
         finally:
             self._finish_operation()
 
