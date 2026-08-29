@@ -80,7 +80,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 相談・単一分析・計画・会議報告のAIワークフローは
 [`analysis_workflows.py`](../../spikes/report-generation/analysis_workflows.py)、plannerとSQL生成担当に共通するstructured response診断は
 [`structured_response.py`](../../spikes/report-generation/structured_response.py)、会議報告の応答schemaと制限値は
-[`meeting_report_contracts.py`](../../spikes/report-generation/meeting_report_contracts.py)、plannerの応答schemaは
+[`meeting_report_contracts.py`](../../spikes/report-generation/meeting_report_contracts.py)、plannerの応答schemaとschema builderは
 [`analysis_planner_contracts.py`](../../spikes/report-generation/analysis_planner_contracts.py)、plannerがAIへ渡す依頼文は
 [`analysis_planner_prompts.py`](../../spikes/report-generation/analysis_planner_prompts.py)、plannerの許可値と形状・行数上限は
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
