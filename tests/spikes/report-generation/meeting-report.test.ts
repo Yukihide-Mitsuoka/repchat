@@ -29,7 +29,16 @@ bundle={
 }
 ${body}`,
     ],
-    { cwd: ROOT, encoding: 'utf8' },
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PYTHONPATH: [path.dirname(MODULE), process.env.PYTHONPATH]
+          .filter(Boolean)
+          .join(path.delimiter),
+      },
+    },
   );
 }
 
