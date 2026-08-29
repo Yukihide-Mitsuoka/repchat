@@ -19,6 +19,7 @@ import analysis_planner as planner
 import bitcoin_profile as bitcoin
 import meeting_report as meeting
 import run_report as report
+import section_execution
 import sql_contract_validation as sql_contracts
 import visualization_results
 import visualization_sections
@@ -1277,6 +1278,7 @@ class LiveQueryEngine:
         finally:
             self._finish_operation()
 
+
     def _run_section(
         self,
         section: dict,
@@ -1286,211 +1288,25 @@ class LiveQueryEngine:
         profile: str = "ga4",
         cancel_event: threading.Event | None = None,
     ) -> float:
-        """Generate, validate, execute, and optionally verify one panel."""
-        extra = context or {}
+        """Run one panel while preserving the live demo's public error contract."""
+        try:
+            return section_execution.run_section(
+                section,
+                period,
+                emit,
+                client=self.client,
+                bq=self.bq,
+                model=self.model,
+                rules=self.rules if profile != "bitcoin" else "",
+                bitcoin_rules=self.bitcoin_rules if profile == "bitcoin" else "",
+                max_result_rows=MAX_RESULT_ROWS,
+                context=context,
+                profile=profile,
+            )
+        except section_execution.SectionExecutionError as error:
+            raise LiveDemoError(str(error)) from error
 
-        def send(event: dict) -> None:
-            emit({**event, **extra})
 
-        send(
-            {
-                "type": "stage",
-                "stage": "generate",
-                "message": "Vertex AIでSQLを生成中です。",
-            }
-        )
-        if profile == "bitcoin":
-            request = bitcoin.generation_request(section, period)
-            if extra.get("clarification_answer"):
-                request += (
-                    "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
-                    "回答にない条件は推測しない）\n"
-                    f"{extra['clarification_answer'].strip()}"
-                )
-            answer, usage = report.generate_request(
-                self.client,
-                self.model,
-                request,
-                self.bitcoin_rules,
-            )
-            allowed_dataset = bitcoin.DATASET
-        else:
-            if extra.get("clarification_answer"):
-                answer, usage = report.generate(
-                    self.client,
-                    self.model,
-                    section,
-                    period,
-                    self.rules,
-                    clarification_answer=extra["clarification_answer"],
-                )
-            else:
-                answer, usage = report.generate(
-                    self.client, self.model, section, period, self.rules
-                )
-            allowed_dataset = report.DATASET
-        cost = (
-            usage["input_tokens"] * report.PRICING[self.model][0]
-            + usage["output_tokens"] * report.PRICING[self.model][1]
-        ) / 1e6 * report.USD_JPY
-        sql = (answer.get("sql") or "").strip()
-        undefined = answer.get("undefined_terms") or []
-        if not sql and undefined:
-            send(
-                {
-                    "type": "refusal",
-                    "reason": answer.get("reason", ""),
-                    "undefined_terms": undefined,
-                    "clarification_question": answer.get("clarification_question", ""),
-                    "cost_jpy": round(cost, 3),
-                }
-            )
-            return cost
-        if not sql:
-            raise LiveDemoError("SQLが返りませんでした。指標定義または質問を確認してください。")
-        normalized, error = report.validate_sql(sql, allowed_dataset)
-        if error:
-            raise LiveDemoError(f"生成SQLを安全検査で拒否しました: {error}")
-        assert normalized is not None
-        if profile == "bitcoin":
-            normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
-        period_diagnostic = sql_period_diagnostic(normalized, period, profile)
-        allow_period_repair = extra.get("operation") == "dashboard"
-        if period_diagnostic and (
-            not allow_period_repair or not section.get("source_columns")
-        ):
-            raise LiveDemoError(period_diagnostic)
-        if section.get("source_columns"):
-            send(
-                {
-                    "type": "stage",
-                    "stage": "validate",
-                    "message": "描画仕様とBigQuery dry runの出力schemaを照合中です。",
-                }
-            )
-            analysis_request = (
-                bitcoin.generation_request(section, period)
-                if profile == "bitcoin"
-                else report.generation_request(section, period)
-            )
-            repair_used = False
-            while True:
-                diagnostic = period_diagnostic if allow_period_repair else ""
-                if not diagnostic:
-                    try:
-                        validate_generated_dashboard_sql(section, normalized)
-                    except LiveDemoError as validation_error:
-                        diagnostic = str(validation_error)
-                if not diagnostic:
-                    dry_schema, dry_error = report.inspect_bq_schema(
-                        self.bq, normalized, allowed_dataset=allowed_dataset
-                    )
-                    if dry_error:
-                        if not report.repairable_dry_run_error(dry_error):
-                            raise LiveDemoError(
-                                f"BigQuery dry runに失敗しました: {dry_error}"
-                            )
-                        diagnostic = dry_error
-                    else:
-                        assert dry_schema is not None
-                        try:
-                            validate_dashboard_dry_run_schema(section, dry_schema)
-                        except LiveDemoError as validation_error:
-                            diagnostic = str(validation_error)
-                if not diagnostic:
-                    break
-                if repair_used:
-                    raise LiveDemoError(
-                        "SQL担当AIで1回修正しましたが、実行前診断を解消できなかったため"
-                        f"実行しません: {diagnostic}"
-                    )
-                send(
-                    {
-                        "type": "stage",
-                        "stage": "repair",
-                        "message": "実行前診断をもとにSQLを1回修正中です。",
-                    }
-                )
-                repaired, repair_usage = report.repair(
-                    self.client,
-                    self.model,
-                    analysis_request,
-                    normalized,
-                    diagnostic,
-                    self.bitcoin_rules if profile == "bitcoin" else self.rules,
-                )
-                cost += (
-                    repair_usage["input_tokens"] * report.PRICING[self.model][0]
-                    + repair_usage["output_tokens"] * report.PRICING[self.model][1]
-                ) / 1e6 * report.USD_JPY
-                repaired_sql = (repaired.get("sql") or "").strip()
-                if not repaired_sql:
-                    reason = (repaired.get("reason") or "").strip()
-                    detail = f" 理由: {reason}" if reason else ""
-                    raise LiveDemoError(
-                        "SQL担当AIが実行前診断を解消できなかったため実行しません。"
-                        + detail
-                    )
-                normalized, validation_error = report.validate_sql(
-                    repaired_sql, allowed_dataset
-                )
-                if validation_error:
-                    raise LiveDemoError(
-                        f"修正SQLを安全検査で拒否しました: {validation_error}"
-                    )
-                assert normalized is not None
-                if profile == "bitcoin":
-                    normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
-                period_diagnostic = sql_period_diagnostic(normalized, period, profile)
-                if period_diagnostic and not allow_period_repair:
-                    raise LiveDemoError(period_diagnostic)
-                answer = repaired
-                repair_used = True
-        send(
-            {
-                "type": "sql",
-                "sql": report.format_sql_for_display(normalized),
-                "sql_sha256": hashlib.sha256(normalized.encode()).hexdigest()[:16],
-                "reason": answer.get("reason", ""),
-            }
-        )
-        send(
-            {
-                "type": "stage",
-                "stage": "execute",
-                "message": "BigQueryで読み取り実行中です。",
-            }
-        )
-        result, error = report.exec_bq(
-            self.bq,
-            normalized,
-            max_results=MAX_RESULT_ROWS + 1,
-            allowed_dataset=allowed_dataset,
-        )
-        if error:
-            raise LiveDemoError(f"BigQuery実行に失敗しました: {error}")
-        assert result is not None
-        rows, columns = result
-        if len(rows) > MAX_RESULT_ROWS:
-            raise LiveDemoError(
-                f"結果が{MAX_RESULT_ROWS}行を超えたため描画しません。集計条件を追加してください。"
-            )
-        verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
-        visualization = dashboard_visualization(section, rows, columns)
-        send(
-            {
-                "type": "result",
-                "columns": section.get("shape", {}).get("columns", columns),
-                "source_columns": columns,
-                "rows": [[json_value(value) for value in row] for row in rows],
-                "visualization": visualization,
-                "navigation_depth": section.get("navigation_depth"),
-                "verification": verification,
-                "verification_label": label,
-                "cost_jpy": round(cost, 3),
-            }
-        )
-        return cost
 class LiveDemoHandler(BaseHTTPRequestHandler):
     engine: LiveQueryEngine
     def do_GET(self) -> None:
