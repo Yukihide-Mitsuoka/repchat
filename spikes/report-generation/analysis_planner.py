@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+from analysis_planner_contracts import build_plan_schemas
 from structured_response import (
     StructuredResponseError,
     load_structured_json as _load_structured_json,
@@ -128,85 +129,9 @@ def _visualization_response_schema(
     return {"anyOf": variants}
 
 
-PLAN_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "objective_summary": {"type": "string"},
-        "audience": {"type": "string"},
-        "comparison": {"type": "string"},
-        "hypotheses": {"type": "array", "items": {"type": "string"}},
-        "clarifications": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "field": {"type": "string"},
-                    "question": {"type": "string"},
-                    "recommended_answer": {"type": "string"},
-                },
-                "required": ["field", "question", "recommended_answer"],
-            },
-        },
-        "panels": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": {"type": "string"},
-                    "reason": {"type": "string"},
-                },
-                "required": ["id", "reason"],
-            },
-        },
-    },
-    "required": [
-        "objective_summary",
-        "audience",
-        "comparison",
-        "hypotheses",
-        "clarifications",
-        "panels",
-    ],
-}
-
-DYNAMIC_PLAN_SCHEMA = copy.deepcopy(PLAN_SCHEMA)
-DYNAMIC_PLAN_SCHEMA["properties"]["panels"] = {
-    "type": "array",
-    "minItems": INITIAL_PANEL_COUNT,
-    "maxItems": INITIAL_PANEL_COUNT,
-    "items": {
-        "type": "object",
-        "properties": {
-            "title": {"type": "string"},
-            "kpi": {"type": "string"},
-            "decision": {"type": "string"},
-            "reason": {"type": "string"},
-            "execution_prompt": {"type": "string"},
-            "visualization": _visualization_response_schema(DASHBOARD_CHARTS),
-            "layout_row": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "表示行番号。1から始めてパネル順に連続させ、同じ行は同じ値にする。1行は最大4件。",
-            },
-            "layout_weight": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 100,
-                "description": "同じ表示行にあるパネル間の相対幅。",
-            },
-        },
-        "required": [
-            "title",
-            "kpi",
-            "decision",
-            "reason",
-            "execution_prompt",
-            "visualization",
-            "layout_row",
-            "layout_weight",
-        ],
-    },
-}
+PLAN_SCHEMA, DYNAMIC_PLAN_SCHEMA = build_plan_schemas(
+    INITIAL_PANEL_COUNT, _visualization_response_schema(DASHBOARD_CHARTS)
+)
 
 
 class PlannerError(ValueError):
