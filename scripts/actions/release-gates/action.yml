@@ -27,7 +27,9 @@ runs:
       run: make build
       shell: bash
     - name: Attest build provenance (SLSA — SEC-031)
-      if: hashFiles('dist/**') != ''
+      # Private-repository attestations require GitHub Enterprise Cloud. Keep the
+      # portable test, vulnerability, SBOM, and build gates running on every plan.
+      if: github.event.repository.visibility == 'public' && hashFiles('dist/**') != ''
       uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
       with:
         subject-path: "dist/**"

@@ -269,6 +269,15 @@ When an external publisher validates the literal workflow for result provenance,
 SHA-pinned approved actions remain direct protected-workflow steps. OpenSSF Scorecard is
 the current instance and therefore requires an explicit reviewed port at every child.
 
+GitHub-hosted security features with plan-dependent private-repository support keep an
+explicit visibility boundary. Protected CodeQL and OpenSSF Scorecard jobs run only when
+`github.event.repository.visibility == 'public'`; every active child MUST receive that
+condition through a reviewed manual port. The synchronized release-gates action applies
+the same condition only to Artifact Attestation. Portable release tests, Trivy scans,
+license checks, SBOM generation, builds, and secret scanning remain enabled for private
+repositories. A child with separately approved GitHub Code Security or Enterprise Cloud
+may strengthen this protected boundary through its own reviewed policy.
+
 Target comparison recognizes content accepted ahead of its lock during a reviewed
 mechanical sync. The report does not advance provenance: every intermediate
 first-parent checkpoint still requires its own reviewed lock update.
