@@ -82,7 +82,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
 [`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実行前のSQL・dry-run検証は
 [`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、結果形状検証は
-[`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、1パネルの生成から実行までの順序は
+[`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、各モジュールの失敗をライブデモの公開エラー・期間・検証契約へ変換する境界は
+[`live_contracts.py`](../../spikes/report-generation/live_contracts.py)、1パネルの生成から実行までの順序は
 [`section_execution.py`](../../spikes/report-generation/section_execution.py)、確定パネルから根拠bundleを組み立てる順序は
 [`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、単一処理のロック・キャンセル・各workflowへの接続は
 [`live_engine.py`](../../spikes/report-generation/live_engine.py)、localhostの入力検証とNDJSON配信は
