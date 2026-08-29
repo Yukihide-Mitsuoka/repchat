@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-08-28
+updated: 2026-08-29
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -84,7 +84,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、結果形状検証は
 [`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、1パネルの生成から実行までの順序は
 [`section_execution.py`](../../spikes/report-generation/section_execution.py)、確定パネルから根拠bundleを組み立てる順序は
-[`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、localhostの入力検証とNDJSON配信は
+[`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、単一処理のロック・キャンセル・各workflowへの接続は
+[`live_engine.py`](../../spikes/report-generation/live_engine.py)、localhostの入力検証とNDJSON配信は
 [`live_http.py`](../../spikes/report-generation/live_http.py)、実描画は
 [`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、Evidence成果物への変換は
 [`run_report.py`](../../spikes/report-generation/run_report.py)の`evidence_component`を根拠とする。
