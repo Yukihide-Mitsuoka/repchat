@@ -11,13 +11,13 @@ import sys
 import threading
 import webbrowser
 from datetime import date
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
 import analysis_planner as planner
 import analysis_workflows
 import bitcoin_profile as bitcoin
 import dashboard_build
+import live_http
 import meeting_report as meeting
 import run_report as report
 import section_execution
@@ -1163,253 +1163,32 @@ class LiveQueryEngine:
             raise LiveDemoError(str(error)) from error
 
 
-class LiveDemoHandler(BaseHTTPRequestHandler):
-    engine: LiveQueryEngine
-    def do_GET(self) -> None:
-        if self.path == "/":
-            self._send(200, HTML.encode(), "text/html; charset=utf-8")
-        elif self.path == "/assets/echarts.min.js":
-            self._send(200, ECHARTS_ASSET.read_bytes(), "application/javascript; charset=utf-8")
-        else:
-            self._send(204 if self.path == "/favicon.ico" else 404, b"", "text/plain")
-    def do_POST(self) -> None:
-        if self.path not in {
-            "/api/query",
-            "/api/dashboard",
-            "/api/plan",
-            "/api/report",
-            "/api/consult",
-            "/api/cancel",
-        }:
-            self._send_json(404, {"error": "not found"})
-            return
-        content_type = self.headers.get("content-type", "").split(";", 1)[0].strip().lower()
-        origin = self.headers.get("origin")
-        allowed = {
-            f"http://127.0.0.1:{self.server.server_port}",
-            f"http://localhost:{self.server.server_port}",
-        }
-        if content_type != "application/json":
-            self._send_json(415, {"error": "content-type must be application/json"})
-            return
-        if origin is not None and origin not in allowed:
-            self._send_json(403, {"error": "cross-origin requests are not allowed"})
-            return
-        try:
-            length = int(self.headers.get("content-length", "0"))
-            max_body_bytes = (
-                MAX_PLAN_BODY_BYTES
-                if self.path in {"/api/dashboard", "/api/plan"}
-                else MAX_BODY_BYTES
-            )
-            if length <= 0 or length > max_body_bytes:
-                raise ValueError("request body is empty or too large")
-            body = json.loads(self.rfile.read(length))
-            request_id = body.get("request_id") if isinstance(body, dict) else None
-            if request_id is not None and (
-                not isinstance(request_id, str)
-                or not re.fullmatch(r"request-[0-9]{10,16}-[0-9a-f]{4,32}", request_id)
-            ):
-                raise ValueError("request_id is invalid")
-            if self.path == "/api/cancel":
-                if request_id is None:
-                    raise ValueError("request_id is required")
-                self._send_json(200, {"cancelled": self.engine.cancel(request_id)})
-                return
-            question = body.get("question") if isinstance(body, dict) else None
-            profile = body.get("profile", "ga4") if isinstance(body, dict) else None
-            answers = body.get("answers", {}) if isinstance(body, dict) else None
-            analysis_plan = body.get("analysis_plan") if isinstance(body, dict) else None
-            analysis_specification = (
-                body.get("analysis_specification") if isinstance(body, dict) else None
-            )
-            clarification_answer = (
-                body.get("clarification_answer") if isinstance(body, dict) else None
-            )
-            revision_instruction = (
-                body.get("revision_instruction") if isinstance(body, dict) else None
-            )
-            build_revision = body.get("build_revision") if isinstance(body, dict) else None
-            history = body.get("history", []) if isinstance(body, dict) else None
-            if not isinstance(question, str):
-                raise ValueError("question must be a string")
-            if profile not in {"ga4", "bitcoin"}:
-                raise ValueError("profile must be ga4 or bitcoin")
-            if analysis_plan is not None and not isinstance(analysis_plan, dict):
-                raise ValueError("analysis_plan must be an object")
-            if analysis_specification is not None and not isinstance(
-                analysis_specification, dict
-            ):
-                raise ValueError("analysis_specification must be an object")
-            if clarification_answer is not None and (
-                not isinstance(clarification_answer, str)
-                or not clarification_answer.strip()
-                or len(clarification_answer) > 800
-            ):
-                raise ValueError("clarification_answer must be short text")
-            if revision_instruction is not None and (
-                not isinstance(revision_instruction, str)
-                or not revision_instruction.strip()
-                or len(revision_instruction) > 500
-            ):
-                raise ValueError("revision_instruction must be short text")
-            if not isinstance(answers, dict) or any(
-                key not in {"audience", "comparison", "business_goal"}
-                or not isinstance(value, str)
-                or not value.strip()
-                or len(value) > 200
-                for key, value in answers.items()
-            ):
-                raise ValueError("answers must contain only short supported text fields")
-            if self.path == "/api/consult":
-                if not isinstance(history, list) or len(history) > 8:
-                    raise ValueError("history must contain at most 8 turns")
-                total_history_chars = 0
-                for index, turn in enumerate(history):
-                    expected_role = "user" if index % 2 == 0 else "assistant"
-                    if (
-                        not isinstance(turn, dict)
-                        or set(turn) != {"role", "content"}
-                        or turn.get("role") != expected_role
-                        or not isinstance(turn.get("content"), str)
-                        or not turn["content"].strip()
-                        or len(turn["content"]) > 800
-                    ):
-                        raise ValueError("history contains an invalid turn")
-                    total_history_chars += len(turn["content"])
-                if total_history_chars > 3000:
-                    raise ValueError("history is too large")
-                if not question.strip() or len(question) > MAX_QUESTION_CHARS:
-                    raise ValueError("consultation question is invalid")
-            elif self.path == "/api/report":
-                if not isinstance(build_revision, str) or not re.fullmatch(
-                    r"build-[0-9a-f]{12}", build_revision
-                ):
-                    raise ValueError("build_revision is invalid")
-            elif self.path == "/api/plan":
-                if profile != "ga4":
-                    raise ValueError("planning mode currently supports only ga4")
-                if (analysis_plan is None) != (revision_instruction is None):
-                    raise ValueError(
-                        "analysis_plan and revision_instruction must be provided together"
-                    )
-                period_for_question(question)
-                if analysis_plan is not None:
-                    planner.confirm_dashboard_plan(analysis_plan)
-            elif self.path == "/api/dashboard":
-                if profile != "ga4":
-                    raise ValueError("dashboard mode currently supports only ga4")
-                if analysis_plan is None:
-                    raise ValueError(
-                        "AIが作成した分析仕様を確定してからbuildしてください。"
-                    )
-                confirmed = planner.confirm_dashboard_plan(analysis_plan)
-                dashboard_sections_for_plan(question, confirmed)
-            elif analysis_specification is None:
-                raise ValueError(
-                    "AIが作成した分析仕様を選択してからbuildしてください。"
-                )
-            else:
-                confirmed = planner.confirm_analysis_specification(
-                    analysis_specification
-                )
-                analysis_section_for_specification(question, confirmed, profile)
-                analysis_specification = confirmed
-        except (ValueError, json.JSONDecodeError, LiveDemoError, planner.PlannerError) as error:
-            self._send_json(400, {"error": str(error)})
-            return
-        except Exception as error:  # noqa: BLE001 — keep the browser connection intact
-            print(f"request validation failed: {type(error).__name__}", flush=True)
-            self._send_json(
-                500,
-                {"error": "生成または実行に失敗しました。端末ログを確認してください。"},
-            )
-            return
-        self.send_response(200)
-        self._headers("application/x-ndjson; charset=utf-8")
-        self.end_headers()
-        def emit(event: dict) -> None:
-            self.wfile.write((json.dumps(event, ensure_ascii=False) + "\n").encode())
-            self.wfile.flush()
-        try:
-            request_kwargs = {"request_id": request_id} if request_id else {}
-            if self.path == "/api/consult":
-                self.engine.consult(
-                    question, history, emit, profile=profile, **request_kwargs
-                )
-            elif self.path == "/api/report":
-                self.engine.meeting_report(
-                    build_revision, emit, **request_kwargs
-                )
-            elif self.path == "/api/plan":
-                self.engine.plan(
-                    question,
-                    answers,
-                    emit,
-                    analysis_plan=analysis_plan,
-                    revision_instruction=revision_instruction,
-                    **request_kwargs,
-                )
-            elif self.path == "/api/dashboard":
-                self.engine.dashboard(question, emit, analysis_plan, **request_kwargs)
-            elif profile == "bitcoin":
-                self.engine.query(
-                    question,
-                    emit,
-                    profile="bitcoin",
-                    analysis_specification=analysis_specification,
-                    **request_kwargs,
-                )
-            else:
-                if analysis_specification is not None:
-                    request_kwargs["analysis_specification"] = analysis_specification
-                if clarification_answer is not None:
-                    request_kwargs["clarification_answer"] = clarification_answer
-                self.engine.query(question, emit, **request_kwargs)
-        except LiveDemoError as error:
-            try:
-                event = {"type": "error", "message": str(error)}
-                if error.suggested_instruction:
-                    event["suggested_instruction"] = error.suggested_instruction
-                emit(event)
-            except (BrokenPipeError, ConnectionResetError):
-                return
-        except (BrokenPipeError, ConnectionResetError):
-            return
-        except Exception as error:  # noqa: BLE001 — details stay server-side
-            recovery_message = google_auth_recovery_message(error)
-            if recovery_message:
-                print("live query failed: Google authentication expired", flush=True)
-                emit({"type": "error", "message": recovery_message})
-                return
-            print(f"live query failed: {type(error).__name__}", flush=True)
-            emit({"type": "error", "message": "生成または実行に失敗しました。端末ログを確認してください。"})
-    def _headers(self, content_type: str) -> None:
-        self.send_header("content-type", content_type)
-        self.send_header("cache-control", "no-store")
-        self.send_header("x-content-type-options", "nosniff")
-        self.send_header(
-            "content-security-policy",
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; "
-            "connect-src 'self'; img-src 'self' data:",
-        )
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
-        self.send_response(status)
-        self._headers(content_type)
-        self.send_header("content-length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-    def _send_json(self, status: int, body: dict) -> None:
-        self._send(
-            status,
-            json.dumps(body, ensure_ascii=False).encode(),
-            "application/json; charset=utf-8",
-        )
-    def log_message(self, format: str, *args) -> None:
-        print(f"{self.command} {self.path} -> {args[1] if len(args) > 1 else '-'}", flush=True)
-def create_server(host: str, port: int, engine) -> ThreadingHTTPServer:
-    handler = type("ConfiguredLiveDemoHandler", (LiveDemoHandler,), {"engine": engine})
-    return ThreadingHTTPServer((host, port), handler)
+LiveDemoHandler = live_http.LiveHTTPHandler
+
+
+def create_server(host: str, port: int, engine):
+    """Configure the HTTP boundary with the live demo's current public helpers."""
+    handler = type(
+        "ConfiguredLiveDemoHandler",
+        (LiveDemoHandler,),
+        {
+            "engine": engine,
+            "html": HTML,
+            "echarts_asset": ECHARTS_ASSET,
+            "max_body_bytes": MAX_BODY_BYTES,
+            "max_plan_body_bytes": MAX_PLAN_BODY_BYTES,
+            "max_question_chars": MAX_QUESTION_CHARS,
+            "planner": planner,
+            "live_error_type": LiveDemoError,
+            "period_for_question": staticmethod(period_for_question),
+            "dashboard_sections_for_plan": staticmethod(dashboard_sections_for_plan),
+            "analysis_section_for_specification": staticmethod(
+                analysis_section_for_specification
+            ),
+            "auth_recovery_message": staticmethod(google_auth_recovery_message),
+        },
+    )
+    return live_http.create_server(host, port, handler)
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project")
