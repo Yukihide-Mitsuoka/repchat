@@ -225,7 +225,7 @@ HTML = HTML.replace("</style>", WORKSPACE_POLISH_CSS + "\n</style>")
 CHART_RENDERER_FILES = (
     "chart_renderer_core.js",
     "chart_renderer_cartesian.js",
-    "chart_renderer.js",
+    "chart_renderer_indicators.js",
     "chart_renderer_composition.js",
     "chart_renderer_maps.js",
     "chart_renderer_dispatch.js",
