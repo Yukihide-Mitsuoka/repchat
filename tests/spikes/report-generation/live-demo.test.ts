@@ -7,6 +7,14 @@ import vm from 'node:vm';
 import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const LIVE = path.join(ROOT, 'spikes/report-generation/live_demo.py');
+const CHART_RENDERER_FILES = ['chart_renderer_core.js', 'chart_renderer.js'];
+
+function chartRendererSource() {
+  return CHART_RENDERER_FILES.map((filename) =>
+    readFileSync(path.join(ROOT, 'spikes/report-generation', filename), 'utf8'),
+  ).join('');
+}
+
 function python(body: string) {
   return spawnSync(
     'python3',
@@ -1481,10 +1489,7 @@ print(json.dumps({"rendered":rendered,"browser":all(("function "+name) in m.HTML
 });
 
 test('standard chart renderer creates ECharts options for every supported chart', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const results = {
     bar: { visualization: 'bar', columns: ['channel', 'sessions'], rows: [['organic', 100]] },
     grouped_bar: {
@@ -1644,10 +1649,7 @@ test('standard chart renderer creates ECharts options for every supported chart'
 });
 
 test('series variants normalize percentages, split scatter series, and render each calendar year', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const options = vm.runInNewContext(
     `${source};JSON.stringify({
       bar: standardChartOption({visualization:'percent_stacked_bar',columns:['device','new','repeat'],rows:[['mobile',3,1]]}),
@@ -1720,10 +1722,7 @@ print(json.dumps(accepted,ensure_ascii=False))
     flow_sankey_vertical: 'flow_sankey_vertical',
   });
 
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const options = vm.runInNewContext(
     `${source};JSON.stringify({
       funnel: standardChartOption({visualization:'funnel_horizontal',columns:['stage','value'],rows:[['1. view',10]]}),
@@ -1803,10 +1802,7 @@ print(json.dumps(accepted,ensure_ascii=False))
 });
 
 test('annotations, sparkline, mixed type, and delta render distinct ECharts options', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const options = vm.runInNewContext(
     `${source};JSON.stringify({
       annotated: standardChartOption({visualization:'annotated_line',columns:['date','annotation','value'],rows:[['2021-01-01','施策開始',10],['2021-01-02','',12]]}),
@@ -1864,10 +1860,7 @@ print(json.dumps(accepted,ensure_ascii=False))
 });
 
 test('box plot, treemap, and pie create standard ECharts options', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const options = vm.runInNewContext(
     `${source};JSON.stringify({
       box: standardChartOption({visualization:'box_plot',columns:['device','min','q1','median','q3','max'],rows:[['mobile',1,2,3,4,5]]}),
@@ -1932,10 +1925,7 @@ print(json.dumps(accepted))
 });
 
 test('area map renderer builds and registers a data-provided geographic map', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const geometry = JSON.stringify({
     type: 'Polygon',
     coordinates: [
@@ -1992,10 +1982,7 @@ print(json.dumps(accepted))
 });
 
 test('point and base map renderers use one registered query-provided geography', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const geometry = JSON.stringify({
     type: 'FeatureCollection',
     features: [
@@ -2067,10 +2054,7 @@ print(json.dumps(accepted,ensure_ascii=False))
 });
 
 test('advanced table filters, stably sorts, exports, and exposes bounded controls', () => {
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const state = vm.runInNewContext(
     `${source};JSON.stringify({
       filtered: standardTableRows([['東京',10],['大阪',2],['東京支店',10]],'東京',null,1).map(item=>item.row),
@@ -2119,10 +2103,7 @@ print(json.dumps({"columns":section["source_columns"],"rendered":m.dashboard_vis
     duplicate: 'rejected',
   });
 
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const transformed = vm.runInNewContext(
     `${source};JSON.stringify(standardPivotTableResult({visualization:'pivot_table',columns:['地域','年','売上'],rows:[['東','2024',10],['西','2025',20]]}))`,
   ) as string;
@@ -2152,10 +2133,7 @@ print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"inval
     rendered: 'comparison_table',
     invalid: 'rejected',
   });
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   assert.match(source, /deltaIndex: result\.columns\.length - 1/);
   assert.match(source, /advanced-table-delta/);
   assert.doesNotMatch(source, /delta-positive|delta-negative|good|bad/);
@@ -2178,10 +2156,7 @@ print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"dupli
     rendered: 'sparkline_table',
     duplicate: 'rejected',
   });
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const grouped = vm.runInNewContext(
     `${source};JSON.stringify(standardSparklineTableResult({visualization:'sparkline_table',columns:['区分','日付','値'],rows:[['A','2021-01-02',20],['A','2021-01-01',10],['B','2021-01-01',null]]}).rows.map(row=>({cells:[...row],series:row.sparklineValues})))`,
   ) as string;
@@ -2208,10 +2183,7 @@ else:print("accepted")
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), 'rejected');
 
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const source = chartRendererSource();
   const options = vm.runInNewContext(
     `${source};JSON.stringify({
       line: standardChartOption({visualization:'reference_line',columns:['date','actual','target'],rows:[['2021-01-01',10,12]]}),
