@@ -226,6 +226,7 @@ CHART_RENDERER_FILES = (
     "chart_renderer_core.js",
     "chart_renderer_cartesian.js",
     "chart_renderer.js",
+    "chart_renderer_tables.js",
 )
 CHART_RENDERER = "".join((HERE / filename).read_text(encoding="utf-8") for filename in CHART_RENDERER_FILES)
 HTML = HTML.replace(
