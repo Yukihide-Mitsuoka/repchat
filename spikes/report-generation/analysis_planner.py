@@ -23,8 +23,10 @@ from analysis_planner_validation import (
     bounded_consultation_text as _bounded_consultation_text,
     consultation_terms as _consultation_terms,
     flatten_visualization as _flatten_visualization,
+    normalize_plan_header as _normalize_plan_header_impl,
     panel_terms as _panel_terms,
     plan_panel_text as _plan_panel_text,
+    revisioned_plan as _revisioned_plan,
     text as _text,
     validate_chart_shape as _validate_chart_shape,
 )
@@ -181,72 +183,9 @@ def _normalize_plan_header(
     period: dict[str, str],
     answers: dict[str, str] | None,
 ) -> dict:
-    answers = answers or {}
-    if not isinstance(raw, dict):
-        raise PlannerError("分析計画がJSON objectではありません。")
-    if (
-        not isinstance(period, dict)
-        or not all(isinstance(period.get(key), str) for key in ("from", "to", "label"))
-    ):
-        raise PlannerError("分析計画の対象期間が不正です。")
-    hypotheses = [_text(value, "仮説") for value in raw.get("hypotheses", [])]
-    if not 1 <= len(hypotheses) <= 3:
-        raise PlannerError("分析計画の仮説は1〜3件にしてください。")
-    clarifications = []
-    for item in raw.get("clarifications", []):
-        field = item.get("field") if isinstance(item, dict) else None
-        diagnostic = json.dumps(field, ensure_ascii=False)
-        if field not in CLARIFICATION_FIELDS:
-            raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
-        if field in answers:
-            raise PlannerError(f"確認事項のfieldは回答済みです: {diagnostic}")
-        clarifications.append(
-            {
-                "field": field,
-                "question": _text(item.get("question"), "確認質問"),
-                "recommended_answer": _text(
-                    item.get("recommended_answer"), "推奨回答"
-                ),
-            }
-        )
-    if len(clarifications) > 3 or (not answers and not clarifications):
-        raise PlannerError("初回の確認事項は1〜3件にしてください。")
-    normalized_objective = _text(objective, "目的")
-    objective_summary = _text(raw.get("objective_summary"), "目的要約")
-    audience = _text(raw.get("audience"), "読者")
-    comparison = _text(raw.get("comparison"), "比較軸")
-    organization_context = {
-        "objective": normalized_objective,
-        "objective_summary": objective_summary,
-        "audience": audience,
-        "comparison": comparison,
-        "confirmed_answers": answers,
-    }
-    context_canonical = json.dumps(
-        organization_context, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    return _normalize_plan_header_impl(
+        raw, objective, period, answers, CLARIFICATION_FIELDS
     )
-    organization_context["revision"] = (
-        "context-" + hashlib.sha256(context_canonical.encode()).hexdigest()[:12]
-    )
-    return {
-        "status": "proposed",
-        "objective": normalized_objective,
-        "objective_summary": objective_summary,
-        "audience": audience,
-        "comparison": comparison,
-        "period": period,
-        "hypotheses": hypotheses,
-        "clarifications": clarifications,
-        "answers": answers,
-        "organization_context_revision": organization_context["revision"],
-        "organization_context": organization_context,
-    }
-
-
-def _revisioned_plan(plan: dict) -> dict:
-    canonical = json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    plan["revision"] = "plan-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
-    return plan
 
 
 def normalize_dashboard_plan(
