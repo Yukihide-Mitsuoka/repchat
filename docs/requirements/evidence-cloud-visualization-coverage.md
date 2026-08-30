@@ -82,7 +82,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`structured_response.py`](../../spikes/report-generation/structured_response.py)、会議報告の応答schemaと制限値は
 [`meeting_report_contracts.py`](../../spikes/report-generation/meeting_report_contracts.py)、plannerの応答schemaとschema builderは
 [`analysis_planner_contracts.py`](../../spikes/report-generation/analysis_planner_contracts.py)、plannerがAIへ渡す依頼文は
-[`analysis_planner_prompts.py`](../../spikes/report-generation/analysis_planner_prompts.py)、planner出力に共通する文字列・軸・指標・可視化形状の検証は
+[`analysis_planner_prompts.py`](../../spikes/report-generation/analysis_planner_prompts.py)、planner出力の目的・期間・確認事項・revisionと文字列・軸・指標・可視化形状の検証は
 [`analysis_planner_validation.py`](../../spikes/report-generation/analysis_planner_validation.py)、plannerの許可値と形状・行数上限は
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
 [`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実行前のSQL・dry-run検証は

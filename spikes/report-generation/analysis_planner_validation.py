@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 from analysis_planner_contracts import PlannerError
 from visualization_contracts import CHART_SHAPE_CONTRACTS
 
@@ -107,3 +110,80 @@ def consultation_terms(
     ):
         raise PlannerError(f"分析相談の{label}に重複があります。")
     return terms
+
+
+def normalize_plan_header(
+    raw: dict,
+    objective: str,
+    period: dict[str, str],
+    answers: dict[str, str] | None,
+    clarification_fields: tuple[str, ...],
+) -> dict:
+    """Validate and normalize one dashboard plan header."""
+    answers = answers or {}
+    if not isinstance(raw, dict):
+        raise PlannerError("分析計画がJSON objectではありません。")
+    if (
+        not isinstance(period, dict)
+        or not all(isinstance(period.get(key), str) for key in ("from", "to", "label"))
+    ):
+        raise PlannerError("分析計画の対象期間が不正です。")
+    hypotheses = [text(value, "仮説") for value in raw.get("hypotheses", [])]
+    if not 1 <= len(hypotheses) <= 3:
+        raise PlannerError("分析計画の仮説は1〜3件にしてください。")
+    clarifications = []
+    for item in raw.get("clarifications", []):
+        field = item.get("field") if isinstance(item, dict) else None
+        diagnostic = json.dumps(field, ensure_ascii=False)
+        if field not in clarification_fields:
+            raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
+        if field in answers:
+            raise PlannerError(f"確認事項のfieldは回答済みです: {diagnostic}")
+        clarifications.append(
+            {
+                "field": field,
+                "question": text(item.get("question"), "確認質問"),
+                "recommended_answer": text(
+                    item.get("recommended_answer"), "推奨回答"
+                ),
+            }
+        )
+    if len(clarifications) > 3 or (not answers and not clarifications):
+        raise PlannerError("初回の確認事項は1〜3件にしてください。")
+    normalized_objective = text(objective, "目的")
+    objective_summary = text(raw.get("objective_summary"), "目的要約")
+    audience = text(raw.get("audience"), "読者")
+    comparison = text(raw.get("comparison"), "比較軸")
+    organization_context = {
+        "objective": normalized_objective,
+        "objective_summary": objective_summary,
+        "audience": audience,
+        "comparison": comparison,
+        "confirmed_answers": answers,
+    }
+    context_canonical = json.dumps(
+        organization_context, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    organization_context["revision"] = (
+        "context-" + hashlib.sha256(context_canonical.encode()).hexdigest()[:12]
+    )
+    return {
+        "status": "proposed",
+        "objective": normalized_objective,
+        "objective_summary": objective_summary,
+        "audience": audience,
+        "comparison": comparison,
+        "period": period,
+        "hypotheses": hypotheses,
+        "clarifications": clarifications,
+        "answers": answers,
+        "organization_context_revision": organization_context["revision"],
+        "organization_context": organization_context,
+    }
+
+
+def revisioned_plan(plan: dict) -> dict:
+    """Assign a deterministic revision to one normalized plan."""
+    canonical = json.dumps(plan, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    plan["revision"] = "plan-" + hashlib.sha256(canonical.encode()).hexdigest()[:12]
+    return plan
