@@ -7,7 +7,11 @@ import vm from 'node:vm';
 import path from 'node:path';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const LIVE = path.join(ROOT, 'spikes/report-generation/live_demo.py');
-const CHART_RENDERER_FILES = ['chart_renderer_core.js', 'chart_renderer.js'];
+const CHART_RENDERER_FILES = [
+  'chart_renderer_core.js',
+  'chart_renderer_cartesian.js',
+  'chart_renderer.js',
+];
 
 function chartRendererSource() {
   return CHART_RENDERER_FILES.map((filename) =>
