@@ -47,6 +47,7 @@
     "scripts/setup-github.sh",
     "scripts/template-check.sh",
     "scripts/template_inheritance.py",
+    "scripts/template_sync_auth.py",
     "scripts/tests/test_agent_contract_profile.py",
     "scripts/tests/test_context_budget.py",
     "scripts/tests/test_expand_phase_compatibility.py",
@@ -71,6 +72,7 @@
     "scripts/tests/test_template_sync_ignore_portability.py",
     "scripts/tests/test_template_inheritance.py",
     "scripts/tests/test_template_inheritance_plan.py",
+    "scripts/tests/test_template_sync_auth.py",
     "scripts/tests/test_workflow_dependency_pins.py",
     "docs/foundation/"
   ],
