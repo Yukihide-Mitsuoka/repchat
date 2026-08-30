@@ -21,6 +21,7 @@ from evidence_page import (
     evidence_page as _evidence_page_impl,
     generated_sql_block as _generated_sql_block_impl,
 )
+from evidence_output import write_outputs as _write_outputs_impl
 from structured_response import (
     StructuredResponseError,
     load_structured_json as _load_structured_json,
@@ -692,35 +693,15 @@ def evidence_page(spec: dict, results: list) -> str:
 
 
 def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Path:
-    """Replace generated Evidence sources and page without retaining stale SQL."""
-    pages_dir = out_dir / "pages"
-    sources_dir = out_dir / "sources"
-    src_dir = sources_dir / SOURCE
-    out_path = pages_dir / "monthly_report.md"
-    connection_path = src_dir / "connection.yaml"
-    for path in (out_dir, pages_dir, sources_dir, src_dir, out_path, connection_path):
-        if path.is_symlink():
-            raise ValueError(f"refusing symlink in generated output path: {path}")
-
-    pages_dir.mkdir(parents=True, exist_ok=True)
-    src_dir.mkdir(parents=True, exist_ok=True)
-    for previous_sql in src_dir.glob("*.sql"):
-        previous_sql.unlink()
-
-    out_path.write_text(evidence_page(spec, results), encoding="utf-8")
-    # One .sql per answered section. Refused sections get no source file, so a
-    # missing definition cannot silently become an empty chart.
-    for result in results:
-        if result["sql"]:
-            (src_dir / f"{result['id'].lower()}.sql").write_text(
-                result["sql"].strip() + "\n", encoding="utf-8"
-            )
-    connection_path.write_text(
-        f"name: {SOURCE}\ntype: bigquery\noptions:\n"
-        f"  project_id: {project}\n  authenticator: gcloud-cli\n",
-        encoding="utf-8",
+    """Keep the established report API while delegating safe publication."""
+    return _write_outputs_impl(
+        out_dir,
+        spec,
+        results,
+        project,
+        source=SOURCE,
+        render_page=evidence_page,
     )
-    return out_path
 
 
 if __name__ == "__main__":
