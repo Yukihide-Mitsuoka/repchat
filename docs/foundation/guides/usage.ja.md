@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-08-09
+updated: 2026-08-30
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -91,9 +91,10 @@ python3 scripts/template_inheritance.py plan \
 gh variable set TEMPLATE_SYNC_ENABLED --body true
 ```
 
-直接親がprivateの場合は、[ADR-0016](../adr/0016-gate-private-fleet-automation-on-split-credentials.md)と
-[Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178)のread-only source
-credential方式が実装され、その継承関係で承認されるまで、この変数を無効のままにしてください。
+直接親がprivateの場合、protected workflowへ承認済みの認証分離実装を移植し、
+[Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178)の限定pilotがその継承関係で
+完了するまで、この変数を無効のままにしてください。設定・pilot・鍵rotation・rollbackの正準手順は
+[private直接親の認証](../../../.github/inheritance/README.md#authenticate-a-private-direct-parent)に集約します。
 認証の回避策としてrepositoryをpublicへ変更してはいけません。
 
 中間templateを親にした場合、agent profileへowner-qualified template overlayを必ず含めます。
@@ -229,7 +230,7 @@ make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
 `active`、`paused`、`retired`を記録します。子のMakefileはこのtargetを継承しないため、
 `ai-dev-foundation` worktreeから実行してください。worktree要件と結果の意味は
 [固定fleetの監査](../../../.github/inheritance/README.md#audit-the-fixed-fleet)を参照してください。
-ADR-0016により、private fleetの定期監査は無効のままです。
+ADR-0016により、private Template Syncを有効化した後もfleetの定期監査は無効のままです。
 
 ---
 

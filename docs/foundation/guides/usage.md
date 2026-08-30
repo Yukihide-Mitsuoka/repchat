@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-08-09
+updated: 2026-08-30
 ---
 
 # Usage
@@ -92,11 +92,12 @@ readable by its workflow may opt in to daily reviewed synchronization:
 gh variable set TEMPLATE_SYNC_ENABLED --body true
 ```
 
-Keep this variable disabled when the direct parent is private until the read-only source
-credential design in [ADR-0016](../adr/0016-gate-private-fleet-automation-on-split-credentials.md)
-and [Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178)
-has been implemented and approved for that inheritance edge. Do not make a repository
-public as an authentication workaround.
+When the direct parent is private, keep this variable disabled until the protected
+workflow has the approved split-credential implementation and that edge has completed
+the bounded pilot in [Issue #178](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/178).
+Follow the single source of operational steps in
+[Authenticate a private direct parent](../../../.github/inheritance/README.md#authenticate-a-private-direct-parent).
+Do not make a repository public as an authentication workaround.
 
 For an intermediate parent, the agent profile MUST include its owner-qualified template
 overlay. Propagation then proceeds parent to child one merged hop at a time.
@@ -238,7 +239,7 @@ The canonical fleet file records `active`, `paused`, and `retired` relationships
 from the `ai-dev-foundation` worktree; descendant Makefiles do not inherit this target.
 See [Audit the fixed fleet](../../../.github/inheritance/README.md#audit-the-fixed-fleet)
 for workspace requirements and result semantics. A scheduled private fleet audit remains
-disabled under ADR-0016.
+disabled under ADR-0016 even after private Template Sync is enabled.
 
 ---
 

@@ -141,6 +141,50 @@ one PR is open are collected by the next daily or manual run after it merges.
 Template Sync must never auto-merge or apply repository governance. If validation fails,
 disable `TEMPLATE_SYNC_ENABLED` until the manifest and local ignore contract agree.
 
+## Authenticate a private direct parent
+
+Private-source authentication is opt-in per inheritance edge. The dedicated GitHub App
+has repository `Contents: read` and platform-required `Metadata: read`, no write or
+organization permission, and access only to approved parent repositories. The App token
+reads the declared direct parent; the child's repository-scoped `GITHUB_TOKEN` alone
+writes the synchronization branch and pull request.
+
+Before enabling one edge:
+
+1. Manually port the current protected `template-sync.yml` into the child and verify its
+   literal `source_repo_path` and `SOURCE_REPOSITORY` equal the manifest parent.
+2. Install the approved source-reader App on that parent repository.
+3. Store the App client ID as a child repository variable and its private key as a child
+   repository secret. Never copy either value into a file, log, issue, or PR.
+4. Confirm the child allows GitHub Actions to create pull requests. Branch rules and
+   human review still control merging; the workflow never approves or merges its PR.
+5. Configure and enable the edge:
+
+```bash
+gh variable set TEMPLATE_SYNC_SOURCE_AUTH --body github-app
+gh variable set TEMPLATE_SYNC_SOURCE_APP_CLIENT_ID --body <client-id>
+gh secret set TEMPLATE_SYNC_SOURCE_APP_PRIVATE_KEY
+gh variable set TEMPLATE_SYNC_ENABLED --body true
+```
+
+The secret command prompts for the private key. The workflow passes only boolean
+presence to the local validator, scopes each short-lived installation token to the one
+declared parent repository, and lets the official token action revoke it at job end.
+Missing credentials, unsupported authentication modes, and workflow-to-manifest parent
+mismatches fail before synchronization. A public direct parent uses the default
+`public` mode and does not require App configuration.
+
+Pilot one edge with `workflow_dispatch`. Accept it only when it creates one reviewed PR,
+records the exact 40-character parent commit, leaves protected paths unchanged, passes
+normal CI, and a second run creates no duplicate PR. Record its runner duration and an
+approved monthly Actions budget in the tracking issue before adding another edge.
+
+For key rotation, create a replacement App key, update the repository secret, verify one
+manual run, then revoke the old key. To roll back, set `TEMPLATE_SYNC_ENABLED=false`,
+suspend or remove the App installation, and return to local `fleet-audit` plus reviewed
+local inheritance operations. ADR-0016 keeps any scheduled fleet audit disabled until a
+separate read-only proposal is approved.
+
 ## Plan the next parent commit
 
 ```bash
