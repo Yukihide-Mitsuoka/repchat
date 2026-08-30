@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from live_http_dispatch import LiveHTTPDispatchMixin
+from live_http_response import LiveHTTPResponseMixin
 
 
 API_PATHS = {
@@ -21,7 +22,9 @@ API_PATHS = {
 }
 
 
-class LiveHTTPHandler(LiveHTTPDispatchMixin, BaseHTTPRequestHandler):
+class LiveHTTPHandler(
+    LiveHTTPDispatchMixin, LiveHTTPResponseMixin, BaseHTTPRequestHandler
+):
     """Validate local requests and stream engine events as NDJSON."""
 
     engine: object
@@ -265,37 +268,6 @@ class LiveHTTPHandler(LiveHTTPDispatchMixin, BaseHTTPRequestHandler):
             self.live_error_type,
             self.planner.PlannerError,
         )
-
-    def _headers(self, content_type: str) -> None:
-        self.send_header("content-type", content_type)
-        self.send_header("cache-control", "no-store")
-        self.send_header("x-content-type-options", "nosniff")
-        self.send_header(
-            "content-security-policy",
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
-            "style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:",
-        )
-
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
-        self.send_response(status)
-        self._headers(content_type)
-        self.send_header("content-length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _send_json(self, status: int, body: dict) -> None:
-        self._send(
-            status,
-            json.dumps(body, ensure_ascii=False).encode(),
-            "application/json; charset=utf-8",
-        )
-
-    def log_message(self, format: str, *args) -> None:
-        print(
-            f"{self.command} {self.path} -> {args[1] if len(args) > 1 else '-'}",
-            flush=True,
-        )
-
 
 def create_server(
     host: str, port: int, handler: type[BaseHTTPRequestHandler]
