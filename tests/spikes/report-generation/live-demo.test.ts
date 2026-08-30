@@ -11,6 +11,7 @@ const CHART_RENDERER_FILES = [
   'chart_renderer_core.js',
   'chart_renderer_cartesian.js',
   'chart_renderer.js',
+  'chart_renderer_tables.js',
 ];
 
 function chartRendererSource() {
@@ -1415,10 +1416,7 @@ print(json.dumps(contracts,ensure_ascii=False))
   assert.ok(Object.values(contracts).every((contract) => contract.columns.length > 0));
   assert.ok(Object.values(contracts).every((contract) => contract.limit > 0));
 
-  const renderer = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/chart_renderer.js'),
-    'utf8',
-  );
+  const renderer = chartRendererSource();
   const specialized = new Set([
     'scorecard',
     'kpi_group',
