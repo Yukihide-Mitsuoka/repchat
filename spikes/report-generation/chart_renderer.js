@@ -46,35 +46,6 @@ function standardCalendarOption(result) {
   };
 }
 
-function standardScatterOption(result, bubble) {
-  const multiple = result.columns.length === (bubble ? 5 : 4);
-  const valueOffset = multiple ? 2 : 1;
-  const xColumn = result.columns[valueOffset];
-  const yColumn = result.columns[valueOffset + 1];
-  const sizeColumn = result.columns[valueOffset + 2];
-  const option = standardChartBase({ tooltip: true });
-  option.grid = standardChartGrid(false);
-  option.xAxis = { ...standardChartValueAxis(xColumn), nameLocation: 'middle', nameGap: 34 };
-  option.yAxis = { ...standardChartValueAxis(yColumn), nameLocation: 'middle', nameGap: 52 };
-  option.tooltip = { trigger: 'item', formatter: (params) => {
-    const row = params.data.raw;
-    const series = multiple ? `<br>${result.columns[1]}: ${row[1]}` : '';
-    return `${row[0]}${series}<br>${xColumn}: ${standardChartFormat(row[valueOffset], xColumn)}<br>${yColumn}: ${standardChartFormat(row[valueOffset + 1], yColumn)}${bubble ? `<br>${sizeColumn}: ${standardChartFormat(row[valueOffset + 2], sizeColumn)}` : ''}`;
-  } };
-  const sizes = bubble ? result.rows.map((row) => Math.max(0, standardChartNumber(row[valueOffset + 2]) ?? 0)) : [];
-  const maxSize = Math.max(...sizes, 1);
-  const seriesNames = multiple ? [...new Set(result.rows.map((row) => String(row[1])))] : [''];
-  option.legend = multiple ? { top: 8, type: 'scroll' } : undefined;
-  option.series = seriesNames.map((seriesName) => ({
-    name: seriesName || undefined,
-    type: 'scatter',
-    data: result.rows.flatMap((row, index) => !multiple || String(row[1]) === seriesName ? [{ value: [standardChartNumber(row[valueOffset]), standardChartNumber(row[valueOffset + 1])], symbolSize: bubble ? 8 + 34 * Math.sqrt(sizes[index] / maxSize) : 12, name: String(row[0]), raw: row }] : []),
-    label: { show: true, formatter: (params) => standardChartLabel(params.data.name, 16), position: 'right' },
-    emphasis: { focus: 'series', label: { show: true } },
-  }));
-  return option;
-}
-
 function standardFunnelOption(result, horizontal = false) {
   return {
     ...standardChartBase({ tooltip: true }),
@@ -95,48 +66,6 @@ function standardFunnelOption(result, horizontal = false) {
       gap: 4,
       label: { show: true, position: 'inside', formatter: (params) => `${standardChartLabel(params.name, 20)}\n${standardChartFormat(params.value, result.columns[1])}` },
       data: result.rows.map((row) => ({ name: String(row[0]), value: standardChartNumber(row[1]) })),
-    }],
-  };
-}
-
-function standardHeatmapOption(result) {
-  const xValues = [...new Set(result.rows.map((row) => String(row[0])))];
-  const yValues = [...new Set(result.rows.map((row) => String(row[1])))];
-  const values = result.rows.map((row) => standardChartNumber(row[2]) ?? 0);
-  const cellCount = xValues.length * yValues.length;
-  const dense = cellCount > 60 || yValues.length > 24;
-  const zoomed = yValues.length > 24;
-  const visibleCategories = Math.min(24, yValues.length);
-  const visiblePercent = Math.min(100, Math.max(20, (visibleCategories / Math.max(yValues.length, 1)) * 100));
-  const xLabelLength = xValues.length > 8 ? 14 : 20;
-  const yLabelLength = 28;
-  return {
-    ...standardChartBase({ tooltip: true }),
-    grid: { left: 190, right: zoomed ? 42 : 80, top: 48, bottom: 82, containLabel: true },
-    tooltip: { position: 'top', formatter: (params) => `${xValues[params.value[0]]} / ${yValues[params.value[1]]}: ${standardChartFormat(params.value[2], result.columns[2])}` },
-    xAxis: standardChartCategoryAxis(xValues, {
-      rotate: xValues.length > 8 ? 35 : 0,
-      formatter: (value) => standardChartLabel(value, xLabelLength),
-    }),
-    yAxis: standardChartCategoryAxis(yValues, {
-      width: 176,
-      overflow: 'truncate',
-      formatter: (value) => standardChartLabel(value, yLabelLength),
-      interval: zoomed ? 0 : 'auto',
-    }),
-    visualMap: { min: Math.min(...values, 0), max: Math.max(...values, 1), calculable: true, orient: 'horizontal', left: 'center', bottom: 8, inRange: { color: ['#eaf2f8', '#3973c6'] } },
-    dataZoom: zoomed ? [
-      { type: 'slider', yAxisIndex: 0, right: 8, top: 48, bottom: 82, start: 0, end: visiblePercent, filterMode: 'none' },
-      { type: 'inside', yAxisIndex: 0, start: 0, end: visiblePercent, filterMode: 'none' },
-    ] : undefined,
-    series: [{
-      type: 'heatmap',
-      data: result.rows.map((row) => [xValues.indexOf(String(row[0])), yValues.indexOf(String(row[1])), standardChartNumber(row[2]) ?? 0]),
-      label: { show: !dense, formatter: (params) => standardChartFormat(params.value[2], result.columns[2]) },
-      emphasis: {
-        itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.25)' },
-        label: { show: true, formatter: (params) => standardChartFormat(params.value[2], result.columns[2]) },
-      },
     }],
   };
 }
