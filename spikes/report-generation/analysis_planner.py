@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from analysis_consultation import (
     CONSULTATION_CHARTS,
@@ -18,11 +17,14 @@ from analysis_consultation import (
     propose_consultation as _propose_consultation_impl,
 )
 from analysis_planner_contracts import (
+    DEFAULT_INITIAL_PANEL_COUNT,
+    DEFAULT_MAX_PANEL_COUNT,
     PlannerError,
     build_clarification_response_schema,
     build_dashboard_response_schema,
     build_plan_schemas,
     neutral_chart_order as _neutral_chart_order,
+    planner_panel_counts,
     visualization_response_schema as _visualization_response_schema,
 )
 from analysis_planner_prompts import (
@@ -57,13 +59,7 @@ from visualization_contracts import (
 
 CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
 DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
-# Initial dashboard output is exactly INITIAL_PANEL_COUNT panels; revisions are
-# locally validated at 1..MAX_PANEL_COUNT. Consultation is provider- and
-# locally-bounded at 1..4 recommendations. Token budgets cover those different
-# cardinalities without leaving either paid response unbounded.
 DASHBOARD_MAX_OUTPUT_TOKENS = 32768
-DEFAULT_INITIAL_PANEL_COUNT = 6
-DEFAULT_MAX_PANEL_COUNT = 20
 DYNAMIC_PANEL_TEXT_FIELDS = (
     "title", "kpi", "chart", "decision", "reason", "execution_prompt"
 )
@@ -74,32 +70,7 @@ DYNAMIC_PANEL_FIELDS = (
     + DYNAMIC_PANEL_LIST_FIELDS
     + DYNAMIC_PANEL_LAYOUT_FIELDS
 )
-
-
-def _positive_count_setting(name: str, default: int) -> int:
-    """Read one admin-owned positive count without selecting analysis content."""
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    try:
-        value = int(raw)
-    except ValueError as error:
-        raise ValueError(f"{name} must be a positive integer") from error
-    if value < 1:
-        raise ValueError(f"{name} must be a positive integer")
-    return value
-
-
-MAX_PANEL_COUNT = _positive_count_setting(
-    "ANALYSIS_MAX_PANEL_COUNT", DEFAULT_MAX_PANEL_COUNT
-)
-INITIAL_PANEL_COUNT = _positive_count_setting(
-    "ANALYSIS_INITIAL_PANEL_COUNT", min(DEFAULT_INITIAL_PANEL_COUNT, MAX_PANEL_COUNT)
-)
-if INITIAL_PANEL_COUNT > MAX_PANEL_COUNT:
-    raise ValueError(
-        "ANALYSIS_INITIAL_PANEL_COUNT must not exceed ANALYSIS_MAX_PANEL_COUNT"
-    )
+INITIAL_PANEL_COUNT, MAX_PANEL_COUNT = planner_panel_counts()
 
 
 def _defined_metric_names(metrics: str) -> tuple[str, ...]:

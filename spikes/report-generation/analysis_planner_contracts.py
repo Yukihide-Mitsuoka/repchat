@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import os
 
 from visualization_contracts import CHART_SHAPE_CONTRACTS
 
@@ -14,6 +15,44 @@ class PlannerError(ValueError):
     def __init__(self, message: str, *, suggested_instruction: str | None = None):
         super().__init__(message)
         self.suggested_instruction = suggested_instruction
+
+
+# Initial dashboard output is exactly INITIAL_PANEL_COUNT panels; revisions are
+# locally validated at 1..MAX_PANEL_COUNT. Consultation is provider- and
+# locally-bounded at 1..4 recommendations. Token budgets cover those different
+# cardinalities without leaving either paid response unbounded.
+DEFAULT_INITIAL_PANEL_COUNT = 6
+DEFAULT_MAX_PANEL_COUNT = 20
+
+
+def _positive_count_setting(name: str, default: int) -> int:
+    """Read one admin-owned positive count without selecting analysis content."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer") from error
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+def planner_panel_counts() -> tuple[int, int]:
+    """Return the configured initial and maximum dashboard panel counts."""
+    maximum = _positive_count_setting(
+        "ANALYSIS_MAX_PANEL_COUNT", DEFAULT_MAX_PANEL_COUNT
+    )
+    initial = _positive_count_setting(
+        "ANALYSIS_INITIAL_PANEL_COUNT",
+        min(DEFAULT_INITIAL_PANEL_COUNT, maximum),
+    )
+    if initial > maximum:
+        raise ValueError(
+            "ANALYSIS_INITIAL_PANEL_COUNT must not exceed ANALYSIS_MAX_PANEL_COUNT"
+        )
+    return initial, maximum
 
 
 def neutral_chart_order(charts: tuple[str, ...], seed: str) -> tuple[str, ...]:
