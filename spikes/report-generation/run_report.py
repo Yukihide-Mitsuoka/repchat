@@ -10,6 +10,13 @@ import re
 import sys
 import time
 from pathlib import Path
+from evidence_components import (
+    EVIDENCE_COMPONENT,
+    SOURCE,
+    evidence_component,
+    evidence_identifier,
+    evidence_query,
+)
 from structured_response import (
     StructuredResponseError,
     load_structured_json as _load_structured_json,
@@ -426,17 +433,6 @@ def validate_sql(
     return s, None
 
 
-EVIDENCE_COMPONENT = {
-    "big_value": '<BigValue data={{{q}}} value={col} title="{title}"/>',
-    "table": "<DataTable data={{{q}}}/>",
-    "bar": '<BarChart data={{{q}}} x={x} y={y} title="{title}"/>',
-    "line": "<LineChart data={{{q}}} x={x} y={y} title=\"{title}\"/>",
-}
-
-
-SOURCE = "ga4"  # Evidence source name; sources/<SOURCE>/<id>.sql holds warehouse SQL
-
-
 def break_select_columns(sql: str) -> str:
     """Put each expression in every SELECT list on its own logical line."""
     out: list[str] = []
@@ -681,51 +677,6 @@ def format_sql_for_display(sql: str) -> str:
     return normalize_sql_indentation("\n".join(lines))
 
 
-def evidence_query(result: dict) -> list[str]:
-    columns = result["columns"] or []
-    selected_columns = ", ".join(evidence_identifier(column) for column in columns)
-    query_name = result["id"].lower()
-    return [
-        f"```sql {query_name}",
-        f"select {selected_columns} from {SOURCE}.{query_name}",
-        "```",
-        "",
-    ]
-
-
-def evidence_component(result: dict) -> str:
-    columns = result["columns"] or []
-    query_name = result["id"].lower()
-    component = result["component"]
-    if component == "sankey":
-        source = columns[0] if columns else "source"
-        target = columns[1] if len(columns) > 1 else "target"
-        value = columns[2] if len(columns) > 2 else "value"
-        return (
-            f'<SankeyDiagram data={{{query_name}}} sourceCol={source} targetCol={target} '
-            f'valueCol={value} valueFmt=num0 nodeLabels=name linkLabels=value '
-            'linkColor=gradient chartAreaHeight=420 '
-            f'title="{html.escape(result["title"])}"/>'
-        )
-    template = EVIDENCE_COMPONENT[component]
-    if result["component"] == "big_value":
-        return template.format(
-            q=query_name,
-            col=columns[0] if columns else "value",
-            title=result["title"],
-        )
-    if result["component"] in {"bar", "line"}:
-        x = columns[0] if columns else "x"
-        y = columns[1] if len(columns) > 1 else "y"
-        return template.format(
-            q=query_name,
-            x=x,
-            y=y,
-            title=result["title"],
-        )
-    return template.format(q=query_name)
-
-
 def generated_sql_block(sql: str) -> list[str]:
     formatted = json.dumps(format_sql_for_display(sql), ensure_ascii=False)
     return [
@@ -816,13 +767,6 @@ def evidence_page(spec: dict, results: list) -> str:
         out.extend([evidence_component(r), ""])
     out.extend([GENERATED_SQL_STYLE, ""])
     return "\n".join(out)
-
-
-def evidence_identifier(column: str) -> str:
-    """Accept only the ASCII identifiers required by the generation prompt."""
-    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", column):
-        raise ValueError(f"unsafe Evidence column identifier: {column}")
-    return column
 
 
 def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Path:
