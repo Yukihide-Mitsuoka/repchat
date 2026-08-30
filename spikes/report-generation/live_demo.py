@@ -222,7 +222,11 @@ HTML = HTML.replace(
 # partner-facing workspace visual contract as the final cascade layer (#347).
 HTML = HTML.replace("</style>", WORKSPACE_POLISH_CSS + "\n</style>")
 
-CHART_RENDERER_FILES = ("chart_renderer_core.js", "chart_renderer.js")
+CHART_RENDERER_FILES = (
+    "chart_renderer_core.js",
+    "chart_renderer_cartesian.js",
+    "chart_renderer.js",
+)
 CHART_RENDERER = "".join((HERE / filename).read_text(encoding="utf-8") for filename in CHART_RENDERER_FILES)
 HTML = HTML.replace(
     '<section id="output" class="hidden">',
