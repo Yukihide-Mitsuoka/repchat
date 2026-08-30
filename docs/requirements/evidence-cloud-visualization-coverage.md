@@ -99,7 +99,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`live_ui_theme.py`](../../spikes/report-generation/live_ui_theme.py)、ペイン・レスポンシブ・composerのスタイルは
 [`live_ui_shell.py`](../../spikes/report-generation/live_ui_shell.py)、ワークスペース操作と未定義語の確認UIは
 [`live_ui_interactions.py`](../../spikes/report-generation/live_ui_interactions.py)、Evidence成果物への変換は
-[`run_report.py`](../../spikes/report-generation/run_report.py)の`evidence_component`を根拠とする。
+[`evidence_components.py`](../../spikes/report-generation/evidence_components.py)の`evidence_component`を根拠とする。
 
 ## 3. 標準chart component
 
