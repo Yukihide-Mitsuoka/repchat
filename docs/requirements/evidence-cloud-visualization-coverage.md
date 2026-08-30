@@ -88,8 +88,9 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`sql_prompt_context.py`](../../spikes/report-generation/sql_prompt_context.py)、planner出力の目的・期間・確認事項・revisionと文字列・軸・指標・可視化形状の検証は
 [`analysis_planner_validation.py`](../../spikes/report-generation/analysis_planner_validation.py)、plannerの許可値と形状・行数上限は
 [`visualization_contracts.py`](../../spikes/report-generation/visualization_contracts.py)、SQL出力契約は
-[`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、実行前のSQL・dry-run検証は
-[`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、結果形状検証は
+[`visualization_sections.py`](../../spikes/report-generation/visualization_sections.py)、パネル形状固有の実行前SQL・dry-run検証は
+[`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、データセット境界のSQL検証・dry-run schema検査・BigQuery実行は
+[`bigquery_execution.py`](../../spikes/report-generation/bigquery_execution.py)、結果形状検証は
 [`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、各モジュールの失敗をライブデモの公開エラー・期間・検証契約へ変換する境界は
 [`live_contracts.py`](../../spikes/report-generation/live_contracts.py)、1パネルの生成から実行までの順序は
 [`section_execution.py`](../../spikes/report-generation/section_execution.py)、確定パネルから根拠bundleを組み立てる順序は

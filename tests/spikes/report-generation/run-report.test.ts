@@ -393,6 +393,75 @@ print(json.dumps([module["validate_sql"](query) for query in queries]))
   }
 });
 
+test('BigQuery helpers preserve dry-run and guarded execution contracts', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+google = types.ModuleType("google")
+cloud = types.ModuleType("google.cloud")
+bigquery = types.ModuleType("google.cloud.bigquery")
+class QueryJobConfig:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+bigquery.QueryJobConfig = QueryJobConfig
+cloud.bigquery = bigquery
+google.cloud = cloud
+sys.modules["google"] = google
+sys.modules["google.cloud"] = cloud
+sys.modules["google.cloud.bigquery"] = bigquery
+
+class Field:
+    def __init__(self, name, field_type):
+        self.name = name
+        self.field_type = field_type
+class Row:
+    def values(self): return ["organic", 12]
+class Rows:
+    schema = [Field("category", "STRING"), Field("metric_value", "INT64")]
+    def __iter__(self): return iter([Row()])
+class Job:
+    schema = [Field("category", "STRING"), Field("metric_value", "INT64")]
+    def result(self, **kwargs):
+        captured["result_kwargs"] = kwargs
+        return Rows()
+class Client:
+    def query(self, sql, job_config):
+        captured.setdefault("configs", []).append(job_config.__dict__)
+        return Job()
+
+captured = {}
+table = chr(96) + "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*" + chr(96)
+query = "SELECT COUNT(1) AS metric_value FROM " + table
+schema, schema_error = module["inspect_bq_schema"](Client(), query)
+execution, execution_error = module["exec_bq"](Client(), query, max_results=25)
+print(json.dumps({
+    "schema": schema,
+    "schema_error": schema_error,
+    "execution": execution,
+    "execution_error": execution_error,
+    "configs": captured["configs"],
+    "result_kwargs": captured["result_kwargs"],
+    "max_bytes": module["MAX_BYTES_BILLED"],
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    schema: [
+      ['category', 'STRING'],
+      ['metric_value', 'INT64'],
+    ],
+    schema_error: null,
+    execution: [[['organic', 12]], ['category', 'metric_value']],
+    execution_error: null,
+    configs: [
+      { dry_run: true, use_query_cache: false },
+      { maximum_bytes_billed: 20 * 1024 ** 3, use_query_cache: true },
+    ],
+    result_kwargs: { timeout: 180, max_results: 25 },
+    max_bytes: 20 * 1024 ** 3,
+  });
+});
+
 test('the Evidence page shows the Japanese question and generated warehouse SQL', () => {
   const result = loadRunReport(`
 page = module["evidence_page"](spec, [{
