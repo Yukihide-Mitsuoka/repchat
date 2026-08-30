@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
 SHARED_TEST = ROOT / "scripts/tests/test_template_sync_ignore.py"
+SHARED_VALIDATOR = ROOT / "scripts/template_sync_auth.py"
+SHARED_WORKFLOW = ROOT / ".github/workflows/template-sync.yml"
 
 
 class TemplateSyncIgnorePortabilityTest(unittest.TestCase):
@@ -17,6 +19,7 @@ class TemplateSyncIgnorePortabilityTest(unittest.TestCase):
             test_path = child / "scripts/tests/test_template_sync_ignore.py"
             test_path.parent.mkdir(parents=True)
             shutil.copy2(SHARED_TEST, test_path)
+            shutil.copy2(SHARED_VALIDATOR, child / "scripts/template_sync_auth.py")
             (child / ".github/workflows").mkdir(parents=True)
             (child / ".templatesyncignore").write_text(
                 ".ai/project/**\n"
@@ -27,35 +30,11 @@ class TemplateSyncIgnorePortabilityTest(unittest.TestCase):
                 ":!docs/foundation/**\n",
                 encoding="utf-8",
             )
+            workflow = SHARED_WORKFLOW.read_text(encoding="utf-8").replace(
+                "{{ORG}}/ai-dev-foundation", "acme/parent"
+            )
             (child / ".github/workflows/template-sync.yml").write_text(
-                "name: Template Sync\n"
-                "on:\n"
-                "  schedule:\n"
-                "    - cron: \"17 7 * * *\"\n"
-                "concurrency:\n"
-                "  group: template-sync-${{ github.repository }}\n"
-                "  cancel-in-progress: false\n"
-                "jobs:\n"
-                "  sync:\n"
-                "    steps:\n"
-                "      - id: sync-preflight\n"
-                "        run: |\n"
-                "          gh pr list --state open --limit 101\n"
-                "          echo 'More than 100 open PRs prevent bounded preflight'\n"
-                "          echo 'select(.head.ref | startswith(\"chore/template_sync_\"))'\n"
-                "          echo 'Multiple open Template Sync PRs require human review'\n"
-                "          echo 'should_sync=true' >> \"$GITHUB_OUTPUT\"\n"
-                "      - id: template-sync\n"
-                "        if: steps.sync-preflight.outputs.should_sync == 'true'\n"
-                "      - if: steps.template-sync.outputs.pr_branch != ''\n"
-                "        run: |\n"
-                "          SOURCE_COMMIT=\"$(gh api \"repos/${SOURCE_REPOSITORY}/commits/${SOURCE_SHORT}\" --jq .sha)\"\n"
-                "          echo \"Unable to expand the Template Sync source commit\"\n"
-                "          body=\"Direct-parent-source: ${SOURCE_COMMIT}\n\n"
-                "          Before merge:\n"
-                "          - Finalize manual boundaries and .github/inheritance/lock.json in this same reviewed PR.\"\n"
-                "          gh pr edit \"$PR_NUMBER\" --body \"$body\"\n",
-                encoding="utf-8",
+                workflow, encoding="utf-8"
             )
 
             result = subprocess.run(

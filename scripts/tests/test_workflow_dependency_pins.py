@@ -8,6 +8,7 @@ SHA = re.compile(r"[0-9a-f]{40}")
 USES = re.compile(r"\buses:\s*([^\s#]+)")
 VERSION_COMMENT = re.compile(r"#\s*v(\d+)(?:\D|$)")
 NODE24_MINIMUM_MAJORS = {
+    "actions/create-github-app-token": 3,
     "actions/attest-build-provenance": 4,
     "actions/upload-artifact": 7,
     "amannn/action-semantic-pull-request": 6,

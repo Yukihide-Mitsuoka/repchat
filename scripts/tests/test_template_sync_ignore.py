@@ -42,6 +42,44 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
         self.assertIn("Unable to expand the Template Sync source commit", workflow)
         self.assertIn("gh pr edit", workflow)
 
+    def test_private_source_read_is_separate_from_child_writes(self):
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+
+        required = (
+            "id: source-auth",
+            "scripts/template_sync_auth.py",
+            "id: source-app-token",
+            "actions/create-github-app-token@",
+            "# v3",
+            "owner: ${{ steps.source-auth.outputs.owner }}",
+            "repositories: ${{ steps.source-auth.outputs.repository }}",
+            "permission-contents: read",
+            "source_gh_token: ${{ steps.source-app-token.outputs.token || github.token }}",
+            "target_gh_token: ${{ github.token }}",
+            "persist-credentials: false",
+            "id: source-provenance",
+            "SOURCE_COMMIT: ${{ steps.source-provenance.outputs.commit }}",
+        )
+        for value in required:
+            with self.subTest(value=value):
+                self.assertIn(value, workflow)
+        self.assertNotIn("skip-token-revoke", workflow)
+        self.assertIn(
+            "HAS_SOURCE_APP_PRIVATE_KEY: "
+            "${{ secrets.TEMPLATE_SYNC_SOURCE_APP_PRIVATE_KEY != '' }}",
+            workflow,
+        )
+        self.assertNotIn(
+            "SOURCE_APP_PRIVATE_KEY: ${{ secrets.TEMPLATE_SYNC_SOURCE_APP_PRIVATE_KEY }}",
+            workflow,
+        )
+        self.assertNotIn("secrets.GITHUB_TOKEN", workflow)
+        self.assertIn(
+            "GH_TOKEN: ${{ steps.source-app-token.outputs.token || github.token }}",
+            workflow,
+        )
+        self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
+
     def test_template_sync_runs_daily_off_the_hour(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
 
