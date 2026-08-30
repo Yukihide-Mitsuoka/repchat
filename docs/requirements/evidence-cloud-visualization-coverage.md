@@ -97,7 +97,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、単一処理のロック・キャンセル・各workflowへの接続は
 [`live_engine.py`](../../spikes/report-generation/live_engine.py)、localhostの入力検証とNDJSON配信は
 [`live_http.py`](../../spikes/report-generation/live_http.py)、実描画は
-[`chart_renderer.js`](../../spikes/report-generation/chart_renderer.js)、ライブ画面の基礎HTML文書は
+[`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)、ライブ画面の基礎HTML文書は
 [`live_ui_base.py`](../../spikes/report-generation/live_ui_base.py)、基礎テーマは
 [`live_ui_theme.py`](../../spikes/report-generation/live_ui_theme.py)、ペイン・レスポンシブ・composerのスタイルは
 [`live_ui_shell.py`](../../spikes/report-generation/live_ui_shell.py)、ワークスペース操作と未定義語の確認UIは
