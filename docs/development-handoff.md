@@ -14,7 +14,7 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #580](https://github.com/Yukihide-Mitsuoka/repchat/issues/580)を参照してください。
+現在の受入条件と進行状況は[Issue #580](https://github.com/Yukihide-Mitsuoka/repchat/issues/580)と[PR #581](https://github.com/Yukihide-Mitsuoka/repchat/pull/581)を参照してください。
 対象はVertex AI費用計算のcharacterization testです。相談・計画・会議報告・SQL初回生成・SQL修正の円換算結果と、修正費用の加算、表示時だけ小数3桁へ丸める現行動作を公開ワークフロー境界で固定します。本番コードは変更しません。
 基準はSQL実行前検証の責務分離を行った[PR #578](https://github.com/Yukihide-Mitsuoka/repchat/pull/578)を取り込んだmainです。依存参照を補った変更前の`make test-unit`は349件、追加後の単体・全体テストは352件が成功しました。format・lint・coverageも成功し、Node.js対象のcoverageはline 93.59%、branch 85.19%、function 87.78%です。CIの最終結果はIssueとリンク先PRに記録します。
 次はcharacterization testのPRをマージし、[Issue #579](https://github.com/Yukihide-Mitsuoka/repchat/issues/579)で価格表を所有するモジュールへ費用計算を集約します。
