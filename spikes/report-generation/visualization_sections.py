@@ -51,28 +51,19 @@ def build_planned_analysis_section(
         section["source_columns"] = [
             f"metric_{index}" for index in range(1, len(measures) + 1)
         ]
-    elif chart == "bar":
+    elif chart in {"bar", "donut", "pie"}:
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["category", "metric_value"]
-    elif chart in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
+    elif chart in {"grouped_bar", "stacked_bar", "percent_stacked_bar", "mixed_bar_line"}:
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "category",
             *[f"metric_{index}" for index in range(1, len(measures) + 1)],
         ]
-    elif chart == "line":
+    elif chart in {"line", "area", "calendar_heatmap", "sparkline"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["event_date", "metric_value"]
-    elif chart == "multi_line":
-        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = [
-            "event_date",
-            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
-        ]
-    elif chart == "area":
-        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["event_date", "metric_value"]
-    elif chart in {"stacked_area", "percent_stacked_area"}:
+    elif chart in {"multi_line", "stacked_area", "percent_stacked_area"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
             "event_date",
@@ -81,12 +72,6 @@ def build_planned_analysis_section(
     elif chart == "histogram":
         section["shape"] = {"rows": "階級ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["bin_start", "frequency"]
-    elif chart == "donut":
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["category", "metric_value"]
-    elif chart == "calendar_heatmap":
-        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["event_date", "metric_value"]
     elif chart in {"scatter", "bubble"}:
         value_columns = ["x_value", "y_value"]
         if chart == "bubble":
@@ -192,15 +177,6 @@ def build_planned_analysis_section(
             "columns": dimensions + measures,
         }
         section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
-    elif chart == "sparkline":
-        section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["event_date", "metric_value"]
-    elif chart == "mixed_bar_line":
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = [
-            "category",
-            *[f"metric_{index}" for index in range(1, len(measures) + 1)],
-        ]
     elif chart == "delta":
         section["shape"] = {"rows": "比較対象を含む1行", "columns": measures}
         section["source_columns"] = ["current_value", "comparison_value"]
@@ -218,9 +194,6 @@ def build_planned_analysis_section(
             *[f"level_{index}" for index in range(1, len(dimensions) + 1)],
             "metric_value",
         ]
-    elif chart == "pie":
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["category", "metric_value"]
     elif chart in {"area_map", "us_map"}:
         section["shape"] = {
             "rows": "地域ごとに1行。地理境界はGeoJSON PolygonまたはMultiPolygon",
