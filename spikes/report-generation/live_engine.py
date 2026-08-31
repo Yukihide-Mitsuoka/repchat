@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import threading
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 import analysis_workflows
 import bitcoin_profile as bitcoin
@@ -80,6 +81,15 @@ class LiveQueryEngine:
         if done_event is not None:
             done_event.set()
 
+    @contextmanager
+    def _operation_scope(self, request_id: str | None) -> Iterator[threading.Event]:
+        """Finish only the operation acquired here, including on failure."""
+        cancel_event = self._begin_operation(request_id)
+        try:
+            yield cancel_event
+        finally:
+            self._finish_operation()
+
     def _check_cancelled(self, cancel_event: threading.Event) -> None:
         if cancel_event.is_set():
             raise self.cancelled_error_type("処理を停止しました。")
@@ -103,8 +113,7 @@ class LiveQueryEngine:
         clarification_answer: str | None = None,
         request_id: str | None = None,
     ) -> None:
-        cancel_event = self._begin_operation(request_id)
-        try:
+        with self._operation_scope(request_id) as cancel_event:
             try:
                 analysis_workflows.run_single_analysis(
                     question,
@@ -121,8 +130,6 @@ class LiveQueryEngine:
                     str(error),
                     suggested_instruction=error.suggested_instruction,
                 ) from error
-        finally:
-            self._finish_operation()
 
     def consult(
         self,
@@ -133,8 +140,7 @@ class LiveQueryEngine:
         request_id: str | None = None,
     ) -> None:
         """Create history-aware analysis specifications without querying BigQuery."""
-        cancel_event = self._begin_operation(request_id)
-        try:
+        with self._operation_scope(request_id) as cancel_event:
             try:
                 analysis_workflows.consult(
                     self.client,
@@ -152,8 +158,6 @@ class LiveQueryEngine:
                     str(error),
                     suggested_instruction=error.suggested_instruction,
                 ) from error
-        finally:
-            self._finish_operation()
 
     def dashboard(
         self,
@@ -163,8 +167,7 @@ class LiveQueryEngine:
         request_id: str | None = None,
     ) -> None:
         """Build only a confirmed AI-authored dashboard plan."""
-        cancel_event = self._begin_operation(request_id)
-        try:
+        with self._operation_scope(request_id) as cancel_event:
             self.latest_dashboard = None
             try:
                 dashboard_build.build_dashboard(
@@ -184,8 +187,6 @@ class LiveQueryEngine:
                 )
             except dashboard_build.DashboardBuildError as error:
                 raise self.error_type(str(error)) from error
-        finally:
-            self._finish_operation()
 
     def meeting_report(
         self,
@@ -194,8 +195,7 @@ class LiveQueryEngine:
         request_id: str | None = None,
     ) -> None:
         """Generate a cited draft from the latest completed dashboard bundle."""
-        cancel_event = self._begin_operation(request_id)
-        try:
+        with self._operation_scope(request_id) as cancel_event:
             try:
                 analysis_workflows.generate_meeting_report(
                     self.client,
@@ -210,8 +210,6 @@ class LiveQueryEngine:
                     str(error),
                     suggested_instruction=error.suggested_instruction,
                 ) from error
-        finally:
-            self._finish_operation()
 
     def plan(
         self,
@@ -223,8 +221,7 @@ class LiveQueryEngine:
         request_id: str | None = None,
     ) -> None:
         """Propose a reviewable plan without running any warehouse query."""
-        cancel_event = self._begin_operation(request_id)
-        try:
+        with self._operation_scope(request_id) as cancel_event:
             try:
                 analysis_workflows.plan_dashboard(
                     self.client,
@@ -244,8 +241,6 @@ class LiveQueryEngine:
                     str(error),
                     suggested_instruction=error.suggested_instruction,
                 ) from error
-        finally:
-            self._finish_operation()
 
     def _run_section(
         self,
