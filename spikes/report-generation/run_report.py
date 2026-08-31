@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared SQL generation, BigQuery validation, and Evidence rendering helpers.
+"""Shared Vertex pricing, SQL generation, BigQuery validation, and rendering helpers.
 
 The executable fixed-report runner was removed. Product analysis starts in the
 live consultation flow and requires an AI-authored specification before SQL.
@@ -54,6 +54,15 @@ PRICING = {
     "gemini-3.6-flash": (1.50, 7.50),
     "gemini-3.5-flash": (1.50, 9.00),
 }  # USD per 1M tokens (in, out)
+
+
+def vertex_cost_jpy(model: str, usage: dict) -> float:
+    """Calculate one Vertex request cost from the shared model price table."""
+    input_price, output_price = PRICING[model]
+    return (
+        usage["input_tokens"] * input_price
+        + usage["output_tokens"] * output_price
+    ) / 1e6 * USD_JPY
 
 def generated_sql_block(sql: str) -> list[str]:
     """Keep the established report API while delegating SQL block rendering."""

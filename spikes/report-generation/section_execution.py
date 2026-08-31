@@ -72,10 +72,7 @@ def run_section(
                 client, model, section, period, rules
             )
         allowed_dataset = report.DATASET
-    cost = (
-        usage["input_tokens"] * report.PRICING[model][0]
-        + usage["output_tokens"] * report.PRICING[model][1]
-    ) / 1e6 * report.USD_JPY
+    cost = report.vertex_cost_jpy(model, usage)
     sql = (answer.get("sql") or "").strip()
     undefined = answer.get("undefined_terms") or []
     if not sql and undefined:
@@ -162,10 +159,7 @@ def run_section(
                 diagnostic,
                 bitcoin_rules if profile == "bitcoin" else rules,
             )
-            cost += (
-                repair_usage["input_tokens"] * report.PRICING[model][0]
-                + repair_usage["output_tokens"] * report.PRICING[model][1]
-            ) / 1e6 * report.USD_JPY
+            cost += report.vertex_cost_jpy(model, repair_usage)
             repaired_sql = (repaired.get("sql") or "").strip()
             if not repaired_sql:
                 reason = (repaired.get("reason") or "").strip()
