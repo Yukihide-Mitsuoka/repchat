@@ -15,6 +15,35 @@ class SectionExecutionError(RuntimeError):
     """Raised when a section cannot safely complete its execution pipeline."""
 
 
+def _dashboard_sql_diagnostic(
+    section: dict,
+    sql: str,
+    bq: object,
+    allowed_dataset: str,
+    period_diagnostic: str,
+) -> str:
+    """Return the first repairable pre-execution diagnostic in policy order."""
+    if period_diagnostic:
+        return period_diagnostic
+    try:
+        sql_contracts.validate_generated_dashboard_sql(section, sql)
+    except sql_contracts.SQLContractError as validation_error:
+        return str(validation_error)
+    dry_schema, dry_error = report.inspect_bq_schema(
+        bq, sql, allowed_dataset=allowed_dataset
+    )
+    if dry_error:
+        if not report.repairable_dry_run_error(dry_error):
+            raise SectionExecutionError(f"BigQuery dry runに失敗しました: {dry_error}")
+        return dry_error
+    assert dry_schema is not None
+    try:
+        sql_contracts.validate_dashboard_dry_run_schema(section, dry_schema)
+    except sql_contracts.SQLContractError as validation_error:
+        return str(validation_error)
+    return ""
+
+
 def run_section(
     section: dict,
     period: dict[str, str],
@@ -115,28 +144,13 @@ def run_section(
         )
         repair_used = False
         while True:
-            diagnostic = period_diagnostic if allow_period_repair else ""
-            if not diagnostic:
-                try:
-                    sql_contracts.validate_generated_dashboard_sql(section, normalized)
-                except sql_contracts.SQLContractError as validation_error:
-                    diagnostic = str(validation_error)
-            if not diagnostic:
-                dry_schema, dry_error = report.inspect_bq_schema(
-                    bq, normalized, allowed_dataset=allowed_dataset
-                )
-                if dry_error:
-                    if not report.repairable_dry_run_error(dry_error):
-                        raise SectionExecutionError(
-                            f"BigQuery dry runに失敗しました: {dry_error}"
-                        )
-                    diagnostic = dry_error
-                else:
-                    assert dry_schema is not None
-                    try:
-                        sql_contracts.validate_dashboard_dry_run_schema(section, dry_schema)
-                    except sql_contracts.SQLContractError as validation_error:
-                        diagnostic = str(validation_error)
+            diagnostic = _dashboard_sql_diagnostic(
+                section,
+                normalized,
+                bq,
+                allowed_dataset,
+                period_diagnostic if allow_period_repair else "",
+            )
             if not diagnostic:
                 break
             if repair_used:

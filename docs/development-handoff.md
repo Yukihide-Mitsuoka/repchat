@@ -14,10 +14,10 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #579](https://github.com/Yukihide-Mitsuoka/repchat/issues/579)と[PR #582](https://github.com/Yukihide-Mitsuoka/repchat/pull/582)を参照してください。
-対象はVertex AI費用計算の所有責務の集約です。価格表と換算レートを持つ`run_report.py`へ計算関数を移し、相談・計画・会議報告・SQL初回生成・SQL修正の5経路を同じ関数へ接続しました。価格、為替、丸め位置、加算順序、イベント出力は変更しません。
-基準は費用計算の現行動作を固定した[PR #581](https://github.com/Yukihide-Mitsuoka/repchat/pull/581)を取り込んだmainです。変更前後の単体・全体テストは352件、format・lint・coverageも成功しています。Node.js対象のcoverageはline 93.59%、branch 85.19%、function 87.78%で変更前と同じです。CIの最終結果はIssueとリンク先PRに記録します。
-次はIssueにリンクする責務集約PRのCIとマージ状態を確認し、マージ判断をオーナーへ返します。
+現在の受入条件と進行状況は[Issue #583](https://github.com/Yukihide-Mitsuoka/repchat/issues/583)と[PR #584](https://github.com/Yukihide-Mitsuoka/repchat/pull/584)を参照してください。
+対象はSQL実行前診断とsection実行オーケストレーションの責務分離です。期間、SQL契約、BigQuery compiler、dry-run schemaの順に最初の診断を返すprivate関数を追加し、`run_section`には1回修正loopと実行順序を残しました。診断文言、修正回数、stage順序、BigQuery実行条件は変更しません。
+基準はVertex AI費用計算を集約した[PR #582](https://github.com/Yukihide-Mitsuoka/repchat/pull/582)を取り込んだmainです。変更前後の単体・全体テストは352件、format・lint・coverageも成功しています。Node.js対象のcoverageはline 93.59%、branch 85.19%、function 87.78%で変更前と同じです。CIの最終結果はIssueとリンク先PRに記録します。
+次は[PR #584](https://github.com/Yukihide-Mitsuoka/repchat/pull/584)のCIとマージ状態を確認し、マージ判断をオーナーへ返します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
