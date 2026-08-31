@@ -28,7 +28,11 @@ Binding rules live in [`.ai/`](../../../.ai/); inherited decisions live in the
 | `docs/development-handoff.md` | Current resumable snapshot for active work spanning sessions or agents | resume work safely |
 | `docs/glossary.md` | Project ubiquitous language dictionary | name things correctly |
 
-Contribution guide: [CONTRIBUTING.md](../../../CONTRIBUTING.md).
+Internal development follows [the workflow](../../../.ai/workflow.md) and
+[the usage guide](usage.md). The private foundation does not ship a repository-level
+open-source license or public contribution guide. Do not recreate those files during
+initialization or synchronization without an explicit owner decision. Preserve
+third-party license notices and dependency license checks.
 
 ## Choose a project-owned path by scope
 
