@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #594](https://github.com/Yukihide-Mitsuoka/repchat/issues/594)と[PR #595](https://github.com/Yukihide-Mitsuoka/repchat/pull/595)を参照してください。
-対象は`live-demo.test.ts`に混在するclient shell契約の4テストです。費用確認dialog、ページJavaScript構文、SQLの安全なDOM highlighting、単一グラフのquery／data tabを`live-demo-client-shell.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・呼出し順序は変更しません。製品コード、timeout、retry、skipも変更しません。移動元は2,849行から2,664行になり、専用ファイルは191行です。残る描画・dashboard実行・workspace layout等の検証は別PRで責務単位に整理します。
-基準は起動・CLI契約テストを分離した[PR #593](https://github.com/Yukihide-Mitsuoka/repchat/pull/593)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lint・coverageも成功しています。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%です。Python subprocessの行coverageは計測対象外です。CIの最終結果はIssueとリンク先PRに記録します。
-次は[PR #595](https://github.com/Yukihide-Mitsuoka/repchat/pull/595)のCIと差分レビューを確認します。マージはオーナー判断です。
+現在の受入条件と進行状況は[Issue #596](https://github.com/Yukihide-Mitsuoka/repchat/issues/596)を参照してください。
+対象は`live-demo.test.ts`に混在する基本chart描画契約の4テストです。棒グラフのDOM描画、Sankeyの形状・bounded契約、複数軸折れ線の表示を`live-demo-chart-rendering.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,664行から2,416行になり、専用ファイルは252行です。残るdashboard状態表示・実行・workspace layout等の検証は別PRで責務単位に整理します。
+基準はclient shell契約テストを分離した[PR #595](https://github.com/Yukihide-Mitsuoka/repchat/pull/595)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lint・coverageも成功しています。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%です。Python subprocessの行coverageは計測対象外です。既存のinline SVG互換経路・HTML契約の検証であり、実ブラウザのECharts目視確認は行っていません。CIの最終結果はIssueとリンク先PRに記録します。
+次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
