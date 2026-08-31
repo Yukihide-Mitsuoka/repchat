@@ -1,7 +1,7 @@
 # AI review on every PR — runs the same checklist agents use for self-review.
 # SAFE DEFAULT: disabled until you set repository variable ENABLE_AI_REVIEW=true and
 # secret ANTHROPIC_API_KEY. This is a *supplement* to human review, not a replacement
-# (CONTRIBUTING.md: AI-generated changes still require human review before merge).
+# (.ai/workflow.md: AI-generated changes still require human review before merge).
 name: AI Review
 
 on:

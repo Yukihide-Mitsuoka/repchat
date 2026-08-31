@@ -60,7 +60,3 @@ make demo-live PROJECT=<gcp-project>
 基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
 からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、
 実験、要件、ADRは同期から保護されています。
-
-## License
-
-[LICENSE](LICENSE)を参照してください。
