@@ -14,10 +14,10 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #567](https://github.com/Yukihide-Mitsuoka/repchat/issues/567)を参照してください。
-対象は描画前の結果検証の重複条件の統合で、欠損・負数・非有限値の扱い、例外文言、AI提案、SQL生成は変更しません。
-基準は[PR #566](https://github.com/Yukihide-Mitsuoka/repchat/pull/566)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト・coverage・Python構文検査は成功し、42種類を対象とした222,156通りの結果検証の判定・戻り値・例外文言が変更前後で一致しています。
-次はIssueにリンクするPRの最新CIとマージ状態を確認し、マージ判断をオーナーへ返します。
+現在の受入条件と進行状況は[Issue #569](https://github.com/Yukihide-Mitsuoka/repchat/issues/569)を参照してください。
+対象はLiveQueryEngineの操作開始・終了処理を共通化する前の回帰テスト追加です。5種類の公開操作で正常終了・イベント送信例外・二重送信拒否・利用者向けエラー後の再実行を検証し、実装本体や生成仕様は変更しません。
+基準は[PR #568](https://github.com/Yukihide-Mitsuoka/repchat/pull/568)を取り込んだmainです。追加した20件を含む全体テスト337件とcoverageは成功しています。OSスリープをまたいだ最初の全体テストのタイムアウトと再検証結果は、Issueにリンクする準備PRに記録します。
+次は準備PRの最新CIとマージ状態を確認し、オーナーのマージ後に開始・終了処理の共通化を別PRで行います。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
