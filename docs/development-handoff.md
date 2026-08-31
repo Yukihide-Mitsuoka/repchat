@@ -14,7 +14,7 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #579](https://github.com/Yukihide-Mitsuoka/repchat/issues/579)を参照してください。
+現在の受入条件と進行状況は[Issue #579](https://github.com/Yukihide-Mitsuoka/repchat/issues/579)と[PR #582](https://github.com/Yukihide-Mitsuoka/repchat/pull/582)を参照してください。
 対象はVertex AI費用計算の所有責務の集約です。価格表と換算レートを持つ`run_report.py`へ計算関数を移し、相談・計画・会議報告・SQL初回生成・SQL修正の5経路を同じ関数へ接続しました。価格、為替、丸め位置、加算順序、イベント出力は変更しません。
 基準は費用計算の現行動作を固定した[PR #581](https://github.com/Yukihide-Mitsuoka/repchat/pull/581)を取り込んだmainです。変更前後の単体・全体テストは352件、format・lint・coverageも成功しています。Node.js対象のcoverageはline 93.59%、branch 85.19%、function 87.78%で変更前と同じです。CIの最終結果はIssueとリンク先PRに記録します。
 次はIssueにリンクする責務集約PRのCIとマージ状態を確認し、マージ判断をオーナーへ返します。
