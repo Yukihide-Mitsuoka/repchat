@@ -47,17 +47,17 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and 2 <= width <= 4 and (
             not rows or len(rows) == 1 and all(finite(value) for value in rows[0])
         )
-    elif planned == "bar":
+    elif planned in {"bar", "donut", "funnel", "funnel_horizontal"}:
         valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
     elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and 3 <= width <= 5 and all(
             all(finite(value) and value >= 0 for value in row[1:]) for row in rows
         )
-    elif planned == "line":
+    elif planned in {"line", "sparkline"}:
         valid = valid and width == 2 and all(
             isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
         )
-    elif planned == "area":
+    elif planned in {"area", "calendar_heatmap"}:
         valid = valid and width == 2 and all(
             isinstance(row[0], (date, datetime)) and finite(row[1]) for row in rows
         )
@@ -77,12 +77,6 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
         valid = valid and width == 2 and all(
             finite(row[0]) and finite(row[1]) and row[1] >= 0 for row in rows
         )
-    elif planned == "donut":
-        valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
-    elif planned == "calendar_heatmap":
-        valid = valid and width == 2 and all(
-            isinstance(row[0], (date, datetime)) and finite(row[1]) for row in rows
-        )
     elif planned == "scatter":
         dimension_count = section.get("dimension_count", 1)
         valid = valid and width == dimension_count + 2 and all(
@@ -98,8 +92,6 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and row[-1] >= 0
             for row in rows
         )
-    elif planned in {"funnel", "funnel_horizontal"}:
-        valid = valid and width == 2 and all(finite(row[1]) and row[1] >= 0 for row in rows)
     elif planned == "heatmap":
         valid = valid and width == 3 and all(finite(row[2]) for row in rows)
     elif planned == "table":
@@ -148,10 +140,6 @@ def dashboard_visualization(section: dict, rows: list[tuple], columns: list[str]
             and (row[1] is None or isinstance(row[1], str))
             and nullable_finite(row[2])
             for row in rows
-        )
-    elif planned == "sparkline":
-        valid = valid and width == 2 and all(
-            isinstance(row[0], (date, datetime)) and nullable_finite(row[1]) for row in rows
         )
     elif planned == "mixed_bar_line":
         valid = valid and 3 <= width <= 5 and all(
