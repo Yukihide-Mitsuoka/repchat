@@ -174,13 +174,13 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
     valid = len(names) == len(expected) and all(names) and len(set(names)) == len(names)
     if planned == "scorecard":
         valid = valid and types[0] in numeric
-    elif planned == "kpi_group":
+    elif planned in {"kpi_group", "histogram"}:
         valid = valid and all(field_type in numeric for field_type in types)
-    elif planned == "bar":
+    elif planned in {"bar", "donut", "funnel", "funnel_horizontal"}:
         valid = valid and types[1] in numeric
     elif planned in {"grouped_bar", "stacked_bar", "percent_stacked_bar"}:
         valid = valid and all(field_type in numeric for field_type in types[1:])
-    elif planned in {"line", "area", "calendar_heatmap"}:
+    elif planned in {"line", "area", "calendar_heatmap", "sparkline"}:
         valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
     elif planned in {"multi_line", "stacked_area", "percent_stacked_area"}:
         valid = (
@@ -188,10 +188,6 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
             and types[0] in {"DATE", "DATETIME", "TIMESTAMP"}
             and all(field_type in numeric for field_type in types[1:])
         )
-    elif planned == "histogram":
-        valid = valid and all(field_type in numeric for field_type in types)
-    elif planned == "donut":
-        valid = valid and types[1] in numeric
     elif planned in {"scatter", "bubble"}:
         dimension_count = section.get("dimension_count", 1)
         valid = (
@@ -199,11 +195,11 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
             and (dimension_count == 1 or types[1] == "STRING")
             and all(field_type in numeric for field_type in types[dimension_count:])
         )
-    elif planned in {"funnel", "funnel_horizontal"}:
-        valid = valid and types[1] in numeric
     elif planned == "heatmap":
         valid = valid and types[2] in numeric
-    elif planned in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:
+    elif planned in {
+        "sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical", "area_map", "us_map"
+    }:
         valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
     elif planned == "annotated_line":
         valid = (
@@ -212,9 +208,7 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
             and types[1] == "STRING"
             and types[2] in numeric
         )
-    elif planned == "sparkline":
-        valid = valid and types[0] in {"DATE", "DATETIME", "TIMESTAMP"} and types[1] in numeric
-    elif planned == "mixed_bar_line":
+    elif planned in {"mixed_bar_line", "reference_line", "reference_area"}:
         valid = (
             valid
             and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
@@ -233,25 +227,13 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
         )
     elif planned == "pie":
         valid = valid and types[0] == "STRING" and types[1] in numeric
-    elif planned in {"area_map", "us_map"}:
-        valid = valid and types[:2] == ["STRING", "STRING"] and types[2] in numeric
-    elif planned == "point_map":
-        valid = valid and types[:2] == ["STRING", "STRING"] and all(
-            field_type in numeric for field_type in types[2:]
-        )
-    elif planned == "bubble_map":
+    elif planned in {"point_map", "bubble_map"}:
         valid = valid and types[:2] == ["STRING", "STRING"] and all(
             field_type in numeric for field_type in types[2:]
         )
     elif planned == "base_map":
         valid = valid and types[:3] == ["STRING", "STRING", "STRING"] and all(
             field_type in numeric for field_type in types[3:]
-        )
-    elif planned in {"reference_line", "reference_area"}:
-        valid = (
-            valid
-            and types[0] in {"STRING", "DATE", "DATETIME", "TIMESTAMP"}
-            and all(field_type in numeric for field_type in types[1:])
         )
     elif planned == "table":
         dimension_count = section.get("dimension_count", 0)
@@ -282,4 +264,3 @@ def validate_dashboard_dry_run_schema(section: dict, schema: list[tuple[str, str
             f"{section['title']}のdry run出力（{observed}）が{planned}の描画仕様と"
             "一致しないためBigQueryを実行しません。"
         )
-

@@ -14,9 +14,9 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #563](https://github.com/Yukihide-Mitsuoka/repchat/issues/563)を参照してください。
-対象は可視化実行仕様の重複した列定義の統合で、提案内容・SQL生成・可視化選定は変更しません。
-基準は[PR #562](https://github.com/Yukihide-Mitsuoka/repchat/pull/562)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト・coverage・Python構文検査は成功し、42種類・1,056通りの実行仕様が変更前後で一致しています。
+現在の受入条件と進行状況は[Issue #565](https://github.com/Yukihide-Mitsuoka/repchat/issues/565)を参照してください。
+対象はBigQuery実行前のdry-run型検証の重複条件の統合で、許可する型・拒否条件・例外文言・AI提案・SQL生成は変更しません。
+基準は[PR #564](https://github.com/Yukihide-Mitsuoka/repchat/pull/564)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト・coverage・Python構文検査は成功し、42種類・214,936通りの型検証の判定結果と例外文言が変更前後で一致しています。
 次はIssueにリンクするPRの最新CIとマージ状態を確認し、マージ判断をオーナーへ返します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
