@@ -239,6 +239,13 @@ def build_planned_analysis_section(
     elif chart == "reference_area":
         section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = ["category", "metric_value", "lower_value", "upper_value"]
+    _append_generation_requirements(section)
+    return section
+
+
+def _append_generation_requirements(section: dict) -> None:
+    """Apply shared SQL constraints after chart-specific output columns are known."""
+    chart = section["planned_visualization"]
     if chart not in {
         "line",
         "multi_line",
@@ -253,7 +260,7 @@ def build_planned_analysis_section(
         "pivot_table",
         "sparkline_table",
     }:
-        nonnull_metric_columns = section["source_columns"][len(dimensions) :]
+        nonnull_metric_columns = section["source_columns"][section["dimension_count"] :]
         section["nonnull_metric_columns"] = nonnull_metric_columns
         aliases = "、".join(nonnull_metric_columns)
         section.setdefault("generation_requirements", []).append(
@@ -280,4 +287,3 @@ def build_planned_analysis_section(
         section.setdefault("generation_requirements", []).append(
             f"最終SELECTは{ordering}でORDER BYし、LIMIT {max_rows}を明示する"
         )
-    return section

@@ -14,10 +14,10 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #571](https://github.com/Yukihide-Mitsuoka/repchat/issues/571)を参照してください。
-対象はLiveQueryEngineの5操作に重複する開始・終了処理の共通化です。既存のクラス内で操作スコープを共有し、各操作の処理本体・エラー変換・停止方式・生成仕様は変更しません。
-基準は準備テストの[PR #570](https://github.com/Yukihide-Mitsuoka/repchat/pull/570)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト337件・coverageは成功しています。構文木の比較で5操作の引数・処理本体と、その他7メソッドが変更されていないことを確認しました。
-次はIssueにリンクする共通化PRの最新CIとマージ状態を確認し、マージ判断をオーナーへ返します。
+現在の受入条件と進行状況は[Issue #573](https://github.com/Yukihide-Mitsuoka/repchat/issues/573)を参照してください。
+対象は可視化仕様の組み立てから共通SQL生成制約を分離する整理です。グラフ固有の列定義と、NULL対策・並び順・件数制限の追記を同じファイル内の別関数にし、制約やAIへの要件文言は変更しません。
+基準は[PR #572](https://github.com/Yukihide-Mitsuoka/repchat/pull/572)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト337件・coverageは成功しています。42種類・3,194通りの出力内容・順序・例外文言と、移動した制約の構文木が変更前後で一致しました。
+次はIssueにリンクする責務整理PRの最新CIとマージ状態を確認し、マージ判断をオーナーへ返します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
