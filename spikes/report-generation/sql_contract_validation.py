@@ -99,6 +99,16 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
     if not planned or not expected:
         return
     expressions, suffix = top_level_select_expressions(sql)
+    _validate_output_aliases(section, expressions)
+    _validate_nonnull_metrics(section, expressions)
+    _validate_result_row_limit(section, suffix)
+    _validate_single_aggregate(section, expressions, suffix)
+
+
+def _validate_output_aliases(section: dict, expressions: list[str]) -> None:
+    """Require unique ASCII aliases before later checks address expressions by position."""
+    planned = section["planned_visualization"]
+    expected = section["source_columns"]
     aliases = []
     for expression in expressions:
         match = re.search(r"\bAS\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", expression, re.I)
@@ -113,6 +123,11 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
             f"{section['title']}のSQL出力列（{observed}）は、{planned}に必要な"
             f"{len(expected)}列の一意なASCII別名を満たさないためBigQueryへ送信しません。"
         )
+
+
+def _validate_nonnull_metrics(section: dict, expressions: list[str]) -> None:
+    """Enforce NULL protection only for metrics declared by the render contract."""
+    expected = section["source_columns"]
     nonnull_columns = section.get("nonnull_metric_columns", [])
     unsafe_columns = []
     for column in nonnull_columns:
@@ -133,6 +148,11 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
             "返し得るためBigQueryへ送信しません。COUNT/COUNTIFを使うか、"
             "最終SELECT式全体をCOALESCEまたはIFNULLで包んでください。"
         )
+
+
+def _validate_result_row_limit(section: dict, suffix: str) -> None:
+    """Require bounded final results without treating CTE clauses as outer bounds."""
+    planned = section["planned_visualization"]
     max_rows = section.get("max_result_rows")
     if planned not in {"scorecard", "kpi_group"} and isinstance(max_rows, int):
         limit = re.search(r"\bLIMIT\s+([0-9]+)\b", suffix, re.I)
@@ -145,6 +165,11 @@ def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
                 f"{section['title']}のSQLに{planned}用のORDER BYとLIMIT "
                 f"{max_rows}以下がないためBigQueryへ送信しません。"
             )
+
+
+def _validate_single_aggregate(section: dict, expressions: list[str], suffix: str) -> None:
+    """Keep scalar displays to one aggregate row rather than grouped or window rows."""
+    planned = section["planned_visualization"]
     if planned in {"scorecard", "kpi_group", "delta"}:
         aggregate_pattern = re.compile(
             r"\b(?:COUNT|COUNTIF|SUM|AVG|MIN|MAX|ANY_VALUE|LOGICAL_AND|LOGICAL_OR|APPROX_[A-Z_]+)\s*\(",
