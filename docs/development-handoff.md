@@ -14,10 +14,11 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #596](https://github.com/Yukihide-Mitsuoka/repchat/issues/596)を参照してください。
-対象は`live-demo.test.ts`に混在する基本chart描画契約の4テストです。棒グラフのDOM描画、Sankeyの形状・bounded契約、複数軸折れ線の表示を`live-demo-chart-rendering.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,664行から2,416行になり、専用ファイルは252行です。残るdashboard状態表示・実行・workspace layout等の検証は別PRで責務単位に整理します。
-基準はclient shell契約テストを分離した[PR #595](https://github.com/Yukihide-Mitsuoka/repchat/pull/595)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lint・coverageも成功しています。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%です。Python subprocessの行coverageは計測対象外です。既存のinline SVG互換経路・HTML契約の検証であり、実ブラウザのECharts目視確認は行っていません。CIの最終結果はIssueとリンク先PRに記録します。
-次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。
+現在の受入条件と進行状況は[Issue #598](https://github.com/Yukihide-Mitsuoka/repchat/issues/598)を参照してください。
+対象は`live-demo.test.ts`に混在する単一query契約の8テストです。対象期間の解決・引渡し・不一致拒否、編集済み分析仕様の拒否、安全な結果と未定義指標・取得件数、データソース別のschema・partition・dataset・予約語保護を`live-demo-query.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,416行から2,119行になり、専用ファイルは300行です。残るdashboard・renderer・workspaceの検証は別PRで責務単位に整理します。
+基準は基本chart描画契約を分離した[PR #597](https://github.com/Yukihide-Mitsuoka/repchat/pull/597)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make coverage`、最終の`make test`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+変更後最初の`make test`は未変更のHTTP oversized requestテストで接続リセットを観測し、355成功・1失敗でした。例外全文と未読body拒否処理の調査仮説を[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ保存しました。依存関係を揃えた変更前mainの`make test`は356件成功し、原因と今回の分離との因果は未確定です。テスト条件は緩めず、最終検証とCI結果はIssueとリンク先PRに記録します。
+次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
