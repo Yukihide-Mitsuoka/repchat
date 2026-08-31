@@ -44,6 +44,53 @@ def _dashboard_sql_diagnostic(
     return ""
 
 
+def _execute_section_result(
+    section: dict,
+    sql: str,
+    *,
+    bq: object,
+    allowed_dataset: str,
+    max_result_rows: int,
+    cost: float,
+) -> dict:
+    """Reject invalid query results before constructing the result event."""
+    result, error = report.exec_bq(
+        bq,
+        sql,
+        max_results=max_result_rows + 1,
+        allowed_dataset=allowed_dataset,
+    )
+    if error:
+        raise SectionExecutionError(f"BigQuery実行に失敗しました: {error}")
+    assert result is not None
+    rows, columns = result
+    if len(rows) > max_result_rows:
+        raise SectionExecutionError(
+            f"結果が{max_result_rows}行を超えたため描画しません。集計条件を追加してください。"
+        )
+    verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
+    try:
+        visualization = visualization_results.dashboard_visualization(
+            section, rows, columns
+        )
+    except visualization_results.VisualizationResultError as error:
+        raise SectionExecutionError(str(error)) from error
+    return {
+        "type": "result",
+        "columns": section.get("shape", {}).get("columns", columns),
+        "source_columns": columns,
+        "rows": [
+            [visualization_results.json_value(value) for value in row]
+            for row in rows
+        ],
+        "visualization": visualization,
+        "navigation_depth": section.get("navigation_depth"),
+        "verification": verification,
+        "verification_label": label,
+        "cost_jpy": round(cost, 3),
+    }
+
+
 def run_section(
     section: dict,
     period: dict[str, str],
@@ -214,41 +261,14 @@ def run_section(
             "message": "BigQueryで読み取り実行中です。",
         }
     )
-    result, error = report.exec_bq(
-        bq,
-        normalized,
-        max_results=max_result_rows + 1,
-        allowed_dataset=allowed_dataset,
-    )
-    if error:
-        raise SectionExecutionError(f"BigQuery実行に失敗しました: {error}")
-    assert result is not None
-    rows, columns = result
-    if len(rows) > max_result_rows:
-        raise SectionExecutionError(
-            f"結果が{max_result_rows}行を超えたため描画しません。集計条件を追加してください。"
-        )
-    verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
-    try:
-        visualization = visualization_results.dashboard_visualization(
-            section, rows, columns
-        )
-    except visualization_results.VisualizationResultError as error:
-        raise SectionExecutionError(str(error)) from error
     send(
-        {
-            "type": "result",
-            "columns": section.get("shape", {}).get("columns", columns),
-            "source_columns": columns,
-            "rows": [
-                [visualization_results.json_value(value) for value in row]
-                for row in rows
-            ],
-            "visualization": visualization,
-            "navigation_depth": section.get("navigation_depth"),
-            "verification": verification,
-            "verification_label": label,
-            "cost_jpy": round(cost, 3),
-        }
+        _execute_section_result(
+            section,
+            normalized,
+            bq=bq,
+            allowed_dataset=allowed_dataset,
+            max_result_rows=max_result_rows,
+            cost=cost,
+        )
     )
     return cost
