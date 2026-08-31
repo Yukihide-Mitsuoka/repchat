@@ -14,10 +14,10 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #577](https://github.com/Yukihide-Mitsuoka/repchat/issues/577)を参照してください。
-対象はSQL実行前検証の責務分離です。別名・NULL対策・件数上限・単一集計行を同じファイル内のprivate関数に分け、公開入口に検査順序を集約しました。パーサー・制約・診断文言・既存テストは変更しません。
-基準は境界・診断順序テストを追加した[PR #576](https://github.com/Yukihide-Mitsuoka/repchat/pull/576)を取り込んだmainです。変更前後の`make test-unit`と変更後の全体テスト349件、format・lint・coverageは成功しています。構文木比較で4検証の条件・文言、呼出し順、それ以外の処理の不変を確認しました。CIの最終結果はIssueとリンク先PRに記録します。
-次はIssueにリンクする責務分離PRのCIとマージ状態を確認し、マージ判断をオーナーへ返します。
+現在の受入条件と進行状況は[Issue #580](https://github.com/Yukihide-Mitsuoka/repchat/issues/580)と[PR #581](https://github.com/Yukihide-Mitsuoka/repchat/pull/581)を参照してください。
+対象はVertex AI費用計算のcharacterization testです。相談・計画・会議報告・SQL初回生成・SQL修正の円換算結果と、修正費用の加算、表示時だけ小数3桁へ丸める現行動作を公開ワークフロー境界で固定します。本番コードは変更しません。
+基準はSQL実行前検証の責務分離を行った[PR #578](https://github.com/Yukihide-Mitsuoka/repchat/pull/578)を取り込んだmainです。依存参照を補った変更前の`make test-unit`は349件、追加後の単体・全体テストは352件が成功しました。format・lint・coverageも成功し、Node.js対象のcoverageはline 93.59%、branch 85.19%、function 87.78%です。CIの最終結果はIssueとリンク先PRに記録します。
+次はcharacterization testのPRをマージし、[Issue #579](https://github.com/Yukihide-Mitsuoka/repchat/issues/579)で価格表を所有するモジュールへ費用計算を集約します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
