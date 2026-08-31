@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #592](https://github.com/Yukihide-Mitsuoka/repchat/issues/592)を参照してください。
+現在の受入条件と進行状況は[Issue #592](https://github.com/Yukihide-Mitsuoka/repchat/issues/592)と[PR #593](https://github.com/Yukihide-Mitsuoka/repchat/pull/593)を参照してください。
 対象は`live-demo.test.ts`に混在する起動・CLI契約の3テストです。`live-demo-startup.test.ts`へ移し、PR #590で導入した`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・呼出し順序は変更しません。製品コード、timeout、retry、skipも変更しません。移動元は2,921行から2,849行になり、専用ファイルは77行です。残るUI・描画等の検証は別PRで責務単位に整理します。
 基準はHTTP境界テストを分離した[PR #590](https://github.com/Yukihide-Mitsuoka/repchat/pull/590)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lint・coverageも成功しています。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%です。Python subprocessの行coverageは計測対象外です。CIの最終結果はIssueとリンク先PRに記録します。
-次はIssue #592のPRを作成し、CIと差分レビューを確認します。マージはオーナー判断です。
+次は[PR #593](https://github.com/Yukihide-Mitsuoka/repchat/pull/593)のCIと差分レビューを確認します。マージはオーナー判断です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
