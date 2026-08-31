@@ -7,10 +7,10 @@ import json
 import re
 from decimal import Decimal
 
+from meeting_report_bundle import validate_evidence_bundle as _evidence_index
 from meeting_report_contracts import (
     CLAIM_MAX_CHARS,
     DETAIL_MAX_CHARS,
-    MAX_BUNDLE_BYTES,
     MAX_OUTPUT_TOKENS,
     MAX_PANEL_REFS,
     NO_DIGITS_PATTERN,
@@ -25,7 +25,6 @@ from meeting_report_evidence import (
     NUMBER,
     ReportError,
     _evidence_numbers,
-    _validate_derived_metrics,
     _validate_numbers,
     funnel_conversion_metrics,
 )
@@ -51,52 +50,6 @@ def _text(value, label: str, max_length: int | None = None) -> str:
         raise ReportError(f"会議報告の{label}は{max_length}文字以内にしてください。")
     return normalized
 
-
-def _evidence_index(bundle: dict) -> dict[str, dict]:
-    """Validate immutable provenance before any generated claim is accepted."""
-    encoded = json.dumps(bundle, ensure_ascii=False, sort_keys=True).encode()
-    if len(encoded) > MAX_BUNDLE_BYTES:
-        raise ReportError("会議報告の根拠bundleが48 KiBを超えています。")
-    required_revisions = {
-        "plan_revision": r"plan-[0-9a-f]{12}",
-        "build_revision": r"build-[0-9a-f]{12}",
-        "organization_context_revision": r"[a-z0-9-]+",
-    }
-    for field, pattern in required_revisions.items():
-        if not re.fullmatch(pattern, str(bundle.get(field, ""))):
-            raise ReportError(f"根拠bundleの{field}が不正です。")
-    organization = bundle.get("organization_context")
-    specification = bundle.get("analysis_specification")
-    definitions = bundle.get("metric_definitions")
-    if not isinstance(organization, dict) or organization.get("revision") != bundle[
-        "organization_context_revision"
-    ]:
-        raise ReportError("組織コンテキストrevisionが根拠bundleと一致しません。")
-    if not isinstance(specification, dict) or specification.get("revision") != bundle[
-        "plan_revision"
-    ]:
-        raise ReportError("分析仕様revisionが根拠bundleと一致しません。")
-    if not isinstance(definitions, dict) or not definitions:
-        raise ReportError("根拠bundleに指標定義がありません。")
-    panels = bundle.get("panels")
-    if not isinstance(panels, list) or not panels:
-        raise ReportError("会議報告の根拠パネルがありません。")
-    indexed = {}
-    for panel in panels:
-        panel_id = panel.get("id") if isinstance(panel, dict) else None
-        if not isinstance(panel_id, str) or panel_id in indexed:
-            raise ReportError("根拠パネルIDが不正または重複しています。")
-        if not re.fullmatch(r"[0-9a-f]{16}", str(panel.get("sql_sha256", ""))):
-            raise ReportError(f"根拠パネル{panel_id}のSQL revisionが不正です。")
-        if not re.fullmatch(r"result-[0-9a-f]{12}", str(panel.get("result_revision", ""))):
-            raise ReportError(f"根拠パネル{panel_id}の結果revisionが不正です。")
-        if not isinstance(panel.get("columns"), list) or not isinstance(
-            panel.get("rows"), list
-        ):
-            raise ReportError(f"根拠パネル{panel_id}の結果形状が不正です。")
-        _validate_derived_metrics(panel)
-        indexed[panel_id] = panel
-    return indexed
 
 def _panel_ids(item: dict, known: set[str]) -> list[str]:
     ids = item.get("panel_ids") if isinstance(item, dict) else None
