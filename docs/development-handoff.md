@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #598](https://github.com/Yukihide-Mitsuoka/repchat/issues/598)を参照してください。
-対象は`live-demo.test.ts`に混在する単一query契約の8テストです。対象期間の解決・引渡し・不一致拒否、編集済み分析仕様の拒否、安全な結果と未定義指標・取得件数、データソース別のschema・partition・dataset・予約語保護を`live-demo-query.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,416行から2,119行になり、専用ファイルは300行です。残るdashboard・renderer・workspaceの検証は別PRで責務単位に整理します。
-基準は基本chart描画契約を分離した[PR #597](https://github.com/Yukihide-Mitsuoka/repchat/pull/597)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make coverage`、最終の`make test`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
-変更後最初の`make test`は未変更のHTTP oversized requestテストで接続リセットを観測し、355成功・1失敗でした。例外全文と未読body拒否処理の調査仮説を[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ保存しました。依存関係を揃えた変更前mainの`make test`は356件成功し、原因と今回の分離との因果は未確定です。テスト条件は緩めず、最終検証とCI結果はIssueとリンク先PRに記録します。
+現在の受入条件と進行状況は[Issue #601](https://github.com/Yukihide-Mitsuoka/repchat/issues/601)を参照してください。
+対象は`live-demo.test.ts`に混在するdashboardの計画確定・実行前診断の8テストです。AI提案と変更依頼の保持、計画なしbuildの拒否と固定fallback不在、確定済み実行仕様・layoutの保持、SQL・dry-run schema・期間の検査と修正後の再検査を`live-demo-dashboard-execution.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,119行から1,915行になり、専用ファイルは207行です。残る描画・workspaceの検証は別PRで責務単位に整理します。
+基準は単一query契約を分離した[PR #600](https://github.com/Yukihide-Mitsuoka/repchat/pull/600)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+前回の分離作業で観測したHTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回の検証では再発していませんが、原因は未確定で修正済みではありません。テスト条件は緩めず、CI結果はIssueとリンク先PRに記録します。
 次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
