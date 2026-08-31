@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #585](https://github.com/Yukihide-Mitsuoka/repchat/issues/585)と[PR #588](https://github.com/Yukihide-Mitsuoka/repchat/pull/588)を参照してください。
-対象は`section_execution.py`の実行結果処理です。private関数`_execute_section_result`がBigQuery実行、行数上限、描画検証、JSON値変換、result event構築を所有し、`run_section`はSQL生成・修正、stage通知、結果送信を所有します。利用箇所が1件のため、新規moduleや公開interfaceは追加しません。既存の処理順序、エラー文言、取得上限、payloadは変更しません。
-基準はcharacterization testを追加した[PR #587](https://github.com/Yukihide-Mitsuoka/repchat/pull/587)を取り込んだmainです。既存テストは変更せず、変更前後の`make test-unit`、変更後の`make test`は356件成功しています。format・lint・coverageも成功し、Nodeのcoverageはline 93.59%、branch 85.19%、function 87.78%で前回と同じです。Python subprocessの行coverageは計測対象外です。CIの最終結果はIssueとリンク先PRに記録します。
-次は[PR #588](https://github.com/Yukihide-Mitsuoka/repchat/pull/588)のCIと差分レビューを確認します。マージはオーナー判断です。
+現在の受入条件と進行状況は[Issue #589](https://github.com/Yukihide-Mitsuoka/repchat/issues/589)と[PR #590](https://github.com/Yukihide-Mitsuoka/repchat/pull/590)を参照してください。
+対象は`live-demo.test.ts`に混在するHTTP境界の5テストです。`live-demo-http.test.ts`へ移し、両ファイルはパス解決とPython起動を`live-demo-test-helpers.ts`で共有します。テスト名・fixture・assertion・サーバー終了処理は変更しません。製品コードも変更しません。移動元は3,099行から2,921行になり、残るUI・描画等の検証は別PRで責務単位に整理します。
+基準は実行結果処理を分離した[PR #588](https://github.com/Yukihide-Mitsuoka/repchat/pull/588)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lint・coverageも成功しています。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%です。分離したテストhelperが計測対象に加わったため全体率が変わり、既存製品ファイルのcoverageは前回と同じです。Python subprocessの行coverageは計測対象外です。CIの最終結果はIssueとリンク先PRに記録します。
+次は[PR #590](https://github.com/Yukihide-Mitsuoka/repchat/pull/590)のCIと差分レビューを確認します。マージはオーナー判断です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
