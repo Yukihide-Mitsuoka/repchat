@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #586](https://github.com/Yukihide-Mitsuoka/repchat/issues/586)を参照してください。
+現在の受入条件と進行状況は[Issue #586](https://github.com/Yukihide-Mitsuoka/repchat/issues/586)と[PR #587](https://github.com/Yukihide-Mitsuoka/repchat/pull/587)を参照してください。
 対象は[Issue #585](https://github.com/Yukihide-Mitsuoka/repchat/issues/585)でsection実行結果の構築責務を分離する前のcharacterization testです。BigQuery実行error、行数上限、描画検証error、成功時result payloadをpublicな`run_section`経由で固定します。SQL安全検査と描画検証には実装を使い、Vertex AIとBigQueryの応答だけをテスト用に置き換えます。production codeは変更しません。
 基準はSQL実行前診断を分離した[PR #584](https://github.com/Yukihide-Mitsuoka/repchat/pull/584)を取り込んだmainです。変更前の`make test-unit`は352件、変更後の単体・全体テストは356件、format・lint・coverageも成功しています。CIの最終結果はIssueとリンク先PRに記録します。
-次はIssue #586の準備PRを作成してCIとマージ状態を確認し、マージ後にIssue #585のproduction codeだけを変更します。
+次は[PR #587](https://github.com/Yukihide-Mitsuoka/repchat/pull/587)のCIとマージ状態を確認し、マージ後にIssue #585のproduction codeだけを変更します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
