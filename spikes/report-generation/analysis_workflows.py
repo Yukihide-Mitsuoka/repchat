@@ -58,15 +58,6 @@ def analysis_section_for_specification(
     return period, planned_analysis_section(confirmed, "I1")
 
 
-def vertex_cost_jpy(model: str, usage: dict) -> float:
-    """Calculate one Vertex request cost from the shared model price table."""
-    input_price, output_price = report.PRICING[model]
-    return (
-        usage["input_tokens"] * input_price
-        + usage["output_tokens"] * output_price
-    ) / 1e6 * report.USD_JPY
-
-
 def run_single_analysis(
     question: str,
     analysis_specification: dict | None,
@@ -130,7 +121,7 @@ def consult(
             {
                 "type": "consultation",
                 **consultation,
-                "cost_jpy": round(vertex_cost_jpy(model, usage), 3),
+                "cost_jpy": round(report.vertex_cost_jpy(model, usage), 3),
             }
         )
     except planner.PlannerError as error:
@@ -178,7 +169,7 @@ def plan_dashboard(
             {
                 "type": "plan",
                 "plan": plan,
-                "cost_jpy": round(vertex_cost_jpy(model, usage), 3),
+                "cost_jpy": round(report.vertex_cost_jpy(model, usage), 3),
             }
         )
     except planner.PlannerError as error:
@@ -211,7 +202,7 @@ def generate_meeting_report(
             {
                 "type": "meeting_report",
                 "report": draft,
-                "cost_jpy": round(vertex_cost_jpy(model, usage), 3),
+                "cost_jpy": round(report.vertex_cost_jpy(model, usage), 3),
             }
         )
     except (ValueError, meeting.ReportError) as error:
