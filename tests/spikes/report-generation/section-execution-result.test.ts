@@ -16,10 +16,10 @@ function sectionExecution(body: string) {
 sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
 import section_execution as execution
 usage={"input_tokens":1000,"output_tokens":1000}
-sql="SELECT 1 AS metric_value"
+table=chr(96)+execution.report.DATASET+".events_*"+chr(96)
+sql="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
 execution.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
-execution.report.validate_sql=lambda value,_dataset:(value,None)
-execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
 ${body}`,
     ],
     { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
@@ -32,26 +32,22 @@ ${body}`,
 test('BigQuery execution errors stop before visualization and result emission', () => {
   const output = sectionExecution(`
 execution.report.exec_bq=lambda *_args,**_kwargs:(None,"backend unavailable")
-visualizations=[]
-execution.visualization_results.dashboard_visualization=lambda *_args:(visualizations.append(True) or "scalar")
 events=[]
 try:
  execution.run_section(
-  {"shape":{"columns":["metric_value"]}}, {}, events.append,
+  {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
   bitcoin_rules="bitcoin rules",max_result_rows=10,
  )
 except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
  "message":message,
- "visualizations":visualizations,
  "results":[event for event in events if event["type"]=="result"],
  "stages":[event.get("stage") for event in events if event["type"]=="stage"],
 }))
 `);
   assert.deepEqual(output, {
     message: 'BigQuery実行に失敗しました: backend unavailable',
-    visualizations: [],
     results: [],
     stages: ['generate', 'execute'],
   });
@@ -64,12 +60,10 @@ def execute(_bq,_sql,**kwargs):
  query_options.append(kwargs)
  return (([(1,),(2,),(3,)], ["metric_value"]),None)
 execution.report.exec_bq=execute
-visualizations=[]
-execution.visualization_results.dashboard_visualization=lambda *_args:(visualizations.append(True) or "scalar")
 events=[]
 try:
  execution.run_section(
-  {"shape":{"columns":["metric_value"]}}, {}, events.append,
+  {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
   bitcoin_rules="bitcoin rules",max_result_rows=2,
  )
@@ -77,39 +71,38 @@ except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
  "message":message,
  "max_results":query_options[0]["max_results"],
- "visualizations":visualizations,
  "results":[event for event in events if event["type"]=="result"],
 }))
 `);
   assert.deepEqual(output, {
     message: '結果が2行を超えたため描画しません。集計条件を追加してください。',
     max_results: 3,
-    visualizations: [],
     results: [],
   });
 });
 
 test('visualization validation errors keep their message and suppress the result', () => {
   const output = sectionExecution(`
-execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
-def reject_visualization(*_args):
- raise execution.visualization_results.VisualizationResultError("shape mismatch")
-execution.visualization_results.dashboard_visualization=reject_visualization
+execution.report.exec_bq=lambda *_args,**_kwargs:(([('invalid',)], ["metric_value"]),None)
 events=[]
 try:
  execution.run_section(
-  {"shape":{"columns":["metric_value"]}}, {}, events.append,
+  {"title":"結果検証用","planned_visualization":"scorecard"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
   bitcoin_rules="bitcoin rules",max_result_rows=10,
  )
-except execution.SectionExecutionError as error:message=str(error)
+except execution.SectionExecutionError as error:
+ message=str(error)
+ cause=type(error.__cause__).__name__
 print(json.dumps({
  "message":message,
+ "cause":cause,
  "results":[event for event in events if event["type"]=="result"],
 }))
 `);
   assert.deepEqual(output, {
-    message: 'shape mismatch',
+    message: '結果検証用の結果形状がAI分析仕様のscorecardと一致しないため描画しません。',
+    cause: 'VisualizationResultError',
     results: [],
   });
 });
@@ -123,10 +116,9 @@ def execute(_bq,_sql,**kwargs):
  query_options.append(kwargs)
  return (([(date(2021,1,1),Decimal("2.5"))], ["raw_date","raw_value"]),None)
 execution.report.exec_bq=execute
-execution.visualization_results.dashboard_visualization=lambda *_args:"line"
 events=[]
 cost=execution.run_section(
- {"shape":{"columns":["日付","値"]},"navigation_depth":4}, {}, events.append,
+ {"shape":{"columns":["日付","値"]},"navigation_depth":4,"title":"時系列","planned_visualization":"line"}, period, events.append,
  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
  bitcoin_rules="bitcoin rules",max_result_rows=10,
 )
