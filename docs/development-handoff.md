@@ -14,10 +14,10 @@ updated: 2026-08-31
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #575](https://github.com/Yukihide-Mitsuoka/repchat/issues/575)を参照してください。
-対象はSQL実行前検証を責務分離する前のテスト追加です。別名・NULL対策・件数上限・単一集計行の境界と診断順序を公開関数から確認し、実装コード・既存テスト・制限値は変更しません。
-基準は[PR #574](https://github.com/Yukihide-Mitsuoka/repchat/pull/574)を取り込んだmainです。基準の`make test-unit`337件と、追加後のunit・全体テスト349件、format・lint・coverageは成功しています。CIの最終結果はIssueとリンク先PRに記録します。
-次はテスト準備PRのCIとマージ状態を確認し、マージ後に`validate_generated_dashboard_sql`の検証を意味ごとのprivate関数に分離します。制約と診断順序を維持し、パーサーの仕様変更は混ぜません。
+現在の受入条件と進行状況は[Issue #577](https://github.com/Yukihide-Mitsuoka/repchat/issues/577)を参照してください。
+対象はSQL実行前検証の責務分離です。別名・NULL対策・件数上限・単一集計行を同じファイル内のprivate関数に分け、公開入口に検査順序を集約しました。パーサー・制約・診断文言・既存テストは変更しません。
+基準は境界・診断順序テストを追加した[PR #576](https://github.com/Yukihide-Mitsuoka/repchat/pull/576)を取り込んだmainです。変更前後の`make test-unit`と変更後の全体テスト349件、format・lint・coverageは成功しています。構文木比較で4検証の条件・文言、呼出し順、それ以外の処理の不変を確認しました。CIの最終結果はIssueとリンク先PRに記録します。
+次はIssueにリンクする責務分離PRのCIとマージ状態を確認し、マージ判断をオーナーへ返します。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
