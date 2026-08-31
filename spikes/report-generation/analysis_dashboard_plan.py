@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 from analysis_planner_contracts import PlannerError, planner_panel_counts
@@ -152,3 +153,41 @@ def normalize_dashboard_plan(
         raise PlannerError("分析計画の1行あたりのパネルは最大4件にしてください。")
     plan["panels"] = panels
     return _revisioned_plan(plan)
+
+
+def confirm_dashboard_plan(plan: dict) -> dict:
+    """Revalidate an edited AI-authored proposal and freeze its full specification."""
+    answers = plan.get("answers", {})
+    if not isinstance(answers, dict):
+        raise PlannerError("確認事項の回答がobjectではありません。")
+    clarifications = plan.get("clarifications", [])
+    if not isinstance(clarifications, list):
+        raise PlannerError("確認事項が配列ではありません。")
+    for item in clarifications:
+        field = item.get("field") if isinstance(item, dict) else None
+        if field not in CLARIFICATION_FIELDS:
+            diagnostic = json.dumps(field, ensure_ascii=False)
+            raise PlannerError(f"確認事項のfieldが許可範囲外です: {diagnostic}")
+        answer = answers.get(field)
+        if not isinstance(answer, str) or not answer.strip():
+            raise PlannerError(f"確認事項{field}の回答が空です。")
+    raw = {
+        key: plan.get(key)
+        for key in ("objective_summary", "audience", "comparison", "hypotheses")
+    }
+    raw["clarifications"] = []
+    raw["panels"] = [
+        {field: item.get(field) for field in DYNAMIC_PANEL_FIELDS}
+        for item in plan.get("panels", [])
+    ]
+    confirmed = normalize_dashboard_plan(
+        raw,
+        plan.get("objective", ""),
+        plan.get("period", {}),
+        answers,
+        allow_layout_gaps=True,
+    )
+    if confirmed["clarifications"]:
+        raise PlannerError("未回答の確認事項があります。")
+    confirmed["status"] = "confirmed"
+    return _revisioned_plan(confirmed)

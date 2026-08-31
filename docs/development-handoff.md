@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-08-28
+updated: 2026-08-31
 ---
 
 # 開発引き継ぎ
@@ -11,7 +11,18 @@ updated: 2026-08-28
 実装状態の正本は[実装状況サマリー](status.md)、優先順位の正本は[ロードマップ](roadmap.md)、
 各タスクの受入条件はGitHub Issueです。この文書には再開に必要な参照順と分岐だけを置きます。
 
-## 現在の作業と停止条件
+## 現在のリファクタリング
+
+オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
+現在の受入条件と進行状況は[Issue #561](https://github.com/Yukihide-Mitsuoka/repchat/issues/561)を参照してください。
+対象は分析計画の正規化・確定の集約で、提案内容・SQL生成・可視化選定は変更しません。
+基準は[PR #560](https://github.com/Yukihide-Mitsuoka/repchat/pull/560)を取り込んだmainです。変更前後の`make test-unit`、変更後のformat・lint・全体テスト・coverage・Python構文検査は成功しています。
+次はIssueにリンクするPRの最新CIとマージ状態を確認し、マージ判断をオーナーへ返します。
+本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
+
+以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
+
+## 製品化の前提と過去の検証記録
 
 | 項目 | 現在地 |
 |------|--------|
