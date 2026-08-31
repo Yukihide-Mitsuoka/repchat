@@ -33,8 +33,6 @@
     ".skills/bugfix.skill.md",
     ".skills/requirements.skill.md",
     "AGENTS.md",
-    "CONTRIBUTING.md",
-    "LICENSE",
     "SECURITY.md",
     "renovate.json",
     "scripts/actions/",
