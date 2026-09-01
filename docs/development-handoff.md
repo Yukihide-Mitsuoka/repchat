@@ -14,9 +14,9 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #601](https://github.com/Yukihide-Mitsuoka/repchat/issues/601)を参照してください。
-対象は`live-demo.test.ts`に混在するdashboardの計画確定・実行前診断の8テストです。AI提案と変更依頼の保持、計画なしbuildの拒否と固定fallback不在、確定済み実行仕様・layoutの保持、SQL・dry-run schema・期間の検査と修正後の再検査を`live-demo-dashboard-execution.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、timeout、retry、skipも変更しません。移動元は2,119行から1,915行になり、専用ファイルは207行です。残る描画・workspaceの検証は別PRで責務単位に整理します。
-基準は単一query契約を分離した[PR #600](https://github.com/Yukihide-Mitsuoka/repchat/pull/600)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+現在の受入条件と進行状況は[Issue #603](https://github.com/Yukihide-Mitsuoka/repchat/issues/603)を参照してください。
+対象は`live-demo.test.ts`に混在するworkspaceのレイアウト・pane・composer表示契約の12テストです。pane toggle、composerの幅・自動伸長・費用gate、dashboard読取modeと行resize、同一行card高さ、左navigation、splitter、visual hierarchy、狭幅初期状態、pane/header grid、選択title、compact chromeを`live-demo-workspace-layout.test.ts`へ移し、既存の`live-demo-test-helpers.ts`を再利用します。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、CSS・JavaScript、timeout、retry、skipも変更しません。移動元は1,915行から1,652行になり、専用ファイルは266行です。残る成果物遷移・meeting report・rendererの検証は別PRで責務単位に整理します。
+基準はdashboardの計画・実行前診断契約を分離した[PR #602](https://github.com/Yukihide-Mitsuoka/repchat/pull/602)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.63%、branch 85.22%、function 87.84%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
 前回の分離作業で観測したHTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回の検証では再発していませんが、原因は未確定で修正済みではありません。テスト条件は緩めず、CI結果はIssueとリンク先PRに記録します。
 次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
