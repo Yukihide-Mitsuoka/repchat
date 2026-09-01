@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Enforce GR-020 while excluding authenticated lockfile statistics."""
+"""Enforce GR-020 and report advisory MNT-002 signals from changed source files."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -29,6 +30,22 @@ LOCKFILE_NAMES = frozenset(
         "yarn.lock",
     }
 )
+
+SOURCE_SUFFIXES = frozenset(
+    ".py .js .jsx .ts .tsx .mjs .cjs .go .rs .rb .java .kt .swift "
+    ".cs .c .h .cpp .hpp .sh .bash .php".split()
+)
+EXEMPT_PARTS = frozenset(
+    ".git node_modules vendor vendored generated __generated__ dist build coverage "
+    "fixtures __fixtures__ migrations schemas data __snapshots__".split()
+)
+GENERATED_SUFFIXES = (
+    ".d.ts", ".min.js", ".generated.py", ".generated.ts", ".pb.go", "_pb2.py", ".g.cs",
+)
+GENERATED_HEADER = re.compile(
+    r"^\s*(?:#|//|/\*|\*)\s*(?:@generated\b|code generated\b|auto-generated\b)", re.I | re.M
+)
+SOURCE_BYTE_LIMIT = 2_000_000
 
 
 @dataclass(frozen=True)
@@ -104,16 +121,70 @@ def evaluate_size(
     return SizeResult(changed_lines, changed_files, level)
 
 
+def _source_text(root: Path, filename: str) -> str:
+    path = PurePosixPath(filename)
+    if path.is_absolute() or ".." in path.parts or "\\" in filename:
+        raise ValueError("unsafe path")
+    target = root
+    for part in path.parts:
+        target = target / part
+        if target.is_symlink():
+            raise ValueError("symlink")
+    if not target.is_file():
+        raise ValueError("not a regular file")
+    with target.open("rb") as source:
+        content = source.read(SOURCE_BYTE_LIMIT + 1)
+    if len(content) > SOURCE_BYTE_LIMIT or b"\x00" in content:
+        raise ValueError("oversized or binary source")
+    return content.decode("utf-8")
+
+
+def maintainability_warnings(payload: Any, root: Path) -> list[str]:
+    """Read only changed source; never execute it or infer a GR-025 violation."""
+    warnings = []
+    for entry in _flatten_pages(payload):
+        filename = entry["filename"]
+        path = PurePosixPath(filename)
+        if (
+            entry.get("status") == "removed"
+            or not (entry["additions"] + entry["deletions"])
+            or path.suffix not in SOURCE_SUFFIXES or path.name in LOCKFILE_NAMES
+            or EXEMPT_PARTS.intersection(path.parts)
+            or path.name.endswith(GENERATED_SUFFIXES) or ".config." in path.name
+        ):
+            continue
+        label = json.dumps(filename, ensure_ascii=True)
+        try:
+            content = _source_text(root, filename)
+        except (OSError, ValueError):
+            warnings.append(f"MNT-002: {label} not inspected; review manually (advisory).")
+            continue
+        if GENERATED_HEADER.search("\n".join(content.splitlines()[:20])):
+            continue
+        lines = sum(bool(line.strip()) for line in content.splitlines())
+        if lines > 800:
+            warnings.append(
+                f"MNT-002: {label} has {lines} nonblank lines (approximate, not a violation). "
+                "Review responsibility, coupling, exemptions and GR-025; do not split cosmetically."
+            )
+    return warnings
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--files-json", required=True, type=Path)
     parser.add_argument("--additions", required=True, type=int)
     parser.add_argument("--deletions", required=True, type=int)
     parser.add_argument("--files", required=True, type=int)
+    parser.add_argument(
+        "--source-root", type=Path, default=Path("."),
+        help="checkout to inspect for advisory warnings (default: current directory)",
+    )
     args = parser.parse_args()
     try:
         with args.files_json.open(encoding="utf-8") as source:
-            lockfile_stats = summarize_lockfiles(json.load(source))
+            payload = json.load(source)
+            lockfile_stats = summarize_lockfiles(payload)
         result = evaluate_size(args.additions, args.deletions, args.files, lockfile_stats)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"::error::Invalid PR-size policy input: {error}")
@@ -123,6 +194,10 @@ def main() -> int:
         f"Changed lines excluding lockfiles: {result.changed_lines}, "
         f"files: {result.changed_files}"
     )
+    for warning in maintainability_warnings(payload, args.source_root):
+        # PR filenames are untrusted GitHub workflow-command data, not annotations.
+        escaped = warning.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::warning::{escaped}")
     if result.level == "hard":
         print(
             "::error::PR exceeds hard size limit (GR-020). Split it "

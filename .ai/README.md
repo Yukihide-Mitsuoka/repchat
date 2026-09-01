@@ -7,8 +7,7 @@ read_when: [always]
 
 # .ai/ — AI Context Map
 
-This directory is the routed AI rule source. Entry adapters first load the declared
-foundation, template, and project profile.
+Entry adapters load profiles; task routes follow below.
 
 ## Authority order (conflict resolution)
 
@@ -26,22 +25,22 @@ Lower numbers win; apply them and report conflicts.
 
 Cite stable normative rule IDs in commits, PRs, and reviews.
 
-| File | Rule prefix | Content |
-|------|-------------|---------|
-| [README.md](README.md) | — | Routing |
-| [mission.md](mission.md) | — | Purpose and success |
-| [guardrails.md](guardrails.md) | GR- | Prohibitions |
-| [contracts/foundation/maintainability.md](contracts/foundation/maintainability.md) | MNT- | Maintainable design and complexity |
-| [security.md](security.md) | SEC- | Security |
-| [architecture.md](architecture.md) | ARC- | Structure and boundaries |
-| [coding-rules.md](coding-rules.md) | COD- | Code rules |
-| [testing.md](testing.md) | TST- | Test and coverage |
-| [release.md](release.md) | REL- | Version and release |
-| [documentation.md](documentation.md) | DOC- | Documentation |
-| [project-document-maintenance.md](project-document-maintenance.md) | DOC- | Conditional project-doc upkeep |
-| [review-checklist.md](review-checklist.md) | REV- | Review checklist |
-| [workflow.md](workflow.md) | WF- | Task lifecycle |
-| [decision-log.md](decision-log.md) | — | Decision index |
+| File | Rule prefix |
+|------|-------------|
+| [README.md](README.md) | — |
+| [mission.md](mission.md) | — |
+| [guardrails.md](guardrails.md) | GR- |
+| [maintainability.md](contracts/foundation/maintainability.md) | MNT- |
+| [security.md](security.md) | SEC- |
+| [architecture.md](architecture.md) | ARC- |
+| [coding-rules.md](coding-rules.md) | COD- |
+| [testing.md](testing.md) | TST- |
+| [release.md](release.md) | REL- |
+| [documentation.md](documentation.md) | DOC- |
+| [project-document-maintenance.md](project-document-maintenance.md) | DOC- |
+| [review-checklist.md](review-checklist.md) | REV- |
+| [workflow.md](workflow.md) | WF- |
+| [decision-log.md](decision-log.md) | — |
 
 RFC 2119 applies: **MUST / MUST NOT** bind, deviations from **SHOULD / SHOULD NOT** need
 justification, and **MAY** is optional.
