@@ -14,10 +14,10 @@ updated: 2026-09-01
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #616](https://github.com/Yukihide-Mitsuoka/repchat/issues/616)を参照してください。
-対象は`analysis-planner.test.ts`に混在するplanner仕様契約6テストです。AI作成panel仕様のfreeze、固定分析を露出しないprompt、source contractとの比較、renderer全種類を許容するprogram制約、build前のchart shape拒否、構造化dimensions優先を`analysis-planner-specification.test.ts`へ移しました。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、prompt・schema・shape契約、timeout、retry、skipも変更しません。移動元は844行から579行になり、専用ファイルは274行です。残るrevision／Sankey、consultation、structured response契約は別の責務分離として扱います。
-基準はdashboard描画契約を分離した[PR #615](https://github.com/Yukihide-Mitsuoka/repchat/pull/615)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
-前回の分離作業で観測したHTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回の検証では再発していませんが、原因は未確定で修正済みではありません。テスト条件は緩めず、CI結果はIssueとリンク先PRに記録します。
+現在の受入条件と進行状況は[Issue #618](https://github.com/Yukihide-Mitsuoka/repchat/issues/618)を参照してください。
+対象は`run-report.test.ts`に混在するSQL表示整形契約6テストです。元SQLの保持、top-level SELECT式の改行、CTE／UNION構造、4スペース単位のindent、sqlparse aligned出力の正規化を`run-report-sql-formatting.test.ts`へ移しました。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、SQL生成・表示整形契約、timeout、retry、skipも変更しません。移動元は615行から462行になり、専用ファイルは185行です。残るSQL生成・実行・Evidence出力契約は別の責務分離として扱います。
+基準はplanner仕様契約を分離した[PR #617](https://github.com/Yukihide-Mitsuoka/repchat/pull/617)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`は356件成功し、format・lintも成功しました。`make coverage`は後述の既知flakeが1回再発した後、条件を変えない再確認で356件成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回の最初のcoverageで同じ`ConnectionResetError`が1回再発し、Issueへ実行条件と例外を追記しました。原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
 次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
