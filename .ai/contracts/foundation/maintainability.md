@@ -40,6 +40,16 @@ Generated/declarative code, schemas or configuration, migrations, fixtures, and 
 lookup data are exempt from the numeric signals when size conceals no behavior. They
 remain subject to correctness, security, testing, and review rules.
 
+The existing `scripts/pr_size_policy.py` caller also emits advisory MNT-002 warnings
+for changed source files above 800 nonblank lines in its checkout. This is an approximate
+physical count, including comments, not proof of a logical-line or GR-025 violation.
+Known generated headers, generated/vendor/fixture/migration/schema/data directories,
+declaration/minified/config files, and non-source extensions are excluded. Other static
+or declarative content needs reviewer judgment. An unreadable, unsafe, binary, or >2 MB
+source is reported as not inspected. Warnings never alter GR-020's exit status.
+No extra workflow or API is needed; downstream callers using different scripts need
+an explicit reviewed adoption. `--source-root` may select the checkout; default is `.`.
+
 ## MNT-003: Refactor for evidence, not taste
 
 Refactor when duplicated knowledge, long conditional logic, mixed responsibilities,

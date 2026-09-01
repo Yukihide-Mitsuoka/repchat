@@ -212,6 +212,18 @@ class ContextBudgetTest(unittest.TestCase):
                     self.assertIn(f"### {rule_id}:", adapter)
                 self.assertIn(f"### {rule_id}:", canonical)
 
+    def test_untrusted_content_rule_is_available_without_security_task_route(self):
+        errors, active_files = context_budget.active_baseline_files(REPOSITORY_ROOT)
+        self.assertEqual([], errors)
+        self.assertIn(CANONICAL_GUARDRAILS, active_files)
+        canonical = (REPOSITORY_ROOT / CANONICAL_GUARDRAILS).read_text(encoding="utf-8")
+        self.assertIn("### GR-033:", canonical)
+        for phrase in ("untrusted data", "authorized instruction hierarchy", "generated artifacts"):
+            self.assertIn(phrase, canonical)
+        security = (REPOSITORY_ROOT / ".ai/security.md").read_text(encoding="utf-8")
+        for section in ("SEC-050", "SEC-051"):
+            self.assertIn("GR-033", security.split(f"### {section}:")[1].split("### ")[0])
+
     def test_maintainability_policy_routes_one_canonical_stop_condition(self):
         expected_references = {
             ".skills/feature.skill.md": ("MNT-001", "MNT-002", "GR-025"),
