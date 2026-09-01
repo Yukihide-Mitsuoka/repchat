@@ -14,10 +14,10 @@ updated: 2026-09-02
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #620](https://github.com/Yukihide-Mitsuoka/repchat/issues/620)を参照してください。
-対象は`analysis-planner.test.ts`に混在するdashboard revision／Sankey補正契約6テストです。不正Sankey shapeの診断、accepted panelを維持するadd-only revision、Sankeyのsource／target role、管理者panel件数policy、固定organization context／keyword routingの不在、add／change／delete revisionを`analysis-planner-revision.test.ts`へ移しました。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、planner prompt・schema・revision契約、timeout、retry、skipも変更しません。移動元は579行から358行になり、専用ファイルは230行です。残るファイルはconsultation／structured response／confirm契約に集約されています。
-基準はSQL表示整形契約を分離した[PR #619](https://github.com/Yukihide-Mitsuoka/repchat/pull/619)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
-HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。前回のIssue #618では再発しましたが、今回の検証では再発していません。原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
+現在の受入条件と進行状況は[Issue #622](https://github.com/Yukihide-Mitsuoka/repchat/issues/622)を参照してください。
+対象は`run-report.test.ts`に混在するSQL生成担当AIの契約4テストです。既定モデルと未対応temperatureの不使用、structured responseの上限とfinish診断、確定済み分析契約とwarehouse診断を維持するSQL修正、BigQuery compilerのBadRequestだけを修正可能とする判定を`run-report-sql-generation.test.ts`へ移しました。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、SQL生成prompt・schema・修正契約、timeout、retry、skipも変更しません。移動元は462行から289行になり、専用ファイルは205行です。残るファイルは固定runner除去、SQL guard、BigQuery実行、Evidence出力、未定義語の確認契約に集約されています。
+基準はplanner revision／Sankey補正契約を分離した[PR #621](https://github.com/Yukihide-Mitsuoka/repchat/pull/621)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。Issue #618では再発しましたが、今回の検証では再発していません。原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
 次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
