@@ -60,6 +60,9 @@
 - name: "status:needs-human"
   color: "5319e7"
   description: "Escalated per CLAUDE.md §13 — human decision required"
+- name: "language-exception-approved"
+  color: "d4c5f9"
+  description: "Maintainer approved a documented non-Japanese PR prose exception"
 
 # --- ai workflow ---
 - name: "ai:generated"

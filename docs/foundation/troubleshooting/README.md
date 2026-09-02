@@ -10,6 +10,7 @@ their remedies belong in the project-owned `docs/troubleshooting/` path.
 
 | Guide | Scope |
 |-------|-------|
+| [github-actions.md](github-actions.md) | GitHub Actions authentication and effective-permission failures |
 | [github-governance.md](github-governance.md) | Governance policy validation and audit failures |
 | [template-inheritance.md](template-inheritance.md) | Direct-parent inheritance validation and planning failures |
 

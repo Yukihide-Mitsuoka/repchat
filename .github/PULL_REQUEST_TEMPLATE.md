@@ -1,47 +1,50 @@
-<!-- Title must be a Conventional Commit: type(scope): summary — it becomes the squash commit. -->
+<!-- タイトルは Conventional Commit 形式: type(scope): 日本語の要約 -->
 
-## What & why
+## 変更内容と理由
 
-<!-- 2-5 sentences: the change and the reason. Link the issue. -->
+<!-- 変更内容と必要な理由を2〜5文の日本語で説明し、Issueを参照してください。 -->
 
 Refs: #
 
-## Change classification (ARC-020)
+## 変更分類（ARC-020）
 
-- [ ] Local (inside one module, contract unchanged)
-- [ ] Contract (MODULE.md public API / event changed — consumers updated in this PR)
-- [ ] Architectural (ADR required — link: )
+- [ ] ローカル（単一モジュール内で契約変更なし）
+- [ ] 契約（MODULE.mdの公開APIまたはイベントを変更し、利用側も同じPRで更新）
+- [ ] アーキテクチャ（ADR必須 — リンク: ）
 
-## Breaking change?
+## 破壊的変更
 
-- [ ] No
-- [ ] Yes — commit carries `!` + `BREAKING CHANGE:` footer; migration notes: <!-- link/inline -->
+- [ ] なし
+- [ ] あり — タイトルに破壊的変更の記号を付け、移行方法を記載:
 
-## Testing (GR-021 / TST-002)
+## テスト（GR-021 / TST-002）
 
-<!-- What is covered, at which pyramid level. For bug fixes: link the failing-first regression test commit. -->
+<!-- テスト階層と結果を記載し、バグ修正では失敗先行の証拠も示してください。 -->
 
-- How verified: <!-- paste the essential `make test` result -->
-- Not verified (be honest — GR-042): <!-- e.g. "not tested on Windows" / "none" -->
+- 確認方法:
+- 未確認（GR-042に従い、未実施事項を正直に記載）:
 
-## Dependencies (GR-023 / COD-040) — delete section if none added/upgraded-major
+## 依存関係（GR-023 / COD-040、該当しない場合は削除）
 
-| Package | Purpose | Alternatives considered | License | Maintenance signal |
-|---------|---------|------------------------|---------|--------------------|
-|         |         |                        |         |                    |
+| パッケージ | 目的 | 検討した代替案 | ライセンス | 保守状況 |
+|------------|------|----------------|--------------|----------|
+|            |      |                |              |          |
 
-## Documentation (DOC-030)
+## ドキュメント（DOC-030）
 
-- [ ] Doc-update matrix checked; updated: <!-- list files, or "n/a — no matrix trigger" -->
+- [ ] ドキュメント更新表を確認済み — 更新ファイルまたは対象外の理由:
 
-## AI disclosure
+## AI利用開示
 
-- [ ] Authored by AI agent: <!-- agent/model name --> — self-review against `.ai/review-checklist.md` completed
-- [ ] Authored by human
-- Prompts/context notes (optional, helps reviewers):
+- [ ] AIエージェントが作成 — エージェント名:
+- [ ] 人間が作成
+- [ ] セルフレビューで .ai/review-checklist.md を確認済み
+- プロンプトやコンテキストに関する補足（任意）:
 
-## Self-review checklist (WF-090)
+## セルフレビュー（WF-090）
 
-- [ ] `make format && make lint && make test` green — output reported above
-- [ ] Diff within size limits (GR-020) and contains no unrelated changes
-- [ ] No guardrail violated (`.ai/guardrails.md`)
+- [ ] make format、make lint、make testが成功し、結果を上に記載した
+- [ ] 差分がGR-020の制限内で、無関係な変更を含まない
+- [ ] .ai/guardrails.mdに違反していない
+
+<!-- 言語例外では承認ラベルを付け、本文に「## 言語例外」と理由を追加してください。 -->
