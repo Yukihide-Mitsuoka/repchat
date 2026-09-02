@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.22.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.1...v1.22.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ci:** preserve contents access in workflow jobs ([#628](https://github.com/Yukihide-Mitsuoka/repchat/issues/628)) ([b96d64b](https://github.com/Yukihide-Mitsuoka/repchat/commit/b96d64b2712760f21f7e1bf6dccc07faceec3c68))
+* **demo:** validate BigQuery dry-run metadata ([#631](https://github.com/Yukihide-Mitsuoka/repchat/issues/631)) ([6c4a15a](https://github.com/Yukihide-Mitsuoka/repchat/commit/6c4a15a0f8a75d0847af0f64c573cdee80fbc8ff))
+
 ## [1.22.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.0...v1.22.1) (2026-08-29)
 
 
