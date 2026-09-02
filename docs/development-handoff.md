@@ -14,10 +14,10 @@ updated: 2026-09-02
 ## 現在のリファクタリング
 
 オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #624](https://github.com/Yukihide-Mitsuoka/repchat/issues/624)を参照してください。
-対象は`meeting-report.test.ts`に混在するVertex AI会議報告生成の契約6テストです。不完全JSONとfinish reasonの診断、出力budgetとthinking token計上、根拠外claimを含む有料応答のno-retry、長すぎる要約の安全な短縮、完全文が収まらない要約の拒否、固定fallback proseを使わない失敗契約を`meeting-report-generation.test.ts`へ移しました。テスト名・fixture・assertion・各テスト内の呼出し順序は変更せず、移動前後の本文一致を確認しました。製品コード、会議報告prompt・schema・正規化契約、timeout、retry、skipも変更しません。移動元は452行から212行になり、専用ファイルは283行です。残るファイルは根拠bundleの正規化、数値・revision検証、request schema契約に集約されています。
-基準はSQL生成担当AI契約を分離した[PR #623](https://github.com/Yukihide-Mitsuoka/repchat/pull/623)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前後の`make test-unit`、変更後の`make test`と`make coverage`は356件成功し、format・lintも成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
-HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。Issue #618では再発しましたが、今回の検証では再発していません。原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
+現在の受入条件と進行状況は[Issue #626](https://github.com/Yukihide-Mitsuoka/repchat/issues/626)を参照してください。
+対象は地理可視化結果検証の後続リファクタリングに必要なcharacterization testです。`point_map`／`bubble_map`／`base_map`のwarehouse提供GeoJSON欠落、緯度経度範囲外、負のsize・metric、layer kindと列の不整合、およびarea／US mapの地域重複・不正region codeがすべて描画拒否になる現在契約を`live-demo-specialized-visualizations.test.ts`へ追加しました。製品コード、地理検証契約、timeout、retry、skipは変更しません。テストファイルは314行から363行になり、希望範囲内です。後続PRで`dashboard_visualization`に混在する地理検証を`visualization_geography.py`へ集約します。
+基準は会議報告生成契約を分離した[PR #625](https://github.com/Yukihide-Mitsuoka/repchat/pull/625)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前の`make test-unit`は356件、変更後の`make test-unit`と`make test`は357件成功し、format・lintも成功しました。`make coverage`は初回に下記既知flakeで失敗し、同一条件の再確認では357件成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
+HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回のcoverage初回で`ConnectionResetError: [Errno 54] Connection reset by peer`として再発し、未省略例外をIssueへ追記しました。同一条件の再確認は成功しましたが、原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
 次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
 本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
 
