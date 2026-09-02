@@ -8,6 +8,29 @@ DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
 MAX_BYTES_BILLED = 20 * 1024**3  # 20 GiB — the sample month is far under this
 
 
+def _dry_run_metadata_error(job, allowed_dataset: str) -> str:
+    """Validate the query using BigQuery's parsed job statistics."""
+    # Keep the local text check for fast feedback, then trust BigQuery's parsed
+    # metadata at the network boundary so SQL syntax tricks cannot bypass scope.
+    statement_type = getattr(job, "statement_type", None)
+    if statement_type != "SELECT":
+        observed = statement_type or "missing"
+        return f"bq dry-run rejected: statement type {observed}; expected SELECT"
+
+    references = getattr(job, "referenced_tables", None)
+    if not references:
+        return "bq dry-run rejected: referenced tables were not returned"
+    for reference in references:
+        project = getattr(reference, "project", None)
+        dataset_id = getattr(reference, "dataset_id", None)
+        if not project or not dataset_id:
+            return "bq dry-run rejected: referenced table identity is incomplete"
+        actual_dataset = f"{project}.{dataset_id}"
+        if actual_dataset != allowed_dataset:
+            return f"bq dry-run rejected: foreign table ref {actual_dataset}"
+    return ""
+
+
 def inspect_bq_schema(bq, sql: str, allowed_dataset: str = DATASET):
     """Dry-run a validated query and return its output schema without scanning rows."""
     from google.cloud import bigquery
@@ -19,8 +42,15 @@ def inspect_bq_schema(bq, sql: str, allowed_dataset: str = DATASET):
     try:
         job = bq.query(
             s,
-            job_config=bigquery.QueryJobConfig(dry_run=True, use_query_cache=False),
+            job_config=bigquery.QueryJobConfig(
+                dry_run=True,
+                maximum_bytes_billed=MAX_BYTES_BILLED,
+                use_query_cache=False,
+            ),
         )
+        metadata_error = _dry_run_metadata_error(job, allowed_dataset)
+        if metadata_error:
+            return None, metadata_error
         return [(field.name, field.field_type) for field in job.schema], None
     except Exception as error:  # noqa: BLE001 — dry-run diagnostics are user-actionable
         why = ""

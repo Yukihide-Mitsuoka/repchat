@@ -11,15 +11,16 @@ updated: 2026-09-02
 実装状態の正本は[実装状況サマリー](status.md)、優先順位の正本は[ロードマップ](roadmap.md)、
 各タスクの受入条件はGitHub Issueです。この文書には再開に必要な参照順と分岐だけを置きます。
 
-## 現在のリファクタリング
+## 現在の作業
 
-オーナー依頼により、既存動作を維持した責務単位の整理を継続しています。
-現在の受入条件と進行状況は[Issue #626](https://github.com/Yukihide-Mitsuoka/repchat/issues/626)を参照してください。
-対象は地理可視化結果検証の後続リファクタリングに必要なcharacterization testです。`point_map`／`bubble_map`／`base_map`のwarehouse提供GeoJSON欠落、緯度経度範囲外、負のsize・metric、layer kindと列の不整合、およびarea／US mapの地域重複・不正region codeがすべて描画拒否になる現在契約を`live-demo-specialized-visualizations.test.ts`へ追加しました。製品コード、地理検証契約、timeout、retry、skipは変更しません。テストファイルは314行から363行になり、希望範囲内です。後続PRで`dashboard_visualization`に混在する地理検証を`visualization_geography.py`へ集約します。
-基準は会議報告生成契約を分離した[PR #625](https://github.com/Yukihide-Mitsuoka/repchat/pull/625)とfoundation同期の[PR #613](https://github.com/Yukihide-Mitsuoka/repchat/pull/613)を取り込んだmainです。変更前の`make test-unit`は356件、変更後の`make test-unit`と`make test`は357件成功し、format・lintも成功しました。`make coverage`は初回に下記既知flakeで失敗し、同一条件の再確認では357件成功しました。Nodeのcoverageはline 93.66%、branch 85.26%、function 87.95%で基準と同じです。Python subprocessの行coverageと実ブラウザ目視は対象外です。
-HTTP oversized requestの接続リセットは[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)へ例外と調査仮説を保存しています。今回のcoverage初回で`ConnectionResetError: [Errno 54] Connection reset by peer`として再発し、未省略例外をIssueへ追記しました。同一条件の再確認は成功しましたが、原因は未確定で修正済みではありません。timeout・retry・skipやテスト条件は変更せず、CI結果はIssueとリンク先PRに記録します。
-次はIssueにリンクしたPRのCIと差分レビューを確認します。マージはオーナー判断です。Issue #599のHTTP調査・修正はこの機械的移動とは別の作業です。
-本作業ではデモを再起動せず、実Vertex AI／BigQueryも呼び出しません。
+[Issue #630](https://github.com/Yukihide-Mitsuoka/repchat/issues/630)で、公開BigQuery MCP実装から
+RepChatへ再利用できる設計だけを調査しました。MCP機能、SQL生成器、追加依存関係、外部コードは導入せず、
+既存のローカルSQL検査後にBigQuery dry runの`statement_type`と`referenced_tables`を検証する二段目の
+fail-closed境界を追加しました。dry runにも実行時と同じ課金上限を設定します。
+
+`make format`、`make lint`、`make test`、`make coverage`は成功しました。実BigQuery dry runはADCの
+非対話refreshに失敗したため未確認であり、認証や費用承認を迂回していません。次はIssueにリンクしたPRの
+CIと差分レビューを確認します。マージはオーナー判断です。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
 
