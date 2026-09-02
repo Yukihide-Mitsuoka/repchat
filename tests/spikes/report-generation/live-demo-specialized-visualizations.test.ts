@@ -93,6 +93,55 @@ print(json.dumps(accepted))
   });
 });
 
+test('geographic charts reject missing maps, invalid coordinates, negative values, and inconsistent layers', () => {
+  const result = python(`
+geometry='{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"world"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}]}'
+polygon='{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}'
+columns={
+ "area_map":["region_id","geometry_geojson","metric_value"],
+ "us_map":["region_id","geometry_geojson","metric_value"],
+ "point_map":["point_name","map_geojson","latitude","longitude","metric_value"],
+ "bubble_map":["point_name","map_geojson","latitude","longitude","size_value","metric_value"],
+ "base_map":["layer_kind","item_name","geometry_geojson","latitude","longitude","size_value","metric_value"],
+}
+cases={
+ "duplicate_region":("area_map",[("Tokyo",polygon,10),("Tokyo",polygon,20)]),
+ "invalid_us_region":("us_map",[("California",polygon,10)]),
+ "missing_point_map":("point_map",[("A",None,35,139,10)]),
+ "invalid_latitude":("point_map",[("A",geometry,91,139,10)]),
+ "invalid_longitude":("point_map",[("A",geometry,35,181,10)]),
+ "negative_point_value":("point_map",[("A",geometry,35,139,-1)]),
+ "negative_bubble_size":("bubble_map",[("A",geometry,35,139,-1,10)]),
+ "invalid_layer_kind":("base_map",[("line","A",geometry,35,139,None,10)]),
+ "area_with_coordinates":("base_map",[("area","world",polygon,35,None,None,10)]),
+ "point_with_size":("base_map",[("point","A",geometry,35,139,1,10)]),
+ "bubble_with_negative_size":("base_map",[("bubble","A",geometry,35,139,-1,10)]),
+ "base_without_map":("base_map",[("point","A",None,35,139,None,10)]),
+}
+rejected={}
+for name,(chart,rows) in cases.items():
+ try:m.dashboard_visualization({"title":chart,"planned_visualization":chart},rows,columns[chart])
+ except m.LiveDemoError:rejected[name]=True
+ else:rejected[name]=False
+print(json.dumps(rejected,sort_keys=True))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    area_with_coordinates: true,
+    base_without_map: true,
+    bubble_with_negative_size: true,
+    duplicate_region: true,
+    invalid_latitude: true,
+    invalid_layer_kind: true,
+    invalid_longitude: true,
+    invalid_us_region: true,
+    missing_point_map: true,
+    negative_bubble_size: true,
+    negative_point_value: true,
+    point_with_size: true,
+  });
+});
+
 test('point and base map renderers use one registered query-provided geography', () => {
   const source = chartRendererSource();
   const geometry = JSON.stringify({
