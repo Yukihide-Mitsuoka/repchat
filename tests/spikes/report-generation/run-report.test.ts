@@ -95,6 +95,11 @@ class Rows:
     def __iter__(self): return iter([Row()])
 class Job:
     schema = [Field("category", "STRING"), Field("metric_value", "INT64")]
+    statement_type = "SELECT"
+    referenced_tables = [types.SimpleNamespace(
+        project="bigquery-public-data",
+        dataset_id="ga4_obfuscated_sample_ecommerce",
+    )]
     def result(self, **kwargs):
         captured["result_kwargs"] = kwargs
         return Rows()
@@ -128,12 +133,66 @@ print(json.dumps({
     execution: [[['organic', 12]], ['category', 'metric_value']],
     execution_error: null,
     configs: [
-      { dry_run: true, use_query_cache: false },
+      {
+        dry_run: true,
+        maximum_bytes_billed: 20 * 1024 ** 3,
+        use_query_cache: false,
+      },
       { maximum_bytes_billed: 20 * 1024 ** 3, use_query_cache: true },
     ],
     result_kwargs: { timeout: 180, max_results: 25 },
     max_bytes: 20 * 1024 ** 3,
   });
+});
+
+test('dry-run job statistics enforce SELECT and the allowed dataset', () => {
+  const result = loadRunReport(`
+import sys
+import types
+
+google = types.ModuleType("google")
+cloud = types.ModuleType("google.cloud")
+bigquery = types.ModuleType("google.cloud.bigquery")
+class QueryJobConfig:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+bigquery.QueryJobConfig = QueryJobConfig
+cloud.bigquery = bigquery
+google.cloud = cloud
+sys.modules["google"] = google
+sys.modules["google.cloud"] = cloud
+sys.modules["google.cloud.bigquery"] = bigquery
+
+class Field:
+    name = "metric_value"
+    field_type = "INT64"
+class Job:
+    schema = [Field()]
+    def __init__(self, statement_type, referenced_tables):
+        self.statement_type = statement_type
+        self.referenced_tables = referenced_tables
+class Client:
+    def __init__(self, job): self.job = job
+    def query(self, _sql, job_config): return self.job
+
+allowed = types.SimpleNamespace(
+    project="bigquery-public-data",
+    dataset_id="ga4_obfuscated_sample_ecommerce",
+)
+foreign = types.SimpleNamespace(project="another-project", dataset_id="analytics")
+table = chr(96) + "bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*" + chr(96)
+query = "SELECT COUNT(1) AS metric_value FROM " + table
+cases = [
+    Job("DELETE", [allowed]),
+    Job("SELECT", [foreign]),
+    Job("SELECT", []),
+]
+print(json.dumps([module["inspect_bq_schema"](Client(job), query) for job in cases]))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const cases = JSON.parse(result.stdout);
+  assert.match(cases[0][1], /statement type DELETE.*SELECT/);
+  assert.match(cases[1][1], /foreign table ref another-project\.analytics/);
+  assert.match(cases[2][1], /referenced tables.*not returned/);
 });
 
 test('the Evidence page shows the Japanese question and generated warehouse SQL', () => {

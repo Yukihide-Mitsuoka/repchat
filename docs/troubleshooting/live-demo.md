@@ -2,7 +2,7 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-08-28
+updated: 2026-09-02
 ---
 
 # ライブデモのトラブルシューティング
@@ -109,6 +109,20 @@ SQLが別月を参照する可能性がありました。期間が一致しな�
 
 **Prevention:** SQL方言の検査、データソース契約との照合、dry runを同じ実行前ゲートで行います。自動再実行は行わず、
 追加のVertex AI・BigQuery利用には画面の費用確認が必要です。
+
+## `bq dry-run rejected`でSQL生成を停止する
+
+**Cause:** ローカルのSQL文字列検査を通過した後、BigQueryのdry runが返した解析済みjob metadataで、
+statement種別が`SELECT`ではない、参照テーブルが取得できない、または許可dataset外の参照が見つかりました。
+
+**Fix:** エラーに表示されたstatement種別または参照datasetを確認し、分析内容を変えずにSQLを修正します。
+参照テーブル情報が欠けている場合は安全性を確認できないため、実クエリを送信しません。ローカル文字列検査と
+BigQuery側の検査は役割が異なるため、どちらか一方へのフォールバックは行いません。
+
+**Prevention:** dry runにも実行時と同じ課金上限を設定し、`statement_type`と`referenced_tables`を実行前に
+検証します。MCPサーバー、追加依存関係、外部実装のコードは導入していません。
+
+**Refs:** [Issue #630](https://github.com/Yukihide-Mitsuoka/repchat/issues/630)
 
 ## KPIパネルが未確認の比較・派生指標で停止する
 
