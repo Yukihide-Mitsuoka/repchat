@@ -112,6 +112,28 @@ finally:s.shutdown();s.server_close();t.join()
   assert.equal(observed.oversized_status, 400);
 });
 
+test('oversized request returns HTTP 400 after accepting its bounded transport body', () => {
+  const result = python(`
+import socket,threading
+class E:pass
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();body=b"x"*(m.MAX_PLAN_BODY_BYTES+1)
+client=socket.create_connection(("127.0.0.1",s.server_port));client.setsockopt(socket.SOL_SOCKET,socket.SO_SNDBUF,1024);client.settimeout(2)
+request=(f"POST /api/dashboard HTTP/1.1\\r\\nHost: 127.0.0.1:{s.server_port}\\r\\nContent-Type: application/json\\r\\nContent-Length: {len(body)}\\r\\nConnection: close\\r\\n\\r\\n").encode()
+try:
+ client.sendall(request)
+ client.sendall(body)
+ response=b""
+ while True:
+  chunk=client.recv(4096)
+  if not chunk:break
+  response+=chunk
+ print(response.split(b"\\r\\n",1)[0].decode())
+finally:client.close();s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.split('\n').at(-2), 'HTTP/1.0 400 Bad Request');
+});
+
 test('dashboard validation turns unexpected errors into a JSON response', () => {
   const result = python(`
 import json,threading,urllib.error,urllib.request
