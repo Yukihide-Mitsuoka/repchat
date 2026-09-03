@@ -6,6 +6,14 @@ import json
 import re
 
 
+class RequestBodySizeError(ValueError):
+    """Report a rejected Content-Length that may be drained safely."""
+
+    def __init__(self, content_length: int) -> None:
+        super().__init__("request body is empty or too large")
+        self.content_length = content_length
+
+
 class LiveHTTPRequestValidationMixin:
     """Validate request origins, fields, and endpoint-specific contracts."""
 
@@ -33,8 +41,10 @@ class LiveHTTPRequestValidationMixin:
             if self.path in {"/api/dashboard", "/api/plan"}
             else self.max_body_bytes
         )
-        if length <= 0 or length > max_body_bytes:
+        if length <= 0:
             raise ValueError("request body is empty or too large")
+        if length > max_body_bytes:
+            raise RequestBodySizeError(length)
         body = json.loads(self.rfile.read(length))
         request_id = body.get("request_id") if isinstance(body, dict) else None
         self._validate_request_id(request_id)
@@ -46,6 +56,23 @@ class LiveHTTPRequestValidationMixin:
         self._validate_endpoint_request(request)
         return request
 
+    def _discard_rejected_body(self, length: int) -> None:
+        """Consume a rejected body only when it fits the transport safety bound."""
+        if length > self.max_rejected_body_bytes:
+            return
+        previous_timeout = self.connection.gettimeout()
+        self.connection.settimeout(1.0)
+        remaining = length
+        try:
+            while remaining:
+                chunk = self.rfile.read(min(remaining, 65536))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+        except OSError:
+            pass
+        finally:
+            self.connection.settimeout(previous_timeout)
     @staticmethod
     def _validate_request_id(request_id: object) -> None:
         if request_id is not None and (

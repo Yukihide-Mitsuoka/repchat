@@ -134,6 +134,23 @@ finally:client.close();s.shutdown();s.server_close();t.join()
   assert.equal(result.stdout.split('\n').at(-2), 'HTTP/1.0 400 Bad Request');
 });
 
+test('rejected request does not drain a body above the transport safety bound', () => {
+  const result = python(`
+import socket,threading
+class E:pass
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start()
+client=socket.create_connection(("127.0.0.1",s.server_port));client.settimeout(2);length=m.MAX_REJECTED_BODY_BYTES+1
+request=(f"POST /api/dashboard HTTP/1.1\\r\\nHost: 127.0.0.1:{s.server_port}\\r\\nContent-Type: application/json\\r\\nContent-Length: {length}\\r\\nConnection: close\\r\\n\\r\\n").encode()
+try:
+ client.sendall(request)
+ response=client.recv(4096)
+ print(response.split(b"\\r\\n",1)[0].decode())
+finally:client.close();s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.split('\n').at(-2), 'HTTP/1.0 400 Bad Request');
+});
+
 test('dashboard validation turns unexpected errors into a JSON response', () => {
   const result = python(`
 import json,threading,urllib.error,urllib.request
