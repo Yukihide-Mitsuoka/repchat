@@ -13,14 +13,14 @@ updated: 2026-09-04
 
 ## 現在の作業
 
-2026-09-04に[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)で、上限超過requestの
-未読bodyを残してserverが接続を閉じ、clientの送信中に`BrokenPipeError`またはconnection resetが発生する
-競合を再現しました。解析上限は変更せず、有限のtransport上限内だけbodyを破棄してHTTP 400を返します。
-transport上限を超えるbodyは読み進めません。失敗先行の回帰テスト、`make test-unit`、`make test`、
-`make coverage`は成功しました。
+2026-09-04に[Issue #481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)で、設定不足のserverが
+拒否処理より先にDB・BigQuery・HTTP実装を静的importし、full coverageの並列負荷下でexit 2より前の
+module解決が遅延し得る構造を特定しました。必須設定を同期検証してからruntime実装を遅延importします。
+回帰テストはruntime importを決定的に拒否し、修正前のexit 1と修正後のexit 2を確認します。失敗時は
+最初の診断、exit、closeまでの時間とsignalを保持します。`make test-unit`、`make test`、`make coverage`は
+成功しました。
 
-未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。次の技術課題は
-coverage時のprocess終了を診断する[#481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)です。
+未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。
 [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
@@ -81,6 +81,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
 | 完了したVertex AI費用表示修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)／[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)。分析計画とSQL生成のthought tokensを費用へ含める | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | 完了したdoctorのslow test分離 | [#315 foundation test split](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`setup-github.sh` wrapperではなく、一時Gitリポジトリを反復する`test_template_inheritance_plan.py`をslow suiteへ分離した。`make doctor`と`make doctor-slow`をCIの独立jobで実行し、timeout延長・retry・skipは行わない | `scripts/foundation_test_runner.py`、`scripts/template-check.sh`、`Makefile`、`.github/workflows/ci.yml` |
+| 完了したcoverage起動診断 | [#481 startup timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)。設定不足をDB・BigQuery等のruntime importより先に拒否し、coverage負荷に依存せずexit 2を返す。回帰テストは早期runtime importを決定的に拒否し、診断・exit・closeの時間とsignalを失敗表示へ残す | `src/main/control-plane-server.ts`、`src/main/executor-server.ts`、`tests/main/servers-startup.test.ts` |
 | 現在のpanel合成設計 | [#308 versioned panel composition](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)。AI生成原本を上書きせず、参照追加・fork・利用者作成panelを派生dashboard revisionで合成するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0022、Issue #179/#180 |
 | 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
 | 現在の本番security設計 | [#302 production edge and origin protection](https://github.com/Yukihide-Mitsuoka/repchat/issues/302)。Cloudflare WAFとCloud Armorの責任境界、Cloud Run direct URL遮断、費用、rolloutをproposed ADRとしてレビューする | ADR-0005/0006/0010/0012、ADR-0020 |
