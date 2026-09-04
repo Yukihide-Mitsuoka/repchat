@@ -8,7 +8,7 @@ from typing import Callable
 
 from live_http_dispatch import LiveHTTPDispatchMixin
 from live_http_response import LiveHTTPResponseMixin
-from live_http_validation import LiveHTTPRequestValidationMixin
+from live_http_validation import LiveHTTPRequestValidationMixin, RequestBodySizeError
 
 
 API_PATHS = {
@@ -34,6 +34,7 @@ class LiveHTTPHandler(
     echarts_asset: Path
     max_body_bytes: int
     max_plan_body_bytes: int
+    max_rejected_body_bytes: int
     max_question_chars: int
     planner: object
     live_error_type: type[Exception]
@@ -68,6 +69,10 @@ class LiveHTTPHandler(
                     {"cancelled": self.engine.cancel(request["request_id"])},
                 )
                 return
+        except RequestBodySizeError as error:
+            self._discard_rejected_body(error.content_length)
+            self._send_json(400, {"error": str(error)})
+            return
         except self._validation_errors() as error:
             self._send_json(400, {"error": str(error)})
             return

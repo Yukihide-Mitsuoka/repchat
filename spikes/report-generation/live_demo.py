@@ -51,6 +51,7 @@ HERE = Path(__file__).resolve().parent
 ECHARTS_ASSET = HERE / "assets" / "echarts.min.js"
 HOST, PORT = "127.0.0.1", 8765
 MAX_BODY_BYTES, MAX_PLAN_BODY_BYTES, MAX_RESULT_ROWS = 4096, 98304, 100
+MAX_REJECTED_BODY_BYTES = MAX_PLAN_BODY_BYTES * 2
 MAX_QUESTION_CHARS = 500
 MAX_DASHBOARD_BODY_BYTES = MAX_PLAN_BODY_BYTES
 MAX_SANKEY_PAGES = planner.MAX_SANKEY_PAGES
@@ -298,6 +299,7 @@ def create_server(host: str, port: int, engine):
             "echarts_asset": ECHARTS_ASSET,
             "max_body_bytes": MAX_BODY_BYTES,
             "max_plan_body_bytes": MAX_PLAN_BODY_BYTES,
+            "max_rejected_body_bytes": MAX_REJECTED_BODY_BYTES,
             "max_question_chars": MAX_QUESTION_CHARS,
             "planner": planner,
             "live_error_type": LiveDemoError,

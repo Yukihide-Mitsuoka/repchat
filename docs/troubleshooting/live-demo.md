@@ -328,21 +328,23 @@ result revisionとSQL hashも表示します。
 
 ## request body is empty or too large
 
-**Affects:** Issue #279修正前のライブデモ。
+**Affects:** Issue #279修正前のライブデモ、およびIssue #599修正前の上限超過応答。
 
 **Cause:** 確定した分析計画は目的、仮説、確認回答、4〜6件のパネル理由を含む一方、
 `/api/dashboard`が単純問い合わせと同じ4,096 bytesの本文上限を使用していました。AIが正常に提案した
 計画でも上限を超えると、Vertex AI・BigQuery buildを始める前にHTTP 400で停止していました。
 
-**Fix:** Issue #279の修正では、確定計画だけを有限の16,384 bytes上限とし、他のPOST endpointは従来の
-4,096 bytesを維持します。ブラウザから返すパネル情報も、選択した`id`と編集可能な`reason`だけに
-限定します。16,384 bytesを超える計画は引き続き400で拒否します。
+**Fix:** 確定計画は有限の98,304 bytes上限、他のPOST endpointは4,096 bytes上限を維持します。
+上限超過時はJSONとして解析せず、Content-Lengthが有限のtransport drain上限内の場合だけbodyを破棄してから
+HTTP 400を返します。これにより、clientの送信中にserverが未読bodyを残して接続を閉じる競合を防ぎます。
+transport drain上限を超えるbodyは読み進めず、接続を閉じます。
 
-**Prevention:** HTTP回帰テストで、4,096 bytes超かつ16,384 bytes以下の正常な計画を受理し、
-16,384 bytes超を拒否する両境界を検証します。
+**Prevention:** HTTP回帰テストで、4,096 bytes超かつ98,304 bytes以下の正常な計画を受理し、
+上限を1 byte超えるbodyを送信し終えたclientへHTTP 400が届くことを検証します。
 
 **Refs:** [Issue #279](https://github.com/Yukihide-Mitsuoka/repchat/issues/279),
-[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280)
+[PR #280](https://github.com/Yukihide-Mitsuoka/repchat/pull/280),
+および[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)。
 
 ## 分析計画の確認fieldが拒否される
 

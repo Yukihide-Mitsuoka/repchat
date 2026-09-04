@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-02
+updated: 2026-09-04
 ---
 
 # 開発引き継ぎ
@@ -13,14 +13,15 @@ updated: 2026-09-02
 
 ## 現在の作業
 
-2026-09-02に[Issue #632](https://github.com/Yukihide-Mitsuoka/repchat/issues/632)で、マージ済みPRと
-受入条件を照合して完了Issue 26件をcloseし、Open PRがない不要remote branch 10本、cleanな一時worktree
-5件、対応PRがマージ済みのlocal branch 97本を削除しました。remote branchは`main`だけです。
+2026-09-04に[Issue #599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)で、上限超過requestの
+未読bodyを残してserverが接続を閉じ、clientの送信中に`BrokenPipeError`またはconnection resetが発生する
+競合を再現しました。解析上限は変更せず、有限のtransport上限内だけbodyを破棄してHTTP 400を返します。
+transport上限を超えるbodyは読み進めません。失敗先行の回帰テスト、`make test-unit`、`make test`、
+`make coverage`は成功しました。
 
-未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。残るOpen Issueは
-未解決障害の[#481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)・
-[#599](https://github.com/Yukihide-Mitsuoka/repchat/issues/599)と、将来要件・製品化判断9件です。
-次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証です。
+未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。次の技術課題は
+coverage時のprocess終了を診断する[#481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)です。
+[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。
 
 以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
 
