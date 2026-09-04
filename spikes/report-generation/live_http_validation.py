@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import re
 
-import data_source_profiles
-
 
 class RequestBodySizeError(ValueError):
     """Report a rejected Content-Length that may be drained safely."""
@@ -111,7 +109,8 @@ class LiveHTTPRequestValidationMixin:
         }
         if not isinstance(question, str):
             raise ValueError("question must be a string")
-        data_source_profiles.profile_for(profile)
+        if profile not in {"ga4", "bitcoin"}:
+            raise ValueError("profile must be ga4 or bitcoin")
         LiveHTTPRequestValidationMixin._validate_optional_fields(request)
         return request
 
@@ -196,30 +195,26 @@ class LiveHTTPRequestValidationMixin:
             raise ValueError("consultation question is invalid")
 
     def _validate_plan(self, request: dict) -> None:
-        source = data_source_profiles.profile_for(request["profile"])
+        if request["profile"] != "ga4":
+            raise ValueError("planning mode currently supports only ga4")
         plan = request["analysis_plan"]
         instruction = request["revision_instruction"]
         if (plan is None) != (instruction is None):
             raise ValueError(
                 "analysis_plan and revision_instruction must be provided together"
             )
-        source.period_for_question(request["question"])
+        self.period_for_question(request["question"])
         if plan is not None:
-            self.planner.confirm_dashboard_plan(
-                plan, expected_profile=source.key
-            )
+            self.planner.confirm_dashboard_plan(plan)
 
     def _validate_dashboard(self, request: dict) -> None:
-        source = data_source_profiles.profile_for(request["profile"])
+        if request["profile"] != "ga4":
+            raise ValueError("dashboard mode currently supports only ga4")
         plan = request["analysis_plan"]
         if plan is None:
             raise ValueError("AIが作成した分析仕様を確定してからbuildしてください。")
-        confirmed = self.planner.confirm_dashboard_plan(
-            plan, expected_profile=source.key
-        )
-        self.dashboard_sections_for_plan(
-            request["question"], confirmed, source.key
-        )
+        confirmed = self.planner.confirm_dashboard_plan(plan)
+        self.dashboard_sections_for_plan(request["question"], confirmed)
 
     def _validation_errors(self) -> tuple[type[BaseException], ...]:
         return (

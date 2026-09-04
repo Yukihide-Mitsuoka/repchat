@@ -105,7 +105,7 @@ positioningとroadmapを再評価します。
 1. **現在の必須作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
 2. **オーナーが費用を承認した場合だけ:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
 3. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
-4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類について、GA4と同じ相談・dashboard planning・仕様確定・SQL生成・検査・実行・描画経路と予約語修正まで完了した。実値照合、独立レビュー、未知・非公開相当2種類の評価は残る。
+4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類の縦切りと予約語修正まで完了したが、実値照合、独立レビュー、未知・非公開相当2種類の評価が残る。
 5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
 
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。

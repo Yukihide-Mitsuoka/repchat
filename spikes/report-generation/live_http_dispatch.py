@@ -63,7 +63,6 @@ class LiveHTTPDispatchMixin:
                 emit,
                 analysis_plan=request["analysis_plan"],
                 revision_instruction=request["revision_instruction"],
-                profile=request["profile"],
                 **request_kwargs,
             )
         elif self.path == "/api/dashboard":
@@ -71,7 +70,6 @@ class LiveHTTPDispatchMixin:
                 request["question"],
                 emit,
                 request["analysis_plan"],
-                profile=request["profile"],
                 **request_kwargs,
             )
         else:
@@ -83,11 +81,19 @@ class LiveHTTPDispatchMixin:
         emit: Callable[[dict], None],
         request_kwargs: dict,
     ) -> None:
-        self.engine.query(
-            request["question"],
-            emit,
-            profile=request["profile"],
-            analysis_specification=request["analysis_specification"],
-            clarification_answer=request["clarification_answer"],
-            **request_kwargs,
-        )
+        if request["profile"] == "bitcoin":
+            self.engine.query(
+                request["question"],
+                emit,
+                profile="bitcoin",
+                analysis_specification=request["analysis_specification"],
+                **request_kwargs,
+            )
+            return
+        if request["analysis_specification"] is not None:
+            request_kwargs["analysis_specification"] = request[
+                "analysis_specification"
+            ]
+        if request["clarification_answer"] is not None:
+            request_kwargs["clarification_answer"] = request["clarification_answer"]
+        self.engine.query(request["question"], emit, **request_kwargs)
