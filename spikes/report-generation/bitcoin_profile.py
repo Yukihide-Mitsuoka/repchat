@@ -41,6 +41,14 @@ CREATE TABLE `{TABLE}` (
 """
 
 
+def planner_context(_metrics: str) -> str:
+    """Describe available Bitcoin data without supplying analysis choices."""
+    return f"""利用可能期間は2024年1月〜12月。
+{SCHEMA_DDL}
+利用できる情報は取引識別子、block時刻、入出力件数・金額、手数料、入出力のaddress配列である。
+スキーマにない業務用語や外部価格・人物属性は推測せず、追加定義が必要だと説明する。"""
+
+
 def prompt_rules() -> str:
     """Return inspected schema facts and execution constraints without an analysis recipe."""
     return f"""あなたは BigQuery 標準SQLで分析用クエリを書く。

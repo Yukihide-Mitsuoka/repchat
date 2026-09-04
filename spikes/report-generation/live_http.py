@@ -39,7 +39,7 @@ class LiveHTTPHandler(
     planner: object
     live_error_type: type[Exception]
     period_for_question: Callable[[str], dict[str, str]]
-    dashboard_sections_for_plan: Callable[[str, dict], tuple[dict, list[dict]]]
+    dashboard_sections_for_plan: Callable[[str, dict, str], tuple[dict, list[dict]]]
     analysis_section_for_specification: Callable[[str, dict, str], tuple[dict, dict]]
     auth_recovery_message: Callable[[Exception], str | None]
 

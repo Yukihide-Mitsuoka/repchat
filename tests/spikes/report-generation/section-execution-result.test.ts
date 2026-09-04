@@ -19,7 +19,8 @@ usage={"input_tokens":1000,"output_tokens":1000}
 table=chr(96)+execution.report.DATASET+".events_*"+chr(96)
 sql="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 period={"from":"20210101","to":"20210131","label":"2021年1月"}
-execution.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
+execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
+execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
 ${body}`,
     ],
     { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
@@ -37,7 +38,7 @@ try:
  execution.run_section(
   {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  bitcoin_rules="bitcoin rules",max_result_rows=10,
+  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
  )
 except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
@@ -65,7 +66,7 @@ try:
  execution.run_section(
   {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  bitcoin_rules="bitcoin rules",max_result_rows=2,
+  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=2,
  )
 except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
@@ -89,7 +90,7 @@ try:
  execution.run_section(
   {"title":"結果検証用","planned_visualization":"scorecard"}, period, events.append,
   client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  bitcoin_rules="bitcoin rules",max_result_rows=10,
+  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
  )
 except execution.SectionExecutionError as error:
  message=str(error)
@@ -120,7 +121,7 @@ events=[]
 cost=execution.run_section(
  {"shape":{"columns":["日付","値"]},"navigation_depth":4,"title":"時系列","planned_visualization":"line"}, period, events.append,
  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
- bitcoin_rules="bitcoin rules",max_result_rows=10,
+ source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({

@@ -20,6 +20,8 @@ def build_dashboard_planning_request(
     dynamic_panel_fields: tuple[str, ...],
     max_sankey_paths: int,
     max_sankey_pages: int,
+    profile: str,
+    has_governed_metrics: bool,
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
     if (current_plan is None) != (instruction is None):
@@ -46,10 +48,18 @@ def build_dashboard_planning_request(
 - 利用者が変更または削除を求めていない既存仕様は、意味、順序、文言を維持する。
 - 新しい仕様は既存仕様と重複させず、変更後は重複なしの1〜{max_panel_count}件にする。
 - 上限{max_panel_count}件へ達した場合は追加せず、その理由を目的要約へ明記する。"""
-    return f"""次の依頼から、月次ECサイト分析ダッシュボードを計画する。
+    metric_rule = (
+        "measuresは上の「指標定義」に名前がある指標だけにする。"
+        "目標値や目標達成度など、定義にない基準を作らない。"
+        if has_governed_metrics
+        else "measuresは上のスキーマから計算根拠を説明できる指標だけにする。"
+        "外部データやスキーマにない意味を補わず、定義が必要ならclarificationsで確認する。"
+    )
+    return f"""次の依頼から、選択されたデータソースの分析ダッシュボードを計画する。
 
 依頼: {objective}
 対象期間: {period['label']}
+データソースprofile: {profile}
 読者回答: {answered}
 {revision_context}
 スキーマ・指標定義:
@@ -71,7 +81,7 @@ def build_dashboard_planning_request(
 - 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。
 - 利用できない指標や因果関係を捏造しない。
-- measuresは上の「指標定義」に名前がある指標だけにする。目標値や目標達成度など、定義にない基準を作らない。
+- {metric_rule}
 """
 
 

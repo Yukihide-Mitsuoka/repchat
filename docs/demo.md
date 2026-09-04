@@ -237,6 +237,7 @@ quick question、回答からInsightへ進む情報構造を参考にしたデ�
 ##### 分析対象データを選ぶ
 
 分析対象データは、既存のGA4 ECサイトと、Issue #188の最初の非GA4検証であるBitcoin取引から選べます。
+この選択は単一グラフとダッシュボードの両方へ適用され、相談から描画まで同じ処理を通ります。
 
 GA4では、問い合わせに書かれた`YYYY年M月`から`_TABLE_SUFFIX`の月初・月末を決めます。公開サンプルの
 利用可能範囲は2020年11月〜2021年1月です。範囲外または不正な年月は、Vertex AI・BigQueryの前に
@@ -244,10 +245,12 @@ GA4では、問い合わせに書かれた`YYYY年M月`から`_TABLE_SUFFIX`の�
 
 未定義指標はSQLを生成せず、不足している定義を表示します。登録済み設問や参照SQLへ処理を分岐しません。
 
-Bitcoinプロファイルは`bigquery-public-data.crypto_bitcoin.transactions`の`outputs ARRAY<STRUCT>`と、
-その内側の`addresses ARRAY`を二段階で`UNNEST`し、取引ごとの異なる受取アドレス数帯を棒グラフにします。
-2024年の月を明示した対応設問だけを受け付け、別dataset参照、月パーティション不一致、100行超を
-実行前後で拒否します。
+Bitcoinプロファイルは`bigquery-public-data.crypto_bitcoin.transactions`のnested/repeatedスキーマ、
+利用可能期間、許可dataset、月パーティション条件をAIと実行前ゲートへ提供します。特定の分析テーマ、
+SQL、グラフはプロファイルへ登録しません。AIが利用者の目的とスキーマから分析仕様を考察し、GA4と同じ
+planner、仕様確定、SQL生成、dry run、実行、可視化の経路を使います。2024年の月を明示した依頼だけを
+受け付け、別dataset参照、月パーティション不一致、100行超を実行前後で拒否します。確定した計画の
+profileと画面で選択したprofileが異なる場合も、実行前に拒否します。
 
 基準SQLのBigQuery dry runは約2.91GiB（3,115,504,440 bytes）でした。画面では生成SQLの揺れを
 考慮して20GiBをhard limitにし、通常約¥4・最大約¥20を送信前に再確認します。
