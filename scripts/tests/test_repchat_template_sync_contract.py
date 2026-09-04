@@ -49,6 +49,20 @@ class RepChatTemplateSyncContractTest(unittest.TestCase):
             self.assertNotIn(path, manifest["protected_paths"])
             self.assertNotIn(path, entries)
 
+    def test_pr_language_role_tools_are_inherited_and_transportable(self):
+        entries = self.entries()
+        manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+
+        for path in (
+            "scripts/pr_language_policy.py",
+            "scripts/pr_repository_role.py",
+            "scripts/tests/test_pr_language_policy.py",
+            "scripts/tests/test_pr_repository_role.py",
+        ):
+            self.assertIn(path, manifest["inherited_paths"])
+            self.assertNotIn(path, manifest["protected_paths"])
+            self.assertNotIn(path, entries)
+
     def test_project_release_history_and_codeql_invariant_are_target_owned(self):
         entries = self.entries()
         manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
