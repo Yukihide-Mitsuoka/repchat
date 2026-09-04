@@ -26,6 +26,7 @@ They are descriptive mappings. Binding behavior remains in
 | Guide | Purpose |
 |-------|---------|
 | [ai-context.md](ai-context.md) | Acquire complete task-relevant AI context within measured declared-route budgets |
+| [pull-request-language.md](pull-request-language.md) | Author PR prose and port the role-aware protected language check |
 | [usage.md](usage.md) | Create a project from the foundation or develop the foundation itself |
 | [usage.ja.md](usage.ja.md) | Repository-owner-approved Japanese human-facing version of the usage guide (ADR-0008 exception) |
 | [ai-instruction-files.ja.md](ai-instruction-files.ja.md) | Repository-owner-approved Japanese guide to the reusable AI instruction system (ADR-0008 exception) |

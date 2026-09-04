@@ -1,15 +1,15 @@
 ---
 id: adr-0021
 title: ADR-0021 — Scope Japanese pull request prose to leaf repositories
-status: proposed
-updated: 2026-09-02
+status: accepted
+updated: 2026-09-03
 ---
 
 # ADR-0021: Scope Japanese pull request prose to leaf repositories
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted |
 | Date | 2026-09-02 |
 | Deciders | repository owner |
 | Author | Codex (AI agent) |

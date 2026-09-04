@@ -28,9 +28,10 @@ Profile order: foundation, owner-qualified templates oldest-to-parent, then proj
 ## Change protocol
 
 - Use an issue, task branch, reviewed PR, and `.ai/workflow.md`. Land code, tests, and
-  required docs together; accept an ADR before structural implementation.
-- Complete the PR template. Titles and commits use Conventional Commits, releases use
-  SemVer, and merges use squash. Self-review with `.ai/review-checklist.md`.
+  docs together; accept an ADR before structural work.
+- Read ADR-0021 for PR language; complete PR template. Titles/commits use
+  Conventional Commits, releases use SemVer; merges use squash. Self-review with
+  `.ai/review-checklist.md`.
 - After every edit run `make format` and `make lint`; use only canonical `make` targets.
 - Preserve unrelated changes and checks. Never push to protected main, bypass checks,
   fabricate results, or perform destructive work without specific approval.
