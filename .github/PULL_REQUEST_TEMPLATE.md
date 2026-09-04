@@ -1,50 +1,52 @@
-<!-- タイトルは Conventional Commit 形式: type(scope): 日本語の要約 -->
+<!-- Title: type(scope): summary. ADR-0021: Foundation/template producers write
+English prose; consumer leaves write Japanese prose. Fixed headings stay English. -->
 
-## 変更内容と理由
+## What and why
 
-<!-- 変更内容と必要な理由を2〜5文の日本語で説明し、Issueを参照してください。 -->
+<!-- Explain the change and why it is needed; link the issue. -->
 
 Refs: #
 
-## 変更分類（ARC-020）
+## Change classification (ARC-020)
 
-- [ ] ローカル（単一モジュール内で契約変更なし）
-- [ ] 契約（MODULE.mdの公開APIまたはイベントを変更し、利用側も同じPRで更新）
-- [ ] アーキテクチャ（ADR必須 — リンク: ）
+- [ ] Local (one module, no contract change)
+- [ ] Contract (MODULE.md public API or event; consumers updated in this PR)
+- [ ] Architectural (ADR required — link: )
 
-## 破壊的変更
+## Breaking changes
 
-- [ ] なし
-- [ ] あり — タイトルに破壊的変更の記号を付け、移行方法を記載:
+- [ ] None
+- [ ] Yes — add the breaking-change title marker and describe migration:
 
-## テスト（GR-021 / TST-002）
+## Tests (GR-021 / TST-002)
 
-<!-- テスト階層と結果を記載し、バグ修正では失敗先行の証拠も示してください。 -->
+<!-- State test levels and results; include fail-first evidence for bug fixes. -->
 
-- 確認方法:
-- 未確認（GR-042に従い、未実施事項を正直に記載）:
+- How verified:
+- Not verified (state omissions honestly, GR-042):
 
-## 依存関係（GR-023 / COD-040、該当しない場合は削除）
+## Dependencies (GR-023 / COD-040; remove if not applicable)
 
-| パッケージ | 目的 | 検討した代替案 | ライセンス | 保守状況 |
+| Package | Purpose | Alternatives considered | License | Maintenance signal |
 |------------|------|----------------|--------------|----------|
 |            |      |                |              |          |
 
-## ドキュメント（DOC-030）
+## Documentation (DOC-030)
 
-- [ ] ドキュメント更新表を確認済み — 更新ファイルまたは対象外の理由:
+- [ ] Doc-update matrix checked — updated files or reason not applicable:
 
-## AI利用開示
+## AI disclosure
 
-- [ ] AIエージェントが作成 — エージェント名:
-- [ ] 人間が作成
-- [ ] セルフレビューで .ai/review-checklist.md を確認済み
-- プロンプトやコンテキストに関する補足（任意）:
+- [ ] Authored by an AI agent — agent name:
+- [ ] Authored by a human
+- [ ] Self-reviewed with .ai/review-checklist.md
+- Prompts or context notes (optional):
 
-## セルフレビュー（WF-090）
+## Self-review (WF-090)
 
-- [ ] make format、make lint、make testが成功し、結果を上に記載した
-- [ ] 差分がGR-020の制限内で、無関係な変更を含まない
-- [ ] .ai/guardrails.mdに違反していない
+- [ ] make format, make lint, and make test passed; results recorded above
+- [ ] Diff is within GR-020 limits and contains no unrelated changes
+- [ ] No .ai/guardrails.md violations
 
-<!-- 言語例外では承認ラベルを付け、本文に「## 言語例外」と理由を追加してください。 -->
+<!-- Language exceptions require the approved label and a visible reason under
+## Language exception (or ## 言語例外). -->
