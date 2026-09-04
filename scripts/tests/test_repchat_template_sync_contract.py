@@ -7,6 +7,8 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 IGNORE_FILE = REPOSITORY_ROOT / ".templatesyncignore"
 MANIFEST_FILE = REPOSITORY_ROOT / ".github" / "inheritance" / "manifest.json"
 BUGFIX_SKILL = REPOSITORY_ROOT / ".skills" / "bugfix.skill.md"
+CI_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml"
+WORKFLOW_RULES = REPOSITORY_ROOT / ".ai" / "workflow.md"
 
 
 class RepChatTemplateSyncContractTest(unittest.TestCase):
@@ -62,6 +64,22 @@ class RepChatTemplateSyncContractTest(unittest.TestCase):
             self.assertIn(path, manifest["inherited_paths"])
             self.assertNotIn(path, manifest["protected_paths"])
             self.assertNotIn(path, entries)
+
+    def test_leaf_pr_language_caller_uses_the_accepted_base_contract(self):
+        workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+        rules = WORKFLOW_RULES.read_text(encoding="utf-8")
+
+        for fragment in (
+            "types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]",
+            "ref: ${{ github.event.pull_request.base.sha }}",
+            "working-directory: .pr-language-base",
+            "PR_ROLE: ${{ steps.pr-role.outputs.role }}",
+            "python3 -m scripts.pr_language_policy",
+        ):
+            self.assertIn(fragment, workflow)
+        self.assertNotIn("pull_request_target:", workflow)
+        self.assertIn("template producers, Japanese for consumer leaves", rules)
+        self.assertIn("PR language guide", rules)
 
     def test_project_release_history_and_codeql_invariant_are_target_owned(self):
         entries = self.entries()

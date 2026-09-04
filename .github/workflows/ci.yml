@@ -4,6 +4,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
   push:
     branches: [main]
 
@@ -111,3 +112,23 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_BODY: ${{ github.event.pull_request.body }}
         run: bash scripts/pr-size-policy.sh
+      - name: Check out accepted role contract (ADR-0021)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .pr-language-base
+          persist-credentials: false
+      - name: Resolve accepted repository role
+        id: pr-role
+        working-directory: .pr-language-base
+        run: |
+          python3 -c 'import os; from pathlib import Path; from scripts.pr_repository_role import resolve_role; print("role=" + resolve_role(Path("."), os.environ["GITHUB_REPOSITORY"]))' >> "$GITHUB_OUTPUT"
+      - name: Validate PR prose language (ADR-0020/0021)
+        working-directory: .pr-language-base
+        env:
+          PR_ROLE: ${{ steps.pr-role.outputs.role }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: python3 -m scripts.pr_language_policy
