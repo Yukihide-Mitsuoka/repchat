@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.2...v1.22.3) (2026-09-04)
+
+
+### Bug Fixes
+
+* **demo:** 上限超過requestの接続resetを防ぐ ([#636](https://github.com/Yukihide-Mitsuoka/repchat/issues/636)) ([2e7bfb1](https://github.com/Yukihide-Mitsuoka/repchat/commit/2e7bfb11ff26a8d0bf1d28c70566667ec0224456))
+
 ## [1.22.2](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.1...v1.22.2) (2026-09-02)
 
 
