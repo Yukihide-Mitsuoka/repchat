@@ -8,19 +8,8 @@
 // Secrets come from the environment and are NEVER logged (GR-001). Credentials
 // for BigQuery come from ADC (an attached service account in the deploy, or
 // `gcloud auth application-default login` locally), read by AdcTokenProvider.
-import { ExecuteQuery } from '../modules/executor/application/execute.ts';
-import { BigQueryRunner } from '../modules/executor/infrastructure/bigquery.ts';
-import { AdcTokenProvider } from '../modules/executor/infrastructure/google-auth.ts';
-import { ImpersonatingTokenProvider } from '../modules/executor/infrastructure/impersonation.ts';
-import { createExecutorHandler } from '../modules/executor/interface/http.ts';
-import { ControlPlaneDb } from '../modules/control-plane/infrastructure/pg.ts';
-import {
-  PgAuditSink,
-  PgBindingResolver,
-} from '../modules/control-plane/infrastructure/adapters.ts';
 import type { QueryPolicy } from '../modules/executor/domain/types.ts';
 import { optionalEnv, portFromEnv, requireEnv } from './env.ts';
-import { serve } from './serve.ts';
 
 /**
  * The table allowlist, from QUERY_POLICY (JSON). Fail closed: if it is unset or
@@ -58,11 +47,40 @@ function policyFromEnv(): QueryPolicy {
 }
 
 async function main(): Promise<void> {
+  // Reject invalid configuration before loading database, auth, and BigQuery
+  // implementations. Concurrent coverage work can make that dependency graph
+  // slow, but it must not delay a deterministic configuration refusal.
+  const databaseUrl = requireEnv('DATABASE_URL');
+  const appPassword = requireEnv('APP_RUNTIME_PASSWORD');
+  const serviceToken = requireEnv('EXECUTOR_TOKEN');
+  const policy = policyFromEnv();
+  const port = portFromEnv(8787);
+
+  const [application, bigquery, auth, impersonation, http, database, adapters, serving] =
+    await Promise.all([
+      import('../modules/executor/application/execute.ts'),
+      import('../modules/executor/infrastructure/bigquery.ts'),
+      import('../modules/executor/infrastructure/google-auth.ts'),
+      import('../modules/executor/infrastructure/impersonation.ts'),
+      import('../modules/executor/interface/http.ts'),
+      import('../modules/control-plane/infrastructure/pg.ts'),
+      import('../modules/control-plane/infrastructure/adapters.ts'),
+      import('./serve.ts'),
+    ]);
+
+  const { ExecuteQuery } = application;
+  const { BigQueryRunner } = bigquery;
+  const { AdcTokenProvider } = auth;
+  const { ImpersonatingTokenProvider } = impersonation;
+  const { createExecutorHandler } = http;
+  const { ControlPlaneDb } = database;
+  const { PgAuditSink, PgBindingResolver } = adapters;
+  const { serve } = serving;
   const db = new ControlPlaneDb({
-    databaseUrl: requireEnv('DATABASE_URL'),
-    appPassword: requireEnv('APP_RUNTIME_PASSWORD'),
+    databaseUrl,
+    appPassword,
   });
-  const bindings = new PgBindingResolver(db, policyFromEnv());
+  const bindings = new PgBindingResolver(db, policy);
   const runner = new BigQueryRunner({
     // The SOURCE identity needs cloud-platform, not bigquery: its only job is
     // to call IAM Credentials generateAccessToken, and on Cloud Run the
@@ -82,10 +100,9 @@ async function main(): Promise<void> {
   const handler = createExecutorHandler({
     execute,
     catalog: bindings,
-    serviceToken: requireEnv('EXECUTOR_TOKEN'),
+    serviceToken,
   });
 
-  const port = portFromEnv(8787);
   const server = await serve(handler, port);
   console.log(`executor service listening on :${server.port}`);
 
