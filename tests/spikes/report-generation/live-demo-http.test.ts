@@ -84,7 +84,7 @@ test('dashboard HTTP boundary accepts a bounded confirmed plan larger than a sim
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- def dashboard(self,q,emit,plan=None):emit({"type":"dashboard_complete","accepted":plan is not None})
+ def dashboard(self,q,emit,plan=None,**_kwargs):emit({"type":"dashboard_complete","accepted":plan is not None})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できるダッシュボードを作って"
 def plan(reason):
@@ -183,7 +183,7 @@ test('planning HTTP boundary requires a valid current plan and revision instruct
   const result = python(`
 import threading,urllib.error,urllib.request
 class E:
- def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
+ def plan(self,_question,_answers,emit,analysis_plan=None,revision_instruction=None,**_kwargs):emit({"type":"plan","count":len(analysis_plan["panels"]),"instruction":revision_instruction})
 s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
 question="2021年1月の購入課題を分析するダッシュボードを作って"
 def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"bar","decision":f"判断{index}","reason":f"理由{index}","execution_prompt":f"2021年1月の指標{index}を区分別に出して","dimensions":["区分"],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1}
@@ -205,5 +205,36 @@ finally:s.shutdown();s.server_close();t.join()
   assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
     valid: { type: 'plan', count: 6, instruction: '流入別を追加して' },
     statuses: [400, 400, 400],
+  });
+});
+
+test('Bitcoin planning and dashboard build keep one frozen profile across HTTP', () => {
+  const result = python(`
+import threading,urllib.error,urllib.request
+class E:
+ def plan(self,_question,_answers,emit,**kwargs):emit({"type":"plan","profile":kwargs["profile"]})
+ def dashboard(self,_question,emit,plan=None,**kwargs):emit({"type":"dashboard_complete","profile":kwargs["profile"],"plan_profile":plan["profile"]})
+s=m.create_server("127.0.0.1",0,E());t=threading.Thread(target=s.serve_forever,daemon=True);t.start();base=f"http://127.0.0.1:{s.server_port}"
+question="2024年3月のBitcoin取引を分析するダッシュボードを作って"
+period=m.data_source_profiles.profile_for("bitcoin").period_for_question(question)
+raw={"objective_summary":"取引状況を判断する","audience":"分析担当者","comparison":"月内比較","hypotheses":["日ごとの差がある"],"clarifications":[],"panels":[{"title":"日別手数料","kpi":"手数料","chart":"line","decision":"変動を判断する","reason":"時系列で確認する","execution_prompt":"2024年3月の日別手数料を集計する","dimensions":["日付"],"measures":["手数料"],"layout_row":1,"layout_weight":1}]}
+plan=m.planner.normalize_dashboard_plan(raw,question,period,{"audience":"分析担当者"},profile="bitcoin")
+def request(path,profile,extra):
+ data=json.dumps({"question":question,"profile":profile,"answers":{"audience":"分析担当者"},**extra},ensure_ascii=False).encode()
+ return urllib.request.Request(base+path,data=data,headers={"content-type":"application/json","origin":base},method="POST")
+try:
+ proposed=json.loads(urllib.request.urlopen(request("/api/plan","bitcoin",{})).read().decode())
+ built=json.loads(urllib.request.urlopen(request("/api/dashboard","bitcoin",{"analysis_plan":plan})).read().decode())
+ mismatch=0
+ try:urllib.request.urlopen(request("/api/dashboard","ga4",{"analysis_plan":plan}))
+ except urllib.error.HTTPError as error:mismatch=error.code
+ print(json.dumps({"proposed":proposed,"built":built,"mismatch":mismatch}))
+finally:s.shutdown();s.server_close();t.join()
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.split('\n').at(-2) ?? ''), {
+    proposed: { type: 'plan', profile: 'bitcoin' },
+    built: { type: 'dashboard_complete', profile: 'bitcoin', plan_profile: 'bitcoin' },
+    mismatch: 400,
   });
 });
