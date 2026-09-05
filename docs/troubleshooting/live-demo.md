@@ -27,6 +27,9 @@ SQLの安全検査・dry run・結果形状検査を通過した場合だけ実�
 gcloud auth application-default login
 python3 spikes/report-generation/verify_live_services.py \
   --project <project> \
+  --profile <ga4またはbitcoin> \
+  --dashboard-question '<対象期間と分析目的を含む依頼文>' \
+  --insight-question '<対象期間と単一分析の依頼文>' \
   --output /private/tmp/repchat-live-verification.json \
   --accept-cost
 ```
@@ -35,6 +38,9 @@ python3 spikes/report-generation/verify_live_services.py \
 そのまま使い、固定パネル・固定SQL・数値の代用はしません。出力JSONには実行ステージ、件数、列名、可視化種別、
 SQLハッシュ、行数、検証状態、推定費用だけを保存し、SQL本文・取得行・会議報告本文は保存しません。未定義語や
 検証エラーで止まった場合も、その理由を品質記録へ残して自動再実行しません。
+
+選択したprofileはdashboard計画・build・insight相談・SQL実行に共通で渡します。依頼文は両方とも必須で、
+未指定・空欄なら認証確認前に終了します。特定データソース向けの既定質問はありません。
 
 ## `make doctor`の時間とHTTP round-tripの切り分け
 

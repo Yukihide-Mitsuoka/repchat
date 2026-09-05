@@ -62,8 +62,15 @@ print(json.dumps(observed))
   const observed = JSON.parse(result.stdout);
   for (const profile of ['ga4', 'bitcoin']) {
     assert.deepEqual(observed[profile], {
-      calls: [['plan', profile], ['dashboard', profile], ['consult', profile], ['query', profile], ['report', 'build-1']],
-      status: 'complete', profile,
+      calls: [
+        ['plan', profile],
+        ['dashboard', profile],
+        ['consult', profile],
+        ['query', profile],
+        ['report', 'build-1'],
+      ],
+      status: 'complete',
+      profile,
     });
   }
 });
