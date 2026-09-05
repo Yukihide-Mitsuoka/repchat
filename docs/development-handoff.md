@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-04
+updated: 2026-09-05
 ---
 
 # 開発引き継ぎ
@@ -13,12 +13,19 @@ updated: 2026-09-04
 
 ## 現在の作業
 
-2026-09-04に[Issue #481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)で、設定不足のserverが
-拒否処理より先にDB・BigQuery・HTTP実装を静的importし、full coverageの並列負荷下でexit 2より前の
-module解決が遅延し得る構造を特定しました。必須設定を同期検証してからruntime実装を遅延importします。
-回帰テストはruntime importを決定的に拒否し、修正前のexit 1と修正後のexit 2を確認します。失敗時は
-最初の診断、exit、closeまでの時間とsignalを保持します。`make test-unit`、`make test`、`make coverage`は
-成功しました。
+[PR #643](https://github.com/Yukihide-Mitsuoka/repchat/pull/643)と
+[PR #644](https://github.com/Yukihide-Mitsuoka/repchat/pull/644)はマージ済みです。
+GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05のオーナー指示により、次の全工程を
+小さいPRに分けて進めます。この実施順序は下段の過去の停止条件・順序より優先します。
+
+1. #188の実サービス検証ランナーがdashboardへprofileを渡さない不具合を修正し、固定の既定質問を廃止する。
+2. schema取得、期間・partition制約、実行契約の汎用化を進め、未知schema最低2種類の参照結果と事前合格基準を用意する。
+3. 対象と費用を提示して承認後、GA4／Bitcoinのdashboard・insightと会議報告を実行し、結果一致と確認・拒否を記録する。
+4. #179の閲覧／来歴、#180のrevision・非同期build、#371のlayout保存、#181の報告を各受入条件で進める。
+   新しい永続化・公開API等の設計は既存ADRとの対応を確認し、未決部分はレビュー可能なADRを先に提示する。
+
+schema・期間規則はまだ手書きprofileです。未知schemaの実値照合・独立レビュー・反復評価は未完了であり、
+共通経路化だけで任意schema対応を実証済みとはしません。実Vertex AI／BigQueryのマージ後検証は未実施です。
 
 未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。
 [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。

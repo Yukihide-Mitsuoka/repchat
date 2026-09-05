@@ -20,18 +20,10 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 import live_demo
+from data_source_profiles import profile_keys
 from live_verification_summary import _safe_error, quality_summary
 import run_report as report
 from demo_support import require_adc
-
-
-DEFAULT_DASHBOARD_QUESTION = (
-    "2021年1月のECサイトで購入成果を改善するため、課題の場所と優先施策を判断できる"
-    "ダッシュボードを作って"
-)
-DEFAULT_INSIGHT_QUESTION = (
-    "2021年1月のデータで流入チャネル別のセッション数と購入件数を比較してください。"
-)
 
 
 class CostGateError(RuntimeError):
@@ -65,7 +57,7 @@ def run_verification(args: argparse.Namespace) -> dict[str, Any]:
 
     plan_events, plan_summary = _run_operation(
         "dashboard_plan",
-        lambda emit: engine.plan(args.dashboard_question, {}, emit),
+        lambda emit: engine.plan(args.dashboard_question, {}, emit, profile=args.profile),
         {"plan"},
     )
     operations["dashboard_plan"] = plan_summary
@@ -80,6 +72,7 @@ def run_verification(args: argparse.Namespace) -> dict[str, Any]:
                 args.dashboard_question,
                 emit,
                 analysis_plan=plan,
+                profile=args.profile,
             ),
             {"dashboard_complete"},
         )
@@ -159,15 +152,21 @@ def run_verification(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _question(value: str) -> str:
+    if not value.strip():
+        raise argparse.ArgumentTypeError("検証する依頼文を空欄にできません。")
+    return value
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="費用承認済みの実Vertex AI／BigQuery検証を1回ずつ実行し、品質メタデータを保存します。"
     )
     parser.add_argument("--project", required=True, help="Google Cloud project ID")
     parser.add_argument("--model", default=report.DEFAULT_MODEL)
-    parser.add_argument("--profile", choices=("ga4", "bitcoin"), default="ga4")
-    parser.add_argument("--dashboard-question", default=DEFAULT_DASHBOARD_QUESTION)
-    parser.add_argument("--insight-question", default=DEFAULT_INSIGHT_QUESTION)
+    parser.add_argument("--profile", choices=profile_keys(), default="ga4")
+    parser.add_argument("--dashboard-question", required=True, type=_question)
+    parser.add_argument("--insight-question", required=True, type=_question)
     parser.add_argument("--output", required=True, type=Path, help="品質記録JSONの出力先")
     parser.add_argument(
         "--accept-cost",
