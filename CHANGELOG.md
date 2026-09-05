@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.23.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.3...v1.23.0) (2026-09-05)
+
+
+### Features
+
+* BitcoinダッシュボードをライブUIへ公開 ([#644](https://github.com/Yukihide-Mitsuoka/repchat/issues/644)) ([3b8de8d](https://github.com/Yukihide-Mitsuoka/repchat/commit/3b8de8d450d4ea67af782dc645c92c78caa79e9f))
+* GA4とBitcoinの分析パイプラインを共通化 ([#643](https://github.com/Yukihide-Mitsuoka/repchat/issues/643)) ([c94c90a](https://github.com/Yukihide-Mitsuoka/repchat/commit/c94c90a1784bf227305818926e690b63e5612199))
+
+
+### Bug Fixes
+
+* **ci:** 利用先PRの日本語規則を強制する ([#642](https://github.com/Yukihide-Mitsuoka/repchat/issues/642)) ([7f8682e](https://github.com/Yukihide-Mitsuoka/repchat/commit/7f8682e5a22e459c48de0cb37fbb414bd8e0e502))
+* **main:** 設定検証をruntime importより先に行う ([#638](https://github.com/Yukihide-Mitsuoka/repchat/issues/638)) ([575d2da](https://github.com/Yukihide-Mitsuoka/repchat/commit/575d2da6d2c5303250ed47f0888504af0583ba0c)), closes [#481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)
+* **sync:** PR言語判定ツールの継承境界を準備する ([#641](https://github.com/Yukihide-Mitsuoka/repchat/issues/641)) ([0212cfd](https://github.com/Yukihide-Mitsuoka/repchat/commit/0212cfd2c9bc7c598a5201b663a52bc498ba806b))
+
 ## [1.22.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.2...v1.22.3) (2026-09-04)
 
 
