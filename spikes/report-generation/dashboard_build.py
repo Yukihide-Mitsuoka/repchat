@@ -79,10 +79,11 @@ def build_dashboard(
     analysis_plan: dict | None,
     emit: Callable[[dict], None],
     *,
+    profile: str,
     metric_definitions: dict,
-    sections_for_plan: Callable[[str, dict], tuple[dict, list[dict]]],
+    sections_for_plan: Callable[[str, dict, str], tuple[dict, list[dict]]],
     layout_rows_for_plan: Callable[[list[dict]], list[dict]],
-    run_section: Callable[[dict, dict, Callable[[dict], None], dict], float],
+    run_section: Callable[..., float],
     check_cancelled: Callable[[], None],
     store_bundle: Callable[[dict], None],
 ) -> dict:
@@ -90,10 +91,12 @@ def build_dashboard(
     if analysis_plan is None:
         raise DashboardBuildError("AIが作成した分析仕様を確定してからbuildしてください。")
     try:
-        confirmed = planner.confirm_dashboard_plan(analysis_plan)
+        confirmed = planner.confirm_dashboard_plan(
+            analysis_plan, expected_profile=profile
+        )
     except planner.PlannerError as error:
         raise DashboardBuildError(str(error)) from error
-    period, sections = sections_for_plan(question, confirmed)
+    period, sections = sections_for_plan(question, confirmed, profile)
     layout_rows = layout_rows_for_plan(confirmed["panels"])
     emit(
         {
@@ -148,7 +151,9 @@ def build_dashboard(
                     }
                 )
 
-        total_cost += run_section(section, period, capture, context)
+        total_cost += run_section(
+            section, period, capture, context, profile=profile
+        )
         if "rows" not in evidence:
             continue
         if evidence.get("visualization") == "funnel":
@@ -163,6 +168,7 @@ def build_dashboard(
         )
         evidence_panels.append(evidence)
     bundle = {
+        "profile": profile,
         "plan_revision": confirmed["revision"],
         "organization_context_revision": confirmed["organization_context_revision"],
         "organization_context": confirmed["organization_context"],

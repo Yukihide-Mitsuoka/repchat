@@ -28,8 +28,8 @@ print(json.dumps({"calls":calls,"events":[event["type"] for event in events],"id
 test('dashboard build has no fixed-catalog fallback without an AI-authored plan', () => {
   const result = python(`
 import inspect,threading
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="";e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
-m.report.generate=lambda *_args,**_kwargs:({"sql":"","reason":"unused","undefined_terms":["unused"]},{"input_tokens":1,"output_tokens":1})
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object();e.lock=threading.Lock();e.latest_dashboard=None
+m.report.generate_request=lambda *_args,**_kwargs:({"sql":"","reason":"unused","undefined_terms":["unused"]},{"input_tokens":1,"output_tokens":1})
 events=[];error=""
 try:e.dashboard("2021年1月のECサイト分析ダッシュボードを作って",events.append)
 except m.LiveDemoError as caught:error=str(caught)
@@ -137,10 +137,10 @@ print(json.dumps({"safe":True,"errors":errors},ensure_ascii=False))
 
 test('dashboard dry-run mismatch is repaired once and still stops before paid execution', () => {
   const result = python(`
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object()
 section=m.planned_analysis_section({"id":"P1","title":"購入規模","chart":"scorecard","decision":"判断","execution_prompt":"2021年1月の購入件数","dimensions":[],"measures":["購入件数"]})
 tick=chr(96);sql="SELECT COUNT(*) AS metric_value FROM "+tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
-m.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 repairs=[]
 m.report.repair=lambda *_args,**_kwargs:(repairs.append(True) or ({"sql":sql,"reason":"型を修正できない","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
 m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","STRING")],None)
@@ -157,12 +157,12 @@ print(json.dumps({"message":message,"repairs":len(repairs),"executions":executio
 
 test('dashboard period mismatch is repaired once before BigQuery execution', () => {
   const result = python(`
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object()
 section=m.planned_analysis_section({"id":"P1","title":"流入別セッション","chart":"bar","decision":"判断","execution_prompt":"2021年1月の流入別セッション","dimensions":["流入元"],"measures":["セッション数"]})
 tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
 initial="SELECT traffic_source.medium AS category, COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
 repaired="SELECT traffic_source.medium AS category, COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
-m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 diagnostics=[]
 m.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({"sql":repaired,"reason":"期間を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
 m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("category","STRING"),("metric_value","INT64")],None)
@@ -181,12 +181,12 @@ print(json.dumps({"diagnostics":diagnostics,"executed":executed,"stages":[event.
 
 test('a compiler dry-run diagnostic is repaired before paid execution', () => {
   const result = python(`
-e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.rules="rules";e.client=e.bq=object()
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object()
 section=m.planned_analysis_section({"id":"P1","title":"購入規模","chart":"scorecard","decision":"判断","execution_prompt":"2021年1月の購入件数","dimensions":[],"measures":["購入件数"]})
 tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
 initial="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 repaired="WITH base AS (SELECT user_pseudo_id FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131') SELECT COUNT(*) AS metric_value FROM base"
-m.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 diagnostics=[]
 m.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({"sql":repaired,"reason":"CTEへ修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
 dry_runs=[]

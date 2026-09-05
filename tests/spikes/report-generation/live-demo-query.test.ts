@@ -59,23 +59,22 @@ test('live query passes the requested period to SQL generation', () => {
 import threading
 e=object.__new__(m.LiveQueryEngine)
 e.model=m.report.DEFAULT_MODEL
-e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
-periods=[]
+requests=[]
 question="2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して"
 spec={"title":"流入別セッション","objective":"流入規模を比較する","dimensions":["medium"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"集客差を判断する"}
 sql="SELECT traffic_source.medium AS category, COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20201201' AND '20201231' GROUP BY category ORDER BY metric_value DESC LIMIT 30"
-m.report.generate=lambda _client,_model,_section,period,_rules:(periods.append(period) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+m.report.generate_request=lambda _client,_model,request,_rules:(requests.append(request) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
 m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('category','STRING'),('metric_value','INT64')],None))
 m.report.exec_bq=lambda *_args,**_kwargs:(([('organic',10)],['category','metric_value']),None)
 events=[]
 e.query(question,events.append,analysis_specification=spec)
-print(json.dumps({"periods":periods,"types":[event["type"] for event in events]},ensure_ascii=False))
+print(json.dumps({"has_period":"'20201201' から '20201231'" in requests[0],"types":[event["type"] for event in events]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    periods: [{ from: '20201201', to: '20201231', label: '2020年12月' }],
+    has_period: true,
     types: ['stage', 'stage', 'sql', 'stage', 'result'],
   });
 });
@@ -85,13 +84,12 @@ test('live query rejects generated SQL for a different month before BigQuery', (
 import threading
 e=object.__new__(m.LiveQueryEngine)
 e.model=m.report.DEFAULT_MODEL
-e.rules=""
 e.client=e.bq=object()
 e.lock=threading.Lock()
 question="2020年12月のセッション数を流入チャネル（medium）別に、多い順で出して"
 spec={"title":"流入別セッション","objective":"流入規模を比較する","dimensions":["medium"],"measures":["セッション数"],"comparison":"流入間","chart":"bar","execution_prompt":question,"reason":"集客差を判断する"}
 sql="SELECT traffic_source.medium AS medium, COUNT(DISTINCT user_pseudo_id) AS sessions FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY medium"
-m.report.generate=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_args:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 executions=[]
 m.report.exec_bq=lambda *_args,**_kwargs:(executions.append(True) or (([],[]),None))
 error=""
@@ -113,15 +111,15 @@ test('live engine renders safe shapes, refuses undefined metrics, and caps fetch
 import threading
 def engine():
  e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
- e.rules="";e.client=e.bq=object();e.lock=threading.Lock();return e
+ e.client=e.bq=object();e.lock=threading.Lock();return e
 sql="SELECT COUNT(DISTINCT user_pseudo_id) AS metric_value FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\` WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
-m.report.generate=lambda *_:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_:({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 m.report.inspect_bq_schema=lambda *_args,**_kwargs:(([('metric_value','INT64')],None))
 limits=[];m.report.exec_bq=lambda *_args,**kw:(limits.append(kw.get("max_results")) or (([(94790,)],["metric_value"]),None))
 question="2021年1月のユーザー数を出して"
 scorecard={"title":"ユーザー数","objective":"規模を確認する","dimensions":[],"measures":["ユーザー数"],"comparison":"単月","chart":"scorecard","execution_prompt":question,"reason":"基準値を判断する"}
 events=[];engine().query(question,events.append,analysis_specification=scorecard)
-m.report.generate=lambda *_:({"sql":"","reason":"未定義","undefined_terms":["直帰率"]},{"input_tokens":1,"output_tokens":1})
+m.report.generate_request=lambda *_:({"sql":"","reason":"未定義","undefined_terms":["直帰率"]},{"input_tokens":1,"output_tokens":1})
 refusal_question="2021年1月の直帰率を出して"
 refusal_spec={**scorecard,"title":"直帰率","measures":["直帰率"],"execution_prompt":refusal_question}
 refusal=[];engine().query(refusal_question,refusal.append,analysis_specification=refusal_spec)
@@ -140,7 +138,7 @@ print(json.dumps({"visualization":events[-1]["visualization"],"types":[x["type"]
 test('non-GA4 selector does not inject a fixed Bitcoin question into the UI', () => {
   const result = python(`
 html=m.HTML
-profile=m.bitcoin
+import bitcoin_profile as profile
 period=profile.period_for_question("2024年1月のBitcoin取引を分析したい")
 errors=[]
 for question in ["2023年12月の受取アドレス別の取引数"]:
@@ -179,7 +177,6 @@ test('Bitcoin query uses its own schema, partition guard, and dataset boundary',
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
 e.client=e.bq=object();e.lock=threading.Lock();generated=[];executed=[]
 question="2024年1月のBitcoin取引について、受取アドレス数帯別の取引数を比較して"
 spec={"title":"受取アドレス数帯別の取引数","objective":"受取構造を比較する","dimensions":["受取アドレス数帯"],"measures":["取引数"],"comparison":"帯別","chart":"bar","execution_prompt":question,"reason":"分布を判断する"}
@@ -200,9 +197,10 @@ def execute(_bq,source,**kwargs):
 m.report.exec_bq=execute;events=[]
 e.query(question,events.append,profile="bitcoin",analysis_specification=spec)
 bad=sql.replace("bigquery-public-data.crypto_bitcoin", "bigquery-public-data.ga4_obfuscated_sample_ecommerce")
-_,bad_error=m.report.validate_sql(bad,m.bitcoin.DATASET)
 period_error=""
-try:m.bitcoin.require_sql_period(sql.replace("2024-01-01","2024-02-01"),m.bitcoin.period_for_question(question))
+source=m.data_source_profiles.profile_for("bitcoin")
+_,bad_error=m.report.validate_sql(bad,source.allowed_dataset)
+try:source.require_sql_period(sql.replace("2024-01-01","2024-02-01"),source.period_for_question(question))
 except ValueError as error:period_error=str(error)
 print(json.dumps({
  "types":[event["type"] for event in events],
@@ -235,7 +233,6 @@ test('Bitcoin query quotes the reserved hash column before BigQuery execution', 
   const result = python(`
 import threading
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL
-e.rules="";e.bitcoin_rules=m.bitcoin.prompt_rules()
 e.client=e.bq=object();e.lock=threading.Lock();executed=[]
 question="2024年1月のBitcoin取引について、受取アドレス数帯別の取引数を比較して"
 spec={"title":"受取アドレス数帯別の取引数","objective":"受取構造を比較する","dimensions":["受取アドレス数帯"],"measures":["取引数"],"comparison":"帯別","chart":"bar","execution_prompt":question,"reason":"分布を判断する"}
@@ -275,16 +272,17 @@ e.query(question,events.append,profile="bitcoin",analysis_specification=spec)
 shown=next(event["sql"] for event in events if event["type"]=="sql")
 quoted=chr(96)+"hash"+chr(96)
 protected="SELECT t.hash, 'hash', "+quoted+" -- hash\\n/* hash */ FROM source"
-protected_once=m.bitcoin.quote_reserved_hash_identifiers(protected)
+source=m.data_source_profiles.profile_for("bitcoin")
+protected_once=source.normalize_sql(protected)
 long_literal="SELECT '"+(chr(92)+"!")*2000+"hash'"
 print(json.dumps({
  "executed_quoted":("SELECT\\n        "+quoted+",") in executed[0],
  "display_quoted":quoted in shown,
  "qualified_unchanged":"t.hash" in executed[0],
- "prompt_guard":"予約語" in e.bitcoin_rules and quoted in e.bitcoin_rules,
+ "prompt_guard":"予約語" in m.data_source_profiles.profile_for("bitcoin").sql_rules("") and quoted in m.data_source_profiles.profile_for("bitcoin").sql_rules(""),
  "protected_unchanged":protected_once==protected,
- "idempotent":m.bitcoin.quote_reserved_hash_identifiers(executed[0])==executed[0],
- "long_literal_unchanged":m.bitcoin.quote_reserved_hash_identifiers(long_literal)==long_literal,
+ "idempotent":source.normalize_sql(executed[0])==executed[0],
+ "long_literal_unchanged":source.normalize_sql(long_literal)==long_literal,
 },ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);

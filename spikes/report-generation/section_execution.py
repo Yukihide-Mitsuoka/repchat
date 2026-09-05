@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Callable
 
-import bitcoin_profile as bitcoin
+import data_source_profiles
 import run_report as report
 import sql_contract_validation as sql_contracts
 import visualization_results
@@ -99,11 +99,10 @@ def run_section(
     client: object,
     bq: object,
     model: str,
-    rules: str,
-    bitcoin_rules: str,
+    source: data_source_profiles.DataSourceProfile,
     max_result_rows: int,
+    rules: str | None = None,
     context: dict | None = None,
-    profile: str = "ga4",
 ) -> float:
     """Generate, validate, execute, and optionally verify one panel."""
     extra = context or {}
@@ -118,36 +117,16 @@ def run_section(
             "message": "Vertex AIでSQLを生成中です。",
         }
     )
-    if profile == "bitcoin":
-        request = bitcoin.generation_request(section, period)
-        if extra.get("clarification_answer"):
-            request += (
-                "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
-                "回答にない条件は推測しない）\n"
-                f"{extra['clarification_answer'].strip()}"
-            )
-        answer, usage = report.generate_request(
-            client,
-            model,
-            request,
-            bitcoin_rules,
+    request = source.generation_request(section, period)
+    if extra.get("clarification_answer"):
+        request += (
+            "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
+            "回答にない条件は推測しない）\n"
+            f"{extra['clarification_answer'].strip()}"
         )
-        allowed_dataset = bitcoin.DATASET
-    else:
-        if extra.get("clarification_answer"):
-            answer, usage = report.generate(
-                client,
-                model,
-                section,
-                period,
-                rules,
-                clarification_answer=extra["clarification_answer"],
-            )
-        else:
-            answer, usage = report.generate(
-                client, model, section, period, rules
-            )
-        allowed_dataset = report.DATASET
+    sql_rules = rules if rules is not None else source.sql_rules("")
+    answer, usage = report.generate_request(client, model, request, sql_rules)
+    allowed_dataset = source.allowed_dataset
     cost = report.vertex_cost_jpy(model, usage)
     sql = (answer.get("sql") or "").strip()
     undefined = answer.get("undefined_terms") or []
@@ -168,9 +147,10 @@ def run_section(
     if error:
         raise SectionExecutionError(f"生成SQLを安全検査で拒否しました: {error}")
     assert normalized is not None
-    if profile == "bitcoin":
-        normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
-    period_diagnostic = sql_contracts.sql_period_diagnostic(normalized, period, profile)
+    normalized = source.normalize_sql(normalized)
+    period_diagnostic = sql_contracts.sql_period_diagnostic(
+        normalized, period, source.require_sql_period
+    )
     allow_period_repair = extra.get("operation") == "dashboard"
     if period_diagnostic and (
         not allow_period_repair or not section.get("source_columns")
@@ -184,11 +164,7 @@ def run_section(
                 "message": "描画仕様とBigQuery dry runの出力schemaを照合中です。",
             }
         )
-        analysis_request = (
-            bitcoin.generation_request(section, period)
-            if profile == "bitcoin"
-            else report.generation_request(section, period)
-        )
+        analysis_request = source.generation_request(section, period)
         repair_used = False
         while True:
             diagnostic = _dashboard_sql_diagnostic(
@@ -218,7 +194,7 @@ def run_section(
                 analysis_request,
                 normalized,
                 diagnostic,
-                bitcoin_rules if profile == "bitcoin" else rules,
+                sql_rules,
             )
             cost += report.vertex_cost_jpy(model, repair_usage)
             repaired_sql = (repaired.get("sql") or "").strip()
@@ -237,10 +213,9 @@ def run_section(
                     f"修正SQLを安全検査で拒否しました: {validation_error}"
                 )
             assert normalized is not None
-            if profile == "bitcoin":
-                normalized = bitcoin.quote_reserved_hash_identifiers(normalized)
+            normalized = source.normalize_sql(normalized)
             period_diagnostic = sql_contracts.sql_period_diagnostic(
-                normalized, period, profile
+                normalized, period, source.require_sql_period
             )
             if period_diagnostic and not allow_period_repair:
                 raise SectionExecutionError(period_diagnostic)

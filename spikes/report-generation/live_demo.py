@@ -10,7 +10,7 @@ import sys
 import webbrowser
 from pathlib import Path
 import analysis_planner as planner
-import bitcoin_profile as bitcoin
+import data_source_profiles
 from live_contracts import (
     SAMPLE_FIRST_DAY,
     SAMPLE_LAST_DAY,
@@ -273,8 +273,10 @@ class LiveQueryEngine(live_engine.LiveQueryEngine):
         return analysis_consultation_context(metrics, profile)
 
     @staticmethod
-    def sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
-        return dashboard_sections_for_plan(question, plan)
+    def sections_for_plan(
+        question: str, plan: dict, profile: str
+    ) -> tuple[dict, list[dict]]:
+        return dashboard_sections_for_plan(question, plan, profile)
 
     @staticmethod
     def layout_rows_for_plan(panels: list[dict]) -> list[dict]:

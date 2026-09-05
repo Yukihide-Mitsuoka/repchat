@@ -52,7 +52,8 @@ test('SQL generation returns and emits the current Vertex cost', () => {
 import section_execution as execution
 usage={"input_tokens":1000,"output_tokens":1000}
 sql="SELECT 1 AS metric_value"
-execution.report.generate=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
+execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
+execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
 execution.report.validate_sql=lambda value,_dataset:(value,None)
 execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
 execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
@@ -61,7 +62,7 @@ events=[]
 cost=execution.run_section(
  {"shape":{"columns":["metric_value"]}}, {}, events.append,
  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
- bitcoin_rules="bitcoin rules",max_result_rows=10,
+ source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({"returned":cost,"emitted":result["cost_jpy"]}))
@@ -76,7 +77,7 @@ initial_usage={"input_tokens":1000,"output_tokens":1000}
 repair_usage={"input_tokens":2000,"output_tokens":2000}
 initial="SELECT 1 AS metric_value"
 repaired="SELECT COUNT(*) AS metric_value FROM source"
-execution.report.generate=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},initial_usage)
+execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},initial_usage)
 execution.report.generation_request=lambda *_args:"analysis request"
 execution.report.validate_sql=lambda value,_dataset:(value,None)
 execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
@@ -94,7 +95,7 @@ events=[]
 cost=execution.run_section(
  {"source_columns":["metric_value"],"shape":{"columns":["metric_value"]}},
  {},events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
- rules="rules",bitcoin_rules="bitcoin rules",max_result_rows=10,
+ rules="rules",source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({

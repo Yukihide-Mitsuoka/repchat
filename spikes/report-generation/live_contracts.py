@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-import calendar
-import re
-from datetime import date
-
 import analysis_planner as planner
 import analysis_workflows
 import dashboard_build
+import data_source_profiles
+import ga4_profile
 import sql_contract_validation as sql_contracts
 import visualization_results
 import visualization_sections
 
-SAMPLE_FIRST_DAY = date(2020, 11, 1)
-SAMPLE_LAST_DAY = date(2021, 1, 31)
+SAMPLE_FIRST_DAY = ga4_profile.SAMPLE_FIRST_DAY
+SAMPLE_LAST_DAY = ga4_profile.SAMPLE_LAST_DAY
 
 
 class LiveDemoError(RuntimeError):
@@ -33,7 +31,7 @@ def dashboard_layout_rows_for_plan(panels: list[dict]) -> list[dict]:
     """Preserve the live demo's public layout validation error contract."""
     try:
         return dashboard_build.dashboard_layout_rows_for_plan(panels)
-    except dashboard_build.DashboardBuildError as error:
+    except (dashboard_build.DashboardBuildError, ValueError) as error:
         raise LiveDemoError(str(error)) from error
 
 
@@ -64,22 +62,10 @@ def google_auth_recovery_message(error: Exception) -> str | None:
 
 def period_for_question(question: str) -> dict[str, str]:
     """Return the explicit month in a question, bounded by the demo dataset."""
-    match = re.search(r"(?P<year>\d{4})年\s*(?P<month>\d{1,2})月", question)
-    if match is None:
-        raise LiveDemoError("対象月を「YYYY年M月」の形式で指定してください。")
-    year, month = int(match["year"]), int(match["month"])
     try:
-        first = date(year, month, 1)
+        return ga4_profile.period_for_question(question)
     except ValueError as error:
-        raise LiveDemoError("対象月を「YYYY年M月」の形式で指定してください。") from error
-    last = date(year, month, calendar.monthrange(year, month)[1])
-    if first < SAMPLE_FIRST_DAY or last > SAMPLE_LAST_DAY:
-        raise LiveDemoError("公開サンプルで利用できる期間は2020年11月〜2021年1月です。")
-    return {
-        "from": first.strftime("%Y%m%d"),
-        "to": last.strftime("%Y%m%d"),
-        "label": f"{year}年{month}月",
-    }
+        raise LiveDemoError(str(error)) from error
 
 
 def planned_analysis_section(panel: dict, section_id: str | None = None) -> dict:
@@ -99,20 +85,22 @@ def analysis_section_for_specification(
             question,
             analysis_specification,
             profile,
-            ga4_period_for_question=period_for_question,
             planned_analysis_section=planned_analysis_section,
         )
     except analysis_workflows.AnalysisWorkflowError as error:
         raise LiveDemoError(str(error)) from error
 
 
-def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[dict]]:
+def dashboard_sections_for_plan(
+    question: str, plan: dict, profile: str = "ga4"
+) -> tuple[dict, list[dict]]:
     """Preserve the live demo's public section construction error contract."""
     try:
+        source = data_source_profiles.profile_for(profile)
         return dashboard_build.dashboard_sections_for_plan(
             question,
             plan,
-            period_for_question=period_for_question,
+            period_for_question=source.period_for_question,
             planned_analysis_section=planned_analysis_section,
             max_panel_count=planner.MAX_PANEL_COUNT,
         )
@@ -123,8 +111,8 @@ def dashboard_sections_for_plan(question: str, plan: dict) -> tuple[dict, list[d
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
     """Keep the live demo's established error type for SQL period validation."""
     try:
-        sql_contracts.require_sql_period(sql, period)
-    except sql_contracts.SQLContractError as error:
+        ga4_profile.require_sql_period(sql, period)
+    except ValueError as error:
         raise LiveDemoError(str(error)) from error
 
 
@@ -132,7 +120,10 @@ def sql_period_diagnostic(
     sql: str, period: dict[str, str], profile: str = "ga4"
 ) -> str:
     """Return a repair diagnostic without changing the fail-closed contract."""
-    return sql_contracts.sql_period_diagnostic(sql, period, profile)
+    source = data_source_profiles.profile_for(profile)
+    return sql_contracts.sql_period_diagnostic(
+        sql, period, source.require_sql_period
+    )
 
 
 def _top_level_select_expressions(sql: str) -> tuple[list[str], str]:

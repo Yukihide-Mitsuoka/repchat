@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import re
-
-import bitcoin_profile as bitcoin
+from typing import Callable
 
 
 class SQLContractError(ValueError):
@@ -26,14 +25,13 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
 
 
 def sql_period_diagnostic(
-    sql: str, period: dict[str, str], profile: str = "ga4"
+    sql: str,
+    period: dict[str, str],
+    require_period: Callable[[str, dict[str, str]], None] = require_sql_period,
 ) -> str:
     """Return a repair diagnostic without changing the fail-closed contract."""
     try:
-        if profile == "bitcoin":
-            bitcoin.require_sql_period(sql, period)
-        else:
-            require_sql_period(sql, period)
+        require_period(sql, period)
     except (SQLContractError, ValueError) as error:
         return str(error)
     return ""

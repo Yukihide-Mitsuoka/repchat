@@ -127,6 +127,7 @@ def dashboard_planning_request(
     *,
     current_plan: dict | None = None,
     instruction: str | None = None,
+    profile: str = "ga4",
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
     return build_dashboard_planning_request(
@@ -141,6 +142,8 @@ def dashboard_planning_request(
         dynamic_panel_fields=DYNAMIC_PANEL_FIELDS,
         max_sankey_paths=MAX_SANKEY_PATHS,
         max_sankey_pages=MAX_SANKEY_PAGES,
+        profile=profile,
+        has_governed_metrics=bool(_defined_metric_names(metrics)),
     )
 
 
@@ -154,6 +157,7 @@ def propose_dashboard(
     *,
     current_plan: dict | None = None,
     instruction: str | None = None,
+    profile: str = "ga4",
 ):
     """Ask Vertex AI to author bounded dashboard panel specifications."""
     from google.genai import types
@@ -169,6 +173,7 @@ def propose_dashboard(
             answers,
             current_plan=current_plan,
             instruction=instruction,
+            profile=profile,
         ),
         config=types.GenerateContentConfig(
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
@@ -184,7 +189,12 @@ def propose_dashboard(
     )
     raw = _load_planner_response(response, "分析計画")
     return normalize_dashboard_plan(
-        raw, objective, period, answers, allowed_metrics=metric_names
+        raw,
+        objective,
+        period,
+        answers,
+        allowed_metrics=metric_names,
+        profile=profile,
     ), token_counts(response.usage_metadata)
 
 

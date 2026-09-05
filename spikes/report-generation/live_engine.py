@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 import analysis_workflows
-import bitcoin_profile as bitcoin
 import dashboard_build
+import data_source_profiles
 import run_report as report
 import section_execution
 
@@ -28,10 +28,8 @@ class LiveQueryEngine:
     error_type: type[RuntimeError] = RuntimeError
     cancelled_error_type: type[RuntimeError] = RuntimeError
     resolve_analysis_section: Callable[..., tuple[dict, dict]]
-    consultation_context: Callable[[str, str], str]
-    sections_for_plan: Callable[[str, dict], tuple[dict, list[dict]]]
+    sections_for_plan: Callable[[str, dict, str], tuple[dict, list[dict]]]
     layout_rows_for_plan: Callable[[list[dict]], list[dict]]
-    period_for_question: Callable[[str], dict[str, str]]
 
     def __init__(self, project: str, model: str = report.DEFAULT_MODEL):
         from google import genai
@@ -42,8 +40,6 @@ class LiveQueryEngine:
             (self.here / "metrics.json").read_text(encoding="utf-8")
         )
         self.metrics = report.metrics_block(self.here / "metrics.json")
-        self.rules = report.prompt_rules(self.metrics)
-        self.bitcoin_rules = bitcoin.prompt_rules()
         self.client = genai.Client(vertexai=True, project=project, location="global")
         self.bq = bigquery.Client(project=project)
         self.lock = threading.Lock()
@@ -150,7 +146,7 @@ class LiveQueryEngine:
                     history,
                     profile,
                     emit,
-                    context_for_profile=self.consultation_context,
+                    context_for_profile=analysis_workflows.consultation_context,
                     check_cancelled=lambda: self._check_cancelled(cancel_event),
                 )
             except analysis_workflows.AnalysisWorkflowError as error:
@@ -164,18 +160,24 @@ class LiveQueryEngine:
         question: str,
         emit: Callable[[dict], None],
         analysis_plan: dict | None = None,
+        profile: str = "ga4",
         request_id: str | None = None,
     ) -> None:
         """Build only a confirmed AI-authored dashboard plan."""
         with self._operation_scope(request_id) as cancel_event:
             self.latest_dashboard = None
             try:
+                source = data_source_profiles.profile_for(profile)
                 dashboard_build.build_dashboard(
                     question,
                     analysis_plan,
                     emit,
+                    profile=source.key,
                     metric_definitions=(
-                        self.metric_definitions if analysis_plan is not None else {}
+                        getattr(self, "metric_definitions", {})
+                        if analysis_plan is not None
+                        and source.has_governed_metrics
+                        else {}
                     ),
                     sections_for_plan=self.sections_for_plan,
                     layout_rows_for_plan=self.layout_rows_for_plan,
@@ -218,11 +220,13 @@ class LiveQueryEngine:
         emit: Callable[[dict], None],
         analysis_plan: dict | None = None,
         revision_instruction: str | None = None,
+        profile: str = "ga4",
         request_id: str | None = None,
     ) -> None:
         """Propose a reviewable plan without running any warehouse query."""
         with self._operation_scope(request_id) as cancel_event:
             try:
+                source = data_source_profiles.profile_for(profile)
                 analysis_workflows.plan_dashboard(
                     self.client,
                     self.model,
@@ -232,8 +236,7 @@ class LiveQueryEngine:
                     emit,
                     analysis_plan=analysis_plan,
                     revision_instruction=revision_instruction,
-                    period_for_question=self.period_for_question,
-                    context_for_profile=self.consultation_context,
+                    source=source,
                     check_cancelled=lambda: self._check_cancelled(cancel_event),
                 )
             except analysis_workflows.AnalysisWorkflowError as error:
@@ -253,6 +256,7 @@ class LiveQueryEngine:
     ) -> float:
         """Run one panel while preserving the live demo's public error contract."""
         try:
+            source = data_source_profiles.profile_for(profile)
             return section_execution.run_section(
                 section,
                 period,
@@ -260,11 +264,10 @@ class LiveQueryEngine:
                 client=self.client,
                 bq=self.bq,
                 model=self.model,
-                rules=self.rules if profile != "bitcoin" else "",
-                bitcoin_rules=self.bitcoin_rules if profile == "bitcoin" else "",
+                source=source,
+                rules=source.sql_rules(getattr(self, "metrics", "")),
                 max_result_rows=self.max_result_rows,
                 context=context,
-                profile=profile,
             )
         except section_execution.SectionExecutionError as error:
             raise self.error_type(str(error)) from error
