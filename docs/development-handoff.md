@@ -112,6 +112,10 @@ positioningとroadmapを再評価します。
 
 ## 設計判断の索引
 
+2026-09-05追記：[ADR-0024](adr/0024-build-analysis-context-from-inspected-schema.md)で、手書きprofileから
+schema snapshotと意味定義を使う共通分析契約への移行を提案中です。設計レビュー後、metadata取得、
+期間契約、GA4／Bitcoin移行、未知schema2種類の反復評価を進めます。実装・実測の完了を意味しません。
+
 | 論点 | 状態 | 正本 |
 |------|------|------|
 | 主要顧客と販売経路 | 確定。代理店・ソフトウェアベンダーが初期主経路、直販はフォールバック | [mission](../.ai/mission.md)、[positioning §0](positioning.md#0-前提の確認--勝負の土俵) |
