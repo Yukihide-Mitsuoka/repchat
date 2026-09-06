@@ -35,6 +35,15 @@ fingerprintはテーブル順を正規化したJSONから作り、取得時刻�
 
 ## 次の接続点
 
-共通契約compilerはこのsnapshotと明示した意味定義・期間条件を受け取り、計画とSQL生成へ
-同じ契約を供給します。wildcardの実テーブル解決とbuild時のschema再検証は後続実装です。
+`analysis_contract.py`はsnapshotと明示した意味定義・期間条件・実行上限を検証し、計画とSQL生成が
+共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列を参照し、
+IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。期間は`YYYY-MM-DD`の閉区間です。
+各time partitioned tableの絞り込み列を明示し、必須tableの欠落、API metadataとの不一致、重複を拒否します。
+ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示します。
+
+意味定義はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
+同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
+費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
+
+wildcardの実テーブル解決、生成経路への供給、build時のschema再検証は後続実装です。
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
