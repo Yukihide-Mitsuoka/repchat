@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-09-06 | ADR-0024 (accepted) | オーナーがPR #646の設計を承認。2026-09-05の提案状態を更新し、共通schema契約の段階実装へ進む。実サービス評価の費用承認は別途必要 | [ADR-0024](../docs/adr/0024-build-analysis-context-from-inspected-schema.md) |
 | 2026-09-05 | ADR-0024 (proposed) | 承認済みBigQuery schema snapshotと意味定義から共通分析契約を作り、GA4／Bitcoinの個別期間・SQL規則を段階移行する。未知schema最低2種類で参照結果との反復照合を行う設計案。実装・評価は未完了 | [ADR-0024](../docs/adr/0024-build-analysis-context-from-inspected-schema.md), [Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) |
 | 2026-08-28 | LOG-0105 | dashboard planner（初回6件・改訂時は受理検証で最大20件）は32,768 output tokens、分析相談（1〜4件）と単一SQL生成は8,192 output tokensを上限にする。全経路で`MAX_TOKENS`、その他finish reason、欠落本文、不正JSONを本文・decoder detailを漏らさない安定した診断へ分類し、課金済み応答を自動再試行しない | [Issue #293](https://github.com/Yukihide-Mitsuoka/repchat/issues/293), [planner](../spikes/report-generation/analysis_planner.py), [SQL generation](../spikes/report-generation/run_report.py) |
 | 2026-08-28 | LOG-0104 | Node HTTP bridgeは本番の`0.0.0.0`既定bindを維持し、loopback testだけ`127.0.0.1`を指定する。`listen()`のsocket errorは起動Promiseを元のerrorでrejectし、closeは最初のPromiseへ集約して複数回呼出しとlistener解放を決定的にする。retry、固定port、assertion緩和は追加しない | [Issue #169](https://github.com/Yukihide-Mitsuoka/repchat/issues/169), [server](../src/main/serve.ts), [tests](../tests/main/serve.test.ts) |

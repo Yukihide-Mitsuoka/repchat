@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-05
+updated: 2026-09-06
 ---
 
 # 開発引き継ぎ
@@ -18,12 +18,16 @@ updated: 2026-09-05
 GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05のオーナー指示により、次の全工程を
 小さいPRに分けて進めます。この実施順序は下段の過去の停止条件・順序より優先します。
 
-1. #188の実サービス検証ランナーがdashboardへprofileを渡さない不具合を修正し、固定の既定質問を廃止する。
+1. PR #645で検証ランナーのprofile伝達と固定の既定質問廃止はマージ済み。PR #646のADR-0024は2026-09-06にオーナー承認済み。
 2. schema取得、期間・partition制約、実行契約の汎用化を進め、未知schema最低2種類の参照結果と事前合格基準を用意する。
 3. 対象と費用を提示して承認後、GA4／Bitcoinのdashboard・insightと会議報告を実行し、結果一致と確認・拒否を記録する。
 4. #179の閲覧／来歴、#180のrevision・非同期build、#371のlayout保存、#181の報告を各受入条件で進める。
    新しい永続化・公開API等の設計は既存ADRとの対応を確認し、未決部分はレビュー可能なADRを先に提示する。
 
+最初の実装は[PR #648](https://github.com/Yukihide-Mitsuoka/repchat/pull/648)の
+[metadata reader](architecture/schema-inspection.md)です。`make format`・`make lint`・`make test`は通過済み。
+APIの境界はfake clientで検証し、
+実BigQuery接続と生成経路への組込みはまだ行っていません。次は共通契約compilerと期間契約です。
 schema・期間規則はまだ手書きprofileです。未知schemaの実値照合・独立レビュー・反復評価は未完了であり、
 共通経路化だけで任意schema対応を実証済みとはしません。実Vertex AI／BigQueryのマージ後検証は未実施です。
 
@@ -119,8 +123,8 @@ positioningとroadmapを再評価します。
 
 ## 設計判断の索引
 
-2026-09-05追記：[ADR-0024](adr/0024-build-analysis-context-from-inspected-schema.md)で、手書きprofileから
-schema snapshotと意味定義を使う共通分析契約への移行を提案中です。設計レビュー後、metadata取得、
+2026-09-06更新：[ADR-0024](adr/0024-build-analysis-context-from-inspected-schema.md)で、手書きprofileから
+schema snapshotと意味定義を使う共通分析契約への移行が承認されました。metadata取得、
 期間契約、GA4／Bitcoin移行、未知schema2種類の反復評価を進めます。実装・実測の完了を意味しません。
 
 | 論点 | 状態 | 正本 |
