@@ -24,7 +24,9 @@ GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05�
 4. #179の閲覧／来歴、#180のrevision・非同期build、#371のlayout保存、#181の報告を各受入条件で進める。
    新しい永続化・公開API等の設計は既存ADRとの対応を確認し、未決部分はレビュー可能なADRを先に提示する。
 
-最初の実装は[metadata reader](architecture/schema-inspection.md)です。APIの境界はfake clientで検証し、
+最初の実装は[PR #648](https://github.com/Yukihide-Mitsuoka/repchat/pull/648)の
+[metadata reader](architecture/schema-inspection.md)です。`make format`・`make lint`・`make test`は通過済み。
+APIの境界はfake clientで検証し、
 実BigQuery接続と生成経路への組込みはまだ行っていません。次は共通契約compilerと期間契約です。
 schema・期間規則はまだ手書きprofileです。未知schemaの実値照合・独立レビュー・反復評価は未完了であり、
 共通経路化だけで任意schema対応を実証済みとはしません。実Vertex AI／BigQueryのマージ後検証は未実施です。
