@@ -29,6 +29,8 @@ GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05�
 APIの境界はfake clientで検証し、
 実BigQuery接続と生成経路への組込みはまだ行っていません。[PR #649](https://github.com/Yukihide-Mitsuoka/repchat/pull/649)で共通契約compilerと期間契約は実装・
 unit testまで完了し、次は生成経路への供給とbuild時のschema fingerprint再検証です。
+共通contractの中立なplanner／SQL文脈と仕様fingerprintのbind・一致検査もunit testまで完了しました。
+次はGA4 shard集合の完全なschema解決を追加してから、実生成経路へ接続します。
 schema・期間規則はまだ手書きprofileです。未知schemaの実値照合・独立レビュー・反復評価は未完了であり、
 共通経路化だけで任意schema対応を実証済みとはしません。実Vertex AI／BigQueryのマージ後検証は未実施です。
 

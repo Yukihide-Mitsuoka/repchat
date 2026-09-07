@@ -47,3 +47,7 @@ ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示
 
 wildcardの実テーブル解決、生成経路への供給、build時のschema再検証は後続実装です。
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
+
+`analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には
+分析候補を含めず、後者にはBigQuery、参照範囲、期間、意味定義の共通制約だけを付与します。
+確定仕様のrevisionへcontract fingerprintを含め、build時に現在契約との一致を要求できます。
