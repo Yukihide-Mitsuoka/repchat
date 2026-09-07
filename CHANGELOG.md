@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.23.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.3...v1.23.0) (2026-09-07)
+
+
+### Features
+
+* BitcoinダッシュボードをライブUIへ公開 ([#644](https://github.com/Yukihide-Mitsuoka/repchat/issues/644)) ([3b8de8d](https://github.com/Yukihide-Mitsuoka/repchat/commit/3b8de8d450d4ea67af782dc645c92c78caa79e9f))
+* GA4とBitcoinの分析パイプラインを共通化 ([#643](https://github.com/Yukihide-Mitsuoka/repchat/issues/643)) ([c94c90a](https://github.com/Yukihide-Mitsuoka/repchat/commit/c94c90a1784bf227305818926e690b63e5612199))
+* **schema:** 共通分析契約と期間制約を追加 ([#649](https://github.com/Yukihide-Mitsuoka/repchat/issues/649)) ([e712c61](https://github.com/Yukihide-Mitsuoka/repchat/commit/e712c616e0361db91c217dde0d017fc22cb24895))
+* **schema:** 共通契約を生成文脈と確定仕様へ固定 ([#650](https://github.com/Yukihide-Mitsuoka/repchat/issues/650)) ([2be46f8](https://github.com/Yukihide-Mitsuoka/repchat/commit/2be46f867791fa7c9c61f7a0efaba0642ad554df))
+* **schema:** 承認済みテーブルのメタデータ取得境界を追加 ([#648](https://github.com/Yukihide-Mitsuoka/repchat/issues/648)) ([a3c3b37](https://github.com/Yukihide-Mitsuoka/repchat/commit/a3c3b37dd70c6d61f5b3b5e7e37da7e220d02043))
+
+
+### Bug Fixes
+
+* **ci:** 利用先PRの日本語規則を強制する ([#642](https://github.com/Yukihide-Mitsuoka/repchat/issues/642)) ([7f8682e](https://github.com/Yukihide-Mitsuoka/repchat/commit/7f8682e5a22e459c48de0cb37fbb414bd8e0e502))
+* **demo:** 実サービス検証全体へ選択データソースを渡す ([#645](https://github.com/Yukihide-Mitsuoka/repchat/issues/645)) ([891c35e](https://github.com/Yukihide-Mitsuoka/repchat/commit/891c35e660e35ec111a345a8a674e2d98642c854))
+* **main:** 設定検証をruntime importより先に行う ([#638](https://github.com/Yukihide-Mitsuoka/repchat/issues/638)) ([575d2da](https://github.com/Yukihide-Mitsuoka/repchat/commit/575d2da6d2c5303250ed47f0888504af0583ba0c)), closes [#481](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)
+* **sync:** PR言語判定ツールの継承境界を準備する ([#641](https://github.com/Yukihide-Mitsuoka/repchat/issues/641)) ([0212cfd](https://github.com/Yukihide-Mitsuoka/repchat/commit/0212cfd2c9bc7c598a5201b663a52bc498ba806b))
+
 ## [1.22.3](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.2...v1.22.3) (2026-09-04)
 
 
