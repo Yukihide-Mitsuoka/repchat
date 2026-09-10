@@ -15,6 +15,7 @@ from analysis_planner_validation import (
     validate_chart_shape,
 )
 from visualization_contracts import SANKEY_CHARTS, SUPPORTED_DASHBOARD_CHARTS
+from vertex_generation import generate_content
 
 CONSULTATION_MAX_OUTPUT_TOKENS = 8192
 CONSULTATION_CHARTS = SUPPORTED_DASHBOARD_CHARTS
@@ -138,7 +139,8 @@ def propose_consultation(
     from google.genai import types
     from vertex_usage import token_counts
 
-    response = client.models.generate_content(
+    response = generate_content(
+        client,
         model=model,
         contents=consultation_request(question, history, context, profile),
         config=types.GenerateContentConfig(

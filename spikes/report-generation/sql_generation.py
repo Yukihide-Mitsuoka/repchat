@@ -6,6 +6,7 @@ from structured_response import (
     StructuredResponseError,
     load_structured_json as _load_structured_json,
 )
+from vertex_generation import generate_content
 
 # One bounded response contains one SQL statement, reason, and refusal metadata.
 SQL_MAX_OUTPUT_TOKENS = 8192
@@ -101,7 +102,8 @@ def generate_request(client, model: str, request: str, rules: str):
     from google.genai import types
     from vertex_usage import token_counts
 
-    response = client.models.generate_content(
+    response = generate_content(
+        client,
         model=model,
         contents=request,
         config=types.GenerateContentConfig(

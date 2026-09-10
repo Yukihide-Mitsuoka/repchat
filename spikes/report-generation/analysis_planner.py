@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+
 from analysis_dashboard_plan import (
     CLARIFICATION_FIELDS,
     DASHBOARD_CHARTS,
@@ -59,6 +60,7 @@ from visualization_contracts import (
     STAGED_SANKEY_CHARTS,
     SUPPORTED_DASHBOARD_CHARTS,
 )
+from vertex_generation import generate_content
 
 DASHBOARD_MAX_OUTPUT_TOKENS = 32768
 
@@ -164,7 +166,8 @@ def propose_dashboard(
     from vertex_usage import token_counts
 
     metric_names = _defined_metric_names(metrics)
-    response = client.models.generate_content(
+    response = generate_content(
+        client,
         model=model,
         contents=dashboard_planning_request(
             objective,

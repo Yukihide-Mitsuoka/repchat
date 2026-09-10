@@ -25,6 +25,7 @@ cases=[
  (400,'INVALID_ARGUMENT'),(401,'UNAUTHENTICATED'),
  (403,'PERMISSION_DENIED'),(404,'NOT_FOUND'),
  (429,'RESOURCE_EXHAUSTED'),(503,'UNAVAILABLE'),
+ (499,'PRIVATE_SECRET'),
 ]
 messages=[];calls=[]
 for code,status in cases:
@@ -54,16 +55,17 @@ print(json.dumps({'calls':calls,'messages':messages,'same_unknown':same_unknown}
     [404, 'NOT_FOUND'],
     [429, 'RESOURCE_EXHAUSTED'],
     [503, 'UNAVAILABLE'],
+    [499, 'PRIVATE_SECRET'],
   ]);
-  assert.equal(output.messages.length, 6);
+  assert.equal(output.messages.length, 7);
   assert.match(output.messages[0], /400 INVALID_ARGUMENT/);
   assert.match(output.messages[1], /認証/);
   assert.match(output.messages[2], /権限/);
   assert.match(output.messages[3], /モデル/);
   assert.match(output.messages[4], /割り当て上限/);
   assert.match(output.messages[5], /一時的/);
+  assert.match(output.messages[6], /499/);
   assert.ok(output.messages.every((message: string) => message.includes('自動再実行していません')));
-  assert.ok(output.messages.every((message: string) => !message.includes('private')));
+  assert.ok(output.messages.every((message: string) => !message.toLowerCase().includes('private')));
   assert.equal(output.same_unknown, true);
 });
-

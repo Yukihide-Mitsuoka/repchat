@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-06
+updated: 2026-09-10
 ---
 
 # 開発引き継ぎ
@@ -12,6 +12,10 @@ updated: 2026-09-06
 各タスクの受入条件はGitHub Issueです。この文書には再開に必要な参照順と分岐だけを置きます。
 
 ## 現在の作業
+
+[Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
+HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
+dashboard、insight、SQL生成、会議報告へ同じ案内を返す。失敗した有料呼出しは自動再実行しない。
 
 [PR #643](https://github.com/Yukihide-Mitsuoka/repchat/pull/643)と
 [PR #644](https://github.com/Yukihide-Mitsuoka/repchat/pull/644)はマージ済みです。
