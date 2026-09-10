@@ -28,6 +28,7 @@ from meeting_report_evidence import (
     _validate_numbers,
     funnel_conversion_metrics,
 )
+from vertex_generation import generate_content
 
 
 def report_request(bundle: dict) -> str:
@@ -194,7 +195,8 @@ def generate(client, model: str, bundle: dict):
     from google.genai import types
 
     _evidence_index(bundle)
-    response = client.models.generate_content(
+    response = generate_content(
+        client,
         model=model,
         contents=report_request(bundle),
         config=types.GenerateContentConfig(
