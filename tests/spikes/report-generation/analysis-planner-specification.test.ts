@@ -156,21 +156,21 @@ for chart,(dimensions,measures) in shapes.items():
  item={"title":chart,"objective":"判断する","dimensions":dimensions,"measures":measures,"comparison":"比較","chart":chart,"execution_prompt":prompt,"reason":"判断に必要"}
  accepted.append(p.confirm_analysis_specification(item)["chart"])
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
-dashboard_variants=p.DYNAMIC_PLAN_SCHEMA["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-schema_charts=[chart for variant in dashboard_variants for chart in variant["properties"]["chart"]["enum"]]
+dashboard_visualization=p.DYNAMIC_PLAN_SCHEMA["properties"]["panels"]["items"]["properties"]["visualization"]
+schema_charts=dashboard_visualization["properties"]["chart"]["enum"]
 consultation=p.consultation_request("目的",[],"指標定義","ga4")
-consultation_variants=p._consultation_schema()["properties"]["recommendations"]["items"]["properties"]["visualization"]["anyOf"]
-consultation_charts=[chart for variant in consultation_variants for chart in variant["properties"]["chart"]["enum"]]
+consultation_visualization=p._consultation_schema()["properties"]["recommendations"]["items"]["properties"]["visualization"]
+consultation_charts=consultation_visualization["properties"]["chart"]["enum"]
 seeded_orders=[]
 for index in range(8):
- variants=p._dashboard_response_schema({},seed=f"依頼{index}")["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
- seeded_orders.append([chart for variant in variants for chart in variant["properties"]["chart"]["enum"]])
-bar=next(variant for variant in dashboard_variants if "bar" in variant["properties"]["chart"]["enum"])
-bar_shape={name:[bar["properties"][name]["minItems"],bar["properties"][name]["maxItems"]] for name in ["dimensions","measures"]}
+ visualization=p._dashboard_response_schema({},seed=f"依頼{index}")["properties"]["panels"]["items"]["properties"]["visualization"]
+ seeded_orders.append(visualization["properties"]["chart"]["enum"])
+bar_contract=p.CHART_SHAPE_CONTRACTS["bar"]
+bar_shape={"dimensions":list(bar_contract[:2]),"measures":list(bar_contract[2:])}
 catalog_markers=[f"- {chart}:" for chart in p.DASHBOARD_CHARTS]
 layout_heuristics=["同時に読む組み合わせ","重要度","表示密度","chart typeだけから幅"]
-stable_variants=p._dashboard_response_schema({},seed="依頼0")["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-stable_order=[chart for variant in stable_variants for chart in variant["properties"]["chart"]["enum"]]
+stable_visualization=p._dashboard_response_schema({},seed="依頼0")["properties"]["panels"]["items"]["properties"]["visualization"]
+stable_order=stable_visualization["properties"]["chart"]["enum"]
 print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_charts":schema_charts,"consultation_charts":consultation_charts,"bar_shape":bar_shape,"seeded_complete":all(set(order)==set(p.DASHBOARD_CHARTS) for order in seeded_orders),"seeded_variety":len({tuple(order) for order in seeded_orders})>1,"seeded_stable":seeded_orders[0]==stable_order,"dashboard_prompt_has_catalog":any(marker in request for marker in catalog_markers),"consultation_prompt_has_catalog":any(marker in consultation for marker in catalog_markers),"has_prompt_capability_constant":hasattr(p,"CHART_CAPABILITY_PROMPT"),"no_intent_pattern":"比較、構成比、時系列、偏り、フロー" not in request,"no_layout_heuristics":all(value not in request for value in layout_heuristics)},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },

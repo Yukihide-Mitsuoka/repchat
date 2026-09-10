@@ -21,17 +21,9 @@ function python(body: string) {
 test('renderer capabilities are represented by one chart and shape contract', () => {
   const result = python(`
 schema=p._visualization_response_schema(p.SUPPORTED_DASHBOARD_CHARTS,seed="依頼A")
-variants=schema["anyOf"]
 print(json.dumps({
- "charts":[chart for item in variants for chart in item["properties"]["chart"]["enum"]],
- "contracts":{
-  chart:[
-   item["properties"]["dimensions"]["minItems"],
-   item["properties"]["dimensions"]["maxItems"],
-   item["properties"]["measures"]["minItems"],
-   item["properties"]["measures"]["maxItems"],
-  ] for item in variants for chart in item["properties"]["chart"]["enum"]
- },
+ "charts":schema["properties"]["chart"]["enum"],
+ "contracts":p.CHART_SHAPE_CONTRACTS,
  "row_limits":p.DASHBOARD_ROW_LIMITS,
 },ensure_ascii=False))
 `);
@@ -148,19 +140,19 @@ except Exception as caught:
  suggestion=getattr(caught,"suggested_instruction","")
 accepted,_usage=p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
 schema=captured["schema"]
-variants=schema["properties"]["panels"]["items"]["properties"]["visualization"]["anyOf"]
-measure_enums=[item["properties"]["measures"]["items"].get("enum") for item in variants]
+visualization=schema["properties"]["panels"]["items"]["properties"]["visualization"]
+measure_enum=visualization["properties"]["measures"]["items"].get("enum")
 schema_json=json.dumps(schema,ensure_ascii=False,separators=(",",":"))
 description=schema["properties"]["panels"]["description"]
 description_metrics=description.removeprefix("measuresは次の定義済み指標名だけを使う: ").split("、")
-print(json.dumps({"schema_bytes":len(schema_json.encode()),"names":names,"description_metrics":description_metrics,"measure_enums":measure_enums,"error":error,"suggestion":suggestion,"accepted":accepted["panels"][0]["measures"]},ensure_ascii=False))
+print(json.dumps({"schema_bytes":len(schema_json.encode()),"names":names,"description_metrics":description_metrics,"measure_enum":measure_enum,"error":error,"suggestion":suggestion,"accepted":accepted["panels"][0]["measures"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.ok(output.schema_bytes < 8000, output.schema_bytes);
   assert.deepEqual(new Set(output.description_metrics), new Set(output.names));
   assert.equal(output.description_metrics.length, output.names.length);
-  assert.ok(output.measure_enums.every((value: unknown) => value === null));
+  assert.equal(output.measure_enum, null);
   assert.match(output.error, /指標定義にない指標.*目標達成度/);
   assert.match(output.suggestion, /セッション数/);
   assert.match(output.suggestion, /購入金額/);

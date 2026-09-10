@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-10
+updated: 2026-09-11
 ---
 
 # 開発引き継ぎ
@@ -12,6 +12,10 @@ updated: 2026-09-10
 各タスクの受入条件はGitHub Issueです。この文書には再開に必要な参照順と分岐だけを置きます。
 
 ## 現在の作業
+
+[Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)では、初回dashboard計画の
+`400 INVALID_ARGUMENT`を修正する。42種類のchartを削減せず、18分岐の`anyOf`を平坦なschemaへ変え、
+形状契約の説明と受理時検証は同じ`CHART_SHAPE_CONTRACTS`から導出する。有料呼出しは自動再実行しない。
 
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
 HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、

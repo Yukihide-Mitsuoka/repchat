@@ -70,39 +70,42 @@ def neutral_chart_order(charts: tuple[str, ...], seed: str) -> tuple[str, ...]:
 def visualization_response_schema(
     charts: tuple[str, ...], *, seed: str = ""
 ) -> dict:
-    """Constrain chart and result shape together without prompt heuristics."""
-    grouped: dict[tuple[int, int, int, int], list[str]] = {}
-    for chart in neutral_chart_order(charts, seed):
-        grouped.setdefault(CHART_SHAPE_CONTRACTS[chart], []).append(chart)
-    variants = []
-    for contract, compatible_charts in grouped.items():
-        min_dimensions, max_dimensions, min_measures, max_measures = contract
-        variants.append(
-            {
-                "type": "object",
-                "properties": {
-                    "chart": {
-                        "type": "string",
-                        "format": "enum",
-                        "enum": compatible_charts,
-                    },
-                    "dimensions": {
-                        "type": "array",
-                        "minItems": min_dimensions,
-                        "maxItems": max_dimensions,
-                        "items": {"type": "string"},
-                    },
-                    "measures": {
-                        "type": "array",
-                        "minItems": min_measures,
-                        "maxItems": max_measures,
-                        "items": {"type": "string"},
-                    },
-                },
-                "required": ["chart", "dimensions", "measures"],
-            }
-        )
-    return {"anyOf": variants}
+    """Expose every renderer while avoiding combinatorial provider schemas."""
+    ordered = neutral_chart_order(charts, seed)
+    contracts = [CHART_SHAPE_CONTRACTS[chart] for chart in ordered]
+
+    def count_range(minimum: int, maximum: int) -> str:
+        return str(minimum) if minimum == maximum else f"{minimum}〜{maximum}"
+
+    guidance = "; ".join(
+        f"{chart}=dimensions {count_range(contract[0], contract[1])}、"
+        f"measures {count_range(contract[2], contract[3])}"
+        for chart, contract in zip(ordered, contracts, strict=True)
+    )
+    return {
+        "type": "object",
+        "description": "chart別の必要件数: " + guidance,
+        "properties": {
+            "chart": {
+                "type": "string",
+                "format": "enum",
+                "enum": list(ordered),
+            },
+            "dimensions": {
+                "type": "array",
+                "minItems": min(contract[0] for contract in contracts),
+                "maxItems": max(contract[1] for contract in contracts),
+                "items": {"type": "string"},
+            },
+            "measures": {
+                "type": "array",
+                "minItems": min(contract[2] for contract in contracts),
+                "maxItems": max(contract[3] for contract in contracts),
+                "items": {"type": "string"},
+            },
+        },
+        "required": ["chart", "dimensions", "measures"],
+    }
 
 
 def build_plan_schemas(
