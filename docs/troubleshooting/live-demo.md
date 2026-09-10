@@ -23,6 +23,8 @@ BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認
 
 ### 初回ダッシュボード計画が`400 INVALID_ARGUMENT`になる
 
+**Affects:** PR #655より前の初回ダッシュボード計画。
+
 初回6パネルの各要素へ、対応する42種類のchartを18個の`anyOf`分岐として設定すると、同じ分岐を配列要素ごとに
 評価する複雑な構造化出力schemaになります。同じ依頼から生成したschemaは7,322 bytesで、Vertex AIが有効な
 schemaでも拒否し得る配列制約・enum・分岐の組合せになっていました。利用者の依頼文やGA4データの問題ではなく、
@@ -32,7 +34,18 @@ schemaでも拒否し得る配列制約・enum・分岐の組合せになって�
 平坦化します。chartごとの必要件数は同じ可視化契約から説明を機械生成し、AI応答後は既存のサーバー側契約で
 件数を厳密に検証します。固定提案、固定SQL、形状フォールバック、自動再実行は追加しません。
 
-**Refs:** [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)
+**Verification:** 2026-09-11にPR #655のマージ後のmainで、同じ依頼による初回計画が実Vertex AIで成功しました。
+定義済み指標だけを使う改善計画は、localhost APIでSQL生成、dry run、実BigQuery、結果検証を通過し、6パネルを
+`build-7dad71850174`として完了しました。完了eventのVertex AI推定費用は17.03円です。実BigQuery料金は完了eventに
+含まれないため未計測です。ブラウザstreamは操作中断で閉じたため、重複費用を避けて同じbuildのカード描画は
+再実行していません。backendの完了とlocalhostのHTTP 200は確認済みです。
+
+**Prevention:** 固定応答テストでprovider schemaが4,000 bytes未満かつ`anyOf`を含まないこと、42種類のchartを
+維持すること、各chartの形状を受理時検証が拒否・受理できることを確認します。実サービス確認は費用承認後だけ
+行い、失敗した有料呼出しを自動再実行しません。
+
+**Refs:** [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)、
+[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)
 
 ## 未定義語の確認質問に回答して再生成する
 

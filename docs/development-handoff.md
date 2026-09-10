@@ -13,9 +13,11 @@ updated: 2026-09-11
 
 ## 現在の作業
 
-[Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)では、初回dashboard計画の
-`400 INVALID_ARGUMENT`を修正する。42種類のchartを削減せず、18分岐の`anyOf`を平坦なschemaへ変え、
-形状契約の説明と受理時検証は同じ`CHART_SHAPE_CONTRACTS`から導出する。有料呼出しは自動再実行しない。
+[Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
+`400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
+マージ済みです。実Vertex AI・BigQueryを使う公開GA4経路でも6パネルbuildまで完了しました。検証範囲と
+未確認事項は[トラブルシューティング](troubleshooting/live-demo.md#初回ダッシュボード計画が400-invalid_argumentになる)
+を正本とします。追加の有料呼出しは自動再実行しません。
 
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
 HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
@@ -39,25 +41,26 @@ APIの境界はfake clientで検証し、
 unit testまで完了し、次は生成経路への供給とbuild時のschema fingerprint再検証です。
 共通contractの中立なplanner／SQL文脈と仕様fingerprintのbind・一致検査もunit testまで完了しました。
 次はGA4 shard集合の完全なschema解決を追加してから、実生成経路へ接続します。
-schema・期間規則はまだ手書きprofileです。未知schemaの実値照合・独立レビュー・反復評価は未完了であり、
-共通経路化だけで任意schema対応を実証済みとはしません。実Vertex AI／BigQueryのマージ後検証は未実施です。
+schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
+未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
+しません。
 
 未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。
 [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。
 
-以下は製品化の前提と過去の検証記録です。デモprocessの現在の起動状態は本作業では確認していません。
+以下は製品化の前提と過去の検証記録です。2026-09-11時点でデモprocessのHTTP応答を確認しています。
 
 ## 製品化の前提と過去の検証記録
 
 | 項目 | 現在地 |
 |------|--------|
 | 作業 | デモ阻害のコード修正と無料固定応答確認は完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
-| デモ実行状態 | localhost:8765のデモprocessは停止中。最新mainの固定応答テストで、provider schemaが8,000 bytes未満、定義済み指標がschema内に1回、未定義指標がserver側で拒否されて修正文案を返すこと、定義済み指標が受理されることを確認した。実Vertex AI・BigQueryは再実行していない |
-| 直近完了 | [Issue #410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視化拡張と[PR #412](https://github.com/Yukihide-Mitsuoka/repchat/pull/412)のschema修正をmergeし、無料固定応答を確認済み。[PR #415](https://github.com/Yukihide-Mitsuoka/repchat/pull/415)で`sqlparse`を0.6.0へ更新し、TrivyのPython脆弱性は0件になった |
+| デモ実行状態 | 2026-09-11に最新mainからlocalhost:8765を起動し、HTTP 200を確認した。Issue #654の依頼は実Vertex AIで計画に成功し、改善した確定計画は実BigQueryを含む6パネルbuildに成功した。詳細は[トラブルシューティング](troubleshooting/live-demo.md#初回ダッシュボード計画が400-invalid_argumentになる)を参照 |
+| 直近完了 | [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)／[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)でplanner schemaを平坦化し、固定応答テスト、必須CI、実Vertex AI計画、実BigQueryを含む6パネルbuildを確認した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
-| AIができること | 無料の固定応答確認は完了済み。実Vertex AIのdashboard相談は費用を提示してオーナー承認を得た場合だけ1回実行し、SQL生成・BigQueryは別の費用確認とする |
+| AIができること | Issue #654の承認済み実検証は完了済み。追加の実Vertex AI相談またはSQL生成・BigQuery実行は、対象と費用を提示してオーナー承認を得た場合だけ行う |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
-| 完了時 | Issue #410は完了として閉じた。任意の実Vertex AI確認は別の費用承認後に行い、次の必須ゲートはIssue #160の証拠を`proceed` / `revise` / `reject`に分類すること |
+| 完了時 | Issue #654は完了として閉じた。次の必須ゲートはIssue #160の証拠を`proceed` / `revise` / `reject`に分類すること |
 
 ## 最初に読む順序
 
@@ -125,7 +128,7 @@ positioningとroadmapを再評価します。
 ## 次にやる順序（2026-08-22）
 
 1. **現在の必須作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
-2. **オーナーが費用を承認した場合だけ:** Vertex AIだけを使うdashboard相談を1回確認する。提案を実行する場合は、別の費用確認を経てSQL生成・BigQueryを1件だけ実行する。
+2. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
 3. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
 4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類について、GA4と同じ相談・dashboard planning・仕様確定・SQL生成・検査・実行・描画経路と予約語修正まで完了した。実値照合、独立レビュー、未知・非公開相当2種類の評価は残る。
 5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
