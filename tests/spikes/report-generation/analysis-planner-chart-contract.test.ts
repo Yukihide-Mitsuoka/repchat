@@ -86,6 +86,40 @@ print(json.dumps({"same":first==second,"different":first!=other,"complete":set(f
   });
 });
 
+test('comparison table accepts one governed source measure and rejects unrelated measures before build', () => {
+  const result = python(`
+period={"from":"20210101","to":"20210131","label":"2021年1月"}
+metrics=("購入件数","購入金額","エンゲージメント時間")
+def raw(measures):
+ return {
+  "objective_summary":"デバイス別の成果を比較する","audience":"責任者","comparison":"月内比較",
+  "hypotheses":["デバイス別に差がある"],"clarifications":[],
+  "panels":[{
+   "title":"デバイスカテゴリ別 成果・エンゲージメント比較","kpi":"購入成果",
+   "chart":"comparison_table","decision":"優先デバイスを判断する","reason":"差を確認するため",
+   "execution_prompt":"2021年1月のデバイス別購入件数を月前半と月後半で比較する",
+   "dimensions":["デバイス"],"measures":measures,"layout_row":1,"layout_weight":100
+  }]
+ }
+observed={}
+for label,measures in {
+ "single":["購入件数"],
+ "unrelated":["購入件数","購入金額","エンゲージメント時間"],
+}.items():
+ try:
+  p.normalize_dashboard_plan(raw(measures),"購入成果を改善する",period,{"audience":"責任者"},allowed_metrics=metrics)
+ except p.PlannerError as error:
+  observed[label]=str(error)
+ else:
+  observed[label]="accepted"
+print(json.dumps(observed,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.single, 'accepted');
+  assert.match(output.unrelated, /comparison_tableは定義済み指標1件/);
+});
+
 test('defined metrics are validated after generation without expanding every chart schema', () => {
   const result = python(`
 import sys,types
