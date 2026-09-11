@@ -463,7 +463,7 @@ h1{font-size:26px;line-height:1.25;letter-spacing:-.025em}
 .dashboard-card-resizer{position:relative;z-index:2;align-self:stretch;min-width:10px;cursor:col-resize;touch-action:none;outline:0}
 .dashboard-card-resizer::after{content:"";position:absolute;top:12px;bottom:12px;left:calc(50% - .5px);width:1px;border-radius:999px;background:#dfe4ea;transition:background 120ms ease,box-shadow 120ms ease}
 .dashboard-card-resizer:hover::after,.dashboard-card-resizer:focus-visible::after,.dashboard-card-resizer.dragging::after{background:#4b84b4;box-shadow:0 0 0 3px #4b84b426}
-.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}
+.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:hidden}
 @container (max-width:900px){.dashboard-layout-row{grid-template-columns:minmax(0,1fr)!important;gap:14px}.dashboard-layout-row>.dashboard-card{grid-column:1!important;min-height:340px}.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:visible}.dashboard-card-resizer{display:none}}
 .dashboard-layout-row>.dashboard-card .chart{display:flex;flex:1;min-height:0;overflow:hidden}
 .dashboard-layout-row>.dashboard-card .echart-root{flex:1 1 auto;height:100%!important;min-height:300px}

@@ -1502,10 +1502,11 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(parsed.grouped_bar.xAxis[0].type, 'value');
   assert.equal(parsed.grouped_bar.grid.left, 64);
   assert.equal(parsed.grouped_bar.grid.right, 40, '右側の余白を共通設定で確保する');
-  assert.equal(parsed.grouped_bar.grid.bottom, 60);
+  assert.equal(parsed.grouped_bar.grid.bottom, 56, '下側の単位軸に必要な余白だけを確保する');
   assert.equal(parsed.scatter.grid.left, 52);
   assert.equal(parsed.scatter.grid.top, 44, '上側の余白を共通設定で確保する');
   assert.equal(parsed.scatter.grid.bottom, 42);
+  assert.equal(parsed.scatter.series[0].label.show, true, '短い散布図ラベルは表示する');
   assert.equal(parsed.multi_line.yAxis.length, 2);
   assert.equal(parsed.multi_line.yAxis[0].name, 'sessions');
   assert.equal(parsed.donut.series[0].type, 'pie');
@@ -1540,6 +1541,34 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(denseHeatmap.dataZoom.length, 2, '多数の区分は縦軸スクロールで確認できる');
   assert.equal(denseHeatmap.yAxis.axisLabel.width, 176, '長い区分ラベルを軸内に収める');
   assert.equal(denseHeatmap.yAxis.axisLabel.interval, 0, 'スクロール中の表示区分を省略しない');
+  assert.equal(denseHeatmap.grid.right, 64, '縦スクロールバーと横軸ラベルの領域を分離する');
+  assert.equal(denseHeatmap.xAxis.axisLabel.interval, 0, '少数の横軸区分はすべて表示する');
+  assert.equal(denseHeatmap.xAxis.axisLabel.hideOverlap, false, '横軸区分を重なり判定で隠さない');
+  assert.equal(
+    denseHeatmap.xAxis.axisLabel.rotate,
+    25,
+    '縦スクロール時の横軸区分を傾けて読みやすくする',
+  );
+
+  const longScatter = vm.runInNewContext(
+    `${source};standardChartOption({visualization:'scatter',columns:['page','pageviews','engagement_time'],rows:${JSON.stringify(
+      Array.from({ length: 10 }, (_, index) => [
+        `https://shop.example.com/very/long/page/${index}`,
+        index + 1,
+        index + 2,
+      ]),
+    )}})`,
+    {
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as Record<string, any>;
+  assert.equal(longScatter.series[0].label.show, false, '長い散布図ラベルは常時表示しない');
+  assert.equal(
+    longScatter.series[0].emphasis.label.show,
+    true,
+    '選択した散布点はラベルを確認できる',
+  );
 
   const grouped = vm.runInNewContext(
     `${source};standardChartOption({visualization:'grouped_bar',columns:['channel','new_sessions','repeat_sessions','purchases'],rows:[['organic',100,20,3]]})`,
@@ -1552,8 +1581,8 @@ test('standard chart renderer creates ECharts options for every supported chart'
   assert.equal(JSON.stringify(grouped.series.map((series: any) => series.xAxisIndex)), '[0,0,1]');
   assert.equal(grouped.series[0].label.show, false, '棒ごとの値ラベルは常時表示しない');
   assert.equal(grouped.series[0].emphasis.label.show, true, '選択中の棒は値を確認できる');
-  assert.equal(grouped.grid.top, 68, '上側の単位軸に必要な余白だけを確保する');
-  assert.equal(grouped.grid.bottom, 60, '下側の単位軸に必要な余白だけを確保する');
+  assert.equal(grouped.grid.top, 60, '上側の単位軸に必要な余白だけを確保する');
+  assert.equal(grouped.grid.bottom, 56, '下側の単位軸に必要な余白だけを確保する');
   assert.equal(grouped.yAxis.axisLabel.width, 72, '短い区分軸は余白を詰める');
 
   const dense = vm.runInNewContext(
@@ -2033,7 +2062,7 @@ test('dashboard cards in the same row share height while content stays top-align
   );
   assert.match(
     rendered.stdout,
-    /\.dashboard-layout-row>\.dashboard-card \.chart\{[^}]*max-height:460px[^}]*overflow:auto/,
+    /\.dashboard-layout-row>\.dashboard-card \.chart\{[^}]*max-height:none[^}]*overflow:hidden/,
   );
   assert.match(
     rendered.stdout,
@@ -2045,12 +2074,12 @@ test('dashboard cards in the same row share height while content stays top-align
   );
   assert.ok(
     rendered.stdout.indexOf(
-      '.dashboard-layout-row>.dashboard-card .chart{max-height:460px;overflow:auto}',
+      '.dashboard-layout-row>.dashboard-card .chart{max-height:none;overflow:hidden}',
     ) <
       rendered.stdout.indexOf(
         '@container (max-width:900px){.dashboard-layout-row{grid-template-columns:',
       ),
-    'the single-column container override must follow the desktop height cap',
+    'the single-column container override must follow the desktop chart layout',
   );
   assert.match(rendered.stdout, /\.chart-table-scroll\{[^}]*max-height:360px[^}]*overflow:auto/);
   assert.match(rendered.stdout, /\.chart-table-scroll th,[^}]*overflow-wrap:anywhere/);

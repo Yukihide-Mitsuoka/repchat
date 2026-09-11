@@ -186,8 +186,8 @@ function standardBarOption(result, mode) {
   const bottomAxisCount = primaryAxisCount;
   const topAxisCount = secondaryAxisCount;
   option.grid = standardChartGrid(true, {
-    top: 44 + topAxisCount * 24,
-    bottom: 36 + bottomAxisCount * 24,
+    top: 36 + topAxisCount * 24,
+    bottom: 32 + bottomAxisCount * 24,
   });
   option.xAxis = axes.map((axis) => ({ ...axis, gridIndex: 0 }));
   option.yAxis = standardChartCategoryAxis(categories, {
@@ -299,13 +299,16 @@ function standardScatterOption(result, bubble) {
     const row = result.rows[params.dataIndex];
     return `${row[0]}<br>${xColumn}: ${standardChartFormat(row[1], xColumn)}<br>${yColumn}: ${standardChartFormat(row[2], yColumn)}${bubble ? `<br>${sizeColumn}: ${standardChartFormat(row[3], sizeColumn)}` : ''}`;
   } };
+  const categoryLabels = result.rows.map((row) => String(row[0] ?? ''));
+  const showLabels = categoryLabels.length <= 12 && categoryLabels.every((label) => label.length <= 18);
   const sizes = bubble ? result.rows.map((row) => Math.max(0, standardChartNumber(row[3]) ?? 0)) : [];
   const maxSize = Math.max(...sizes, 1);
   option.series = [{
     type: 'scatter',
     data: result.rows.map((row, index) => ({ value: [standardChartNumber(row[1]), standardChartNumber(row[2])], symbolSize: bubble ? 8 + 34 * Math.sqrt(sizes[index] / maxSize) : 12, name: String(row[0]) })),
-    label: { show: true, formatter: (params) => standardChartLabel(params.data.name, 16), position: 'right' },
-    emphasis: { focus: 'series', label: { show: true } },
+    label: { show: showLabels, formatter: (params) => standardChartLabel(params.data.name, 16), position: 'right' },
+    labelLayout: { hideOverlap: true },
+    emphasis: { focus: 'series', label: { show: true, formatter: (params) => standardChartLabel(params.data.name, 24) } },
   }];
   return option;
 }
@@ -346,10 +349,12 @@ function standardHeatmapOption(result) {
   const yLabelLength = 28;
   return {
     ...standardChartBase({ tooltip: true }),
-    grid: { left: 190, right: zoomed ? 42 : 80, top: 48, bottom: 82, containLabel: true },
+    grid: { left: 190, right: zoomed ? 64 : 80, top: 48, bottom: 82, containLabel: true },
     tooltip: { position: 'top', formatter: (params) => `${xValues[params.value[0]]} / ${yValues[params.value[1]]}: ${standardChartFormat(params.value[2], result.columns[2])}` },
     xAxis: standardChartCategoryAxis(xValues, {
-      rotate: xValues.length > 8 ? 35 : 0,
+      rotate: zoomed && xValues.length > 2 ? 25 : xValues.length > 8 ? 35 : 0,
+      interval: 0,
+      hideOverlap: false,
       formatter: (value) => standardChartLabel(value, xLabelLength),
     }),
     yAxis: standardChartCategoryAxis(yValues, {
