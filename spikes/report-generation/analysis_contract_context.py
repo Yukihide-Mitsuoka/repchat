@@ -59,6 +59,7 @@ def sql_rules(contract: AnalysisContract) -> str:
 - SELECT *を使わず、確定済み仕様に必要な列とASCII snake_caseの別名だけを返す。
 - semanticsの定義式、grain、relationshipを変更または代用しない。未定義語は推測せず確認を返す。
 - periodのbusiness_timeで対象期間を絞り、partitionsの各列でも同じ対象範囲を必ず絞る。
+- dateShardsを持つtableは、metadataのstartSuffixとendSuffixを定数にした_TABLE_SUFFIX BETWEENで絞る。
 - comparisonがある場合だけ比較期間を使用する。別の期間や暗黙のtimezoneを追加しない。
 - limitsは実行側の上限であり、上限以内だと推測したりSQLで無効化したりしない。"""
 

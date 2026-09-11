@@ -49,12 +49,15 @@ partition、clustering、resource tagの相違があれば停止します。CMEK
 IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。期間は`YYYY-MM-DD`の閉区間です。
 各time partitioned tableの絞り込み列を明示し、必須tableの欠落、API metadataとの不一致、重複を拒否します。
 ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示します。
+`dateShards`を持つtableは`_TABLE_SUFFIX`を必須制約とし、snapshotの開始・終了日が対象期間と比較期間を
+包含する最小のscan範囲に一致する場合だけcompileします。日次memberの欠落・並び替え・追加metadataを拒否し、
+timeまたはrange partitionを併用するshardは両方のfilterを表現できる契約を追加するまで受理しません。
 
 意味定義はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
 費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
 
-生成経路への供給、shard期間制約の共通契約化、build時のschema再検証は後続実装です。
+生成経路への供給とbuild時のschema再検証は後続実装です。
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
 
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には

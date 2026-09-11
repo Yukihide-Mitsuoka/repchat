@@ -241,6 +241,13 @@ for candidate in variants:
  try:a.compile_contract(forged,semantics,period,limits)
  except a.AnalysisContractError:pass
  else:raise AssertionError("malformed shard metadata accepted")
+schema["tables"][0]["dateShards"]=original
+schema["tables"][0]["timePartitioning"]={"type":"DAY","field":"occurred_at"}
+encoded=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+hybrid=SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),snapshot.retrieved_at)
+try:a.compile_contract(hybrid,semantics,period,limits)
+except a.AnalysisContractError:pass
+else:raise AssertionError("partitioned date shards accepted without both filters")
 print("ok")
 `,
   );

@@ -56,9 +56,11 @@ GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05�
 [metadata reader](architecture/schema-inspection.md)です。`make format`・`make lint`・`make test`は通過済み。
 APIの境界はfake clientで検証し、
 実BigQuery接続と生成経路への組込みはまだ行っていません。[PR #649](https://github.com/Yukihide-Mitsuoka/repchat/pull/649)で共通契約compilerと期間契約は実装・
-unit testまで完了し、次は生成経路への供給とbuild時のschema fingerprint再検証です。
+unit testまで完了しました。
 共通contractの中立なplanner／SQL文脈と仕様fingerprintのbind・一致検査もunit testまで完了しました。
-次はGA4 shard集合の完全なschema解決を追加してから、実生成経路へ接続します。
+[PR #672](https://github.com/Yukihide-Mitsuoka/repchat/pull/672)でGA4型の日次shard集合を完全解決する
+metadata境界もmerge済みです。現在はshardの`_TABLE_SUFFIX`とscan範囲を共通期間契約へ固定し、
+次に実生成経路への供給とbuild時のschema fingerprint再検証を行います。
 schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
@@ -75,7 +77,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
+| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | 生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
 | 2 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
 | 3 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
 | 4 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
