@@ -149,6 +149,27 @@ BigQueryへ渡ることを回帰テストで確認します。修正後も失敗
 
 **Refs:** [Issue #662](https://github.com/Yukihide-Mitsuoka/repchat/issues/662)
 
+## Bitcoinで2024年1月から12月を指定しても1月の1点だけが描画される
+
+**Affects:** Issue #665修正前のBitcoin Insightとダッシュボードbuild。
+
+**Cause:** Bitcoinの期間解析が最初の`YYYY年M月`だけを読み、後続の「から12月まで」を捨てていました。
+そのためSQL生成・期間診断も`block_timestamp_month = DATE '2024-01-01'`を正しい契約として扱い、
+1点だけの結果をMixed-Typeへ渡していました。描画側も大きな値を生の桁数、SQL式の系列名、切断された
+二重軸で表示したため、期間内の変化を読めませんでした。
+
+**Fix:** 明示された月範囲を最初と最後の月初partitionへ変換し、SQL生成、修正診断、実行前検査で同じ
+`block_timestamp_month BETWEEN DATE '2024-01-01' AND DATE '2024-12-01'`を要求します。
+Mixed-Typeは非負値をゼロ基準にし、月を1月〜12月、軸目盛を万・億・兆、系列名を人向けの表示名で
+描画します。ツールチップと「取得データ」は正確な値を保持します。
+
+**Prevention:** 固定応答テストで同一年内の月範囲を12か月のpartition契約として検証し、1月だけのSQLを
+BigQuery前に拒否します。12点の大数Mixed-Type fixtureで、短縮軸、月表示、ゼロ基準と生値保持を確認します。
+実Vertex AI・BigQueryでの再確認は、修正版のデモを再起動した後、画面の費用を改めて承認した場合だけ
+実行してください。
+
+**Refs:** [Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)
+
 ## SQL方言の未対応関数・構文で停止する
 
 **Cause:** SQL生成AIが、選択されたデータソースのSQL方言・実行環境に存在しない関数や構文を返しました。これは

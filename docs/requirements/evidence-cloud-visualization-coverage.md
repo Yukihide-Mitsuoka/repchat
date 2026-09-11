@@ -67,7 +67,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
 | `annotated_line` | Annotations | 部分対応 | 日付、任意の注釈ラベル、1指標を返し、根拠のある時点だけをpin表示する |
 | `sparkline` | Sparkline | 対応 | 日付と1指標を返し、最新値と軸を省略した小型時系列を表示する |
-| `mixed_bar_line` | Mixed-Type Charts | 対応 | 1区分軸と2〜4指標を返し、第1系列をbar、残りをlineで描く |
+| `mixed_bar_line` | Mixed-Type Charts | 対応 | 1区分軸と2〜4指標を返し、第1系列をbar、残りをlineで描く。非負値はゼロ基準の独立軸、目盛は系列色と万・億・兆の短縮表示を使い、正確な値をtooltipと表に保持する |
 | `delta` | Delta | 対応 | 現在値と比較値を1行で返し、良否を推測せず符号付き差分を中立色で示す |
 | `box_plot` / `box_plot_horizontal` | Box Plot | 対応 | 区分、最小、第1四分位、中央値、第3四分位、最大を昇順で返す |
 | `treemap` | Custom ECharts Treemap例 | 対応 | 1〜4階層と非負値を返し、末端までの階層を宣言的に描く |

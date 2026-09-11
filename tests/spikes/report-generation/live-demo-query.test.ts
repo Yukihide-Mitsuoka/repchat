@@ -296,3 +296,45 @@ print(json.dumps({
     long_literal_unchanged: true,
   });
 });
+
+test('Bitcoin profile preserves an explicitly requested month range through SQL validation', () => {
+  const result = python(`
+import bitcoin_profile as profile
+question="2024年1月から12月までの月（block_timestamp_month）に、取引出力金額の合計（output_value）と手数料合計（fee）を集計してください。"
+period=profile.period_for_question(question)
+section={
+ "text":question,
+ "planned_visualization":"mixed_bar_line",
+ "shape":{"columns":["月","取引出力金額の合計","手数料合計"]},
+ "source_columns":["category","metric_1","metric_2"],
+}
+request=profile.generation_request(section,period)
+guidance=profile.period_repair_guidance(period)
+valid="SELECT block_timestamp_month AS category, SUM(output_value) AS metric_1, SUM(fee) AS metric_2 FROM "+chr(96)+profile.TABLE+chr(96)+" WHERE block_timestamp_month BETWEEN DATE '2024-01-01' AND DATE '2024-12-01' GROUP BY category"
+profile.require_sql_period(valid,period)
+wrong_error=""
+try:
+ profile.require_sql_period(valid.replace(" BETWEEN DATE '2024-01-01' AND DATE '2024-12-01'", " = DATE '2024-01-01'"),period)
+except ValueError as error:
+ wrong_error=str(error)
+print(json.dumps({
+ "period":period,
+ "request_has_range":"block_timestamp_month BETWEEN DATE '2024-01-01' AND DATE '2024-12-01'" in request,
+ "guidance_has_range":"block_timestamp_month BETWEEN DATE '2024-01-01' AND DATE '2024-12-01'" in guidance,
+ "wrong_error":wrong_error,
+},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    period: {
+      from: '2024-01-01',
+      to: '2024-12-31',
+      partition: '2024-01-01',
+      partition_to: '2024-12-01',
+      label: '2024年1月〜12月',
+    },
+    request_has_range: true,
+    guidance_has_range: true,
+    wrong_error: '生成SQLの対象期間が問い合わせの2024年1月〜12月と一致しません。',
+  });
+});

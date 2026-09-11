@@ -27,6 +27,30 @@ function standardChartFormat(value, column = '') {
   return chartValue(value, column);
 }
 
+function standardChartAxisFormat(value, column = '') {
+  const number = standardChartNumber(value);
+  if (number === null || Math.abs(number) < 10000) return standardChartFormat(value, column);
+  const [divisor, suffix] = Math.abs(number) >= 1e12
+    ? [1e12, '兆']
+    : Math.abs(number) >= 1e8
+      ? [1e8, '億']
+      : [1e4, '万'];
+  const scaled = number / divisor;
+  const maximumFractionDigits = Math.abs(scaled) >= 100 ? 0 : Math.abs(scaled) >= 10 ? 1 : 2;
+  return `${new Intl.NumberFormat('ja-JP', { maximumFractionDigits }).format(scaled)}${suffix}`;
+}
+
+function standardChartDisplayLabel(column) {
+  const label = String(column ?? '');
+  const aggregate = label.match(/^\s*(SUM|AVG|MIN|MAX|COUNT)\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)\s*$/i);
+  if (!aggregate) return label;
+  const operation = {
+    SUM: '合計', AVG: '平均', MIN: '最小', MAX: '最大', COUNT: '件数',
+  }[aggregate[1].toUpperCase()];
+  const identifier = aggregate[2].split('.').at(-1).replaceAll('_', ' ');
+  return `${identifier}（${operation}）`;
+}
+
 function standardChartUnit(column) {
   return metricAxisTitle(column);
 }
@@ -66,7 +90,7 @@ function standardChartTooltipFormatter(params) {
 }
 
 function standardChartAxisLabel(column) {
-  return (value) => standardChartFormat(value, column);
+  return (value) => standardChartAxisFormat(value, column);
 }
 
 function standardChartCategoryAxis(data, axisLabel = {}) {
@@ -105,4 +129,3 @@ function standardChartBase({ horizontal = false, legend = false, tooltip = true 
       : undefined,
   };
 }
-
