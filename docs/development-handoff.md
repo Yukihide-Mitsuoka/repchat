@@ -63,22 +63,23 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
 
-[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。
-
-## 次に着手する作業キュー（2026-09-11）
+## 次に着手する作業キュー（2026-09-12）
 
 各作業の受入条件と進捗はリンク先のGitHub Issueを正本とします。この表は再開時の実施順序、
 着手条件、完了判定だけを保持します。
 
+前回キューのchart契約監査は[PR #669](https://github.com/Yukihide-Mitsuoka/repchat/pull/669)で
+merge済みです。また、元のcheckoutにあるchart描画関連の未コミット変更は変更内容を保ったまま
+`codex/preserve-chart-layout-wip`（`bae485d`）へ退避済みです。この保全branchは古いmainを基点とするため、
+そのままmergeせず、再開時に現行mainへ必要な変更だけを移植します。
+
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 0 | local作業状態の保全 | `test/315-split-slow-github-wrapper`はmainより136 commit遅れ、2 commit先行で、chart描画関連3ファイルに未コミット変更がある。意図を確認して専用branchまたはpatchへ保全するまで削除・上書きしない。旧worktreeも各branchの要否を確認してから整理する |
-| 1 | [#659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)のchart契約監査 | [PR #669](https://github.com/Yukihide-Mitsuoka/repchat/pull/669)で元指標とSQL出力役割を分離し、全CI成功済み。merge後にIssueがcloseされたことを確認して本節から除く |
-| 2 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
-| 3 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
-| 4 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
-| 5 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
-| 6 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
+| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
+| 2 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
+| 3 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
+| 4 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
+| 5 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
 
 条件付き作業は次のとおりです。
 
@@ -95,8 +96,8 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 ### 過去タスク整理との再照合（2026-09-11）
 
 2026-09-11に添付および会話で提示された旧タスク整理をGitHub Issue、mainの履歴、要件、ADRと再照合しました。
-指定除外項目を除くOPEN Issueは#179、#180、#181、#188、#194、#251、#371、#380、#659の
-9件で、上の作業キューと条件付き作業にすべて含まれています。
+指定除外項目を除くOPEN Issueは#179、#180、#181、#188、#194、#251、#371、#380の
+8件で、上の作業キューと条件付き作業にすべて含まれています。
 
 旧整理に含まれ、単独のOPEN Issueがなくても追跡を継続する項目は次のとおりです。受入条件をこの文書へ
 複製せず、リンク先を正本とします。
