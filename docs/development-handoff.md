@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-11
+updated: 2026-09-12
 ---
 
 # 開発引き継ぎ
@@ -39,7 +39,7 @@ updated: 2026-09-11
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)のVertex AIエラー診断は、
 [PR #652](https://github.com/Yukihide-Mitsuoka/repchat/pull/652)でマージ済みです。生成APIの共通境界で
 安全なcode・statusだけを分類し、dashboard、insight、SQL生成、会議報告へ同じ案内を返します。
-全387テストを含むPR CIは成功し、実Vertex AIは追加実行していません。IssueはOPENのため、closeだけが残っています。
+全387テストを含むPR CIは成功し、実Vertex AIは追加実行していません。Issueはclose済みです。
 
 [PR #643](https://github.com/Yukihide-Mitsuoka/repchat/pull/643)と
 [PR #644](https://github.com/Yukihide-Mitsuoka/repchat/pull/644)はマージ済みです。
@@ -73,13 +73,12 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
 | 0 | local作業状態の保全 | `test/315-split-slow-github-wrapper`はmainより136 commit遅れ、2 commit先行で、chart描画関連3ファイルに未コミット変更がある。意図を確認して専用branchまたはpatchへ保全するまで削除・上書きしない。旧worktreeも各branchの要否を確認してから整理する |
-| 1 | [#651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)の事務完了 | PR #652のマージとCI成功は確認済み。Issueをcloseし、本節から完了済み項目を除く |
-| 2 | [#659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)のchart契約監査 | plannerの元指標、dimension、派生処理、SQL出力役割をchart別に分類する。governed metric validationとrenderer shapeの意味を固定テストで一致させ、不一致は黙って置換せず計画時に拒否または明示契約へ修正する |
-| 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
-| 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
-| 5 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
-| 6 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
-| 7 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
+| 1 | [#659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)のchart契約監査 | [PR #669](https://github.com/Yukihide-Mitsuoka/repchat/pull/669)で元指標とSQL出力役割を分離し、全CI成功済み。merge後にIssueがcloseされたことを確認して本節から除く |
+| 2 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
+| 3 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
+| 4 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
+| 5 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
+| 6 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
 
 条件付き作業は次のとおりです。
 
@@ -96,8 +95,8 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 ### 過去タスク整理との再照合（2026-09-11）
 
 2026-09-11に添付および会話で提示された旧タスク整理をGitHub Issue、mainの履歴、要件、ADRと再照合しました。
-指定除外項目を除くOPEN Issueは#179、#180、#181、#188、#194、#251、#371、#380、#651、#659の
-10件で、上の作業キューと条件付き作業にすべて含まれています。
+指定除外項目を除くOPEN Issueは#179、#180、#181、#188、#194、#251、#371、#380、#659の
+9件で、上の作業キューと条件付き作業にすべて含まれています。
 
 旧整理に含まれ、単独のOPEN Issueがなくても追跡を継続する項目は次のとおりです。受入条件をこの文書へ
 複製せず、リンク先を正本とします。
