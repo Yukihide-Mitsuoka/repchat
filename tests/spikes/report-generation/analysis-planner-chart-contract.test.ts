@@ -56,18 +56,63 @@ print(json.dumps({
   assert.deepEqual(output.contracts.annotated_line, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sparkline, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.mixed_bar_line, [1, 1, 2, 4]);
-  assert.deepEqual(output.contracts.delta, [0, 0, 2, 2]);
-  assert.deepEqual(output.contracts.box_plot, [1, 1, 5, 5]);
-  assert.deepEqual(output.contracts.box_plot_horizontal, [1, 1, 5, 5]);
+  assert.deepEqual(output.contracts.delta, [0, 0, 1, 1]);
+  assert.deepEqual(output.contracts.box_plot, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.box_plot_horizontal, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.treemap, [1, 4, 1, 1]);
   assert.deepEqual(output.contracts.pie, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.area_map, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.us_map, [2, 2, 1, 1]);
-  assert.deepEqual(output.contracts.point_map, [2, 2, 3, 3]);
-  assert.deepEqual(output.contracts.bubble_map, [2, 2, 4, 4]);
-  assert.deepEqual(output.contracts.base_map, [3, 3, 4, 4]);
-  assert.deepEqual(output.contracts.reference_line, [1, 1, 2, 2]);
-  assert.deepEqual(output.contracts.reference_area, [1, 1, 3, 3]);
+  assert.deepEqual(output.contracts.point_map, [2, 2, 1, 1]);
+  assert.deepEqual(output.contracts.bubble_map, [2, 2, 1, 2]);
+  assert.deepEqual(output.contracts.base_map, [3, 3, 1, 2]);
+  assert.deepEqual(output.contracts.reference_line, [1, 1, 1, 1]);
+  assert.deepEqual(output.contracts.reference_area, [1, 1, 1, 1]);
+});
+
+test('role-based charts distinguish source metrics from renderer output roles', () => {
+  const result = python(`
+from visualization_contracts import CHART_RESULT_ROLE_CONTRACTS
+charts=["histogram","comparison_table","delta","box_plot","box_plot_horizontal","point_map","bubble_map","base_map","reference_line","reference_area"]
+print(json.dumps({"roles":{chart:CHART_RESULT_ROLE_CONTRACTS[chart] for chart in charts}},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    roles: {
+      histogram: ['bin_start', 'frequency'],
+      comparison_table: ['dimension_*', 'current_value', 'comparison_value', 'delta_value'],
+      delta: ['current_value', 'comparison_value'],
+      box_plot: ['category', 'min_value', 'q1_value', 'median_value', 'q3_value', 'max_value'],
+      box_plot_horizontal: [
+        'category',
+        'min_value',
+        'q1_value',
+        'median_value',
+        'q3_value',
+        'max_value',
+      ],
+      point_map: ['point_name', 'map_geojson', 'latitude', 'longitude', 'metric_value'],
+      bubble_map: [
+        'point_name',
+        'map_geojson',
+        'latitude',
+        'longitude',
+        'size_value',
+        'metric_value',
+      ],
+      base_map: [
+        'layer_kind',
+        'item_name',
+        'geometry_geojson',
+        'latitude',
+        'longitude',
+        'size_value',
+        'metric_value',
+      ],
+      reference_line: ['category', 'metric_value', 'reference_value'],
+      reference_area: ['category', 'metric_value', 'lower_value', 'upper_value'],
+    },
+  });
 });
 
 test('chart order is deterministic per request and unrelated to declaration order', () => {
