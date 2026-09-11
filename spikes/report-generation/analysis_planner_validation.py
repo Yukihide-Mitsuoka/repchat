@@ -6,7 +6,7 @@ import hashlib
 import json
 
 from analysis_planner_contracts import PlannerError
-from visualization_contracts import CHART_SHAPE_CONTRACTS
+from visualization_contracts import CHART_SOURCE_SHAPE_CONTRACTS
 
 
 def text(value, label: str) -> str:
@@ -61,7 +61,7 @@ def validate_chart_shape(
     chart: str, dimensions: list[str], measures: list[str]
 ) -> None:
     """Validate semantic fields against one renderer capability contract."""
-    min_dimensions, max_dimensions, min_measures, max_measures = CHART_SHAPE_CONTRACTS[
+    min_dimensions, max_dimensions, min_measures, max_measures = CHART_SOURCE_SHAPE_CONTRACTS[
         chart
     ]
     if not (
