@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.23.1](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.23.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* Bitcoin月範囲と混合グラフの可読性を直す ([#666](https://github.com/Yukihide-Mitsuoka/repchat/issues/666)) ([b041fce](https://github.com/Yukihide-Mitsuoka/repchat/commit/b041fce8539d5bb7093afa7885937b7238043d62)), closes [#665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)
+* **demo:** [#658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658) comparison tableの指標契約を修正 ([#660](https://github.com/Yukihide-Mitsuoka/repchat/issues/660)) ([a94ce93](https://github.com/Yukihide-Mitsuoka/repchat/commit/a94ce93e90e7bafaa04e31209255ce2c586bd592))
+* **demo:** [#662](https://github.com/Yukihide-Mitsuoka/repchat/issues/662) 期間修正診断を具体化 ([#663](https://github.com/Yukihide-Mitsuoka/repchat/issues/663)) ([d582c5c](https://github.com/Yukihide-Mitsuoka/repchat/commit/d582c5c66d86c6bee51b59ea2efc53c12c14a089))
+* **demo:** Vertex APIエラーを安全に分類する ([#652](https://github.com/Yukihide-Mitsuoka/repchat/issues/652)) ([090b191](https://github.com/Yukihide-Mitsuoka/repchat/commit/090b1917e92b9b40c67cefd9adfee45aba9d0224))
+* **demo:** ダッシュボード計画schemaを平坦化する ([#655](https://github.com/Yukihide-Mitsuoka/repchat/issues/655)) ([1ff0760](https://github.com/Yukihide-Mitsuoka/repchat/commit/1ff07606fb0b47273987e5d84cdad2282c764fc4))
+
 ## [1.23.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.3...v1.23.0) (2026-09-07)
 
 
