@@ -25,7 +25,8 @@ updated: 2026-09-11
 1件とし、SQL出力の3役割と分離する。同じ構造を持つ他chartは
 [Issue #659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)で別途監査し、今回の修正へ混在させない。
 
-[Issue #662](https://github.com/Yukihide-Mitsuoka/repchat/issues/662)では、月内比較のSQLがpartition filterを
+[Issue #662](https://github.com/Yukihide-Mitsuoka/repchat/issues/662)／
+[PR #663](https://github.com/Yukihide-Mitsuoka/repchat/pull/663)では、月内比較のSQLがpartition filterを
 部分期間へ狭め、1回のSQL修正後も2021年1月の期間契約を満たせない問題を修正する。完全なpartition filterと
 条件付き集約の使い分けを修正診断へ明記し、BigQuery実行前のfail-closedと修正1回上限は維持する。
 
@@ -137,7 +138,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-22）
 
-1. **現在の必須作業:** Issue #662を固定応答で検証し、PRの必須CI成功後にマージしてデモを再起動する。修正前の有料buildは再実行しない。
+1. **現在の必須作業:** Issue #662／PR #663を固定応答で検証し、必須CI成功後にマージしてデモを再起動する。修正前の有料buildは再実行しない。
 2. **Issue #662完了後:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
 3. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
 4. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
