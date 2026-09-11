@@ -1,7 +1,7 @@
 ---
 id: schema-inspection
 title: BigQuery schema取得境界
-updated: 2026-09-06
+updated: 2026-09-12
 ---
 
 # BigQuery schema取得境界
@@ -29,9 +29,18 @@ fingerprintはテーブル順を正規化したJSONから作り、取得時刻�
 
 最大20テーブル、合計2,000 fields、ネスト深さ16、UTF-8 JSON 200,000 bytesです。
 各API呼出しはtimeout 30秒、retryなしです。上限超過は切捨てず`SchemaInspectionError`にします。
-物理テーブル以外、wildcard、location混在、返却tableの不一致、欠落・未対応型も拒否します。
+物理テーブル以外、location混在、返却tableの不一致、欠落・未対応型も拒否します。
 取得失敗は機密を含み得るprovider本文を表示せず、安定したエラーへ変換します。
 手書きschemaや別datasetへのfallbackはありません。
+
+`inspect_date_shards(...)`は、サーバー側で許可した完全修飾`YYYYMMDD`末尾wildcardだけを扱います。
+対象datasetを最大1,000表まで列挙し、wildcardに一致する最大100日分の物理テーブルをすべて`get_table`で
+検査します。対象期間は日ごとの欠損を許さず、期間外も含むwildcard一致表に非日付名、view、schema、
+partition、clustering、resource tagの相違があれば停止します。CMEKで暗号化されたwildcard表も拒否します。
+
+一致したschemaは1表分へ正規化し、wildcard名と対象期間の実テーブル一覧を`dateShards`へ保持します。
+したがって同じschemaを日数分複製せず、fingerprintは実際に選択した日次表集合を含みます。
+この処理も行queryを行わず、列挙・metadata取得のprovider失敗内容を外へ出しません。
 
 ## 次の接続点
 
@@ -45,7 +54,7 @@ ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
 費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
 
-wildcardの実テーブル解決、生成経路への供給、build時のschema再検証は後続実装です。
+生成経路への供給、shard期間制約の共通契約化、build時のschema再検証は後続実装です。
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
 
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には

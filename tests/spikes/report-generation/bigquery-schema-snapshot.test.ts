@@ -20,6 +20,27 @@ client=Client()
 def inspect():return s.inspect_schema(client,[name],allowed_tables=frozenset([name]))
 `;
 
+const shardSetup =
+  setup +
+  `
+pattern="example-project.sample.events_*"
+class Item:
+ def __init__(self,table_id):self.table_id=table_id
+class ShardClient:
+ def __init__(self,names):self.names=names;self.list_calls=[];self.get_calls=[];self.mutations={}
+ def list_tables(self,dataset,**kwargs):
+  self.list_calls.append((dataset,kwargs));return [Item(item) for item in self.names]
+ def get_table(self,table_id,**kwargs):
+  self.get_calls.append((table_id,kwargs));data=copy.deepcopy(raw)
+  data["tableReference"]["tableId"]=table_id.split(".")[-1]
+  for key,value in self.mutations.get(table_id,{ }).items():data[key]=value
+  class Result:
+   def to_api_repr(self):return data
+  return Result()
+def shards(client,start="20260101",end="20260103"):
+ return s.inspect_date_shards(client,pattern,start_suffix=start,end_suffix=end,allowed_patterns=frozenset([pattern]))
+`;
+
 test('schema inspection preserves nested modes and partitions without reading rows', () => {
   const result = python(
     setup +
@@ -149,6 +170,105 @@ del raw["timePartitioning"]
 raw["rangePartitioning"]={"field":"sequence","range":{"start":"0","end":"100","interval":"10"}}
 raw["schema"]["fields"].append({"name":"sequence","type":"INTEGER"})
 assert inspect().metadata()["tables"][0]["rangePartitioning"]==raw["rangePartitioning"]
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('date shards resolve to one canonical schema with exact period members', () => {
+  const result = python(
+    shardSetup +
+      `
+client=ShardClient(["other","events_20260103","events_20260101","events_20260102"])
+snapshot=shards(client)
+table=snapshot.metadata()["tables"][0]
+assert table["table"]==pattern
+assert table["dateShards"]=={
+ "suffixFormat":"YYYYMMDD","startSuffix":"20260101","endSuffix":"20260103",
+ "members":["example-project.sample.events_20260101","example-project.sample.events_20260102","example-project.sample.events_20260103"]}
+assert client.list_calls==[("example-project.sample",{"max_results":s.MAX_LISTED_TABLES+1,"timeout":30,"retry":None})]
+assert all(options=={"timeout":30,"retry":None} for _,options in client.get_calls)
+client.names.reverse()
+assert snapshot.fingerprint==shards(client).fingerprint
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('date shard inspection rejects unauthorized patterns, invalid ranges and gaps', () => {
+  const result = python(
+    shardSetup +
+      `
+client=ShardClient(["events_20260101","events_20260103"])
+invalid=(
+ lambda:s.inspect_date_shards(client,pattern,start_suffix="20260101",end_suffix="20260103",allowed_patterns=frozenset()),
+ lambda:s.inspect_date_shards(client,pattern,start_suffix="20260101",end_suffix="20260103",allowed_patterns=pattern),
+ lambda:s.inspect_date_shards(client,"example-project.sample.*",start_suffix="20260101",end_suffix="20260103",allowed_patterns=frozenset([pattern])),
+ lambda:shards(client,"20260132","20260103"),
+ lambda:shards(client,"20260103","20260101"),
+)
+for call in invalid:
+ try:call()
+ except s.SchemaInspectionError:pass
+ else:raise AssertionError("invalid shard request accepted")
+assert not client.list_calls
+try:shards(client)
+except s.SchemaInspectionError:pass
+else:raise AssertionError("missing date shard accepted")
+assert not client.get_calls
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('every wildcard match is checked for unsafe names and schema drift', () => {
+  const result = python(
+    shardSetup +
+      `
+client=ShardClient(["events_20260101","events_20260102","events_20260103","events_backup"])
+try:shards(client)
+except s.SchemaInspectionError:pass
+else:raise AssertionError("non-date wildcard match accepted")
+assert not client.get_calls
+client=ShardClient(["events_20260101","events_20260102","events_20260103","events_20260104"])
+changed=copy.deepcopy(raw["schema"]);changed["fields"][0]["type"]="DATE"
+client.mutations["example-project.sample.events_20260104"]={"schema":changed}
+try:shards(client)
+except s.SchemaInspectionError:pass
+else:raise AssertionError("out-of-period schema drift accepted")
+assert len(client.get_calls)==4
+client=ShardClient(["events_20260101","events_20260102","events_20260103"])
+client.mutations["example-project.sample.events_20260103"]={"encryptionConfiguration":{"kmsKeyName":"private-key"}}
+try:shards(client)
+except s.SchemaInspectionError as error:assert "private-key" not in str(error)
+else:raise AssertionError("encrypted wildcard accepted")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('date shard listing limits and provider failures stay fail-closed', () => {
+  const result = python(
+    shardSetup +
+      `
+from datetime import date,timedelta
+client=ShardClient(["events_"+(date(2026,1,1)+timedelta(days=i)).strftime("%Y%m%d") for i in range(s.MAX_SHARDS+1)])
+try:shards(client)
+except s.SchemaInspectionError:pass
+else:raise AssertionError("shard limit not enforced")
+assert not client.get_calls
+def fail(*args,**kwargs):raise RuntimeError("private provider payload")
+client=ShardClient([]);client.list_tables=fail
+try:shards(client)
+except s.SchemaInspectionError as error:
+ import traceback
+ assert "private" not in "".join(traceback.format_exception(error))
+else:raise AssertionError("provider failure accepted")
 print("ok")
 `,
   );
