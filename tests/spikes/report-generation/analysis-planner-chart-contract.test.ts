@@ -47,7 +47,7 @@ print(json.dumps({
   assert.deepEqual(output.contracts.funnel_horizontal, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.heatmap, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.pivot_table, [2, 2, 1, 4]);
-  assert.deepEqual(output.contracts.comparison_table, [1, 4, 3, 3]);
+  assert.deepEqual(output.contracts.comparison_table, [1, 4, 1, 1]);
   assert.deepEqual(output.contracts.sparkline_table, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.sankey_vertical, [2, 2, 1, 1]);
@@ -224,5 +224,6 @@ print(json.dumps({
   assert.deepEqual(new Set(output.charts), new Set(output.supported));
   assert.match(output.description, /scorecard=dimensions 0、measures 1/);
   assert.match(output.description, /grouped_bar=dimensions 1、measures 2〜4/);
+  assert.match(output.description, /comparison_tableはmeasuresを比較対象の定義済み指標1件/);
   assert.ok(output.schema_bytes < 5000, output.schema_bytes);
 });

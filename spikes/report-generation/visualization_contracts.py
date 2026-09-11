@@ -47,7 +47,7 @@ VISUALIZATION_CONTRACTS = (
     VisualizationContract("heatmap", (2, 2, 1, 1), 100),
     VisualizationContract("table", (0, 4, 1, 4), 100),
     VisualizationContract("pivot_table", (2, 2, 1, 4), 100),
-    VisualizationContract("comparison_table", (1, 4, 3, 3), 100),
+    VisualizationContract("comparison_table", (1, 4, 1, 1), 100),
     VisualizationContract("sparkline_table", (2, 2, 1, 1), 100),
     VisualizationContract("sankey", (2, 2, 1, 1), MAX_SANKEY_EDGE_ROWS),
     VisualizationContract("sankey_vertical", (2, 2, 1, 1), MAX_SANKEY_EDGE_ROWS),
@@ -81,6 +81,12 @@ CHART_SHAPE_CONTRACTS = {
 DASHBOARD_ROW_LIMITS = {
     contract.chart: contract.max_result_rows for contract in VISUALIZATION_CONTRACTS
 }
+CHART_PLANNING_RULES = (
+    "comparison_tableはmeasuresを比較対象の定義済み指標1件にし、execution_promptに"
+    "現在値と比較値の対象条件を明記する。current_value、comparison_value、delta_valueは"
+    "SQL出力列でありmeasuresへ指定しない。複数の独立指標を並べる場合はtableまたは"
+    "grouped_barを使う。",
+)
 
 if not (
     len(VISUALIZATION_CONTRACTS)

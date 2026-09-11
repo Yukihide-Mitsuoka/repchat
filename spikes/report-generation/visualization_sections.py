@@ -112,9 +112,15 @@ def build_planned_analysis_section(
             ]
         )
     elif chart == "comparison_table":
+        measure = measures[0]
         section["shape"] = {
             "rows": "区分または集計単位ごとに1行",
-            "columns": dimensions + measures,
+            "columns": dimensions
+            + [
+                f"{measure}（現在値）",
+                f"{measure}（比較値）",
+                f"{measure}（差分）",
+            ],
         }
         section["source_columns"] = [
             *[f"dimension_{index}" for index in range(1, len(dimensions) + 1)],
@@ -123,7 +129,9 @@ def build_planned_analysis_section(
             "delta_value",
         ]
         section["generation_requirements"] = [
-            "delta_valueはcurrent_value - comparison_valueと一致させる"
+            "current_valueとcomparison_valueはexecution_promptに明示された条件で"
+            f"同じ指標「{measure}」を比較する",
+            "delta_valueはcurrent_value - comparison_valueと一致させる",
         ]
     elif chart == "sparkline_table":
         section["shape"] = {

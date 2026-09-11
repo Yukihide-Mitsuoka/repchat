@@ -280,17 +280,24 @@ print(json.dumps({"columns":section["source_columns"],"rendered":m.dashboard_vis
 
 test('comparison table verifies deltas without assigning good or bad semantics', () => {
   const validated = python(`
-section=m.planned_analysis_section({"id":"P","title":"前年差","chart":"comparison_table","decision":"判断","execution_prompt":"分析","dimensions":["地域"],"measures":["現在値","比較値","差分"]})
+section=m.planned_analysis_section({"id":"P","title":"前年差","chart":"comparison_table","decision":"判断","execution_prompt":"2024年と2023年の売上を比較する","dimensions":["地域"],"measures":["売上"]})
 m.validate_dashboard_dry_run_schema(section,[("dimension_1","STRING"),("current_value","FLOAT64"),("comparison_value","FLOAT64"),("delta_value","FLOAT64")])
 accepted=m.dashboard_visualization(section,[("東",120,100,20),("西",80,100,-20)],section["source_columns"])
 try:m.dashboard_visualization(section,[("東",120,100,10)],section["source_columns"])
 except m.LiveDemoError:invalid="rejected"
 else:invalid="accepted"
-print(json.dumps({"columns":section["source_columns"],"rendered":accepted,"invalid":invalid},ensure_ascii=False))
+print(json.dumps({"columns":section["source_columns"],"labels":section["shape"]["columns"],"requirements":section["generation_requirements"],"rendered":accepted,"invalid":invalid},ensure_ascii=False))
 `);
   assert.equal(validated.status, 0, validated.stderr);
   assert.deepEqual(JSON.parse(validated.stdout), {
     columns: ['dimension_1', 'current_value', 'comparison_value', 'delta_value'],
+    labels: ['地域', '売上（現在値）', '売上（比較値）', '売上（差分）'],
+    requirements: [
+      'current_valueとcomparison_valueはexecution_promptに明示された条件で同じ指標「売上」を比較する',
+      'delta_valueはcurrent_value - comparison_valueと一致させる',
+      'current_value、comparison_value、delta_valueはNULLを返さない。COUNT/COUNTIF以外の式は最終SELECT式全体をCOALESCEまたはIFNULLで包む',
+      '最終SELECTはdelta_valueの降順でORDER BYし、LIMIT 100を明示する',
+    ],
     rendered: 'comparison_table',
     invalid: 'rejected',
   });

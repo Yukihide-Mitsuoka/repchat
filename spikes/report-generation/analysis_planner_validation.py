@@ -70,6 +70,11 @@ def validate_chart_shape(
     ):
         if chart == "scorecard":
             raise PlannerError("scorecardは区分軸なし・指標1件にしてください。")
+        if chart == "comparison_table":
+            raise PlannerError(
+                "comparison_tableは定義済み指標1件にしてください。"
+                "現在値・比較値・差分はSQL出力列であり、別々の指標を指定できません。"
+            )
         expected_dimensions = (
             f"{min_dimensions}件"
             if min_dimensions == max_dimensions

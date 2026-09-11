@@ -19,6 +19,11 @@ updated: 2026-09-11
 未確認事項は[トラブルシューティング](troubleshooting/live-demo.md#初回ダッシュボード計画が400-invalid_argumentになる)
 を正本とします。追加の有料呼出しは自動再実行しません。
 
+[Issue #658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658)では、`comparison_table`が独立した3指標を
+現在値・比較値・差分として誤受理し、実行後の算術検証で停止する問題を修正する。比較対象の定義済み元指標は
+1件とし、SQL出力の3役割と分離する。同じ構造を持つ他chartは
+[Issue #659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)で別途監査し、今回の修正へ混在させない。
+
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
 HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
 dashboard、insight、SQL生成、会議報告へ同じ案内を返す。失敗した有料呼出しは自動再実行しない。
@@ -54,8 +59,8 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | デモ阻害のコード修正と無料固定応答確認は完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
-| デモ実行状態 | 2026-09-11に最新mainからlocalhost:8765を起動し、HTTP 200を確認した。Issue #654の依頼は実Vertex AIで計画に成功し、改善した確定計画は実BigQueryを含む6パネルbuildに成功した。詳細は[トラブルシューティング](troubleshooting/live-demo.md#初回ダッシュボード計画が400-invalid_argumentになる)を参照 |
+| 作業 | Issue #658の`comparison_table`計画契約修正と無料固定応答確認を完了してから、[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証へ戻る |
+| デモ実行状態 | 2026-09-11にlocalhost:8765のHTTP 200を確認した。Issue #654の依頼は実Vertex AIで計画に成功し、改善計画は実BigQueryを含む6パネルbuildに成功した。別の確定計画は`comparison_table`の結果形状不一致で停止し、Issue #658修正前の有料再実行は行わない |
 | 直近完了 | [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)／[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)でplanner schemaを平坦化し、固定応答テスト、必須CI、実Vertex AI計画、実BigQueryを含む6パネルbuildを確認した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #654の承認済み実検証は完了済み。追加の実Vertex AI相談またはSQL生成・BigQuery実行は、対象と費用を提示してオーナー承認を得た場合だけ行う |
@@ -127,11 +132,12 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-22）
 
-1. **現在の必須作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
-2. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
-3. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
-4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類について、GA4と同じ相談・dashboard planning・仕様確定・SQL生成・検査・実行・描画経路と予約語修正まで完了した。実値照合、独立レビュー、未知・非公開相当2種類の評価は残る。
-5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
+1. **現在の必須作業:** Issue #658を固定応答で検証し、PRの必須CI成功後にマージしてデモを再起動する。修正前の有料buildは再実行しない。
+2. **Issue #658完了後:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
+3. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
+4. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
+5. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類について、GA4と同じ相談・dashboard planning・仕様確定・SQL生成・検査・実行・描画経路と予約語修正まで完了した。実値照合、独立レビュー、未知・非公開相当2種類の評価は残る。
+6. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
 
 この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
