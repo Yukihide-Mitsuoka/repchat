@@ -6,14 +6,18 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from bigquery_schema_snapshot import SchemaSnapshot
 
 
 MAX_CONTRACT_BYTES = 300_000
+MAX_DATE_SHARDS = 100
 TIME_TYPES = frozenset({"DATE", "DATETIME", "TIMESTAMP"})
+DATE_SHARD_KEYS = frozenset({
+    "suffixFormat", "startSuffix", "endSuffix", "members",
+})
 
 
 class AnalysisContractError(ValueError):
@@ -56,6 +60,35 @@ def _range(raw: dict, label: str) -> dict:
     return {"start": start, "end": end}
 
 
+def _date_shards(table: dict) -> tuple[str, str]:
+    raw = table.get("dateShards")
+    if not isinstance(raw, dict) or set(raw) != DATE_SHARD_KEYS:
+        raise AnalysisContractError("date-shard metadata is invalid")
+    if "timePartitioning" in table or "rangePartitioning" in table:
+        raise AnalysisContractError("partitioned date shards are unsupported")
+    if raw.get("suffixFormat") != "YYYYMMDD":
+        raise AnalysisContractError("date-shard suffix format is unsupported")
+    try:
+        start = datetime.strptime(raw["startSuffix"], "%Y%m%d").date()
+        end = datetime.strptime(raw["endSuffix"], "%Y%m%d").date()
+    except (TypeError, ValueError):
+        raise AnalysisContractError("date-shard suffix range is invalid") from None
+    if start > end:
+        raise AnalysisContractError("date-shard suffix range is invalid")
+    pattern = table.get("table")
+    members = raw.get("members")
+    if not isinstance(pattern, str) or not pattern.endswith("*") or not isinstance(members, list):
+        raise AnalysisContractError("date-shard members are invalid")
+    expected = []
+    current = start
+    while current <= end:
+        expected.append(pattern[:-1] + current.strftime("%Y%m%d"))
+        current += timedelta(days=1)
+    if len(expected) > MAX_DATE_SHARDS or members != expected:
+        raise AnalysisContractError("date-shard members are invalid")
+    return start.isoformat(), end.isoformat()
+
+
 def _field(tables: dict[str, dict], reference: dict, label: str) -> tuple[str, str, dict]:
     if not isinstance(reference, dict) or set(reference) != {"table", "field"}:
         raise AnalysisContractError(f"{label} must contain only table and field")
@@ -78,6 +111,11 @@ def _period(schema: dict, raw: dict) -> dict:
     if not isinstance(raw, dict) or not required <= set(raw) or set(raw) - (required | {"comparison"}):
         raise AnalysisContractError("period has unsupported or missing fields")
     tables = {table["table"]: table for table in schema["tables"]}
+    shard_ranges = {
+        name: _date_shards(metadata)
+        for name, metadata in tables.items()
+        if "dateShards" in metadata
+    }
     table, path, field = _field(tables, raw["business_time"], "period.business_time")
     if field["type"] not in TIME_TYPES or field["mode"] == "REPEATED":
         raise AnalysisContractError("period.business_time must reference one DATE, DATETIME, or TIMESTAMP field")
@@ -93,6 +131,13 @@ def _period(schema: dict, raw: dict) -> dict:
     }
     if "comparison" in raw:
         result["comparison"] = _range(raw["comparison"], "period.comparison")
+    ranges = [result["range"]]
+    if "comparison" in result:
+        ranges.append(result["comparison"])
+    scan_range = (
+        min(item["start"] for item in ranges),
+        max(item["end"] for item in ranges),
+    )
     partitions = raw["partitions"]
     if not isinstance(partitions, list):
         raise AnalysisContractError("period.partitions must be a list")
@@ -108,7 +153,9 @@ def _period(schema: dict, raw: dict) -> dict:
         if ptable in partitioned_tables:
             raise AnalysisContractError("period has duplicate partition constraints for one table")
         partition = tables[ptable].get("timePartitioning")
-        if partition and not partition.get("field"):
+        if ptable in shard_ranges:
+            matches = ppath == "_TABLE_SUFFIX" and shard_ranges[ptable] == scan_range
+        elif partition and not partition.get("field"):
             matches = ppath in ("_PARTITIONDATE", "_PARTITIONTIME")
         else:
             _, _, pfield = _field(tables, reference, "period.partitions")
@@ -118,7 +165,9 @@ def _period(schema: dict, raw: dict) -> dict:
         result["partitions"].append({"table": ptable, "field": ppath})
         partitioned_tables.add(ptable)
     for name, metadata in tables.items():
-        if metadata.get("requirePartitionFilter") and name not in partitioned_tables:
+        if (
+            metadata.get("requirePartitionFilter") or name in shard_ranges
+        ) and name not in partitioned_tables:
             raise AnalysisContractError(f"period partition is required for partitioned table {name}")
     return result
 
