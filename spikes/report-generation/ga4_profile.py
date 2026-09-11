@@ -61,6 +61,16 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
     sql_contract_validation.require_sql_period(sql, period)
 
 
+def period_repair_guidance(period: dict[str, str]) -> str:
+    """Describe the exact GA4 partition contract for one bounded repair."""
+    return (
+        "すべてのevents_*参照で "
+        f"_TABLE_SUFFIX BETWEEN '{period['from']}' AND '{period['to']}' を使う。"
+        "月内の前半・後半などの比較条件は_TABLE_SUFFIXを狭めず、"
+        "event_date等を使った条件付き集約で表す。"
+    )
+
+
 def normalize_sql(sql: str) -> str:
     """Return GA4 SQL unchanged; formatting is display-only elsewhere."""
     return sql

@@ -179,6 +179,36 @@ print(json.dumps({"diagnostics":diagnostics,"executed":executed,"stages":[event.
   assert.deepEqual(output.stages, ['generate', 'validate', 'repair', 'execute']);
 });
 
+test('within-month comparison repair receives the exact full-period suffix contract', () => {
+  const result = python(`
+e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object()
+section=m.planned_analysis_section({"id":"P1","title":"デバイス別購入比較","chart":"comparison_table","decision":"判断","execution_prompt":"2021年1月のデバイス別購入件数を月前半と月後半で比較する","dimensions":["デバイス"],"measures":["購入件数"]})
+tick=chr(96);table=tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick
+current="COUNTIF(event_name = 'purchase' AND event_date BETWEEN '20210116' AND '20210131')"
+comparison="COUNTIF(event_name = 'purchase' AND event_date BETWEEN '20210101' AND '20210115')"
+select="SELECT device.category AS dimension_1, "+current+" AS current_value, "+comparison+" AS comparison_value, "+current+" - "+comparison+" AS delta_value FROM "+table
+initial=select+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210115' GROUP BY dimension_1 ORDER BY delta_value DESC LIMIT 100"
+repaired=select+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131' GROUP BY dimension_1 ORDER BY delta_value DESC LIMIT 100"
+m.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"月前半だけをscan","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+diagnostics=[]
+def repair(_client,_model,_request,_sql,diagnostic,_rules):
+ diagnostics.append(diagnostic)
+ actionable="_TABLE_SUFFIX BETWEEN '20210101' AND '20210131'" in diagnostic and "条件付き集約" in diagnostic
+ return ({"sql":repaired if actionable else initial,"reason":"期間を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
+m.report.repair=repair
+m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("dimension_1","STRING"),("current_value","INT64"),("comparison_value","INT64"),("delta_value","INT64")],None)
+executed=[];m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([("mobile",3,2,1)],["dimension_1","current_value","comparison_value","delta_value"]),None))
+e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,{"operation":"dashboard","panel_id":"P1"})
+print(json.dumps({"diagnostics":diagnostics,"executed":executed},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.diagnostics.length, 1);
+  assert.match(output.diagnostics[0], /_TABLE_SUFFIX BETWEEN '20210101' AND '20210131'/);
+  assert.match(output.diagnostics[0], /条件付き集約/);
+  assert.equal(output.executed.length, 1);
+});
+
 test('a compiler dry-run diagnostic is repaired before paid execution', () => {
   const result = python(`
 e=object.__new__(m.LiveQueryEngine);e.model=m.report.DEFAULT_MODEL;e.client=e.bq=object()

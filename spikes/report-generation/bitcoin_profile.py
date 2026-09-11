@@ -120,6 +120,16 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
         )
 
 
+def period_repair_guidance(period: dict[str, str]) -> str:
+    """Describe the exact Bitcoin partition contract for one bounded repair."""
+    return (
+        "すべてのtransactions参照で "
+        f"block_timestamp_month = DATE '{period['partition']}' を使う。"
+        "月内の比較条件はblock_timestamp_monthを変更せず、"
+        "block_timestamp等を使った条件付き集約で表す。"
+    )
+
+
 def quote_reserved_hash_identifiers(sql: str) -> str:
     """Quote bare Bitcoin hash identifiers without touching paths or literals.
 

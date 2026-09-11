@@ -76,6 +76,7 @@ def prompt_rules(metrics: str) -> str:
 規則:
 - テーブル参照は必ず `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*` と完全修飾する。
 - 期間の絞り込みは必ず `_TABLE_SUFFIX BETWEEN '<from>' AND '<to>'` で行う（スキャン量を抑えるため）。
+- 月内の前半・後半などを比較する場合も `_TABLE_SUFFIX` は対象月全体のままにし、`event_date` 等の条件付き集約で比較値を作る。
 - GA4 の生エクスポートには「セッション」という行は存在しない。
 - **列の別名は ASCII の snake_case にする**（`sessions`, `repeat_user_pct` など）。
   BigQuery のフィールド名には日本語や記号（全角括弧など）を使えない。
