@@ -30,6 +30,10 @@ updated: 2026-09-11
 部分期間へ狭め、1回のSQL修正後も2021年1月の期間契約を満たせない問題を修正した。完全なpartition filterと
 条件付き集約の使い分けを修正診断へ明記し、BigQuery実行前のfail-closedと修正1回上限は維持する。
 
+[Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)では、Bitcoinの明示的な月範囲が最初の
+1か月へ縮退する期間契約と、大数のMixed-Typeが読めない表示を修正中。月範囲のSQL生成・診断・検査を
+同じpartition契約へ統一し、正確な生値を保持したまま軸目盛と月表示を短縮する。実サービス再確認は費用承認後だけ行う。
+
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
 HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
 dashboard、insight、SQL生成、会議報告へ同じ案内を返す。失敗した有料呼出しは自動再実行しない。

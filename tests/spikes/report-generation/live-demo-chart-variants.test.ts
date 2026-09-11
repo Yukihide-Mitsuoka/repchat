@@ -202,7 +202,7 @@ test('monthly mixed charts keep exact values while using readable axes and label
         outputAxis:option.yAxis[0].axisLabel.formatter(2813588639872960),
         feeAxis:option.yAxis[1].axisLabel.formatter(310355114604),
         monthLabels:[option.xAxis.axisLabel.formatter('2024-01-01',0),option.xAxis.axisLabel.formatter('2024-12-01',11)],
-        yearLabel:option.xAxis.name,
+        hasRedundantYearLabel:Boolean(option.xAxis.name),
         tooltip:option.tooltip.formatter([
           {axisValueLabel:'2024-01-01',seriesName:option.series[0].name,value:2813588639872960},
           {axisValueLabel:'2024-01-01',seriesName:option.series[1].name,value:310355114604},
@@ -210,7 +210,8 @@ test('monthly mixed charts keep exact values while using readable axes and label
       });
     })()`,
     {
-      chartValue: (value: unknown) => new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(Number(value)),
+      chartValue: (value: unknown) =>
+        new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(Number(value)),
       metricUnit: () => '',
       metricAxisTitle: (column: string) => column,
     },
@@ -222,7 +223,7 @@ test('monthly mixed charts keep exact values while using readable axes and label
   assert.equal(parsed.outputAxis, '2,814兆');
   assert.equal(parsed.feeAxis, '3,104億');
   assert.deepEqual(parsed.monthLabels, ['1月', '12月']);
-  assert.equal(parsed.yearLabel, '2024年');
+  assert.equal(parsed.hasRedundantYearLabel, false);
   assert.match(parsed.tooltip, /2,813,588,639,872,960/);
   assert.match(parsed.tooltip, /310,355,114,604/);
 });

@@ -57,7 +57,8 @@ def prompt_rules() -> str:
 
 規則:
 - テーブル参照は必ず `{TABLE}` と完全修飾する。
-- スキャン量を抑えるため、block_timestamp_month = DATE '<month-start>' を必ず使う。
+- スキャン量を抑えるため、対象が1か月ならblock_timestamp_month = DATE '<month-start>'、
+  月範囲ならblock_timestamp_month BETWEEN DATE '<first-month>' AND DATE '<last-month>'を必ず使う。
 - 配列列は、利用者が求める分析に必要な場合だけUNNESTする。
 - hash はGoogleSQLの予約語なので、元テーブルでは t.`hash` と修飾・引用する。
   後続CTEへ渡す場合は transaction_hash という別名を使い、裸の hash は書かない。
@@ -72,25 +73,62 @@ def prompt_rules() -> str:
 
 
 def period_for_question(question: str) -> dict[str, str]:
-    """Parse one reproducible 2024 month from the Japanese question."""
-    match = re.search(r"(?P<year>\d{4})年\s*(?P<month>\d{1,2})月", question)
+    """Parse one reproducible 2024 month or explicit month range."""
+    range_match = re.search(
+        r"(?P<start_year>\d{4})年\s*(?P<start_month>\d{1,2})月\s*"
+        r"(?:から|〜|～|－|—|-)\s*"
+        r"(?:(?P<end_year>\d{4})年\s*)?(?P<end_month>\d{1,2})月(?:\s*まで)?",
+        question,
+    )
+    match = range_match or re.search(
+        r"(?P<start_year>\d{4})年\s*(?P<start_month>\d{1,2})月", question
+    )
     if match is None:
         raise ValueError("Bitcoin分析の対象月を「YYYY年M月」の形式で指定してください。")
-    year, month = int(match["year"]), int(match["month"])
+    start_year, start_month = int(match["start_year"]), int(match["start_month"])
+    end_year = int(match["end_year"] or start_year) if range_match else start_year
+    end_month = int(match["end_month"]) if range_match else start_month
     try:
-        first = date(year, month, 1)
+        first = date(start_year, start_month, 1)
+        last = date(end_year, end_month, 1)
     except ValueError as error:
         raise ValueError(
             "Bitcoin分析の対象月を「YYYY年M月」の形式で指定してください。"
         ) from error
-    if first < FIRST_MONTH or first > LAST_MONTH:
+    if first > last:
+        raise ValueError("Bitcoin分析の終了月は開始月以降を指定してください。")
+    if first < FIRST_MONTH or last > LAST_MONTH:
         raise ValueError("Bitcoinデモで検証する期間は2024年1月〜12月です。")
-    return {
+    period = {
         "from": first.isoformat(),
-        "to": date(year, month, calendar.monthrange(year, month)[1]).isoformat(),
+        "to": date(
+            end_year, end_month, calendar.monthrange(end_year, end_month)[1]
+        ).isoformat(),
         "partition": first.isoformat(),
-        "label": f"{year}年{month}月",
+        "label": (
+            f"{start_year}年{start_month}月"
+            if first == last
+            else (
+                f"{start_year}年{start_month}月〜{end_month}月"
+                if start_year == end_year
+                else f"{start_year}年{start_month}月〜{end_year}年{end_month}月"
+            )
+        ),
     }
+    if first != last:
+        period["partition_to"] = last.isoformat()
+    return period
+
+
+def _period_predicate(period: dict[str, str]) -> str:
+    """Return the one exact partition predicate required for this period."""
+    last_partition = period.get("partition_to")
+    if last_partition:
+        return (
+            f"block_timestamp_month BETWEEN DATE '{period['partition']}' "
+            f"AND DATE '{last_partition}'"
+        )
+    return f"block_timestamp_month = DATE '{period['partition']}'"
 
 
 def generation_request(item: dict, period: dict[str, str]) -> str:
@@ -100,7 +138,7 @@ def generation_request(item: dict, period: dict[str, str]) -> str:
     requirements = "\n".join(f"- {value}" for value in item.get("generation_requirements", []))
     return (
         f"{item['text']}\n"
-        f"（対象期間: block_timestamp_month = DATE '{period['partition']}'）\n"
+        f"（対象期間: {_period_predicate(period)}）\n"
         f"（描画契約: {item['planned_visualization']}。表示列: {display_columns}。"
         f"最終SELECTの列別名と順序: {source_columns}。）\n"
         f"追加の実行条件:\n{requirements}"
@@ -108,13 +146,26 @@ def generation_request(item: dict, period: dict[str, str]) -> str:
 
 
 def require_sql_period(sql: str, period: dict[str, str]) -> None:
-    """Reject generated SQL unless it selects only the requested partition."""
-    matches = re.findall(
+    """Reject generated SQL unless it selects only the requested partition range."""
+    equalities = re.findall(
         r"block_timestamp_month\s*=\s*(?:DATE\s*)?['\"](\d{4}-\d{2}-\d{2})['\"]",
         sql,
         flags=re.IGNORECASE,
     )
-    if matches != [period["partition"]]:
+    ranges = re.findall(
+        r"block_timestamp_month\s+BETWEEN\s+(?:DATE\s*)?"
+        r"['\"](\d{4}-\d{2}-\d{2})['\"]\s+AND\s+(?:DATE\s*)?"
+        r"['\"](\d{4}-\d{2}-\d{2})['\"]",
+        sql,
+        flags=re.IGNORECASE,
+    )
+    expected_range = period.get("partition_to")
+    valid = (
+        equalities == [period["partition"]] and not ranges
+        if expected_range is None
+        else not equalities and ranges == [(period["partition"], expected_range)]
+    )
+    if not valid:
         raise ValueError(
             f"生成SQLの対象期間が問い合わせの{period['label']}と一致しません。"
         )
@@ -123,9 +174,8 @@ def require_sql_period(sql: str, period: dict[str, str]) -> None:
 def period_repair_guidance(period: dict[str, str]) -> str:
     """Describe the exact Bitcoin partition contract for one bounded repair."""
     return (
-        "すべてのtransactions参照で "
-        f"block_timestamp_month = DATE '{period['partition']}' を使う。"
-        "月内の比較条件はblock_timestamp_monthを変更せず、"
+        f"すべてのtransactions参照で {_period_predicate(period)} を使う。"
+        "期間内の比較条件はblock_timestamp_monthを変更せず、"
         "block_timestamp等を使った条件付き集約で表す。"
     )
 

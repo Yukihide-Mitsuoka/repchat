@@ -300,10 +300,39 @@ function standardSparklineOption(result) {
 }
 
 function standardMixedOption(result) {
-  const option = standardLineOption(result, 'line');
+  const displayResult = {
+    ...result,
+    columns: [result.columns[0], ...result.columns.slice(1).map(standardChartDisplayLabel)],
+  };
+  const option = standardLineOption(displayResult, 'line');
   option.series = option.series.map((series, index) => index === 0 ? {
     ...series, type: 'bar', showSymbol: false, barMaxWidth: 36,
   } : series);
+  option.yAxis.forEach((axis, index) => {
+    const values = result.rows
+      .map((row) => standardChartNumber(row[index + 1]))
+      .filter((value) => value !== null);
+    if (values.length && values.every((value) => value >= 0)) axis.min = 0;
+    delete axis.max;
+    axis.name = metricUnit(displayResult.columns[index + 1]) || '';
+    axis.axisLabel = {
+      ...axis.axisLabel,
+      color: standardChartPalette[index % standardChartPalette.length],
+    };
+    axis.axisLine = {
+      show: true,
+      lineStyle: { color: standardChartPalette[index % standardChartPalette.length] },
+    };
+  });
+  const months = result.rows.map((row) => String(row[0] ?? '').match(/^(\d{4})-(\d{2})-01$/));
+  if (months.length > 1 && months.every(Boolean) && new Set(months.map((match) => match[1])).size === 1) {
+    option.xAxis.axisLabel = {
+      ...option.xAxis.axisLabel,
+      interval: 0,
+      rotate: 0,
+      formatter: (value) => `${Number(String(value).slice(5, 7))}月`,
+    };
+  }
   return option;
 }
 
