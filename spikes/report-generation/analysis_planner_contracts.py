@@ -6,7 +6,7 @@ import copy
 import hashlib
 import os
 
-from visualization_contracts import CHART_PLANNING_RULES, CHART_SHAPE_CONTRACTS
+from visualization_contracts import CHART_PLANNING_RULES, CHART_SOURCE_SHAPE_CONTRACTS
 
 
 class PlannerError(ValueError):
@@ -72,7 +72,7 @@ def visualization_response_schema(
 ) -> dict:
     """Expose every renderer while avoiding combinatorial provider schemas."""
     ordered = neutral_chart_order(charts, seed)
-    contracts = [CHART_SHAPE_CONTRACTS[chart] for chart in ordered]
+    contracts = [CHART_SOURCE_SHAPE_CONTRACTS[chart] for chart in ordered]
 
     def count_range(minimum: int, maximum: int) -> str:
         return str(minimum) if minimum == maximum else f"{minimum}〜{maximum}"

@@ -48,7 +48,9 @@ from structured_response import (
     load_structured_json as _load_structured_json,
 )
 from visualization_contracts import (
+    CHART_RESULT_ROLE_CONTRACTS,
     CHART_SHAPE_CONTRACTS,
+    CHART_SOURCE_SHAPE_CONTRACTS,
     DASHBOARD_ROW_LIMITS,
     MAX_CALENDAR_ROWS,
     MAX_CALENDAR_YEARS,

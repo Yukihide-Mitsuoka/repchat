@@ -71,9 +71,9 @@ test('point, bubble, and base maps validate geographic layers end to end', () =>
   const result = python(`
 geometry='{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"world"},"geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}]}'
 cases={
- "point_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","値"]},[("A",geometry,35,139,10)]),
- "bubble_map":({"dimensions":["地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("A",geometry,35,139,20,10)]),
- "base_map":({"dimensions":["layer","地点","地理境界"],"measures":["緯度","経度","大きさ","値"]},[("area","world",'{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',None,None,None,10),("point","A",None,35,139,None,10)]),
+ "point_map":({"dimensions":["地点","地理境界"],"measures":["値"]},[("A",geometry,35,139,10)]),
+ "bubble_map":({"dimensions":["地点","地理境界"],"measures":["大きさ","値"]},[("A",geometry,35,139,20,10)]),
+ "base_map":({"dimensions":["layer","地点","地理境界"],"measures":["大きさ","値"]},[("area","world",'{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}',None,None,None,10),("point","A",None,35,139,None,10)]),
 }
 accepted={}
 for chart,(shape,rows) in cases.items():
@@ -189,8 +189,8 @@ test('reference line and area keep validated result contracts', () => {
   const result = python(`
 from datetime import date
 cases={
- "reference_line":({"measures":["実績","目標"]},[(date(2021,1,1),10,12)]),
- "reference_area":({"measures":["実績","下限","上限"]},[(date(2021,1,1),10,8,12)]),
+ "reference_line":({"measures":["購入件数"]},[(date(2021,1,1),10,12)]),
+ "reference_area":({"measures":["購入件数"]},[(date(2021,1,1),10,8,12)]),
 }
 accepted={}
 for chart,(shape,rows) in cases.items():

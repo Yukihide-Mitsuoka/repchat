@@ -131,7 +131,7 @@ cases={
  "annotated_line":({"dimensions":["日付","注釈"],"measures":["購入件数"]},[(date(2021,1,1),"施策開始",10)]),
  "sparkline":({"dimensions":["日付"],"measures":["購入件数"]},[(date(2021,1,1),10)]),
  "mixed_bar_line":({"dimensions":["日付"],"measures":["購入金額","購入件数"]},[(date(2021,1,1),1000,10)]),
- "delta":({"dimensions":[],"measures":["当月購入件数","前月購入件数"]},[(10,8)]),
+ "delta":({"dimensions":[],"measures":["購入件数"]},[(10,8)]),
 }
 accepted={}
 for chart,(shape,rows) in cases.items():
@@ -231,8 +231,8 @@ test('monthly mixed charts keep exact values while using readable axes and label
 test('box plot, treemap, and pie keep guarded data contracts', () => {
   const result = python(`
 cases={
- "box_plot":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
- "box_plot_horizontal":({"dimensions":["デバイス"],"measures":["最小","第1四分位","中央値","第3四分位","最大"]},[("mobile",1,2,3,4,5)]),
+ "box_plot":({"dimensions":["デバイス"],"measures":["購入件数"]},[("mobile",1,2,3,4,5)]),
+ "box_plot_horizontal":({"dimensions":["デバイス"],"measures":["購入件数"]},[("mobile",1,2,3,4,5)]),
  "treemap":({"dimensions":["部門","商品"],"measures":["売上"]},[("衣料","帽子",10)]),
  "pie":({"dimensions":["チャネル"],"measures":["売上"]},[("organic",10)]),
 }

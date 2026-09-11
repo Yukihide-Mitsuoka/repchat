@@ -64,8 +64,8 @@ print(json.dumps({
   assert.deepEqual(output.contracts.area_map, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.us_map, [2, 2, 1, 1]);
   assert.deepEqual(output.contracts.point_map, [2, 2, 1, 1]);
-  assert.deepEqual(output.contracts.bubble_map, [2, 2, 1, 2]);
-  assert.deepEqual(output.contracts.base_map, [3, 3, 1, 2]);
+  assert.deepEqual(output.contracts.bubble_map, [2, 2, 2, 2]);
+  assert.deepEqual(output.contracts.base_map, [3, 3, 2, 2]);
   assert.deepEqual(output.contracts.reference_line, [1, 1, 1, 1]);
   assert.deepEqual(output.contracts.reference_area, [1, 1, 1, 1]);
 });

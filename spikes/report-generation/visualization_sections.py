@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from visualization_contracts import (
+    CHART_RESULT_ROLE_CONTRACTS,
     DASHBOARD_ROW_LIMITS,
     MAX_SANKEY_PAGES,
     MAX_SANKEY_PATHS,
@@ -40,6 +41,7 @@ def build_planned_analysis_section(
         "max_result_rows": DASHBOARD_ROW_LIMITS[chart],
         "dimension_count": len(panel["dimensions"]),
         "measure_count": len(panel["measures"]),
+        "result_roles": CHART_RESULT_ROLE_CONTRACTS[chart],
     }
     dimensions = panel["dimensions"]
     measures = panel["measures"]
@@ -70,8 +72,16 @@ def build_planned_analysis_section(
             *[f"metric_{index}" for index in range(1, len(measures) + 1)],
         ]
     elif chart == "histogram":
-        section["shape"] = {"rows": "階級ごとに1行", "columns": dimensions + measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "階級ごとに1行",
+            "columns": [f"{measure}（階級下限）", f"{measure}（度数）"],
+        }
         section["source_columns"] = ["bin_start", "frequency"]
+        section["generation_requirements"] = [
+            f"bin_startは同じ指標「{measure}」の値を階級化した下限にする",
+            f"frequencyは指標「{measure}」の各階級に含まれる行数にする",
+        ]
     elif chart in {"scatter", "bubble"}:
         value_columns = ["x_value", "y_value"]
         if chart == "bubble":
@@ -186,12 +196,35 @@ def build_planned_analysis_section(
         }
         section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
     elif chart == "delta":
-        section["shape"] = {"rows": "比較対象を含む1行", "columns": measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "比較対象を含む1行",
+            "columns": [f"{measure}（現在値）", f"{measure}（比較値）"],
+        }
         section["source_columns"] = ["current_value", "comparison_value"]
+        section["generation_requirements"] = [
+            f"current_valueとcomparison_valueは同じ指標「{measure}」を比較する",
+            "現在値と比較値の対象条件をexecution_promptに明記する",
+        ]
     elif chart in {"box_plot", "box_plot_horizontal"}:
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "区分ごとに1行",
+            "columns": [
+                *dimensions,
+                f"{measure}（最小）",
+                f"{measure}（第1四分位）",
+                f"{measure}（中央値）",
+                f"{measure}（第3四分位）",
+                f"{measure}（最大）",
+            ],
+        }
         section["source_columns"] = [
             "category", "min_value", "q1_value", "median_value", "q3_value", "max_value"
+        ]
+        section["generation_requirements"] = [
+            f"最小、第1四分位、中央値、第3四分位、最大は同じ指標「{measure}」から計算する",
+            "5つの統計値は昇順で返す",
         ]
     elif chart == "treemap":
         section["shape"] = {
@@ -209,7 +242,11 @@ def build_planned_analysis_section(
         }
         section["source_columns"] = ["region_id", "geometry_geojson", "metric_value"]
     elif chart == "point_map":
-        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "地点ごとに1行",
+            "columns": [*dimensions, "緯度", "経度", f"{measure}（値）"],
+        }
         section["source_columns"] = [
             "point_name",
             "map_geojson",
@@ -217,8 +254,22 @@ def build_planned_analysis_section(
             "longitude",
             "metric_value",
         ]
+        section["generation_requirements"] = [
+            "latitudeとlongitudeは地点の位置列であり、measuresへ追加しない",
+            f"metric_valueは指標「{measure}」の値にする",
+        ]
     elif chart == "bubble_map":
-        section["shape"] = {"rows": "地点ごとに1行", "columns": dimensions + measures}
+        size_measure, metric_measure = measures
+        section["shape"] = {
+            "rows": "地点ごとに1行",
+            "columns": [
+                *dimensions,
+                "緯度",
+                "経度",
+                f"{size_measure}（size）",
+                f"{metric_measure}（値）",
+            ],
+        }
         section["source_columns"] = [
             "point_name",
             "map_geojson",
@@ -227,10 +278,22 @@ def build_planned_analysis_section(
             "size_value",
             "metric_value",
         ]
+        section["generation_requirements"] = [
+            "latitudeとlongitudeは地点の位置列であり、measuresへ追加しない",
+            f"size_valueは指標「{size_measure}」の非負値にする",
+            f"metric_valueは指標「{metric_measure}」の非負値にする",
+        ]
     elif chart == "base_map":
+        size_measure, metric_measure = measures
         section["shape"] = {
             "rows": "地理layerの項目ごとに1行",
-            "columns": dimensions + measures,
+            "columns": [
+                *dimensions,
+                "緯度",
+                "経度",
+                f"{size_measure}（size）",
+                f"{metric_measure}（値）",
+            ],
         }
         section["source_columns"] = [
             "layer_kind",
@@ -241,12 +304,39 @@ def build_planned_analysis_section(
             "size_value",
             "metric_value",
         ]
+        section["generation_requirements"] = [
+            "latitudeとlongitudeは地点layerの位置列であり、measuresへ追加しない",
+            f"size_valueは指標「{size_measure}」の非負値にし、area／pointではNULLを許容する",
+            f"metric_valueは指標「{metric_measure}」の非負値にする",
+        ]
     elif chart == "reference_line":
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "区分ごとに1行",
+            "columns": [*dimensions, f"{measure}（実績）", f"{measure}（基準値）"],
+        }
         section["source_columns"] = ["category", "metric_value", "reference_value"]
+        section["generation_requirements"] = [
+            f"metric_valueは指標「{measure}」の実績値にする",
+            "reference_valueはexecution_promptで明示した基準値にする",
+        ]
     elif chart == "reference_area":
-        section["shape"] = {"rows": "区分ごとに1行", "columns": dimensions + measures}
+        measure = measures[0]
+        section["shape"] = {
+            "rows": "区分ごとに1行",
+            "columns": [
+                *dimensions,
+                f"{measure}（実績）",
+                f"{measure}（下限）",
+                f"{measure}（上限）",
+            ],
+        }
         section["source_columns"] = ["category", "metric_value", "lower_value", "upper_value"]
+        section["generation_requirements"] = [
+            f"metric_valueは指標「{measure}」の実績値にする",
+            "lower_valueとupper_valueはexecution_promptで明示した基準範囲にする",
+            "lower_valueはupper_value以下にする",
+        ]
     _append_generation_requirements(section)
     return section
 
