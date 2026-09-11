@@ -30,9 +30,11 @@ updated: 2026-09-11
 部分期間へ狭め、1回のSQL修正後も2021年1月の期間契約を満たせない問題を修正した。完全なpartition filterと
 条件付き集約の使い分けを修正診断へ明記し、BigQuery実行前のfail-closedと修正1回上限は維持する。
 
-[Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)では、Bitcoinの明示的な月範囲が最初の
-1か月へ縮退する期間契約と、大数のMixed-Typeが読めない表示を修正中。月範囲のSQL生成・診断・検査を
-同じpartition契約へ統一し、正確な生値を保持したまま軸目盛と月表示を短縮する。実サービス再確認は費用承認後だけ行う。
+[Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)／
+[PR #666](https://github.com/Yukihide-Mitsuoka/repchat/pull/666)では、Bitcoinの明示的な月範囲が最初の
+1か月へ縮退する期間契約と、大数のMixed-Typeが読めない表示を修正した。月範囲のSQL生成・診断・検査を
+同じpartition契約へ統一し、正確な生値を保持したまま軸目盛と月表示を短縮する。固定12か月fixtureの
+ブラウザ描画、必須CI、最新mainでのデモ再起動とHTTP 200を確認済み。実サービス再確認は費用承認後だけ行う。
 
 [Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
 HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
@@ -69,9 +71,9 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | Issue #662の期間修正診断、固定応答確認、必須CI、マージを完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
-| デモ実行状態 | 2026-09-11にPR #663をマージした最新mainからlocalhost:8765を再起動し、HTTP 200を確認した。Issue #662修正後の追加有料buildは未実施 |
-| 直近完了 | [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)／[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)でplanner schemaを平坦化し、固定応答テスト、必須CI、実Vertex AI計画、実BigQueryを含む6パネルbuildを確認した |
+| 作業 | Issue #665のBitcoin月範囲・Mixed-Type可読性修正、固定応答確認、ブラウザ描画、必須CI、マージを完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
+| デモ実行状態 | 2026-09-11にPR #666をマージした最新mainからlocalhost:8765を再起動し、HTTP 200を確認した。Issue #665修正後の追加有料buildは未実施 |
+| 直近完了 | [Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)／[PR #666](https://github.com/Yukihide-Mitsuoka/repchat/pull/666)でBitcoinの月範囲をpartition範囲として固定し、大数Mixed-Typeの軸・月・表示名を改善した |
 | オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #654の承認済み実検証は完了済み。追加の実Vertex AI相談またはSQL生成・BigQuery実行は、対象と費用を提示してオーナー承認を得た場合だけ行う |
 | 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
