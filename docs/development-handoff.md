@@ -19,7 +19,8 @@ updated: 2026-09-11
 未確認事項は[トラブルシューティング](troubleshooting/live-demo.md#初回ダッシュボード計画が400-invalid_argumentになる)
 を正本とします。追加の有料呼出しは自動再実行しません。
 
-[Issue #658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658)では、`comparison_table`が独立した3指標を
+[Issue #658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658)／
+[PR #660](https://github.com/Yukihide-Mitsuoka/repchat/pull/660)では、`comparison_table`が独立した3指標を
 現在値・比較値・差分として誤受理し、実行後の算術検証で停止する問題を修正する。比較対象の定義済み元指標は
 1件とし、SQL出力の3役割と分離する。同じ構造を持つ他chartは
 [Issue #659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)で別途監査し、今回の修正へ混在させない。
@@ -132,7 +133,7 @@ positioningとroadmapを再評価します。
 
 ## 次にやる順序（2026-08-22）
 
-1. **現在の必須作業:** Issue #658を固定応答で検証し、PRの必須CI成功後にマージしてデモを再起動する。修正前の有料buildは再実行しない。
+1. **現在の必須作業:** Issue #658／PR #660を固定応答で検証し、必須CI成功後にマージしてデモを再起動する。修正前の有料buildは再実行しない。
 2. **Issue #658完了後:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
 3. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
 4. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
