@@ -27,6 +27,7 @@ class DataSourceProfile:
     generation_request: Callable[[dict, dict[str, str]], str]
     normalize_sql: Callable[[str], str]
     require_sql_period: Callable[[str, dict[str, str]], None]
+    period_repair_guidance: Callable[[dict[str, str]], str]
 
     def planner_context(self, metrics: str) -> str:
         """Return schema and semantic facts available to the planning role."""
@@ -49,6 +50,7 @@ _PROFILES = {
         generation_request=ga4_profile.generation_request,
         normalize_sql=ga4_profile.normalize_sql,
         require_sql_period=ga4_profile.require_sql_period,
+        period_repair_guidance=ga4_profile.period_repair_guidance,
     ),
     "bitcoin": DataSourceProfile(
         key="bitcoin",
@@ -61,6 +63,7 @@ _PROFILES = {
         generation_request=bitcoin_profile.generation_request,
         normalize_sql=bitcoin_profile.quote_reserved_hash_identifiers,
         require_sql_period=bitcoin_profile.require_sql_period,
+        period_repair_guidance=bitcoin_profile.period_repair_guidance,
     ),
 }
 

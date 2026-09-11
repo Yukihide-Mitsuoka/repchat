@@ -197,7 +197,7 @@ def repair(_client,_model,_request,_sql,diagnostic,_rules):
  return ({"sql":repaired if actionable else initial,"reason":"期間を修正","undefined_terms":[]},{"input_tokens":1,"output_tokens":1})
 m.report.repair=repair
 m.report.inspect_bq_schema=lambda *_args,**_kwargs:([("dimension_1","STRING"),("current_value","INT64"),("comparison_value","INT64"),("delta_value","INT64")],None)
-executed=[];m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or ((("mobile",3,2,1),),["dimension_1","current_value","comparison_value","delta_value"]))
+executed=[];m.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([("mobile",3,2,1)],["dimension_1","current_value","comparison_value","delta_value"]),None))
 e._run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,{"operation":"dashboard","panel_id":"P1"})
 print(json.dumps({"diagnostics":diagnostics,"executed":executed},ensure_ascii=False))
 `);

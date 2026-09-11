@@ -148,10 +148,14 @@ def run_section(
         raise SectionExecutionError(f"生成SQLを安全検査で拒否しました: {error}")
     assert normalized is not None
     normalized = source.normalize_sql(normalized)
+    allow_period_repair = extra.get("operation") == "dashboard"
     period_diagnostic = sql_contracts.sql_period_diagnostic(
         normalized, period, source.require_sql_period
     )
-    allow_period_repair = extra.get("operation") == "dashboard"
+    if period_diagnostic and allow_period_repair:
+        period_diagnostic += (
+            f" 修正要件: {source.period_repair_guidance(period)}"
+        )
     if period_diagnostic and (
         not allow_period_repair or not section.get("source_columns")
     ):
@@ -217,6 +221,10 @@ def run_section(
             period_diagnostic = sql_contracts.sql_period_diagnostic(
                 normalized, period, source.require_sql_period
             )
+            if period_diagnostic and allow_period_repair:
+                period_diagnostic += (
+                    f" 修正要件: {source.period_repair_guidance(period)}"
+                )
             if period_diagnostic and not allow_period_repair:
                 raise SectionExecutionError(period_diagnostic)
             answer = repaired
