@@ -181,6 +181,52 @@ test('annotations, sparkline, mixed type, and delta render distinct ECharts opti
   assert.equal(parsed.delta.graphic[2].style.text, '+2');
 });
 
+test('monthly mixed charts keep exact values while using readable axes and labels', () => {
+  const source = chartRendererSource();
+  const output = vm.runInNewContext(
+    `${source};(() => {
+      const result={
+        visualization:'mixed_bar_line',
+        columns:['block_timestamp_month','SUM(output_value)','SUM(fee)'],
+        rows:Array.from({length:12},(_,index)=>[
+          '2024-'+String(index+1).padStart(2,'0')+'-01',
+          1406794319936480+index*1000000000000,
+          155177557302+index*1000000000,
+        ]),
+      };
+      const option=standardChartOption(result);
+      return JSON.stringify({
+        seriesNames:option.series.map(series=>series.name),
+        axisNames:option.yAxis.map(axis=>axis.name),
+        axisMinimums:option.yAxis.map(axis=>axis.min),
+        outputAxis:option.yAxis[0].axisLabel.formatter(2813588639872960),
+        feeAxis:option.yAxis[1].axisLabel.formatter(310355114604),
+        monthLabels:[option.xAxis.axisLabel.formatter('2024-01-01',0),option.xAxis.axisLabel.formatter('2024-12-01',11)],
+        yearLabel:option.xAxis.name,
+        tooltip:option.tooltip.formatter([
+          {axisValueLabel:'2024-01-01',seriesName:option.series[0].name,value:2813588639872960},
+          {axisValueLabel:'2024-01-01',seriesName:option.series[1].name,value:310355114604},
+        ]),
+      });
+    })()`,
+    {
+      chartValue: (value: unknown) => new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(Number(value)),
+      metricUnit: () => '',
+      metricAxisTitle: (column: string) => column,
+    },
+  ) as string;
+  const parsed = JSON.parse(output);
+  assert.deepEqual(parsed.seriesNames, ['output value（合計）', 'fee（合計）']);
+  assert.deepEqual(parsed.axisNames, ['', '']);
+  assert.deepEqual(parsed.axisMinimums, [0, 0]);
+  assert.equal(parsed.outputAxis, '2,814兆');
+  assert.equal(parsed.feeAxis, '3,104億');
+  assert.deepEqual(parsed.monthLabels, ['1月', '12月']);
+  assert.equal(parsed.yearLabel, '2024年');
+  assert.match(parsed.tooltip, /2,813,588,639,872,960/);
+  assert.match(parsed.tooltip, /310,355,114,604/);
+});
+
 test('box plot, treemap, and pie keep guarded data contracts', () => {
   const result = python(`
 cases={

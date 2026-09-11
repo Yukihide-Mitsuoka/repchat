@@ -115,3 +115,13 @@ test('dashboard UI sends the selected profile through planning and confirmed bui
   assert.match(html, /stream\("\/api\/dashboard",q,handleDashboard,profile/);
   assert.doesNotMatch(html, /stream\("\/api\/(?:plan|dashboard)"[^\n]*,"ga4"/);
 });
+
+test('planner asks for human-readable display fields instead of SQL expressions', () => {
+  const result = python(`
+import analysis_planner_prompts as prompts
+request=prompts.build_consultation_request("月別に集計して",[],"schema","bitcoin")
+print(json.dumps({"display_rule":"SQL関数やSQL式ではなく、人が読める表示名" in request},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { display_rule: true });
+});
