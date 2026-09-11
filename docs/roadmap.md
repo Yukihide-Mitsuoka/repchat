@@ -2,7 +2,7 @@
 id: project-roadmap
 title: プロジェクトロードマップ
 updated: 2026-08-28
-last_reviewed: 2026-08-28
+last_reviewed: 2026-09-11
 ---
 
 # プロジェクトロードマップ

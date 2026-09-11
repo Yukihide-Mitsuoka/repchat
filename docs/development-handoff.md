@@ -36,9 +36,10 @@ updated: 2026-09-11
 同じpartition契約へ統一し、正確な生値を保持したまま軸目盛と月表示を短縮する。固定12か月fixtureの
 ブラウザ描画、必須CI、最新mainでのデモ再起動とHTTP 200を確認済み。実サービス再確認は費用承認後だけ行う。
 
-[Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)では、Vertex AIの`ClientError`が
-HTTP層で一律エラーへ縮退する問題を修正する。生成APIの共通境界で安全なcode・statusだけを分類し、
-dashboard、insight、SQL生成、会議報告へ同じ案内を返す。失敗した有料呼出しは自動再実行しない。
+[Issue #651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)のVertex AIエラー診断は、
+[PR #652](https://github.com/Yukihide-Mitsuoka/repchat/pull/652)でマージ済みです。生成APIの共通境界で
+安全なcode・statusだけを分類し、dashboard、insight、SQL生成、会議報告へ同じ案内を返します。
+全387テストを含むPR CIは成功し、実Vertex AIは追加実行していません。IssueはOPENのため、closeだけが残っています。
 
 [PR #643](https://github.com/Yukihide-Mitsuoka/repchat/pull/643)と
 [PR #644](https://github.com/Yukihide-Mitsuoka/repchat/pull/644)はマージ済みです。
@@ -62,8 +63,70 @@ schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
 
-未コミット変更があるlocal branch `test/315-split-slow-github-wrapper`は削除していません。
 [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)はオーナーから明示的な依頼があるまで着手しません。
+
+## 次に着手する作業キュー（2026-09-11）
+
+各作業の受入条件と進捗はリンク先のGitHub Issueを正本とします。この表は再開時の実施順序、
+着手条件、完了判定だけを保持します。
+
+| 順序 | 作業 | 完了条件・次への移行条件 |
+|---:|---|---|
+| 0 | local作業状態の保全 | `test/315-split-slow-github-wrapper`はmainより136 commit遅れ、2 commit先行で、chart描画関連3ファイルに未コミット変更がある。意図を確認して専用branchまたはpatchへ保全するまで削除・上書きしない。旧worktreeも各branchの要否を確認してから整理する |
+| 1 | [#651](https://github.com/Yukihide-Mitsuoka/repchat/issues/651)の事務完了 | PR #652のマージとCI成功は確認済み。Issueをcloseし、本節から完了済み項目を除く |
+| 2 | [#659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)のchart契約監査 | plannerの元指標、dimension、派生処理、SQL出力役割をchart別に分類する。governed metric validationとrenderer shapeの意味を固定テストで一致させ、不一致は黙って置換せず計画時に拒否または明示契約へ修正する |
+| 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | GA4 shard集合の完全解決、生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
+| 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
+| 5 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
+| 6 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
+| 7 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
+
+条件付き作業は次のとおりです。
+
+- [PR #653](https://github.com/Yukihide-Mitsuoka/repchat/pull/653)はv1.23.1のrelease候補です。公開する場合は
+  release branchのcheck状態と内容を確認してからmergeします。
+- [#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)は課金または本番オンボーディングへ
+  着手する直前に、オーナー判断として実施します。
+- [#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)は配布対象とconsumerを確定し、
+  buildまたはpublish jobがattestation対象を生成できる時点で実施します。
+- [#380](https://github.com/Yukihide-Mitsuoka/repchat/issues/380)は、代表シナリオでAI-only plannerの
+  baselineを取得し、同じ評価セットで改善と失敗例を比較できる場合だけ着手します。
+- 実Vertex AIまたはBigQueryの追加確認は、対象と費用を提示してオーナー承認を得た後だけ実行します。
+
+### 過去タスク整理との再照合（2026-09-11）
+
+2026-09-11に添付および会話で提示された旧タスク整理をGitHub Issue、mainの履歴、要件、ADRと再照合しました。
+指定除外項目を除くOPEN Issueは#179、#180、#181、#188、#194、#251、#371、#380、#651、#659の
+10件で、上の作業キューと条件付き作業にすべて含まれています。
+
+旧整理に含まれ、単独のOPEN Issueがなくても追跡を継続する項目は次のとおりです。受入条件をこの文書へ
+複製せず、リンク先を正本とします。
+
+| 項目 | 2026-09-11の判定 | 出所と次の管理方法 |
+|---|---|---|
+| NL→SQL・Evidenceの製品組込み | `spikes/`では動作し、`src/`の製品経路は未着手 | [実装状況](status.md#3-まだ無いもの正直な一覧)と[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)を正本とする。#180でrevision・build・publish契約を確定後、gate・executor・tenant scopeへの接続を小さい実装Issueへ分割する |
+| GitHub App・ArtifactBundle配送 | [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)はaccepted、実装Issueは未作成 | #180の公開契約確定後、共通pipeline、GitHub publisher、managed publisher、隔離build、有効化を個別Issueにする。閲覧経路からGitHubを呼ばず、失敗版を有効化しない |
+| 顧客オンボーディング | セキュリティ説明、監査ログ説明、接続、撤退時削除は未着手 | [ロードマップ](roadmap.md#次デザインパートナー1社でのphase-1本番運用)を正本とする。実顧客dataを扱う前に対象顧客の要件から実装Issueを作る |
+| 列レベル制御・LLM送信前マスキング | 未実装の条件付き前提 | [AIガバナンス要件](ai-governance-requirements.md#着手条件トリガー)を正本とし、AI分析報告の製品実装より先に設計する。顧客の列分類を確認せず方式を固定しない |
+| 実サービス総合検証 | 固定応答と公開GA4の一部は確認済み。全workflowの追加実行は費用承認待ち | [ロードマップの残課題](roadmap.md#残課題)と`spikes/report-generation/verify_live_services.py`を正本とし、対象、Vertex AI、BigQueryの費用を分けて承認後に実行する |
+| 適応型分析メモリー | 要件と[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md)は完成、製品実装は未着手 | [要件](requirements/adaptive-analysis-memory.md#12-milestoneと実装時期)に従い、#179・#188と#180のrevision契約が成立した後にPhase 1実装Issueを作る。生会話、SQL、結果を正本にしない |
+| version管理panel・SQL workspace | [ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)はproposed、製品実装は未着手 | #179／#180後に、panel revision、派生dashboard、利用者SQLの検証を独立Issueへ分割する。AI生成原本を上書きしない |
+| cohort・計測実装支援 | 要件作成Issueは完了、製品実装は未着手 | [cohort要件](requirements/governed-cohort-analysis.md#12-実装時期)と[計測実装要件](requirements/measurement-implementation-assistant.md#12-実装時期と製品境界)の開始条件を満たした時点で、実装Issueを新設する |
+| 会議意思決定・Action Package・Slack | 要件または境界設計は完了、製品実装は未着手 | [会議要件](requirements/meeting-decision-loop.md#12-実装時期)、[Action Package要件](requirements/action-package-api.md)、[Slack要件](requirements/slack-analysis-interface.md#8-導入順)を正本とする。既存の生成・認可・revision pipelineを複製しない |
+| 可視化選定skill | 要件のみで、現行plannerとは未統合 | [可視化カバレッジ](requirements/evidence-cloud-visualization-coverage.md#8-将来の可視化選定skill)と[ロードマップ](roadmap.md#将来実測で必要になった場合のみ)を正本とする。AI-only plannerのbaselineが安定し、考察とchart選定を分離する必要が実測された場合だけ実装Issueを作る。固定の一対一規則や黙った代替は導入しない |
+| 本番edge防御・共有中間結果 | ADR-0020／0021はproposed、設計Issueは完了 | 実顧客dataのinternet公開前、または実測費用がbottleneckになった場合だけADRをreviewし、承認と費用確認後に実装Issueを作る |
+| 自動オンボーディング・custom role・pentest・SOC 2・SLA | 現在は実装しない | [ロードマップ](roadmap.md#将来実測で必要になった場合のみ)の実測トリガーが成立した場合だけ要件化する |
+
+旧整理の可視化未対応一覧は、2026-09-11の実装状態には適用しません。
+[可視化カバレッジ](requirements/evidence-cloud-visualization-coverage.md#7-現在の要約)ではAI plannerが
+42種類を選択でき、代表fixtureのブラウザ描画を確認済みです。残る部分対応はbarの利用者指定orientationと
+long形式、Evidenceのinline `Value`、Donutです。任意JavaScriptを含む高度なEChartsは安全性、再現性、
+accessibilityの契約がないため意図的に未対応です。42種類の宣言済み対応が実サービス上でも同じ意味を持つかは
+#659の監査が完了するまで確定しません。
+
+旧整理で未完了またはclose候補だった#169、#281、#292、#293、#295、#315、#323、#355、#366、
+#374、#418、#420はGitHub上でCLOSEDです。#345も要件・境界を作るdocs IssueとしてCLOSEDであり、
+将来のAPI実装は開始条件の成立後に別Issueを作ります。これらを現在の作業キューへ戻しません。
 
 以下は製品化の前提と過去の検証記録です。2026-09-11時点でデモprocessのHTTP応答を確認しています。
 
@@ -141,16 +204,6 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 
 `#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
 positioningとroadmapを再評価します。
-
-## 次にやる順序（2026-08-22）
-
-1. **現在の必須作業:** [#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の参加者を選定して日程を決める。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する。
-2. **追加の実サービス検証を行う場合だけ:** 対象と費用を提示してオーナー承認を得てから、Vertex AI相談とSQL生成・BigQueryを別々の費用確認で実行する。Issue #654の承認済み検証は完了している。
-3. **#160判定後:** `proceed`なら下記の製品化順序へ進み、`revise`または`reject`なら観測結果からpositioningとroadmapを再評価する。
-4. **未完の検証:** [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)はBitcoin 1種類について、GA4と同じ相談・dashboard planning・仕様確定・SQL生成・検査・実行・描画経路と予約語修正まで完了した。実値照合、独立レビュー、未知・非公開相当2種類の評価は残る。
-5. **製品化前提が整った後:** [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／SQL来歴UX、[#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の非同期・再開可能なbuild、[#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の承認・監査付き報告、[#251](https://github.com/Yukihide-Mitsuoka/repchat/issues/251)の配布artifact定義を各Issueの受入条件で進める。会議パック後の決定・アクション永続化は[会議意思決定ループ要件](requirements/meeting-decision-loop.md)の開始条件に従う。現在mainにある#180/#181はローカル未検証プロトタイプであり、Issue完了ではない。
-
-この順序より前に、本番認証・GitHub App・顧客Git配送・Slack自由質問を先行実装しない。[#194](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)の課金区分とエンドユーザー認証は、本番オンボーディングへ進む直前に専用grill-meで確定する。
 
 ## 設計判断の索引
 
