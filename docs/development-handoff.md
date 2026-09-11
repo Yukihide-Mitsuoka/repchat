@@ -59,8 +59,10 @@ APIの境界はfake clientで検証し、
 unit testまで完了しました。
 共通contractの中立なplanner／SQL文脈と仕様fingerprintのbind・一致検査もunit testまで完了しました。
 [PR #672](https://github.com/Yukihide-Mitsuoka/repchat/pull/672)でGA4型の日次shard集合を完全解決する
-metadata境界もmerge済みです。現在はshardの`_TABLE_SUFFIX`とscan範囲を共通期間契約へ固定し、
-次に実生成経路への供給とbuild時のschema fingerprint再検証を行います。
+metadata境界、[PR #673](https://github.com/Yukihide-Mitsuoka/repchat/pull/673)でshardの
+`_TABLE_SUFFIX`とscan範囲を共通期間契約へ固定する実装はmerge済みです。共通契約付きsourceを
+plannerとSQL生成の既存関数へ渡す境界を追加し、次にlive engineでの契約生成、確定仕様へのfingerprint bind、
+build開始時のschema再取得・一致検査を行います。
 schema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
@@ -77,7 +79,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | 生成経路への共通契約供給、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
+| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)のschema汎用化と評価 | live engineでの契約生成・確定仕様へのfingerprint bind、build時fingerprint再検証、2種類目の非公開相当schema、独立review済み参照SQL・期待結果、事前合格基準、反復評価を小さいPRに分けて完了する |
 | 2 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
 | 3 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
 | 4 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |

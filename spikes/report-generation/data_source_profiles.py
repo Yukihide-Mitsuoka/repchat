@@ -6,11 +6,13 @@ contain panel catalogs, example questions, fixed SQL, or visualization choices.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
+import analysis_contract_context
 import bitcoin_profile
 import ga4_profile
+from analysis_contract import AnalysisContract
 
 
 @dataclass(frozen=True)
@@ -28,14 +30,43 @@ class DataSourceProfile:
     normalize_sql: Callable[[str], str]
     require_sql_period: Callable[[str, dict[str, str]], None]
     period_repair_guidance: Callable[[dict[str, str]], str]
+    _analysis_contract: AnalysisContract | None = None
 
     def planner_context(self, metrics: str) -> str:
         """Return schema and semantic facts available to the planning role."""
+        if self._analysis_contract is not None:
+            return analysis_contract_context.planner_context(self._analysis_contract)
         return self._planner_context(metrics)
 
     def sql_rules(self, metrics: str) -> str:
         """Return source-bound rules available to the SQL role."""
+        if self._analysis_contract is not None:
+            return analysis_contract_context.sql_rules(self._analysis_contract)
         return self._sql_rules(metrics)
+
+    @property
+    def analysis_contract(self) -> AnalysisContract | None:
+        """Return the immutable contract bound to this source, when present."""
+        return self._analysis_contract
+
+    def with_contract(self, contract: AnalysisContract) -> DataSourceProfile:
+        """Bind one verified, same-dataset contract without mutating the profile."""
+        try:
+            analysis_contract_context.planner_context(contract)
+            tables = contract.content()["schema"]["metadata"]["tables"]
+        except (KeyError, TypeError, analysis_contract_context.AnalysisContextError):
+            raise ValueError("analysis contract cannot be bound to this profile") from None
+        if not isinstance(tables, list) or not tables:
+            raise ValueError("analysis contract cannot be bound to this profile")
+        for table in tables:
+            identity = table.get("table") if isinstance(table, dict) else None
+            if isinstance(identity, str):
+                dataset, separator, _ = identity.rpartition(".")
+            else:
+                dataset, separator = "", ""
+            if separator != "." or dataset != self.allowed_dataset:
+                raise ValueError("analysis contract dataset differs from the selected profile")
+        return replace(self, _analysis_contract=contract)
 
 
 _PROFILES = {
