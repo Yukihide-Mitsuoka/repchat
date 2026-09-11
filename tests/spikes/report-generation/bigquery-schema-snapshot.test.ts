@@ -205,6 +205,7 @@ test('date shard inspection rejects unauthorized patterns, invalid ranges and ga
 client=ShardClient(["events_20260101","events_20260103"])
 invalid=(
  lambda:s.inspect_date_shards(client,pattern,start_suffix="20260101",end_suffix="20260103",allowed_patterns=frozenset()),
+ lambda:s.inspect_date_shards(client,pattern,start_suffix="20260101",end_suffix="20260103",allowed_patterns=pattern),
  lambda:s.inspect_date_shards(client,"example-project.sample.*",start_suffix="20260101",end_suffix="20260103",allowed_patterns=frozenset([pattern])),
  lambda:shards(client,"20260132","20260103"),
  lambda:shards(client,"20260103","20260101"),
@@ -240,6 +241,11 @@ try:shards(client)
 except s.SchemaInspectionError:pass
 else:raise AssertionError("out-of-period schema drift accepted")
 assert len(client.get_calls)==4
+client=ShardClient(["events_20260101","events_20260102","events_20260103"])
+client.mutations["example-project.sample.events_20260103"]={"encryptionConfiguration":{"kmsKeyName":"private-key"}}
+try:shards(client)
+except s.SchemaInspectionError as error:assert "private-key" not in str(error)
+else:raise AssertionError("encrypted wildcard accepted")
 print("ok")
 `,
   );
