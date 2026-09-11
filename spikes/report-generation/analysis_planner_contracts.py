@@ -6,7 +6,7 @@ import copy
 import hashlib
 import os
 
-from visualization_contracts import CHART_SHAPE_CONTRACTS
+from visualization_contracts import CHART_PLANNING_RULES, CHART_SHAPE_CONTRACTS
 
 
 class PlannerError(ValueError):
@@ -84,7 +84,12 @@ def visualization_response_schema(
     )
     return {
         "type": "object",
-        "description": "chart別の必要件数: " + guidance,
+        "description": (
+            "chart別の必要件数: "
+            + guidance
+            + "。意味契約: "
+            + " ".join(CHART_PLANNING_RULES)
+        ),
         "properties": {
             "chart": {
                 "type": "string",

@@ -183,6 +183,26 @@ SQL生成AIが実行条件を確定できず停止しました。確認できな
 **Prevention:** 比較を実行する場合は対象期間と出力列を分析仕様へ明示し、SQL生成前の契約検査で確認します。未確認の条件を含む場合は
 BigQueryへ送信せず、確認が必要な項目を表示します。
 
+## デバイスカテゴリ別 成果・エンゲージメント比較の結果形状がAI分析仕様のcomparison_tableと一致しないため描画しません。
+
+**Affects:** Issue #658修正前のダッシュボードbuild。
+
+**Cause:** `comparison_table`の計画契約が、比較対象となる定義済み元指標ではなく、SQL出力役割である現在値・
+比較値・差分と同じ3件の`measures`を要求していました。そのため購入件数・購入金額・エンゲージメント時間という
+独立した3指標が計画時に受理され、実行後に3列目が1列目と2列目の差分ではないため、算術検証で停止しました。
+
+**Fix:** `comparison_table`は1〜4件の区分軸、比較対象となる定義済み指標1件、現在値と比較値の明示された対象条件を
+計画契約とします。SQL出力は区分軸、`current_value`、`comparison_value`、`delta_value`を維持し、差分検証も
+維持します。複数の独立指標を並べる場合は`table`または`grouped_bar`として再提案し、サーバーがchartを黙って
+置換しません。
+
+**Prevention:** 固定応答テストで1件の元指標を受理し、独立した3指標をbuild前に拒否します。provider schemaと
+planner promptにも同じ意味契約を渡します。修正版をマージしてデモを再起動するまで、有料buildを再実行しないで
+ください。
+
+**Refs:** [Issue #658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658)、
+[Issue #659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)
+
 ## 「Google Cloudの認証期限が切れています」で停止する
 
 **Affects:** Issue #321修正前は、ADCのrefresh tokenが再認証を要求すると「生成または実行に失敗しました。

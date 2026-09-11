@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-08-29
+updated: 2026-09-11
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -60,7 +60,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `heatmap` | Heatmap | 対応 | 2区分軸と1指標を返す |
 | `table` | Data Table | 対応 | 1〜4区分軸、1〜4指標。検索、安定ソート、ページ送り、CSV、全画面、固定見出し・先頭列、数値バーに対応 |
 | `pivot_table` | Data Table Pivoting | 対応 | 行区分、列区分、1〜4指標のlong形式を検査し、欠損組合せを空欄に保ってwide表示する |
-| `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分、現在値、比較値、差分を返し、差分の算術整合性を検査して増減方向を中立色で表示する |
+| `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分と比較対象の定義済み指標1件を受け取る。比較条件は実行仕様へ明記し、SQLは同じ指標の現在値、比較値、差分を返す。差分の算術整合性を検査して増減方向を中立色で表示する |
 | `sparkline_table` | Data Table Sparkline | 対応 | 区分、日付、値のlong形式を検査し、区分ごとの最新値とECharts sparklineを表示する |
 | `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
@@ -169,11 +169,13 @@ accessibility欠落につながるため、初期方針にはしない。RepChat
 
 ## 7. 現在の要約
 
-RepChatのlocal demoでは、42個の指定値を日本語要件からSQL、dry-run schema、結果形状、描画まで同一契約で
-扱える。2026-08-28に同じECharts assetとrendererへ42種類の代表fixtureを渡してブラウザ確認し、描画エラーと
-横方向overflowが0件であることを確認した。縦向きSankey 2種類はカード上限と同じ440pxへ揃えた。
-任意Custom EChartsだけは、AI生成JavaScriptを実行する安全性・再現性・accessibilityを保証できないため、
-意図的に許可していない。
+RepChatのlocal demoは42個の指定値にrendererと結果形状契約を持つ。2026-08-28に同じECharts assetとrendererへ
+42種類の代表fixtureを渡してブラウザ確認し、描画エラーと横方向overflowが0件であることを確認した。これは
+全chartについて、plannerの定義済み元指標とSQLの派生出力役割が実サービスで一致したことを意味しない。
+2026-09-11に見つかった`comparison_table`の不一致はIssue #658で修正し、同じ構造を持つchartの監査は
+[Issue #659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)で追跡する。縦向きSankey 2種類はカード上限と
+同じ440pxへ揃えた。任意Custom EChartsだけは、AI生成JavaScriptを実行する安全性・再現性・accessibilityを
+保証できないため、意図的に許可していない。
 
 AIには、各chartの結果形状とrendererを実装しend-to-end契約を試験した42種類だけを許可enumとして渡す。
 許可enumと指標定義は依頼ごとに中立な順序へ変換し、列挙順を提案順位として使わせない。
