@@ -17,6 +17,24 @@ period={"business_time":{"table":"example.dataset.events","field":"occurred_at"}
 limits={"maximum_bytes_billed":1000000,"maximum_result_rows":1000}
 `;
 
+const shardSetup =
+  setup +
+  `
+from datetime import date,timedelta
+pattern="example.dataset.events_*"
+def use_shards(scan_start="2026-01-01",scan_end="2026-01-31"):
+ table=schema["tables"][0];table["table"]=pattern
+ table.pop("timePartitioning",None);table["requirePartitionFilter"]=False
+ first=date.fromisoformat(scan_start);last=date.fromisoformat(scan_end);current=first;members=[]
+ while current<=last:
+  members.append(pattern[:-1]+current.strftime("%Y%m%d"));current+=timedelta(days=1)
+ table["dateShards"]={"suffixFormat":"YYYYMMDD","startSuffix":first.strftime("%Y%m%d"),"endSuffix":last.strftime("%Y%m%d"),"members":members}
+ encoded=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+ period["business_time"]["table"]=pattern
+ period["partitions"]=[{"table":pattern,"field":"_TABLE_SUFFIX"}]
+ return SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),"2026-09-12T00:00:00+00:00")
+`;
+
 test('common contract freezes schema, semantics, period and execution limits', () => {
   const result = python(
     setup +
@@ -161,6 +179,68 @@ for candidate in ({},{"maximum_bytes_billed":0,"maximum_result_rows":1},{"maximu
  try:a.compile_contract(snapshot,semantics,period,candidate)
  except a.AnalysisContractError:pass
  else:raise AssertionError("invalid limits accepted")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('date-sharded schema binds its suffix range into the common period contract', () => {
+  const result = python(
+    shardSetup +
+      `
+snapshot=use_shards()
+content=a.compile_contract(snapshot,semantics,period,limits).content()
+assert content["period"]["partitions"]==[{"table":pattern,"field":"_TABLE_SUFFIX"}]
+assert content["schema"]["metadata"]["tables"][0]["dateShards"]["members"][0].endswith("20260101")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('date-shard partitions require the suffix field and exact scan envelope', () => {
+  const result = python(
+    shardSetup +
+      `
+snapshot=use_shards()
+for partitions in ([],[{"table":pattern,"field":"occurred_at"}]):
+ period["partitions"]=partitions
+ try:a.compile_contract(snapshot,semantics,period,limits)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("invalid shard partition accepted")
+period["partitions"]=[{"table":pattern,"field":"_TABLE_SUFFIX"}]
+for start,end in (("2026-01-02","2026-01-31"),("2025-12-31","2026-01-31")):
+ try:a.compile_contract(use_shards(start,end),semantics,period,limits)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("inexact shard range accepted")
+period["comparison"]={"start":"2025-12-01","end":"2025-12-31"}
+a.compile_contract(use_shards("2025-12-01","2026-01-31"),semantics,period,limits)
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('malformed date-shard metadata cannot enter a common contract', () => {
+  const result = python(
+    shardSetup +
+      `
+import copy
+snapshot=use_shards();original=copy.deepcopy(schema["tables"][0]["dateShards"])
+variants=[]
+for key in ("members","suffixFormat"):
+ item=copy.deepcopy(original);item.pop(key);variants.append(item)
+item=copy.deepcopy(original);item["members"]=list(reversed(item["members"]));variants.append(item)
+item=copy.deepcopy(original);item["extra"]=True;variants.append(item)
+for candidate in variants:
+ schema["tables"][0]["dateShards"]=candidate
+ encoded=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+ forged=SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),snapshot.retrieved_at)
+ try:a.compile_contract(forged,semantics,period,limits)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("malformed shard metadata accepted")
 print("ok")
 `,
   );
