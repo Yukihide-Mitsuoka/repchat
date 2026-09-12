@@ -10,12 +10,14 @@ from bigquery_scope_discovery import DiscoverySnapshot
 metadata={"version":1,"tables":[{"table":"alpha.dataset.records","location":"US","fields":[
  {"name":"observed_at","type":"TIMESTAMP","mode":"NULLABLE"},
  {"name":"amount","type":"NUMERIC","mode":"NULLABLE","description":"集計可能な値"},
+ {"name":"entity_code","type":"STRING","mode":"REQUIRED"},
  {"name":"labels","type":"RECORD","mode":"REPEATED","fields":[{"name":"name","type":"STRING","mode":"NULLABLE"}]},
  {"name":"private_value","type":"STRING","mode":"NULLABLE","policyTags":{"names":["restricted"]}}
 ],"timePartitioning":{"type":"DAY","field":"observed_at"},"requirePartitionFilter":True}]}
 fields=[
  {"path":"observed_at","segments":["observed_at"],"type":"TIMESTAMP","mode":"NULLABLE","valueClass":"temporal","valueSummary":{"status":"bounded_values","minimum":"2026-01-01T00:00:00+00:00"}},
  {"path":"amount","segments":["amount"],"type":"NUMERIC","mode":"NULLABLE","valueClass":"numeric","valueSummary":{"status":"bounded_values","minimum":"1"}},
+ {"path":"entity_code","segments":["entity_code"],"type":"STRING","mode":"REQUIRED","valueClass":"categorical_candidate","valueSummary":{"status":"aggregates","approxDistinct":100}},
  {"path":"labels","segments":["labels"],"type":"RECORD","mode":"REPEATED","valueClass":"repeated","valueSummary":{"status":"metadata_only","reason":"repeated"}},
  {"path":"labels.name","segments":["labels","name"],"type":"STRING","mode":"NULLABLE","valueClass":"repeated","valueSummary":{"status":"metadata_only","reason":"repeated"}},
  {"path":"private_value","segments":["private_value"],"type":"STRING","mode":"NULLABLE","valueClass":"restricted","valueSummary":{"status":"metadata_only","reason":"restricted"}},
@@ -34,8 +36,63 @@ test('discovery becomes a bounded generic catalog with opaque token bindings', (
 prepared=c.prepare_compiler_input(snapshot(content),"直近の変化",as_of=date(2026,9,13));catalog=json.loads(prepared.catalog_json)
 assert catalog["question"]=="直近の変化" and catalog["as_of"]=="2026-09-13" and prepared.tables=={"t000":"alpha.dataset.records"}
 assert prepared.fields["f0000"]["reference"]=={"table":"alpha.dataset.records","path":["observed_at"]} and catalog["fields"][1]["description"]=="集計可能な値"
-assert [field["selectable"] for field in catalog["fields"]]==[True,True,False,False,False]
-assert catalog["fields"][2]["value_summary"]=={"status":"metadata_only"} and "reason" not in prepared.catalog_json
+assert [field["selectable"] for field in catalog["fields"]]==[True,True,True,False,False,False]
+assert catalog["fields"][3]["value_summary"]=={"status":"metadata_only"} and "reason" not in prepared.catalog_json
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+const normalizationSetup =
+  setup +
+  String.raw`
+import analysis_contract_response as r
+second=copy.deepcopy(metadata["tables"][0]);second["table"]="beta.dataset.records";second["timePartitioning"]={"type":"DAY"};metadata["tables"].append(second)
+second_catalog=copy.deepcopy(content["tables"][0]);second_catalog["table"]="beta.dataset.records";second_catalog["timePartitioning"]={"type":"DAY"};content["tables"].append(second_catalog)
+schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+prepared=c.prepare_compiler_input(snapshot(content),"期間比較",as_of=date(2026,9,13))
+raw={"tables":["t001","t000"],"business_time":"f0000","time_candidates":[{"field":"f0006","confidence":"low"},{"field":"f0000","confidence":"high"}],"grain":[],"identifiers":[{"name":"entity","field":"f0002","aliases":["id"]}],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":["sum","aggregate"],"aggregation":"sum","unit":"count"}],"relationships":[{"left_field":"f0002","right_field":"f0008","cardinality":"many_to_one"}],"period":{"start":"2026-08-01","end":"2026-08-31","comparison_enabled":True,"comparison_start":"2026-07-01","comparison_end":"2026-07-31"}}
+`;
+
+test('token candidates become one canonical schema-validated contract', () => {
+  const result = python(
+    normalizationSetup +
+      String.raw`
+contract=r.normalize_contract_response(raw,prepared);value=contract.content()
+assert [table["table"] for table in value["schema"]["metadata"]["tables"]]==["alpha.dataset.records","beta.dataset.records"]
+assert value["semantics"]["metrics"]["total"]["field"]=={"table":"alpha.dataset.records","path":["amount"]}
+assert value["semantics"]["metrics"]["total"]["expr"]=="SUM("+chr(96)+"alpha.dataset.records"+chr(96)+"."+chr(96)+"amount"+chr(96)+")"
+assert [item["field"]["table"] for item in value["semantics"]["time_candidates"]]==["alpha.dataset.records","beta.dataset.records"]
+assert value["period"]["partitions"][1]=={"table":"beta.dataset.records","field":"_PARTITIONDATE"} and value["limits"]=={"maximum_bytes_billed":r.MAX_EXECUTION_BYTES,"maximum_result_rows":r.MAX_RESULT_ROWS}
+other=copy.deepcopy(raw);other["tables"].reverse();other["time_candidates"].reverse();other["metrics"][0]["aliases"].reverse()
+assert r.normalize_contract_response(other,prepared).fingerprint==contract.fingerprint
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('unsafe generated candidates and unconsolidated shards fail closed', () => {
+  const result = python(
+    normalizationSetup +
+      String.raw`
+cases=[]
+for change in ("restricted","string_sum","future","confidence","cardinality","same_table","incompatible","extra"):
+ value=copy.deepcopy(raw)
+ if change=="restricted":value["metrics"][0]["field"]="f0005"
+ if change=="string_sum":value["metrics"][0]["field"]="f0002"
+ if change=="future":value["period"]["end"]="2026-10-01"
+ if change=="confidence":value["time_candidates"][0]["confidence"]=[]
+ if change=="cardinality":value["relationships"][0]["cardinality"]=[]
+ if change=="same_table":value["relationships"][0]["right_field"]="f0002"
+ if change=="incompatible":value["relationships"][0]["right_field"]="f0007"
+ if change=="extra":value["unexpected"]=True
+ cases.append(value)
+sharded=copy.deepcopy(content);sharded["tables"][0]["dateShardCandidate"]={"pattern":"alpha.dataset.records_*","suffixFormat":"YYYYMMDD","suffix":"20260801"}
+shard_input=c.prepare_compiler_input(snapshot(sharded),"期間比較",as_of=date(2026,9,13));shard_raw=copy.deepcopy(raw);shard_raw["tables"]=["t000"];shard_raw["time_candidates"]=[{"field":"f0000","confidence":"high"}];shard_raw["relationships"]=[]
+for value,input_value in [*( (value,prepared) for value in cases),(shard_raw,shard_input)]:
+ try:r.normalize_contract_response(value,input_value)
+ except c.ContractCompilerError:pass
+ else:raise AssertionError("unsafe generated contract accepted")
 `,
   );
   assert.equal(result.status, 0, result.stderr);
