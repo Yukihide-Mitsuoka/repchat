@@ -43,6 +43,7 @@ contract=a.compile_contract(snapshot,semantics,period,limits)
 content=contract.content()
 assert content["schema"]["fingerprint"]==snapshot.fingerprint
 assert content["semantics"]["metrics"]["売上"]["unit"]=="USD"
+assert set(content["semantics"])=={"grain","metrics","dimensions","relationships"}
 assert content["period"]["timezone"]=="Asia/Tokyo"
 assert content["limits"]==limits
 content["schema"].clear()
@@ -266,6 +267,122 @@ hybrid=SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),snaps
 try:a.compile_contract(hybrid,semantics,period,limits)
 except a.AnalysisContractError:pass
 else:raise AssertionError("partitioned date shards accepted without both filters")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('structured semantic roles are resolved only through inspected field references', () => {
+  const result = python(
+    setup +
+      `
+table="example.dataset.events"
+schema["tables"][0]["fields"].extend([
+ {"name":"record_id","type":"STRING","mode":"REQUIRED"},
+ {"name":"state","type":"STRING","mode":"NULLABLE"},
+ {"name":"value","type":"NUMERIC","mode":"NULLABLE"},
+ {"name":"odd.name","type":"STRING","mode":"NULLABLE"},
+])
+schema_json=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+snapshot=SchemaSnapshot(schema_json,hashlib.sha256(schema_json.encode()).hexdigest(),"2026-09-12T00:00:00+00:00")
+def ref(*path):return {"table":table,"path":list(path)}
+def definition(reference,aggregation=None):
+ item={"field":reference,"expr":a.expression_for_field(reference,aggregation)}
+ if aggregation:item["aggregation"]=aggregation
+ return item
+structured={
+ "grain":{"row":definition(ref("record_id"))},
+ "identifiers":{"record_key":definition(ref("record_id"))},
+ "dimensions":{"state_group":definition(ref("state")),"flexible_name":definition(ref("odd.name"))},
+ "measures":{"raw_value":definition(ref("value"))},
+ "metrics":{"total_value":definition(ref("value"),"sum")},
+ "time_candidates":[{"field":ref("occurred_at"),"confidence":"high"}],
+ "nested_paths":[{"field":ref("items","amount"),"repeated":True}],
+ "relationships":[{"left_field":ref("record_id"),"right_field":ref("record_id"),"condition":a.expression_for_field(ref("record_id"))+" = "+a.expression_for_field(ref("record_id")),"cardinality":"one_to_one"}],
+}
+period["business_time"]=ref("occurred_at");period["partitions"]=[ref("occurred_at")]
+content=a.compile_contract(snapshot,structured,period,limits).content()
+assert content["period"]["business_time"]==ref("occurred_at")
+assert content["semantics"]["metrics"]["total_value"]["aggregation"]=="sum"
+assert content["semantics"]["dimensions"]["flexible_name"]["field"]==ref("odd.name")
+assert "."+chr(96)+"odd.name"+chr(96) in content["semantics"]["dimensions"]["flexible_name"]["expr"]
+assert content["semantics"]["nested_paths"][0]["repeated"] is True
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('structured semantics reject forged SQL, unsafe types and repeated fields', () => {
+  const result = python(
+    setup +
+      `
+table="example.dataset.events"
+schema["tables"][0]["fields"].extend([
+ {"name":"record_id","type":"STRING","mode":"REQUIRED"},
+ {"name":"value","type":"NUMERIC","mode":"NULLABLE"},
+])
+schema_json=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+snapshot=SchemaSnapshot(schema_json,hashlib.sha256(schema_json.encode()).hexdigest(),"2026-09-12T00:00:00+00:00")
+def ref(*path):return {"table":table,"path":list(path)}
+def candidate(category,definition):
+ value={"grain":{},"identifiers":{},"dimensions":{},"measures":{},"metrics":{},"time_candidates":[],"nested_paths":[],"relationships":[]}
+ value[category]={"term":definition};return value
+valid={"field":ref("value"),"expr":a.expression_for_field(ref("value"))}
+cases=(
+ candidate("dimensions",{**valid,"expr":"COUNT(1)"}),
+ candidate("dimensions",{**valid,"filter":"TRUE"}),
+ candidate("dimensions",{"field":ref("items","amount"),"expr":a.expression_for_field(ref("items","amount"))}),
+ candidate("measures",{"field":ref("record_id"),"expr":a.expression_for_field(ref("record_id"))}),
+ candidate("metrics",valid),
+ candidate("metrics",{"field":ref("record_id"),"aggregation":"sum","expr":a.expression_for_field(ref("record_id"),"sum")}),
+)
+for semantics in cases:
+ try:a.compile_contract(snapshot,semantics,period,limits)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("unsafe structured semantic accepted")
+for reference in ({"path":["value"]},{"table":table,"path":[]},{"table":table,"unknown":"value"}):
+ try:a.expression_for_field(reference)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("invalid field reference accepted")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('time, nested and join candidates must match schema metadata exactly', () => {
+  const result = python(
+    setup +
+      `
+table="example.dataset.events"
+schema["tables"][0]["fields"].append({"name":"record_id","type":"STRING","mode":"REQUIRED"})
+schema_json=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+snapshot=SchemaSnapshot(schema_json,hashlib.sha256(schema_json.encode()).hexdigest(),"2026-09-12T00:00:00+00:00")
+def ref(*path):return {"table":table,"path":list(path)}
+base={"grain":{},"identifiers":{},"dimensions":{},"measures":{},"metrics":{},"time_candidates":[],"nested_paths":[],"relationships":[]}
+left=ref("record_id");right=ref("occurred_at")
+wrong_join={"left_field":left,"right_field":right,"condition":a.expression_for_field(left)+" = "+a.expression_for_field(right),"cardinality":"many_to_one"}
+cases=(
+ {**base,"time_candidates":[{"field":ref("items","amount"),"confidence":"high"}]},
+ {**base,"time_candidates":[{"field":ref("occurred_at"),"confidence":"certain"}]},
+ {**base,"nested_paths":[{"field":ref("occurred_at"),"repeated":False}]},
+ {**base,"nested_paths":[{"field":ref("items","amount"),"repeated":False}]},
+ {**base,"relationships":[wrong_join]},
+)
+for semantics in cases:
+ try:a.compile_contract(snapshot,semantics,period,limits)
+ except a.AnalysisContractError:pass
+ else:raise AssertionError("metadata-inconsistent candidate accepted")
+period["business_time"]={"table":table,"path":["items","amount"]}
+schema["tables"][0]["fields"][1]["fields"][0]["type"]="TIMESTAMP"
+schema_json=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+snapshot=SchemaSnapshot(schema_json,hashlib.sha256(schema_json.encode()).hexdigest(),"2026-09-12T00:00:00+00:00")
+try:a.compile_contract(snapshot,base,period,limits)
+except a.AnalysisContractError:pass
+else:raise AssertionError("repeated temporal path accepted as business time")
 print("ok")
 `,
   );
