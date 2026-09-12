@@ -105,9 +105,12 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 以下を順番に小さいPRへ分割します。各PRは`make format`、`make lint`、`make test`を通し、前段の共通境界を
 後段が利用します。対象別の新経路、設定、fallbackを並行して作ってはいけません。
 
+現在は段階0を[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)で実装済み・merge待ちです。
+merge後は段階1だけに着手します。
+
 | 段階 | 実装内容 | 主な対象 | 完了条件 |
 |---:|---|---|---|
-| 0 | 再混入防止ratchet | `tests/spikes/report-generation/`、runtime source inventory | runtimeの対象名、既知dataset、profile API、固定schema・metric fileを列挙するarchitecture testを追加する。既存箇所だけを期限付きallowlistにし、各段階で縮小する。新規追加とallowlist増加をCIで拒否する |
+| 0 | 再混入防止ratchet（PR #677、merge待ち） | `tests/spikes/report-generation/source-specific-runtime-ratchet.test.ts` | 13分類のarchitecture testで対象名、既知dataset、profile API、固定schema・metric file、埋め込みSQL／DDL、対象別module・設定資産をファイル別件数として固定した。既存負債の削除時はbaselineも縮小し、新規追加、移動、件数増加をCIで拒否する |
 | 1 | 認可scopeからの自動catalog・profile取得 | `bigquery_schema_snapshot.py`、新しい共通discovery module | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、field path、型、mode、partition、clustering、shardを自動取得する。null率、概算distinct、min／max、型別sample等は列分類、送信制御、query・bytes・row上限を共通policyで制限する。対象名や業種名を入力に持たない |
 | 2 | 共通分析契約の自動生成 | `analysis_contract.py`、`analysis_contract_context.py`、共通compiler | catalogとbounded value profileから、業務時刻候補、grain、identifier、dimension、measure、metric、nested path、join候補を同じAI＋deterministic validatorで生成する。期間は自然言語からISO閉区間へ構造化し、metadata上のpartition／shardと照合する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続 | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | plannerとSQL生成がcanonical contract以外のschema説明・metric定義を受け取らない。table allowlist、SELECT-only、`SELECT *`拒否、dry run、scan上限、期間・partition、結果形状、identifier、nested/repeated検査をcontractから導出する。URL、event、Bitcoin等の特殊補正を削除する |
