@@ -107,7 +107,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 
 段階0は[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)、段階1は
 [PR #678](https://github.com/Yukihide-Mitsuoka/repchat/pull/678)、段階2前半の構造化validatorは
-[PR #679](https://github.com/Yukihide-Mitsuoka/repchat/pull/679)でmerge済みです。現在は対象非依存AI compilerの入力境界を実装中です。
+[PR #679](https://github.com/Yukihide-Mitsuoka/repchat/pull/679)でmerge済みです。対象非依存AI compilerの入力境界は[PR #680](https://github.com/Yukihide-Mitsuoka/repchat/pull/680)でreview中です。
 
 | 段階 | 実装内容 | 主な対象 | 完了条件 |
 |---:|---|---|---|
