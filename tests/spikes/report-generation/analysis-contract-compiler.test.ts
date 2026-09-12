@@ -119,3 +119,91 @@ for call in cases:
   );
   assert.equal(result.status, 0, result.stderr);
 });
+
+test('contract generation makes one token-constrained request and normalizes it', () => {
+  const result = python(
+    normalizationSetup +
+      String.raw`
+import sys,types
+import analysis_contract_generation as g
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+calls=[]
+class Models:
+ def generate_content(self,**kwargs):
+  calls.append(kwargs)
+  return types.SimpleNamespace(text=json.dumps(raw,ensure_ascii=False),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=types.SimpleNamespace(prompt_token_count=11,candidates_token_count=7,thoughts_token_count=3))
+client=types.SimpleNamespace(models=Models())
+contract,usage=g.generate_contract(client,"test-model",snapshot(content),"期間比較",as_of=date(2026,9,13))
+call=calls[0];config=call["config"];response_schema=config.response_schema
+prepared=c.prepare_compiler_input(snapshot(content),"期間比較",as_of=date(2026,9,13))
+assert len(calls)==1 and call["model"]=="test-model"
+assert call["contents"].endswith(prepared.catalog_json) and "dateShardCandidate付きtableは選ばない" in call["contents"]
+assert config.system_instruction==g.SYSTEM_INSTRUCTION and config.response_mime_type=="application/json" and config.max_output_tokens==g.CONTRACT_MAX_OUTPUT_TOKENS
+assert response_schema["required"]==list(g.RESPONSE_KEYS) and response_schema["propertyOrdering"]==list(g.RESPONSE_KEYS)
+assert response_schema["properties"]["tables"]["items"]["enum"]==["t000","t001"]
+assert response_schema["properties"]["business_time"]["enum"]==["f0000","f0006"]
+encoded_schema=json.dumps(response_schema,ensure_ascii=False)
+assert "alpha.dataset.records" not in encoded_schema and "observed_at" not in encoded_schema
+assert contract.content()["semantics"]["metrics"]["total"]["aggregation"]=="sum"
+assert usage=={"input_tokens":11,"output_tokens":10}
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('contract generation reports bounded structured failures without retrying', () => {
+  const result = python(
+    normalizationSetup +
+      String.raw`
+import sys,types
+import analysis_contract_generation as g
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+secret="do-not-retain-this-response"
+class Models:
+ def __init__(self):self.calls=0
+ def generate_content(self,**_kwargs):
+  self.calls+=1
+  return types.SimpleNamespace(text="{"+secret,candidates=[types.SimpleNamespace(finish_reason="STOP")])
+models=Models();client=types.SimpleNamespace(models=models)
+try:g.generate_contract(client,"test-model",snapshot(content),"期間比較",as_of=date(2026,9,13))
+except c.ContractCompilerError as error:
+ assert str(error)=="structured contract response failed: malformed_json" and secret not in str(error)
+else:raise AssertionError("malformed structured response accepted")
+assert models.calls==1
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('contract generation does not call the model for unconsolidated shards', () => {
+  const result = python(
+    setup +
+      String.raw`
+import sys,types
+import analysis_contract_generation as g
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+sharded=copy.deepcopy(content);sharded["tables"][0]["dateShardCandidate"]={"pattern":"alpha.dataset.records_*","suffixFormat":"YYYYMMDD","suffix":"20260801"}
+class Models:
+ def __init__(self):self.calls=0
+ def generate_content(self,**_kwargs):self.calls+=1;raise AssertionError("model called")
+models=Models()
+try:g.generate_contract(types.SimpleNamespace(models=models),"test-model",snapshot(sharded),"分析",as_of=date(2026,9,13))
+except c.ContractCompilerError as error:assert str(error)=="no consolidated table is available for generation"
+else:raise AssertionError("unconsolidated shard accepted")
+assert models.calls==0
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
