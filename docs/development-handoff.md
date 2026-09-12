@@ -105,14 +105,15 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 以下を順番に小さいPRへ分割します。各PRは`make format`、`make lint`、`make test`を通し、前段の共通境界を
 後段が利用します。対象別の新経路、設定、fallbackを並行して作ってはいけません。
 
-段階0は[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)でmerge済みです。現在は段階1を
-[PR #678](https://github.com/Yukihide-Mitsuoka/repchat/pull/678)で実装済み・merge待ちです。merge後は段階2だけに着手します。
+段階0は[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)、段階1は
+[PR #678](https://github.com/Yukihide-Mitsuoka/repchat/pull/678)でmerge済みです。現在は段階2前半の構造化validatorを
+[PR #679](https://github.com/Yukihide-Mitsuoka/repchat/pull/679)で実装済み・merge待ちです。merge後は対象非依存AI compilerを接続します。
 
 | 段階 | 実装内容 | 主な対象 | 完了条件 |
 |---:|---|---|---|
 | 0 | 再混入防止ratchet（PR #677、merge済み） | `tests/spikes/report-generation/source-specific-runtime-ratchet.test.ts` | 13分類のarchitecture testで対象名、既知dataset、profile API、固定schema・metric file、埋め込みSQL／DDL、対象別module・設定資産をファイル別件数として固定した。既存負債の削除時はbaselineも縮小し、新規追加、移動、件数増加をCIで拒否する |
-| 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge待ち） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
-| 2 | 共通分析契約の自動生成 | `analysis_contract.py`、`analysis_contract_context.py`、共通compiler | catalogとbounded value profileから、業務時刻候補、grain、identifier、dimension、measure、metric、nested path、join候補を同じAI＋deterministic validatorで生成する。期間は自然言語からISO閉区間へ構造化し、metadata上のpartition／shardと照合する。手動意味定義、対象別period parser、識別子補正を使わない |
+| 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge済み） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
+| 2 | 共通分析契約の自動生成（前半PR #679、merge待ち） | `analysis_contract.py`、`analysis_contract_context.py`、共通compiler | 前半でfieldをtable＋path segmentとして構造化し、identifier・measure・業務時刻・nested・join候補、aggregation式、period／partitionをmetadataへ再照合するvalidatorを実装した。merge後、catalogとbounded value profileから同じAI＋validatorで候補を生成し、自然言語期間をISO閉区間へ構造化する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続 | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | plannerとSQL生成がcanonical contract以外のschema説明・metric定義を受け取らない。table allowlist、SELECT-only、`SELECT *`拒否、dry run、scan上限、期間・partition、結果形状、identifier、nested/repeated検査をcontractから導出する。URL、event、Bitcoin等の特殊補正を削除する |
 | 4 | live runtimeをprofileなしへ切替 | `live_engine.py`、`live_http_validation.py`、`live_contracts.py`、`analysis_dashboard_plan.py`、`verify_live_services.py` | HTTP request、保存plan、engine API、CLIから`profile`とGA4既定値を削除する。認証済みconnection scopeから毎回同じdiscovery／contract経路を解決し、契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする |
 | 5 | UI・成果物を中立化 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 固定のGA4／Bitcoin選択肢、期間、例文、metric語彙、source名、問い合わせを削除する。UIには認可scopeから発見したsource summaryとcontract provenanceを表示する。`event_date`を中立なtemporal roleへ置換し、Sankey等は契約が対応する意味roleを持つ場合だけ選択する |

@@ -15,6 +15,34 @@ from bigquery_schema_snapshot import SchemaSnapshot
 MAX_CONTRACT_BYTES = 300_000
 MAX_DATE_SHARDS = 100
 TIME_TYPES = frozenset({"DATE", "DATETIME", "TIMESTAMP"})
+NUMERIC_TYPES = frozenset({
+    "INTEGER",
+    "INT64",
+    "FLOAT",
+    "FLOAT64",
+    "NUMERIC",
+    "BIGNUMERIC",
+})
+SCALAR_TYPES = frozenset({
+    "STRING",
+    "BYTES",
+    "INTEGER",
+    "INT64",
+    "FLOAT",
+    "FLOAT64",
+    "BOOLEAN",
+    "BOOL",
+    "TIMESTAMP",
+    "DATE",
+    "TIME",
+    "DATETIME",
+    "NUMERIC",
+    "BIGNUMERIC",
+    "GEOGRAPHY",
+})
+AGGREGATIONS = frozenset({"count", "count_distinct", "sum", "avg", "min", "max"})
+DEFINITION_CATEGORIES = ("grain", "identifiers", "dimensions", "measures", "metrics")
+MAX_SEMANTIC_CANDIDATES = 200
 DATE_SHARD_KEYS = frozenset({
     "suffixFormat", "startSuffix", "endSuffix", "members",
 })
@@ -101,21 +129,59 @@ def _date_shards(table: dict) -> tuple[str, str]:
     return start.isoformat(), end.isoformat()
 
 
-def _field(tables: dict[str, dict], reference: dict, label: str) -> tuple[str, str, dict]:
-    if not isinstance(reference, dict) or set(reference) != {"table", "field"}:
-        raise AnalysisContractError(f"{label} must contain only table and field")
+def _reference_parts(reference: dict, label: str) -> tuple[str, list[str], dict]:
+    if not isinstance(reference, dict):
+        raise AnalysisContractError(f"{label} must be a field reference")
+    keys = set(reference)
+    if keys not in ({"table", "field"}, {"table", "path"}):
+        raise AnalysisContractError(f"{label} must contain table and either field or path")
     table = _nonempty(reference["table"], f"{label}.table")
-    path = _nonempty(reference["field"], f"{label}.field")
+    if keys == {"table", "field"}:
+        path = _nonempty(reference["field"], f"{label}.field")
+        segments = path.split(".")
+        canonical = {"table": table, "field": path}
+    elif set(reference) == {"table", "path"}:
+        raw = reference["path"]
+        if not isinstance(raw, list) or not raw:
+            raise AnalysisContractError(f"{label}.path must be a non-empty list")
+        segments = [_nonempty(value, f"{label}.path") for value in raw]
+        canonical = {"table": table, "path": segments}
+    return table, segments, canonical
+
+
+def _field(
+    tables: dict[str, dict], reference: dict, label: str
+) -> tuple[str, list[str], dict, dict, bool]:
+    table, segments, canonical = _reference_parts(reference, label)
     if table not in tables:
         raise AnalysisContractError(f"{label} references a table outside the schema snapshot")
     fields = tables[table]["fields"]
     current = None
-    for segment in path.split("."):
+    repeated = False
+    for segment in segments:
         current = next((field for field in fields if field["name"] == segment), None)
         if current is None:
             raise AnalysisContractError(f"{label} references a field outside the schema snapshot")
+        repeated = repeated or current["mode"] == "REPEATED"
         fields = current.get("fields", [])
-    return table, path, current
+    return table, segments, current, canonical, repeated
+
+
+def expression_for_field(reference: dict, aggregation: str | None = None) -> str:
+    """Render one structured field reference without accepting arbitrary SQL."""
+    table, segments, _canonical = _reference_parts(reference, "semantic field")
+    quoted = "`" + table.replace("\\", "\\\\").replace("`", "\\`") + "`"
+    quoted += "." + ".".join(
+        "`" + segment.replace("\\", "\\\\").replace("`", "\\`") + "`"
+        for segment in segments
+    )
+    if aggregation is None:
+        return quoted
+    if not isinstance(aggregation, str) or aggregation not in AGGREGATIONS:
+        raise AnalysisContractError("semantic aggregation is unsupported")
+    function = "COUNT" if aggregation == "count_distinct" else aggregation.upper()
+    distinct = "DISTINCT " if aggregation == "count_distinct" else ""
+    return f"{function}({distinct}{quoted})"
 
 
 def _period(schema: dict, raw: dict) -> dict:
@@ -129,21 +195,19 @@ def _period(schema: dict, raw: dict) -> dict:
         if "dateShards" in metadata
     }
     business_time = raw["business_time"]
-    if not isinstance(business_time, dict) or set(business_time) != {"table", "field"}:
-        raise AnalysisContractError(
-            "period.business_time must contain only table and field"
-        )
-    table = _nonempty(business_time["table"], "period.business_time.table")
-    path = _nonempty(business_time["field"], "period.business_time.field")
+    table, segments, canonical = _reference_parts(
+        business_time, "period.business_time"
+    )
     if table not in tables:
-        raise AnalysisContractError(
-            "period.business_time references a table outside the schema snapshot"
-        )
-    if path == "_TABLE_SUFFIX" and table in shard_ranges:
+        raise AnalysisContractError("period.business_time references a table outside the schema snapshot")
+    if canonical.get("field") == "_TABLE_SUFFIX" and table in shard_ranges:
         field = {"type": "DATE", "mode": "REQUIRED"}
+        repeated = False
     else:
-        _, _, field = _field(tables, business_time, "period.business_time")
-    if field["type"] not in TIME_TYPES or field["mode"] == "REPEATED":
+        _, segments, field, canonical, repeated = _field(
+            tables, business_time, "period.business_time"
+        )
+    if field["type"] not in TIME_TYPES or repeated:
         raise AnalysisContractError(
             "period.business_time must reference one DATE, DATETIME, TIMESTAMP, or date-shard suffix field"
         )
@@ -153,7 +217,7 @@ def _period(schema: dict, raw: dict) -> dict:
     except ZoneInfoNotFoundError:
         raise AnalysisContractError("period.timezone is not an IANA timezone") from None
     result = {
-        "business_time": {"table": table, "field": path},
+        "business_time": canonical,
         "timezone": timezone,
         "range": _range(raw["range"], "period.range"),
     }
@@ -172,25 +236,32 @@ def _period(schema: dict, raw: dict) -> dict:
     result["partitions"] = []
     partitioned_tables = set()
     for reference in partitions:
-        if not isinstance(reference, dict) or set(reference) != {"table", "field"}:
-            raise AnalysisContractError("each period partition must contain only table and field")
-        ptable = _nonempty(reference["table"], "period.partitions.table")
-        ppath = _nonempty(reference["field"], "period.partitions.field")
+        ptable, psegments, pcanonical = _reference_parts(
+            reference, "period.partitions"
+        )
         if ptable not in tables:
             raise AnalysisContractError("period partition references a table outside the schema snapshot")
         if ptable in partitioned_tables:
             raise AnalysisContractError("period has duplicate partition constraints for one table")
         partition = tables[ptable].get("timePartitioning")
         if ptable in shard_ranges:
-            matches = ppath == "_TABLE_SUFFIX" and shard_ranges[ptable] == scan_range
+            matches = pcanonical.get("field") == "_TABLE_SUFFIX" and shard_ranges[ptable] == scan_range
         elif partition and not partition.get("field"):
-            matches = ppath in ("_PARTITIONDATE", "_PARTITIONTIME")
+            matches = pcanonical.get("field") in ("_PARTITIONDATE", "_PARTITIONTIME")
         else:
-            _, _, pfield = _field(tables, reference, "period.partitions")
-            matches = bool(partition and partition.get("field") == ppath and pfield["type"] in TIME_TYPES)
+            _, psegments, pfield, pcanonical, repeated = _field(
+                tables, reference, "period.partitions"
+            )
+            matches = bool(
+                partition
+                and len(psegments) == 1
+                and partition.get("field") == psegments[0]
+                and pfield["type"] in TIME_TYPES
+                and not repeated
+            )
         if not matches:
             raise AnalysisContractError("period partition does not match table time partitioning")
-        result["partitions"].append({"table": ptable, "field": ppath})
+        result["partitions"].append(pcanonical)
         partitioned_tables.add(ptable)
     for name, metadata in tables.items():
         if (
@@ -200,13 +271,138 @@ def _period(schema: dict, raw: dict) -> dict:
     return result
 
 
-def _semantics(raw: dict, tables: set[str]) -> dict:
-    if not isinstance(raw, dict) or set(raw) != {"grain", "metrics", "dimensions", "relationships"}:
-        raise AnalysisContractError("semantics must contain grain, metrics, dimensions, and relationships")
+def _definition(
+    category: str, name: str, definition: dict, tables: dict[str, dict]
+) -> dict:
+    if not isinstance(definition, dict) or "expr" not in definition:
+        raise AnalysisContractError(f"semantics.{category}.{name} requires expr")
+    item = {"expr": _nonempty(definition["expr"], f"semantics.{category}.{name}.expr")}
+    reference = definition.get("field")
+    aggregation = definition.get("aggregation")
+    if reference is not None:
+        _table, _segments, field, canonical, repeated = _field(
+            tables, reference, f"semantics.{category}.{name}.field"
+        )
+        if repeated or field["type"] not in SCALAR_TYPES:
+            raise AnalysisContractError("semantic definitions require a non-repeated scalar field")
+        if category in ("grain", "identifiers", "dimensions") and aggregation is not None:
+            raise AnalysisContractError(f"semantics.{category} cannot aggregate a field")
+        if category == "measures" and field["type"] not in NUMERIC_TYPES:
+            raise AnalysisContractError("semantic measures require numeric fields")
+        if category == "metrics":
+            if not isinstance(aggregation, str) or aggregation not in AGGREGATIONS:
+                raise AnalysisContractError("semantic metrics require a supported aggregation")
+            if aggregation in ("sum", "avg") and field["type"] not in NUMERIC_TYPES:
+                raise AnalysisContractError("sum and avg metrics require numeric fields")
+            if aggregation in ("min", "max") and field["type"] not in NUMERIC_TYPES | TIME_TYPES:
+                raise AnalysisContractError("min and max metrics require numeric or temporal fields")
+        elif aggregation is not None:
+            raise AnalysisContractError(f"semantics.{category} cannot aggregate a field")
+        if item["expr"] != expression_for_field(canonical, aggregation):
+            raise AnalysisContractError("semantic expression differs from its structured field")
+        if "filter" in definition:
+            raise AnalysisContractError("structured semantic definitions cannot contain SQL filters")
+        item["field"] = canonical
+        if aggregation is not None:
+            item["aggregation"] = aggregation
+    elif category in ("identifiers", "measures") or aggregation is not None:
+        raise AnalysisContractError(f"semantics.{category}.{name} requires a structured field")
+    for key in ("description", "unit", "note", "filter"):
+        if key in definition:
+            item[key] = _nonempty(definition[key], f"semantics.{category}.{name}.{key}")
+    aliases = definition.get("aliases", [])
+    if not isinstance(aliases, list) or any(
+        not isinstance(alias, str) or not alias.strip() for alias in aliases
+    ):
+        raise AnalysisContractError(f"semantics.{category}.{name}.aliases must be strings")
+    if aliases:
+        item["aliases"] = [alias.strip() for alias in aliases]
+    allowed = {"expr", "field", "aggregation", "description", "unit", "note", "filter", "aliases"}
+    if set(definition) - allowed:
+        raise AnalysisContractError(f"semantics.{category}.{name} has unsupported fields")
+    return item
+
+
+def _candidate_fields(raw: dict, key: str, tables: dict[str, dict]) -> list[dict]:
+    candidates = raw.get(key, [])
+    if not isinstance(candidates, list) or len(candidates) > MAX_SEMANTIC_CANDIDATES:
+        raise AnalysisContractError(f"semantics.{key} must be a bounded list")
+    result = []
+    for candidate in candidates:
+        expected = {"field", "confidence"} if key == "time_candidates" else {"field", "repeated"}
+        if not isinstance(candidate, dict) or set(candidate) != expected:
+            raise AnalysisContractError(f"semantics.{key} contains an invalid candidate")
+        _table, segments, field, canonical, repeated = _field(
+            tables, candidate["field"], f"semantics.{key}.field"
+        )
+        if key == "time_candidates":
+            if field["type"] not in TIME_TYPES or repeated:
+                raise AnalysisContractError("time candidates require non-repeated temporal fields")
+            confidence = candidate["confidence"]
+            if confidence not in ("high", "medium", "low"):
+                raise AnalysisContractError("time candidate confidence is unsupported")
+            result.append({"field": canonical, "confidence": confidence})
+        else:
+            if len(segments) < 2 and not repeated:
+                raise AnalysisContractError("nested path candidates must be nested or repeated")
+            if candidate["repeated"] is not repeated:
+                raise AnalysisContractError("nested path repetition differs from schema metadata")
+            result.append({"field": canonical, "repeated": repeated})
+    return result
+
+
+def _relationships(raw: list, tables: dict[str, dict]) -> list[dict]:
+    if not isinstance(raw, list) or len(raw) > MAX_SEMANTIC_CANDIDATES:
+        raise AnalysisContractError("semantics.relationships must be a bounded list")
+    result = []
+    cardinalities = {"one_to_one", "one_to_many", "many_to_one", "many_to_many"}
+    for relationship in raw:
+        if not isinstance(relationship, dict):
+            raise AnalysisContractError("each relationship must be an object")
+        if set(relationship) == {"left_table", "right_table", "condition", "cardinality"}:
+            item = {key: _nonempty(relationship[key], f"relationship.{key}") for key in relationship}
+            if {item["left_table"], item["right_table"]} - set(tables):
+                raise AnalysisContractError("relationship references a table outside the schema snapshot")
+        elif set(relationship) == {"left_field", "right_field", "condition", "cardinality"}:
+            left = _field(tables, relationship["left_field"], "relationship.left_field")
+            right = _field(tables, relationship["right_field"], "relationship.right_field")
+            if left[4] or right[4] or left[2]["type"] not in SCALAR_TYPES or right[2]["type"] not in SCALAR_TYPES:
+                raise AnalysisContractError("relationship fields must be non-repeated scalars")
+            left_type, right_type = left[2]["type"], right[2]["type"]
+            if left_type != right_type and not {left_type, right_type} <= NUMERIC_TYPES:
+                raise AnalysisContractError("relationship fields have incompatible types")
+            condition = _nonempty(relationship["condition"], "relationship.condition")
+            expected = f"{expression_for_field(left[3])} = {expression_for_field(right[3])}"
+            if condition != expected:
+                raise AnalysisContractError("relationship condition differs from its structured fields")
+            item = {
+                "left_field": left[3],
+                "right_field": right[3],
+                "condition": condition,
+                "cardinality": _nonempty(
+                    relationship["cardinality"], "relationship.cardinality"
+                ),
+            }
+        else:
+            raise AnalysisContractError("each relationship has unsupported fields")
+        if item["cardinality"] not in cardinalities:
+            raise AnalysisContractError("relationship cardinality is unsupported")
+        result.append(item)
+    return result
+
+
+def _semantics(raw: dict, schema: dict) -> dict:
+    required = {"grain", "metrics", "dimensions", "relationships"}
+    optional = {"identifiers", "measures", "time_candidates", "nested_paths"}
+    if not isinstance(raw, dict) or not required <= set(raw) or set(raw) - required - optional:
+        raise AnalysisContractError("semantics has unsupported or missing categories")
+    tables = {table["table"]: table for table in schema["tables"]}
     result = {}
     terms = set()
-    for category in ("grain", "metrics", "dimensions"):
-        definitions = raw[category]
+    for category in DEFINITION_CATEGORIES:
+        if category not in raw:
+            continue
+        definitions = raw.get(category, {})
         if not isinstance(definitions, dict):
             raise AnalysisContractError(f"semantics.{category} must be an object")
         result[category] = {}
@@ -215,39 +411,17 @@ def _semantics(raw: dict, tables: set[str]) -> dict:
             if clean_name.casefold() in terms:
                 raise AnalysisContractError("semantic names and aliases must be unique")
             terms.add(clean_name.casefold())
-            if not isinstance(definition, dict) or "expr" not in definition:
-                raise AnalysisContractError(f"semantics.{category}.{clean_name} requires expr")
-            item = {"expr": _nonempty(definition["expr"], f"semantics.{category}.{clean_name}.expr")}
-            for key in ("description", "unit", "note", "filter"):
-                if key in definition:
-                    item[key] = _nonempty(definition[key], f"semantics.{category}.{clean_name}.{key}")
-            aliases = definition.get("aliases", [])
-            if not isinstance(aliases, list) or any(not isinstance(alias, str) or not alias.strip() for alias in aliases):
-                raise AnalysisContractError(f"semantics.{category}.{clean_name}.aliases must be strings")
+            item = _definition(category, clean_name, definition, tables)
+            aliases = item.get("aliases", [])
             if aliases:
-                clean_aliases = [alias.strip() for alias in aliases]
-                if any(alias.casefold() in terms for alias in clean_aliases) or len({alias.casefold() for alias in clean_aliases}) != len(clean_aliases):
+                if any(alias.casefold() in terms for alias in aliases) or len({alias.casefold() for alias in aliases}) != len(aliases):
                     raise AnalysisContractError("semantic names and aliases must be unique")
-                terms.update(alias.casefold() for alias in clean_aliases)
-                item["aliases"] = clean_aliases
-            if set(definition) - {"expr", "description", "unit", "note", "filter", "aliases"}:
-                raise AnalysisContractError(f"semantics.{category}.{clean_name} has unsupported fields")
+                terms.update(alias.casefold() for alias in aliases)
             result[category][clean_name] = item
-    relationships = raw["relationships"]
-    if not isinstance(relationships, list):
-        raise AnalysisContractError("semantics.relationships must be a list")
-    result["relationships"] = []
-    required = {"left_table", "right_table", "condition", "cardinality"}
-    cardinalities = {"one_to_one", "one_to_many", "many_to_one", "many_to_many"}
-    for relationship in relationships:
-        if not isinstance(relationship, dict) or set(relationship) != required:
-            raise AnalysisContractError("each relationship must declare two tables, condition, and cardinality")
-        item = {key: _nonempty(relationship[key], f"relationship.{key}") for key in required}
-        if {item["left_table"], item["right_table"]} - tables:
-            raise AnalysisContractError("relationship references a table outside the schema snapshot")
-        if item["cardinality"] not in cardinalities:
-            raise AnalysisContractError("relationship cardinality is unsupported")
-        result["relationships"].append(item)
+    for key in ("time_candidates", "nested_paths"):
+        if key in raw:
+            result[key] = _candidate_fields(raw, key, tables)
+    result["relationships"] = _relationships(raw["relationships"], tables)
     return result
 
 
@@ -276,11 +450,10 @@ def compile_contract(snapshot: SchemaSnapshot, semantics: dict, period: dict, li
     if retrieved_at.tzinfo is None:
         raise AnalysisContractError("schema snapshot retrieval time must include a timezone")
     try:
-        table_names = {table["table"] for table in schema["tables"]}
         content = {
             "version": 1,
             "schema": {"fingerprint": snapshot.fingerprint, "retrieved_at": snapshot.retrieved_at, "metadata": schema},
-            "semantics": _semantics(semantics, table_names),
+            "semantics": _semantics(semantics, schema),
             "period": _period(schema, period),
             "limits": _limits(limits),
         }
