@@ -1,8 +1,8 @@
 ---
 id: project-roadmap
 title: プロジェクトロードマップ
-updated: 2026-08-28
-last_reviewed: 2026-09-11
+updated: 2026-09-12
+last_reviewed: 2026-09-12
 ---
 
 # プロジェクトロードマップ
@@ -22,7 +22,7 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 | 優先 | 段階 | 依頼候補 | 目的 | 開始・完了条件 |
 |---:|---|---|---|---|
 | 1 | 検証ゲート | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | 現在のAI提案・SQL・dashboardが実利用者の意思決定に使えるか判定する | 現在。オーナーが参加者を選定し、5分デモ後に`proceed` / `revise` / `reject`を確定する |
-| 2 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | GA4・Bitcoinの固定例や固定SQLに依存せず、未知schemaから分析・SQL・描画できる境界を測る | 評価設計は並行可能。独立レビュー、実値照合、未知・非公開相当2種類の反復評価に合格するまで製品能力として扱わない |
+| 2 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | 対象別コード・設定・既知知識に依存せず、認可済みscopeから未知schemaを自動理解して分析・SQL・描画する | 同一コードのまま未知・非公開相当2種類以上を独立レビュー済み参照結果と反復照合する。共通処理の改善限界が証拠で確定するまで、利用者確認や手動意味定義を解決策にしない |
 | 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #160=`proceed`。#188とは独立に開始し、interaction・deep link・認可境界を先に確定する |
 | 3 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | 対話、immutable specification revision、承認、非同期build、再開、公開を製品契約にする | #179のinteractionと#188のschema品質境界が確定した後 |
 | 4 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | AI配置と利用者の幅調整を構造化revisionとして保存・公開し、共有相手に再現する | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
@@ -112,8 +112,9 @@ Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視�
   Balancer＋Cloud ArmorをCloud Run originの迂回防止境界として構築する（Issue #302、ADR-0020 proposed）。
   local・owner-only・顧客dataなしdemoには追加せず、ADR承認と費用確認前にinfraを作らない。
 - NL→SQL、検証、描画、問い返しを実データで接続し、精度と運用原価を測定する。
-- 公開GA4での成功を一般化せず、未知の独自nested/repeated schemaでNL→SQL品質と確認・拒否境界を
-  検証する（Issue #188）。合格までは任意schema対応を製品能力として扱わない。
+- 公開データでの成功を一般化せず、対象別コード・設定を追加しない同一pipelineで、未知の独自
+  nested/repeated schemaに対するNL→SQL品質を検証する（Issue #188）。共通処理の改善限界が証拠で
+  確定するまでは利用者確認や手動意味定義を導入せず、合格までは任意schema対応を製品能力として扱わない。
 - 閲覧用ダッシュボードとSQL・定義・来歴の確認面を、選択したグラフの文脈を保つ形で分離する
   （Issue #179）。1つの分析目的を課題・仮説・KPI・複数グラフへ分解し、左上から右下の読順と
   1画面前後の情報密度を設計したうえで、分析仕様を確認して非同期build・公開する（Issue #180）。

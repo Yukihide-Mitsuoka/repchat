@@ -38,15 +38,14 @@ print(json.dumps({
 
 test('one bound common contract reaches the actual planner and SQL generation paths', () => {
   const result = python(`
-import hashlib
 import analysis_workflows as workflows
 import data_source_profiles as profiles
 import section_execution as execution
-from analysis_contract import AnalysisContract
+from analysis_contract import AnalysisContract,fingerprint_contract_content
 table="bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"
 content={"version":1,"schema":{"fingerprint":"schema-a","retrieved_at":"2026-09-12T00:00:00+00:00","metadata":{"version":1,"tables":[{"table":table}]}},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
-contract=AnalysisContract(encoded,hashlib.sha256(encoded.encode()).hexdigest())
+contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 original=profiles.profile_for("ga4");source=original.with_contract(contract)
 planning=[]
 def propose(_client,_model,objective,period,context,answers,**kwargs):
@@ -64,7 +63,7 @@ execution.run_section(section,{"from":"20210101","to":"20210131","label":"2021å¹
 errors=[]
 other=json.loads(encoded);other["schema"]["metadata"]["tables"][0]["table"]="bigquery-public-data.crypto_bitcoin.transactions"
 other_encoded=json.dumps(other,ensure_ascii=False,sort_keys=True,separators=(",",":"))
-for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encoded,hashlib.sha256(other_encoded.encode()).hexdigest())):
+for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encoded,fingerprint_contract_content(other))):
  try:original.with_contract(candidate)
  except ValueError as error:errors.append(str(error))
  else:raise AssertionError("unsafe contract binding accepted")

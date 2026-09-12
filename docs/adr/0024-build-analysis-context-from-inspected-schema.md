@@ -1,7 +1,7 @@
 ---
 id: adr-0024
 title: 承認済み接続先のschemaから共通分析契約を作る
-status: accepted
+status: superseded by ADR-0025
 updated: 2026-09-06
 ---
 
@@ -9,11 +9,11 @@ updated: 2026-09-06
 
 | Field | Value |
 |-------|-------|
-| Status | accepted（2026-09-06、オーナー承認） |
+| Status | superseded by ADR-0025（2026-09-12） |
 | Date | 2026-09-05 |
 | Deciders | repository owner |
 | Author | Codex |
-| Supersedes / Superseded by | —。ADR-0010/0013を維持。ADR-0019全体の採用は含めない |
+| Supersedes / Superseded by | [ADR-0025](0025-discover-analysis-contracts-without-source-specific-code.md)に置き換えられた |
 
 ## Context
 

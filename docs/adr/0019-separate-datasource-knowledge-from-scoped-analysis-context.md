@@ -1,7 +1,7 @@
 ---
 id: adr-0019
 title: データソース知識と分析文脈を分離し、用途別にコンパイルする
-status: proposed
+status: superseded by ADR-0025
 updated: 2026-08-09
 ---
 
@@ -9,11 +9,11 @@ updated: 2026-08-09
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | superseded by ADR-0025（2026-09-12、未承認案のまま置換） |
 | Date | 2026-08-09 |
 | Deciders | repository owner |
 | Author | Codex |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | [ADR-0025](0025-discover-analysis-contracts-without-source-specific-code.md) |
 
 ## Context
 

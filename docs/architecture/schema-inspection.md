@@ -6,6 +6,7 @@ updated: 2026-09-12
 
 # BigQuery schema取得境界
 
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)へ置き換えられた
 [ADR-0024](../adr/0024-build-analysis-context-from-inspected-schema.md)の初期実装は
 `spikes/report-generation/bigquery_schema_snapshot.py`です。生成経路にはまだ接続していません。
 本番認可や接続主体を置き換える処理ではありません。
@@ -42,30 +43,42 @@ partition、clustering、resource tagの相違があれば停止します。CMEK
 したがって同じschemaを日数分複製せず、fingerprintは実際に選択した日次表集合を含みます。
 この処理も行queryを行わず、列挙・metadata取得のprovider失敗内容を外へ出しません。
 
-## 次の接続点
+## 共通分析契約
 
-`analysis_contract.py`はsnapshotと明示した意味定義・期間条件・実行上限を検証し、計画とSQL生成が
-共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列を参照し、
-IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。期間は`YYYY-MM-DD`の閉区間です。
+`analysis_contract.py`はsnapshotと自動生成した意味候補・期間条件・実行上限を検証し、計画とSQL生成が
+共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列、または検査済み
+date shardの`_TABLE_SUFFIX`を参照し、IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。
+期間は`YYYY-MM-DD`の閉区間です。
 各time partitioned tableの絞り込み列を明示し、必須tableの欠落、API metadataとの不一致、重複を拒否します。
 ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示します。
 `dateShards`を持つtableは`_TABLE_SUFFIX`を必須制約とし、snapshotの開始・終了日が対象期間と比較期間を
 包含する最小のscan範囲に一致する場合だけcompileします。日次memberの欠落・並び替え・追加metadataを拒否し、
 timeまたはrange partitionを併用するshardは両方のfilterを表現できる契約を追加するまで受理しません。
 
-意味定義はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
+意味候補はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
 費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
 
-生成経路への供給とbuild時のschema再検証は後続実装です。
-現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
+この意味候補は、認可済みscopeのmetadataとbounded value profileから対象非依存の共通pipelineが実行時に生成します。
+分析対象ごとの設定、手動登録、固定prompt・SQLを入力にしてはなりません。
+
+契約fingerprintはschema、意味候補、期間、実行上限から作り、metadata取得時刻を除外します。
+取得時刻は契約JSONへ監査情報として残るため、再取得時刻だけが異なる同一契約を同じidentityとして比較できます。
+同じfingerprintは行データの不変性を保証しません。
 
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には
-分析候補を含めず、後者にはBigQuery、参照範囲、期間、意味定義の共通制約だけを付与します。
+分析候補を含めず、後者にはBigQuery、参照範囲、期間、自動生成された意味候補の共通制約だけを付与します。
 確定仕様のrevisionへcontract fingerprintを含め、build時に現在契約との一致を要求できます。
 
 `DataSourceProfile.with_contract(...)`は既存profileを変更せず、検証済みcontractを束縛したsourceを返します。
 contract内の全tableがprofileの許可datasetと完全一致しない場合は束縛しません。束縛後は既存の
 `analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
-同じcanonical contractをplannerとSQL担当へ渡します。既定のlive engineでのcontract生成、確定仕様への
-fingerprint bind、build開始時の再取得・一致検査は後続実装です。
+同じcanonical contractをplannerとSQL担当へ渡します。
+
+## 次の接続点
+
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は認可済みscopeから
+table、schema、値profileを共通処理で取得して分析契約を自動生成します。対象固有のfactory、profile、
+metrics fileは追加しません。生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
+
+現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

@@ -2,7 +2,7 @@
 id: requirements
 title: 要件定義書 — RepChat（マルチテナント型 AI-BI SaaS / Evidence × MCP）
 status: draft
-updated: 2026-08-11
+updated: 2026-09-12
 ---
 
 <!--
@@ -314,7 +314,9 @@ revision、根拠、期限を持つ分析方針として管理する。詳細と
 3. **キャッシュ×認可の整合**：認可キー付きキャッシュで越境が起きないことを検証。
 4. **未知nested schemaへの一般化**：GA4の語彙・意味・公開例を流用しないnested/repeated schemaで、
    `UNNEST`、複数階層、join、window、funnelを含む日本語設問を反復する。独立review済みの参照SQLと
-   結果に対する一致率、誤推測率、確認質問・拒否率、scan上限違反を測る（Issue #188）。
+   結果に対する一致率、誤推測率、生成・検証失敗率、scan上限違反を測る（Issue #188）。新しい分析対象向けの
+   code、profile、設定、固定prompt・SQL、手動意味定義を追加せず、同じruntimeで合格させる。利用者確認や
+   手動入力は、対象非依存の共通処理をこれ以上改善できない限界が反復評価で確定するまで解決策にしない。
 
 公開GA4 schemaでの6/6・15/15は、そのschema上の複雑なSQL生成を実証するが、未知の独自nested schemaへ
 一般化できる証拠ではない。Issue #188に合格するまで、任意schema対応を製品能力として表明しない。
