@@ -2,12 +2,17 @@
 id: adaptive-analysis-memory-requirements
 title: 適応型分析メモリー要件
 status: draft
-updated: 2026-08-09
+updated: 2026-09-12
 ---
 
 # 適応型分析メモリー要件
 
 この文書は、顧客組織の事業前提と、dashboard作成・読解・報告で得た顧客固有の修正を安全に再利用するための要件を定義する。
+
+> **ADR-0025による適用制限:** この文書に残るデータソース契約revision、対象別指標定義、登録、承認、
+> 再確認の要件は、新しい分析対象を利用可能にする要件としては失効しています。分析対象は認可済みscopeの
+> schema・metadata・bounded value profileから共通runtimeが設定なしで自動理解します。組織コンテキスト、
+> 分析方針、表示嗜好のgovernanceだけが本書の適用対象です。データソース契約関連の節は実装前に削除・再設計します。
 
 関連Issue: [#220](https://github.com/Yukihide-Mitsuoka/repchat/issues/220)、
 [#257](https://github.com/Yukihide-Mitsuoka/repchat/issues/257)、

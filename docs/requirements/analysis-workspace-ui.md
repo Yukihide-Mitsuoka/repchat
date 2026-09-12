@@ -2,7 +2,7 @@
 id: analysis-workspace-ui-requirements
 title: 要件定義 — 分析ワークスペースUI
 status: draft
-updated: 2026-08-12
+updated: 2026-09-12
 ---
 
 # 要件定義 — 分析ワークスペースUI
@@ -589,7 +589,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | AC-26 | composerが中央列に合わせて縮み、desktopで768pxを超えず22pxの角丸を保つ。入力本文は内容に合わせて上方向へ伸長し、通常の長文でtextarea内に縦スクロールを表示しない。同じ行のdashboard card境界はpointerとkeyboardで調整でき、隣接cardだけが連動し、順序は変わらない。行内カードが欠けても残存カードが合計100%を使い、単独の折れ線等は左右paneの状態にかかわらず全幅になる。dashboard利用可能幅900px未満は単列化して境界を隠す | MAIN-007、MAIN-016、MAIN-019 | computed style＋keyboard／pointer E2E |
 | AC-27 | 左paneの長いtitleが通常時に折り返さず、hover／focus時だけ行内を横へ流す。icon列16px、gap 4px、pane左右padding 4pxを保ち、選択行と通常行の高さが一致する | NAV-012 | computed style＋keyboard／pointer E2E |
 | AC-28 | 左pane・中央pane・右paneの間にlayout上の空白がなく、1px境界線を中心とする8pxのresize hit areaを操作できる。左pane上部／下部の横線が縦境界まで途切れず接続する | NAV-013 | computed style＋pointer E2E |
-| AC-29 | GA4／Bitcoinの各profileで探索的な問いを送ると、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002 | unit＋browser＋billing E2E |
+| AC-29 | 認可済みscopeの自動発見結果に対して探索的な問いを送ると、分析対象名やprofileで分岐せず、Vertex AI・BigQueryを呼ばず検証済み候補を表示する。pointer／keyboard選択後も自動実行せず、具体化した依頼の再送信で初めて既存の費用確認へ進む。`/api/query`直送も400で停止する | MAIN-020、OVR-002、ADR-0025 | unit＋browser＋billing E2E |
 | AC-30 | dashboard build成功時だけ右paneが閉じ、composerが34px以上の「AIに相談」ランチャーへ縮小する。ランチャーと縮小buttonはkeyboardで操作でき、手動縮小後はランチャーへfocusを移し、復帰後も入力下書きとactionを保持する。相談中、build中、error時は自動縮小しない | MAIN-007、MAIN-021、INS-009 | DOM＋keyboard／viewport E2E |
 | AC-31 | 編集者がcard幅を保存・publishしたdashboard revisionを別利用者／別browserで開くと、同じdesktop viewport区分では行、panel順、相対weightが一致する。narrow viewportでは単列化し、desktopへ戻すと保存weightを復元する。閲覧者の一時変更と未保存draftは共有revisionへ影響せず、layout保存はAI・BigQueryを呼ばない。古い基準revisionからの保存は競合として停止する | MAIN-023、NFR-012 | revision contract＋cross-browser／network E2E |
 

@@ -13,7 +13,7 @@ updated: 2026-09-12
 | Date | 2026-09-12 |
 | Deciders | repository owner |
 | Author | Codex |
-| Supersedes / Superseded by | [ADR-0024](0024-build-analysis-context-from-inspected-schema.md)を置き換える |
+| Supersedes / Superseded by | [ADR-0013](0013-metric-definitions-live-in-our-own-layer.md)、[ADR-0019](0019-separate-datasource-knowledge-from-scoped-analysis-context.md)、[ADR-0024](0024-build-analysis-context-from-inspected-schema.md)を置き換える |
 
 ## Context
 
@@ -22,8 +22,9 @@ updated: 2026-09-12
 `metrics.json`にも特定データの意味定義がある。新しい分析対象ごとに同様のprofileや定義を開発する構造では、
 顧客のデータ追加を製品だけで処理できず、汎用分析製品として成立しない。
 
-ADR-0024は個別関数を共通契約へ移す方向を定めたが、「意味定義の登録」を新しい分析対象の前提として残した。
-この前提も開発者または利用者による対象固有設定を要求するため、今回の製品要件を満たさない。
+ADR-0013は指標定義を自前の層で登録し、ADR-0019案はデータソース契約revisionを管理し、ADR-0024は
+個別関数を共通契約へ移す方向を定めた。いずれも新しい分析対象に「意味定義またはデータソース契約の登録」を
+要求できる余地を残す。この前提は開発者または利用者による対象固有設定を要求するため、今回の製品要件を満たさない。
 
 接続credentialとアクセス可能範囲は認可のために必要だが、分析対象固有の分析設定ではない。認可後の
 table選択、schema理解、値の特徴把握、期間・partition理解、分析計画、SQL生成と検査は、対象名や業種を
@@ -57,7 +58,10 @@ Option 3を採用する。新しい分析対象を利用可能にするための
 schema linking、期間・join・grain・metric候補の推論を同じpipelineで行って生成する。SQLの参照範囲、
 dry run、費用上限、結果形状、期間・partition、識別子、nested/repeatedの検査も対象非依存で実装する。
 
-現段階では、意味定義の手動登録、利用者への確認、対象別fallbackを解決策にしない。未知schemaの反復評価で
+ADR-0014は生成物の所有・配置だけに適用し、新しい分析対象を使うための指標定義やデータソース契約登録を
+正当化しない。自動生成した契約を将来保存する場合も、その保存は利用開始前の手動設定または開発作業にしてはならない。
+
+現段階では、意味定義の手動登録、データ理解のための利用者確認、対象別fallbackを解決策にしない。未知schemaの反復評価で
 失敗原因を記録し、metadata・value profile・prompt・共通validatorを改善する。改善可能性を十分に検証した後も
 超えられない限界が証拠として残った場合だけ、別の意思決定として確認や手動入力を検討する。
 

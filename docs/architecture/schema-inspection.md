@@ -6,6 +6,7 @@ updated: 2026-09-12
 
 # BigQuery schema取得境界
 
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)へ置き換えられた
 [ADR-0024](../adr/0024-build-analysis-context-from-inspected-schema.md)の初期実装は
 `spikes/report-generation/bigquery_schema_snapshot.py`です。生成経路にはまだ接続していません。
 本番認可や接続主体を置き換える処理ではありません。
@@ -44,7 +45,7 @@ partition、clustering、resource tagの相違があれば停止します。CMEK
 
 ## 共通分析契約
 
-`analysis_contract.py`はsnapshotと明示した意味定義・期間条件・実行上限を検証し、計画とSQL生成が
+`analysis_contract.py`はsnapshotと自動生成した意味候補・期間条件・実行上限を検証し、計画とSQL生成が
 共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列、または検査済み
 date shardの`_TABLE_SUFFIX`を参照し、IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。
 期間は`YYYY-MM-DD`の閉区間です。
@@ -54,16 +55,19 @@ ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示
 包含する最小のscan範囲に一致する場合だけcompileします。日次memberの欠落・並び替え・追加metadataを拒否し、
 timeまたはrange partitionを併用するshardは両方のfilterを表現できる契約を追加するまで受理しません。
 
-意味定義はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
+意味候補はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
 費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
 
-契約fingerprintはschema、意味定義、期間、実行上限から作り、metadata取得時刻を除外します。
+この意味候補は、認可済みscopeのmetadataとbounded value profileから対象非依存の共通pipelineが実行時に生成します。
+分析対象ごとの設定、手動登録、固定prompt・SQLを入力にしてはなりません。
+
+契約fingerprintはschema、意味候補、期間、実行上限から作り、metadata取得時刻を除外します。
 取得時刻は契約JSONへ監査情報として残るため、再取得時刻だけが異なる同一契約を同じidentityとして比較できます。
 同じfingerprintは行データの不変性を保証しません。
 
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には
-分析候補を含めず、後者にはBigQuery、参照範囲、期間、意味定義の共通制約だけを付与します。
+分析候補を含めず、後者にはBigQuery、参照範囲、期間、自動生成された意味候補の共通制約だけを付与します。
 確定仕様のrevisionへcontract fingerprintを含め、build時に現在契約との一致を要求できます。
 
 `DataSourceProfile.with_contract(...)`は既存profileを変更せず、検証済みcontractを束縛したsourceを返します。

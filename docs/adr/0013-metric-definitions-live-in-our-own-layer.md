@@ -2,11 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| Status | accepted |
+| Status | superseded by ADR-0025（2026-09-12） |
 | Date | 2026-07-28 |
 | Deciders | repository owner |
 | Author | Claude (AI agent) |
-| Supersedes / Superseded by | — |
+| Supersedes / Superseded by | [ADR-0025](0025-discover-analysis-contracts-without-source-specific-code.md) |
 
 <!--
   Note (repo governance): ADR-0002 requires English for docs/adr content. Kept in

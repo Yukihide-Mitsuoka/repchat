@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-09-12 | ADR-0025 clarification | ADR-0025はADR-0013・0019・0024を置換する。ADR-0014は成果物の所有・配置に限り、新しい分析対象向けの指標定義・データソース契約登録を正当化しない。現段階で禁止する利用者確認はデータ理解の代替としての確認であり、分析目的や成果物内容の通常の確認とは区別する | [ADR-0025](../docs/adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
 | 2026-09-12 | ADR-0025 (accepted) | 新しい分析対象は、認可済みscopeのschema・metadata・bounded value profileから同じruntimeが自動理解する。対象別profile、Python分岐、固定prompt・SQL、metrics file、手動意味定義、現段階での利用者確認を追加しない。未知schema評価で共通処理の改善を尽くし、証拠を伴う限界に達した場合だけ別判断を行う | [ADR-0025](../docs/adr/0025-discover-analysis-contracts-without-source-specific-code.md), [Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) |
 | 2026-09-06 | ADR-0024 (accepted) | オーナーがPR #646の設計を承認。2026-09-05の提案状態を更新し、共通schema契約の段階実装へ進む。実サービス評価の費用承認は別途必要 | [ADR-0024](../docs/adr/0024-build-analysis-context-from-inspected-schema.md) |
 | 2026-09-05 | ADR-0024 (proposed) | 承認済みBigQuery schema snapshotと意味定義から共通分析契約を作り、GA4／Bitcoinの個別期間・SQL規則を段階移行する。未知schema最低2種類で参照結果との反復照合を行う設計案。実装・評価は未完了 | [ADR-0024](../docs/adr/0024-build-analysis-context-from-inspected-schema.md), [Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) |

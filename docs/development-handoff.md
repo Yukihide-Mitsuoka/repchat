@@ -11,6 +11,20 @@ updated: 2026-09-12
 実装状態の正本は[実装状況サマリー](status.md)、優先順位の正本は[ロードマップ](roadmap.md)、
 各タスクの受入条件はGitHub Issueです。この文書には再開に必要な参照順と分岐だけを置きます。
 
+## オーナーからの拘束指示
+
+> 任意の分析対象へ設定なしで適用できる状態でないと製品として成立しない。
+> 固有の処理を書くのは絶対にやめてほしい。
+
+新しい分析対象を追加するための専用code、profile、設定、固定prompt、固定SQL、期間parser、識別子補正、
+手動の指標・意味定義は実装しません。認可済みscopeのschema・metadata・bounded value profileから、
+同じ共通pipelineが分析契約を自動生成しなければなりません。利用者確認や手動定義を代替策として検討するのは、
+対象非依存の共通処理をこれ以上改善できない限界を反復評価の証拠で示した後だけです。現時点では検討しません。
+
+Issue #160は、リポジトリオーナー本人から明示的な指示がない限り、言及、調査、更新、優先順位付け、
+作業提案、または他タスクの開始条件としての利用を禁止します。過去のIssue、要件、roadmap、handoffの記述を
+オーナー指示とみなしてはいけません。
+
 ## 現在の作業
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
@@ -75,6 +89,25 @@ PRには、metadata取得時刻を監査情報として保持しつつ契約iden
 live engine・単一Insight・Bitcoinのschema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
+
+## 固有処理の全リポジトリ監査（2026-09-12）
+
+`src/`、`infra/`、`migrations/`、`scripts/`、`spikes/`、`tests/`、`docs/`を横断検索し、runtimeへの
+import経路と実行時分岐を確認しました。製品本体の`src/`には分析対象固有の処理を確認していません。
+一方、製品化前の`spikes/report-generation/`には次の固有処理が残っています。
+
+| 分類 | 検出箇所 | 判定・扱い |
+|---|---|---|
+| 対象registryと既定値 | `data_source_profiles.py`、`live_http_validation.py`、`live_engine.py`、`analysis_workflows.py`、`analysis_dashboard_plan.py`、`analysis_planner.py`、`live_contracts.py`、`verify_live_services.py` | GA4／Bitcoinの登録済み対象だけを受け付け、複数箇所でGA4を既定値にする実行時固有処理。共通の自動発見pipelineへ置換して削除する |
+| 手書きschema・意味・期間・SQL補正 | `ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別DDL、metric、期間、partition、識別子、URL処理、datasetを埋め込む実行時固有処理。対象別例外を増やさず削除する |
+| UIと補助実行経路 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`tenant_serve.py`、`evidence_components.py` | 固定の対象選択肢・文言・問い合わせ・source名を持つ。UIから対象名分岐を除き、認可済みscopeの自動発見結果だけを表示する |
+| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`という特定aliasとWeb導線前提のSankey要件が共通経路へ漏れている。時間roleと選択済み意味契約に基づく中立表現へ置換する |
+| 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
+
+除去順序は、(1) 認可済みscopeからのtable・schema・値profile自動発見、(2) 共通の期間・partition・join・grain・
+metric候補生成、(3) registry・profile callback・`metrics.json`の撤去、(4) HTTP・planner・SQL・UIの対象名引数撤去、
+(5) 対象固有fixtureとは別に、同じcode・prompt・設定のまま未知schema最低2種類を通す反復評価、です。
+固有処理が残る間は「任意の分析対象へ設定なしで適用可能」と表現しません。
 
 ## 次に着手する作業キュー（2026-09-12）
 
@@ -147,13 +180,11 @@ accessibilityの契約がないため意図的に未対応です。42種類の�
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | Issue #665のBitcoin月範囲・Mixed-Type可読性修正、固定応答確認、ブラウザ描画、必須CI、マージを完了。次の必須作業は[#160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)のデザインパートナー検証 |
+| 作業 | Issue #665のBitcoin月範囲・Mixed-Type可読性修正、固定応答確認、ブラウザ描画、必須CI、マージを完了。次の必須作業は上記キュー1の設定不要schema汎用化と固有処理撤去 |
 | デモ実行状態 | 2026-09-11にPR #666をマージした最新mainからlocalhost:8765を再起動し、HTTP 200を確認した。Issue #665修正後の追加有料buildは未実施 |
 | 直近完了 | [Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)／[PR #666](https://github.com/Yukihide-Mitsuoka/repchat/pull/666)でBitcoinの月範囲をpartition範囲として固定し、大数Mixed-Typeの軸・月・表示名を改善した |
-| オーナー作業 | 日本の小規模代理店またはソフトウェアベンダーから参加者を1名以上選定し、日程を決める |
 | AIができること | Issue #654の承認済み実検証は完了済み。追加の実Vertex AI相談またはSQL生成・BigQuery実行は、対象と費用を提示してオーナー承認を得た場合だけ行う |
-| 停止条件 | Issue #160の実施結果を`proceed` / `revise` / `reject`に分類するまで製品実装を開始しない。GitHub App、artifact pipeline、#179以降の製品UXを先行実装しない |
-| 完了時 | Issue #654は完了として閉じた。次の必須ゲートはIssue #160の証拠を`proceed` / `revise` / `reject`に分類すること |
+| 停止条件 | 固有処理が残る状態を汎用対応と扱わない。未知schemaの反復評価を通すまで、対象非依存性を実証済みとしない |
 
 ## 最初に読む順序
 
@@ -183,9 +214,9 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 |------|----------|--------------|
 | 完了した施策handoff設計 | [#345 action package API boundary](https://github.com/Yukihide-Mitsuoka/repchat/issues/345)。同一workspace内でもpermission、credential、API、auditを分離し、承認済みactionをJSON packageとして外部へ渡す。CSV等はadapter、広告・決済writeは対象外 | [施策パッケージAPI要件](requirements/action-package-api.md)、[ADR-0023](adr/0023-unify-workflow-while-isolating-external-action.md)、[会議意思決定ループ要件](requirements/meeting-decision-loop.md) |
 | 完了した計測設計支援 | [#343 GA4/GTM measurement implementation assistant](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)。Design Modeは設計・code・import成果物・QA手順、Apply Modeは公式APIの隔離workspace・sync・conflict・quick previewまでとする。browser操作とpublishはしない | [GA4・GTM計測実装アシスタント要件](requirements/measurement-implementation-assistant.md)、[競合比較](competitive-landscape.md)、[ポジショニング](positioning.md) |
-| 完了したcohort分析設計 | [#341 governed cohort analysis](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)。日本語で意味をfreezeし、未成熟期間、費用、根拠を統制する要件と、Amplitude／Evidence Cloudとの同一課題benchmarkを記録する。Issue #160判定前に製品実装しない | [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)、[競合比較](competitive-landscape.md)、[ポジショニング](positioning.md) |
+| 完了したcohort分析設計 | [#341 governed cohort analysis](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)。日本語で意味をfreezeし、未成熟期間、費用、根拠を統制する要件と、Amplitude／Evidence Cloudとの同一課題benchmarkを記録する | [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)、[競合比較](competitive-landscape.md)、[ポジショニング](positioning.md) |
 | 完了した競合・配信境界整理 | [#338 Evidence Cloud positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence Cloud公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
-| 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する。Issue #160判定前に製品実装しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
+| 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
 | 過去のdashboard行修正 | [#362 row completeness](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)。当時のserver側行補完は[#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で廃止。現在はAIが作成した`layout_row`と`layout_weight`を検証して使用し、固定パネルIDを補完しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py` |
 | 現在のdashboard閲覧UX | [#364 dashboard focus mode](https://github.com/Yukihide-Mitsuoka/repchat/issues/364)。build成功時だけ右paneを閉じ、composerを小型ランチャーへ縮小する。hoverでは状態を変えず、click／keyboardで下書きとactionを保持した入力欄へ復帰する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
@@ -196,7 +227,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に利用者指定件数の上位経路を選ぶSQLと、指定depth未満の結果を拒否する。現行上限は4ページ | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
 | 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
-| 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する。Issue #160判定前に実装しない | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
+| 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
 | 完了したVertex AI費用表示修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)／[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)。分析計画とSQL生成のthought tokensを費用へ含める | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | 完了したdoctorのslow test分離 | [#315 foundation test split](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`setup-github.sh` wrapperではなく、一時Gitリポジトリを反復する`test_template_inheritance_plan.py`をslow suiteへ分離した。`make doctor`と`make doctor-slow`をCIの独立jobで実行し、timeout延長・retry・skipは行わない | `scripts/foundation_test_runner.py`、`scripts/template-check.sh`、`Makefile`、`.github/workflows/ci.yml` |
 | 完了したcoverage起動診断 | [#481 startup timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/481)。設定不足をDB・BigQuery等のruntime importより先に拒否し、coverage負荷に依存せずexit 2を返す。回帰テストは早期runtime importを決定的に拒否し、診断・exit・closeの時間とsignalを失敗表示へ残す | `src/main/control-plane-server.ts`、`src/main/executor-server.ts`、`tests/main/servers-startup.test.ts` |
@@ -206,34 +237,31 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在のPhase 0設計 | [#300 scoped context memory](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)。データソース契約、任意org unit、用途別context compiler、UIの必須／任意文脈をproposed ADRとしてレビューする | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018、ADR-0019 |
 | #297 merge後のデモ確認 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。HTTP 200と固定応答テストは無料で確認できる。実会議報告生成は別途費用確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
-| デモ阻害解消後 | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)。参加者選定・日程調整はオーナー作業。5分デモ後に結果を`proceed` / `revise` / `reject`へ分類する | [demo](demo.md)、[roadmap](roadmap.md) |
-| #160が`proceed` | [#188 未知nested schema品質検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)と[#179 閲覧／SQL来歴UX設計](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)を独立した作業として開始できる | ADR-0013、ADR-0015、各Issueの受入条件 |
 | #179と#188が完了 | [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179の設計成果、ADR-0013/0015 |
-| #180でanalysis specification revision契約を確定 | Issue #160が`proceed`なら、適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |
+| #180でanalysis specification revision契約を確定 | 適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |
 | 統制された生成・公開経路が安定 | [#181 根拠付き経営報告](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | #180のrevision契約、SQL来歴・検証結果 |
 | 課金または本番オンボーディングへ着手 | [#194 課金区分と認証方式のオーナー決定](https://github.com/Yukihide-Mitsuoka/repchat/issues/194)を専用grill-meで先に完了する。現在のデモはblockしない | [mission](../.ai/mission.md)、[positioning §6](positioning.md#6-missionmd-との残る不一致未解消) |
 | Slack利用が実顧客で確認された | オーナーがADR-0017を承認した後、検証済みrevisionのlink通知pilot用Issueを作る | ADR-0017。自由質問は#180と#188の完了後 |
 | 完了したHTTP round-trip診断 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169)。テストlistenerを`127.0.0.1`へ隔離し、起動時socket errorを`serve()`のreject理由として保持する。closeは同じPromiseへ集約し、listener解放後の同一port再利用を回帰テストで確認する | `src/main/serve.ts`、`tests/main/serve.test.ts`、[troubleshooting](troubleshooting/live-demo.md) |
 
-`#160`が`revise`または`reject`の場合は、上表の製品タスクへ進まず、観測結果に基づいて
-positioningとroadmapを再評価します。
-
 ## 設計判断の索引
 
-2026-09-06更新：[ADR-0024](adr/0024-build-analysis-context-from-inspected-schema.md)で、手書きprofileから
-schema snapshotと意味定義を使う共通分析契約への移行が承認されました。metadata取得、
-期間契約、GA4／Bitcoin移行、未知schema2種類の反復評価を進めます。実装・実測の完了を意味しません。
+2026-09-12更新：[ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md)で、
+分析対象固有のcode・設定・手動定義なしに、認可済みscopeから共通分析契約を自動生成することが承認されました。
+ADR-0013、ADR-0019、ADR-0024はこの判断で置き換えられました。未知schema最低2種類の反復評価を通すまで、
+任意schema対応を実証済みとは扱いません。
 
 | 論点 | 状態 | 正本 |
 |------|------|------|
 | 主要顧客と販売経路 | 確定。代理店・ソフトウェアベンダーが初期主経路、直販はフォールバック | [mission](../.ai/mission.md)、[positioning §0](positioning.md#0-前提の確認--勝負の土俵) |
 | テナント分離と接続主体 | accepted。接続主体はテナント単位の機械IDで、人間の認証主体と分離 | [ADR-0005](adr/0005-cache-and-authorization-architecture.md)、[ADR-0010](adr/0010-connection-identity-is-never-a-person.md) |
-| 指標定義 | accepted。意味と出力形状をこちら側で定義し、未定義語は確認または拒否 | [ADR-0013](adr/0013-metric-definitions-live-in-our-own-layer.md) |
-| 生成物の所有 | accepted。ページ・SQL・manifestは顧客Git、共有指標定義はこちら側 | [ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) |
+| 分析契約の発見 | accepted。認可済みscopeのschema・metadata・bounded value profileから対象非依存の共通pipelineで自動生成し、対象別code・設定・手動定義を追加しない | [ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
+| 旧指標定義層 | superseded。対象別の指標定義登録、未定義語の確認・拒否を新しい分析対象の前提にしない | [ADR-0013](adr/0013-metric-definitions-live-in-our-own-layer.md)、[ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
+| 生成物の所有 | accepted。ページ・SQL・manifest等の生成物の所有と配置だけを定め、新しい分析対象の手動登録根拠にはしない | [ADR-0014](adr/0014-who-owns-the-generated-artifacts.md)、[ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
 | Git配送と閲覧 | accepted。Gitはbuild時だけ使用し、閲覧経路へ入れない。GitHub/managedは同じpipelineの保存先adapter | [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md) |
 | Slack | proposed。Webを正本UIとする認可付きadapter案。オーナー承認前は実装禁止 | [ADR-0017](adr/0017-use-slack-as-an-authorized-analysis-interface.md) |
 | 適応型分析メモリー | accepted。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresの正本で管理し、AIは候補を作るが自動昇格しない | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md) |
-| データソース知識とscope継承 | proposed。custom dimension等をschema検証済みデータソース契約として分離し、任意org unitと用途別context compilerを使う。オーナー承認前は実装禁止 | [要件](requirements/adaptive-analysis-memory.md)、[ADR-0019](adr/0019-separate-datasource-knowledge-from-scoped-analysis-context.md)、[#300](https://github.com/Yukihide-Mitsuoka/repchat/issues/300) |
+| 旧データソース知識登録案 | superseded。手動のデータソース契約revisionや登録を分析対象追加の前提にしない。組織文脈のgovernanceは別問題としてADR-0018に従う | [ADR-0019](adr/0019-separate-datasource-knowledge-from-scoped-analysis-context.md)、[ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
 | 本番公開入口とorigin防御 | proposed。Cloudflare WAFを利用者入口、External Application Load Balancer＋Cloud ArmorをCloud Run迂回防止境界とする。local demoは対象外で、オーナー承認と費用確認前はinfra作成禁止 | [ADR-0020](adr/0020-protect-production-edge-and-cloud-run-origins.md)、[#302](https://github.com/Yukihide-Mitsuoka/repchat/issues/302) |
 | dashboard buildの共有中間結果 | proposed。panel別direct実行を既定とし、個別buildの絶対削減額と削減率が実測thresholdを超える場合だけcost plannerが提案する。customer datasetへの書き込み権限を既定で増やさない | [ADR-0021](adr/0021-gate-shared-intermediates-on-measured-build-cost.md)、[#306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306) |
 | panel再利用と利用者編集 | proposed。panelを不変revisionとし、AI生成dashboardは上書きせず、参照追加・fork・利用者作成SQLを派生dashboardへ合成する。利用者SQLは同じ認可・検証・費用確認を通す | [ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)、[#308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308) |

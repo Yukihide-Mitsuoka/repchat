@@ -13,7 +13,7 @@ updated: 2026-09-06
 | Date | 2026-09-05 |
 | Deciders | repository owner |
 | Author | Codex |
-| Supersedes / Superseded by | [ADR-0025](0025-discover-analysis-contracts-without-source-specific-code.md)。ADR-0010/0013を維持 |
+| Supersedes / Superseded by | [ADR-0025](0025-discover-analysis-contracts-without-source-specific-code.md)に置き換えられた |
 
 ## Context
 
