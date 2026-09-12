@@ -69,6 +69,19 @@ def _fields(raw: list, budget: list[int], depth: int = 0) -> list[dict]:
                 if not isinstance(field[key], str):
                     raise SchemaInspectionError("invalid schema field metadata")
                 item[key] = field[key]
+        policy_tags = field.get("policyTags")
+        if policy_tags is not None:
+            tag_names = policy_tags.get("names") if isinstance(policy_tags, dict) else None
+            if (
+                not isinstance(policy_tags, dict)
+                or set(policy_tags) != {"names"}
+                or not isinstance(tag_names, list)
+                or not tag_names
+                or any(not isinstance(value, str) or not value for value in tag_names)
+                or len(set(tag_names)) != len(tag_names)
+            ):
+                raise SchemaInspectionError("invalid schema field policy tags")
+            item["policyTags"] = {"names": sorted(tag_names)}
         if kind in ("RECORD", "STRUCT"):
             item["fields"] = _fields(field.get("fields"), budget, depth + 1)
         elif field.get("fields"):

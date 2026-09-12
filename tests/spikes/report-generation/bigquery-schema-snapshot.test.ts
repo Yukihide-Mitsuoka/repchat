@@ -89,6 +89,8 @@ for key,value in [("location",None),("type","VIEW"),("schema",{"fields":[]}),("r
 item=copy.deepcopy(original);item["tableReference"]["tableId"]="other";variants.append(item)
 for field in ({"name":"bad","type":"UNKNOWN"},{"name":"occurred","type":"DATE"},{"name":"bad","type":"STRING","mode":"UNKNOWN"}):
  item=copy.deepcopy(original);item["schema"]["fields"].append(field);variants.append(item)
+for policy_tags in ([],{}, {"names":[]},{"names":["tag","tag"]},{"names":[None]},{"names":["tag"],"extra":True}):
+ item=copy.deepcopy(original);item["schema"]["fields"][0]["policyTags"]=policy_tags;variants.append(item)
 item=copy.deepcopy(original);item["schema"]["fields"][1]["description"]="x"*(s.MAX_METADATA_BYTES+1);variants.append(item)
 for raw in variants:
  try:inspect()
