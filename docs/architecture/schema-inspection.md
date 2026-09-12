@@ -7,8 +7,8 @@ updated: 2026-09-12
 # BigQuery schema取得境界
 
 [ADR-0024](../adr/0024-build-analysis-context-from-inspected-schema.md)の初期実装は
-`spikes/report-generation/bigquery_schema_snapshot.py`です。GA4の契約生成関数はこの取得境界を使いますが、
-live engineへの接続は後続実装です。本番認可や接続主体を置き換える処理ではありません。
+`spikes/report-generation/bigquery_schema_snapshot.py`です。生成経路にはまだ接続していません。
+本番認可や接続主体を置き換える処理ではありません。
 
 ## 入出力と責任
 
@@ -71,13 +71,10 @@ contract内の全tableがprofileの許可datasetと完全一致しない場合�
 `analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
 同じcanonical contractをplannerとSQL担当へ渡します。
 
-## GA4契約生成
+## 次の接続点
 
-`DataSourceProfile.with_current_contract(...)`は、契約生成関数が登録されたsourceだけを現在のmetadataへ
-束縛します。GA4は対象月の`events_*`をmetadataだけで検査し、明示された意味定義、UTC、
-`_TABLE_SUFFIX`、既存の20 GiB・結果行数上限から契約をcompileします。取得失敗時は手書きschemaへ
-切り替えません。Bitcoinは契約生成関数が未登録のため、既存profileを明示的に維持します。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は認可済みscopeから
+table、schema、値profileを共通処理で取得して分析契約を自動生成します。対象固有のfactory、profile、
+metrics fileは追加しません。生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
-GA4契約生成はfake BigQuery clientを使うunit testまで完了しています。live engineでの計画revisionへのbind、
-build開始時の再取得・一致検査、単一Insight、Bitcoin移行は後続です。この変更だけでは実BigQuery API、
-生成SQLの結果一致、未知schemaの分析品質を実証しません。
+現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

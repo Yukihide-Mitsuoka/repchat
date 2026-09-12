@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-08-11
+updated: 2026-09-12
 ---
 
 # 実装状況サマリー
@@ -253,7 +253,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。公開GA4の6/6・15/15とTheLookの12/12は、この一般化を証明しない（LOG-0083） | GA4語彙を流用しない複数schema、独立review済み参照結果、反復測定で対応・確認・拒否境界を決める（Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。既存の公開データ向け実装には対象別profile・期間規則・意味定義が残り、任意schema対応ではない | 認可済みscopeからschema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する同一pipelineへ置換し、対象別コード・設定なしに複数の未知schemaを独立review済み参照結果と反復照合する（ADR-0025、Issue #188） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | Issue #160=`proceed`、#179/#188完了、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
@@ -278,7 +278,8 @@ NL→SQLを一般化できるかは未検証**で、Issue #188を製品化gate�
 「この製品を必要とする顧客が実在するか」である（[requirements §1.5](requirements.md)の
 「小さく黒字」方針、LOG-0021）。
 
-未知schema benchmarkは必要だが、実顧客のmetadataと業務定義でも再検証する。したがって、
+未知schema benchmarkでは対象別コード、設定、手動意味定義を追加せず、同じruntimeによる自動理解を検証する。
+実顧客でも同じ経路を再検証する。したがって、
 **次の最大レバレッジはデザインパートナー探し**という
 [discovery-log §8.9](discovery-log.md)の結論は現在も有効です。実データで動く縦串が出来たので、
 以前より説明しやすい状態にはなっています。

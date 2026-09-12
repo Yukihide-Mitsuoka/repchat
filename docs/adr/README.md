@@ -45,6 +45,7 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0022](0022-compose-derived-dashboards-from-versioned-panels.md) | 版管理パネルから派生ダッシュボードを合成する | proposed | 2026-08-09 |
 | [0023](0023-unify-workflow-while-isolating-external-action.md) | 同一workspaceで業務を接続し、外部実行を施策パッケージ境界へ隔離する | proposed | 2026-08-11 |
 
-| [0024](0024-build-analysis-context-from-inspected-schema.md) | 承認済み接続先のschemaから共通分析契約を作る | accepted | 2026-09-05 |
+| [0024](0024-build-analysis-context-from-inspected-schema.md) | 承認済み接続先のschemaから共通分析契約を作る | superseded by ADR-0025 | 2026-09-05 |
+| [0025](0025-discover-analysis-contracts-without-source-specific-code.md) | 分析対象固有のコードや設定なしに分析契約を自動生成する | accepted | 2026-09-12 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->

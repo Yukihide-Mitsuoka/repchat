@@ -36,48 +36,8 @@ print(json.dumps({
   });
 });
 
-test('GA4 profile builds its current contract from metadata without querying rows', () => {
-  const result = python(`
-import data_source_profiles as profiles
-class Listed:
- def __init__(self,table_id):self.table_id=table_id
-class Table:
- def __init__(self,table_id):self.table_id=table_id
- def to_api_repr(self):
-  return {"tableReference":{"projectId":"bigquery-public-data","datasetId":"ga4_obfuscated_sample_ecommerce","tableId":self.table_id},"type":"TABLE","location":"US","schema":{"fields":[{"name":"event_date","type":"STRING","mode":"NULLABLE"}]},"requirePartitionFilter":False}
-class BigQuery:
- def __init__(self):self.operations=[]
- def list_tables(self,dataset,**kwargs):
-  self.operations.append(("list",dataset,kwargs));return [Listed(f"events_202101{day:02d}") for day in range(1,32)]
- def get_table(self,name,**kwargs):
-  self.operations.append(("get",name,kwargs));return Table(name.rsplit(".",1)[1])
- def query(self,*_args,**_kwargs):raise AssertionError("row query is forbidden")
-bq=BigQuery();source=profiles.profile_for("ga4").with_current_contract(
- bq,{"from":"20210101","to":"20210131","label":"2021年1月"},
- {"grain":{},"metrics":{},"dimensions":{}},25,
-)
-content=source.analysis_contract.content()
-print(json.dumps({
- "table":content["schema"]["metadata"]["tables"][0]["table"],
- "business_time":content["period"]["business_time"]["field"],
- "maximum_result_rows":content["limits"]["maximum_result_rows"],
- "operations":[item[0] for item in bq.operations],
- "bitcoin_bound":profiles.profile_for("bitcoin").with_current_contract(object(),{}, {},25).analysis_contract is not None,
-},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    table: 'bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*',
-    business_time: '_TABLE_SUFFIX',
-    maximum_result_rows: 25,
-    operations: ['list', ...Array(31).fill('get')],
-    bitcoin_bound: false,
-  });
-});
-
 test('one bound common contract reaches the actual planner and SQL generation paths', () => {
   const result = python(`
-import hashlib
 import analysis_workflows as workflows
 import data_source_profiles as profiles
 import section_execution as execution
