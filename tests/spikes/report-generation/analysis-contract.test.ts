@@ -190,9 +190,27 @@ test('date-sharded schema binds its suffix range into the common period contract
     shardSetup +
       `
 snapshot=use_shards()
+period["business_time"]["field"]="_TABLE_SUFFIX"
 content=a.compile_contract(snapshot,semantics,period,limits).content()
+assert content["period"]["business_time"]=={"table":pattern,"field":"_TABLE_SUFFIX"}
 assert content["period"]["partitions"]==[{"table":pattern,"field":"_TABLE_SUFFIX"}]
 assert content["schema"]["metadata"]["tables"][0]["dateShards"]["members"][0].endswith("20260101")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('contract identity excludes schema observation time', () => {
+  const result = python(
+    setup +
+      `
+first=a.compile_contract(snapshot,semantics,period,limits)
+later=SchemaSnapshot(snapshot.metadata_json,snapshot.fingerprint,"2026-09-12T12:34:56+00:00")
+second=a.compile_contract(later,semantics,period,limits)
+assert first.fingerprint==second.fingerprint
+assert first.content()["schema"]["retrieved_at"]!=second.content()["schema"]["retrieved_at"]
 print("ok")
 `,
   );

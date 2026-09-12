@@ -14,6 +14,8 @@ import bitcoin_profile
 import ga4_profile
 from analysis_contract import AnalysisContract
 
+AnalysisContractFactory = Callable[[object, dict[str, str], dict, int], AnalysisContract]
+
 
 @dataclass(frozen=True)
 class DataSourceProfile:
@@ -30,6 +32,7 @@ class DataSourceProfile:
     normalize_sql: Callable[[str], str]
     require_sql_period: Callable[[str, dict[str, str]], None]
     period_repair_guidance: Callable[[dict[str, str]], str]
+    _analysis_contract_factory: AnalysisContractFactory | None = None
     _analysis_contract: AnalysisContract | None = None
 
     def planner_context(self, metrics: str) -> str:
@@ -68,6 +71,22 @@ class DataSourceProfile:
                 raise ValueError("analysis contract dataset differs from the selected profile")
         return replace(self, _analysis_contract=contract)
 
+    def with_current_contract(
+        self,
+        bq: object,
+        period: dict[str, str],
+        definitions: dict,
+        max_result_rows: int,
+    ) -> DataSourceProfile:
+        """Inspect and bind the current contract for a migrated source."""
+        if self._analysis_contract_factory is None:
+            return self
+        return self.with_contract(
+            self._analysis_contract_factory(
+                bq, period, definitions, max_result_rows
+            )
+        )
+
 
 _PROFILES = {
     "ga4": DataSourceProfile(
@@ -82,6 +101,7 @@ _PROFILES = {
         normalize_sql=ga4_profile.normalize_sql,
         require_sql_period=ga4_profile.require_sql_period,
         period_repair_guidance=ga4_profile.period_repair_guidance,
+        _analysis_contract_factory=ga4_profile.analysis_contract_for_period,
     ),
     "bitcoin": DataSourceProfile(
         key="bitcoin",

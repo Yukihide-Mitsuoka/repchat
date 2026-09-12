@@ -35,6 +35,18 @@ class AnalysisContract:
         return json.loads(self.content_json)
 
 
+def fingerprint_contract_content(content: dict) -> str:
+    """Identify contract behavior while retaining schema observation time for audit."""
+    identity = json.loads(json.dumps(content, ensure_ascii=False))
+    schema = identity.get("schema")
+    if isinstance(schema, dict):
+        schema.pop("retrieved_at", None)
+    canonical = json.dumps(
+        identity, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _nonempty(value, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise AnalysisContractError(f"{label} must be a non-empty string")
@@ -116,9 +128,25 @@ def _period(schema: dict, raw: dict) -> dict:
         for name, metadata in tables.items()
         if "dateShards" in metadata
     }
-    table, path, field = _field(tables, raw["business_time"], "period.business_time")
+    business_time = raw["business_time"]
+    if not isinstance(business_time, dict) or set(business_time) != {"table", "field"}:
+        raise AnalysisContractError(
+            "period.business_time must contain only table and field"
+        )
+    table = _nonempty(business_time["table"], "period.business_time.table")
+    path = _nonempty(business_time["field"], "period.business_time.field")
+    if table not in tables:
+        raise AnalysisContractError(
+            "period.business_time references a table outside the schema snapshot"
+        )
+    if path == "_TABLE_SUFFIX" and table in shard_ranges:
+        field = {"type": "DATE", "mode": "REQUIRED"}
+    else:
+        _, _, field = _field(tables, business_time, "period.business_time")
     if field["type"] not in TIME_TYPES or field["mode"] == "REPEATED":
-        raise AnalysisContractError("period.business_time must reference one DATE, DATETIME, or TIMESTAMP field")
+        raise AnalysisContractError(
+            "period.business_time must reference one DATE, DATETIME, TIMESTAMP, or date-shard suffix field"
+        )
     timezone = _nonempty(raw["timezone"], "period.timezone")
     try:
         ZoneInfo(timezone)
@@ -263,4 +291,4 @@ def compile_contract(snapshot: SchemaSnapshot, semantics: dict, period: dict, li
     encoded = json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     if len(encoded.encode("utf-8")) > MAX_CONTRACT_BYTES:
         raise AnalysisContractError("analysis contract exceeds input limit")
-    return AnalysisContract(encoded, hashlib.sha256(encoded.encode("utf-8")).hexdigest())
+    return AnalysisContract(encoded, fingerprint_contract_content(content))

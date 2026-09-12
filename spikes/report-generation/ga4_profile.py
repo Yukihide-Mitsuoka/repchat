@@ -4,15 +4,61 @@ from __future__ import annotations
 
 import calendar
 import re
-from datetime import date
+from datetime import date, datetime
 
+import analysis_contract
 import bigquery_execution
+import bigquery_schema_snapshot
 import sql_contract_validation
 import sql_prompt_context
 
 DATASET = bigquery_execution.DATASET
+TABLE_PATTERN = f"{DATASET}.events_*"
 SAMPLE_FIRST_DAY = date(2020, 11, 1)
 SAMPLE_LAST_DAY = date(2021, 1, 31)
+
+
+def analysis_contract_for_period(
+    bq, period: dict[str, str], definitions: dict, max_result_rows: int
+) -> analysis_contract.AnalysisContract:
+    """Inspect the approved GA4 shards and compile one current contract."""
+    try:
+        start = datetime.strptime(period["from"], "%Y%m%d").date()
+        end = datetime.strptime(period["to"], "%Y%m%d").date()
+    except (KeyError, TypeError, ValueError):
+        raise analysis_contract.AnalysisContractError(
+            "GA4 period contract must contain valid YYYYMMDD from and to values"
+        ) from None
+    if start > end:
+        raise analysis_contract.AnalysisContractError(
+            "GA4 period contract start must not follow end"
+        )
+    semantics = {
+        key: definitions.get(key) if isinstance(definitions, dict) else None
+        for key in ("grain", "metrics", "dimensions")
+    }
+    semantics["relationships"] = []
+    snapshot = bigquery_schema_snapshot.inspect_date_shards(
+        bq,
+        TABLE_PATTERN,
+        start_suffix=period["from"],
+        end_suffix=period["to"],
+        allowed_patterns=frozenset({TABLE_PATTERN}),
+    )
+    return analysis_contract.compile_contract(
+        snapshot,
+        semantics,
+        {
+            "business_time": {"table": TABLE_PATTERN, "field": "_TABLE_SUFFIX"},
+            "timezone": "UTC",
+            "range": {"start": start.isoformat(), "end": end.isoformat()},
+            "partitions": [{"table": TABLE_PATTERN, "field": "_TABLE_SUFFIX"}],
+        },
+        {
+            "maximum_bytes_billed": bigquery_execution.MAX_BYTES_BILLED,
+            "maximum_result_rows": max_result_rows,
+        },
+    )
 
 
 def planner_context(metrics: str) -> str:

@@ -7,8 +7,8 @@ updated: 2026-09-12
 # BigQuery schema取得境界
 
 [ADR-0024](../adr/0024-build-analysis-context-from-inspected-schema.md)の初期実装は
-`spikes/report-generation/bigquery_schema_snapshot.py`です。生成経路にはまだ接続していません。
-本番認可や接続主体を置き換える処理ではありません。
+`spikes/report-generation/bigquery_schema_snapshot.py`です。GA4の契約生成関数はこの取得境界を使いますが、
+live engineへの接続は後続実装です。本番認可や接続主体を置き換える処理ではありません。
 
 ## 入出力と責任
 
@@ -42,11 +42,12 @@ partition、clustering、resource tagの相違があれば停止します。CMEK
 したがって同じschemaを日数分複製せず、fingerprintは実際に選択した日次表集合を含みます。
 この処理も行queryを行わず、列挙・metadata取得のprovider失敗内容を外へ出しません。
 
-## 次の接続点
+## 共通分析契約
 
 `analysis_contract.py`はsnapshotと明示した意味定義・期間条件・実行上限を検証し、計画とSQL生成が
-共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列を参照し、
-IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。期間は`YYYY-MM-DD`の閉区間です。
+共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列、または検査済み
+date shardの`_TABLE_SUFFIX`を参照し、IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。
+期間は`YYYY-MM-DD`の閉区間です。
 各time partitioned tableの絞り込み列を明示し、必須tableの欠落、API metadataとの不一致、重複を拒否します。
 ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示します。
 `dateShards`を持つtableは`_TABLE_SUFFIX`を必須制約とし、snapshotの開始・終了日が対象期間と比較期間を
@@ -57,8 +58,9 @@ timeまたはrange partitionを併用するshardは両方のfilterを表現で�
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
 費用上限と結果行数上限は呼出し側が正の整数で指定し、compilerは既定値を補いません。
 
-生成経路への供給とbuild時のschema再検証は後続実装です。
-現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
+契約fingerprintはschema、意味定義、期間、実行上限から作り、metadata取得時刻を除外します。
+取得時刻は契約JSONへ監査情報として残るため、再取得時刻だけが異なる同一契約を同じidentityとして比較できます。
+同じfingerprintは行データの不変性を保証しません。
 
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には
 分析候補を含めず、後者にはBigQuery、参照範囲、期間、意味定義の共通制約だけを付与します。
@@ -67,5 +69,15 @@ timeまたはrange partitionを併用するshardは両方のfilterを表現で�
 `DataSourceProfile.with_contract(...)`は既存profileを変更せず、検証済みcontractを束縛したsourceを返します。
 contract内の全tableがprofileの許可datasetと完全一致しない場合は束縛しません。束縛後は既存の
 `analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
-同じcanonical contractをplannerとSQL担当へ渡します。既定のlive engineでのcontract生成、確定仕様への
-fingerprint bind、build開始時の再取得・一致検査は後続実装です。
+同じcanonical contractをplannerとSQL担当へ渡します。
+
+## GA4契約生成
+
+`DataSourceProfile.with_current_contract(...)`は、契約生成関数が登録されたsourceだけを現在のmetadataへ
+束縛します。GA4は対象月の`events_*`をmetadataだけで検査し、明示された意味定義、UTC、
+`_TABLE_SUFFIX`、既存の20 GiB・結果行数上限から契約をcompileします。取得失敗時は手書きschemaへ
+切り替えません。Bitcoinは契約生成関数が未登録のため、既存profileを明示的に維持します。
+
+GA4契約生成はfake BigQuery clientを使うunit testまで完了しています。live engineでの計画revisionへのbind、
+build開始時の再取得・一致検査、単一Insight、Bitcoin移行は後続です。この変更だけでは実BigQuery API、
+生成SQLの結果一致、未知schemaの分析品質を実証しません。

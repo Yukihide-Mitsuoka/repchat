@@ -5,10 +5,10 @@ import { python } from './live-demo-test-helpers.ts';
 const setup = `
 import hashlib,json
 import analysis_contract_context as c
-from analysis_contract import AnalysisContract
+from analysis_contract import AnalysisContract,fingerprint_contract_content
 content={"version":1,"schema":{"fingerprint":"schema-a","retrieved_at":"2026-09-07T00:00:00+00:00","metadata":{"tables":[]}},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":"p.d.t","field":"at"},"timezone":"UTC","range":{"start":"2026-01-01","end":"2026-01-31"},"partitions":[]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
-contract=AnalysisContract(encoded,hashlib.sha256(encoded.encode()).hexdigest())
+contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 `;
 
 test('planner and SQL roles receive the same canonical contract', () => {
@@ -66,7 +66,7 @@ test('forged contracts and mismatched specifications fail closed', () => {
       `
 other_content={**content,"limits":{"maximum_bytes_billed":200,"maximum_result_rows":10}}
 other_encoded=json.dumps(other_content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
-other=AnalysisContract(other_encoded,hashlib.sha256(other_encoded.encode()).hexdigest())
+other=AnalysisContract(other_encoded,fingerprint_contract_content(other_content))
 for action in (
  lambda:c.planner_context(AnalysisContract(encoded,"0"*64)),
  lambda:c.sql_rules(AnalysisContract("{}",hashlib.sha256(b"{}").hexdigest())),

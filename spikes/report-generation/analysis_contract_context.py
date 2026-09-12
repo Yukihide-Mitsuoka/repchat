@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 
-from analysis_contract import AnalysisContract
+from analysis_contract import AnalysisContract, fingerprint_contract_content
 
 
 class AnalysisContextError(ValueError):
@@ -17,9 +17,9 @@ def _contract(contract: AnalysisContract) -> tuple[str, dict]:
     try:
         content_json = contract.content_json
         fingerprint = contract.fingerprint
-        expected = hashlib.sha256(content_json.encode("utf-8")).hexdigest()
         content = json.loads(content_json)
         canonical = json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        expected = fingerprint_contract_content(content)
     except (AttributeError, TypeError, ValueError):
         raise AnalysisContextError("analysis contract is invalid") from None
     required = {"version", "schema", "semantics", "period", "limits"}
