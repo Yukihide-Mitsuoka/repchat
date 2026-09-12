@@ -62,11 +62,11 @@ unit testまで完了しました。
 metadata境界、[PR #673](https://github.com/Yukihide-Mitsuoka/repchat/pull/673)でshardの
 `_TABLE_SUFFIX`とscan範囲を共通期間契約へ固定する実装はmerge済みです。共通契約付きsourceを
 plannerとSQL生成の既存関数へ渡す[PR #674](https://github.com/Yukihide-Mitsuoka/repchat/pull/674)もmerge済みです。
-現在は`codex/188-ga4-contract-factory`で、GA4の対象月、意味定義、実行上限からmetadata-onlyの共通契約を
-生成するsource境界を実装しています。契約fingerprintは再検査に備えてmetadata取得時刻だけをidentityから
-除外し、取得時刻自体は契約JSONへ残します。fake BigQuery clientを使うunit testは通過し、実APIは未確認です。
-次はこのPRのCIとmergeを完了してから、live engineでの計画revisionへのfingerprint bindとbuild開始時の
-schema再取得・一致検査を実装します。
+現在の[PR #675](https://github.com/Yukihide-Mitsuoka/repchat/pull/675)では、GA4の対象月、意味定義、
+実行上限からmetadata-onlyの共通契約を生成するsource境界を実装しています。契約fingerprintは再検査に備えて
+metadata取得時刻だけをidentityから除外し、取得時刻自体は契約JSONへ残します。fake BigQuery clientを使う
+unit testは通過し、実APIは未確認です。次はPR #675のCIとmergeを完了してから、live engineでの計画revisionへの
+fingerprint bindとbuild開始時のschema再取得・一致検査を実装します。
 live engine・単一Insight・Bitcoinのschema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
 未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
 しません。
