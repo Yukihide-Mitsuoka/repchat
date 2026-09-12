@@ -57,14 +57,9 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 
 [PR #643](https://github.com/Yukihide-Mitsuoka/repchat/pull/643)と
 [PR #644](https://github.com/Yukihide-Mitsuoka/repchat/pull/644)はマージ済みです。
-GA4／Bitcoinの計画・build・HTTP・UIを共通化しました。2026-09-05のオーナー指示により、次の全工程を
-小さいPRに分けて進めます。この実施順序は下段の過去の停止条件・順序より優先します。
-
-1. PR #645で検証ランナーのprofile伝達と固定の既定質問廃止はマージ済み。PR #646のADR-0024は2026-09-06にオーナー承認済み。
-2. schema取得、期間・partition制約、実行契約の汎用化を進め、未知schema最低2種類の参照結果と事前合格基準を用意する。
-3. 対象と費用を提示して承認後、GA4／Bitcoinのdashboard・insightと会議報告を実行し、結果一致と確認・拒否を記録する。
-4. #179の閲覧／来歴、#180のrevision・非同期build、#371のlayout保存、#181の報告を各受入条件で進める。
-   新しい永続化・公開API等の設計は既存ADRとの対応を確認し、未決部分はレビュー可能なADRを先に提示する。
+GA4／Bitcoinの計画・build・HTTP・UIを共通化しましたが、共通interfaceの背後には対象別profileが残っています。
+2026-09-12のオーナー指示とADR-0025により、従来の「profileを増やして共通interfaceへ接続する」順序は失効しました。
+以後は下段の「固有処理を削除する実装計画」を小さいPRに分け、その順序を他の過去記録より優先します。
 
 最初の実装は[PR #648](https://github.com/Yukihide-Mitsuoka/repchat/pull/648)の
 [metadata reader](architecture/schema-inspection.md)です。`make format`・`make lint`・`make test`は通過済み。
@@ -76,10 +71,11 @@ unit testまで完了しました。
 metadata境界、[PR #673](https://github.com/Yukihide-Mitsuoka/repchat/pull/673)でshardの
 `_TABLE_SUFFIX`とscan範囲を共通期間契約へ固定する実装はmerge済みです。共通契約付きsourceを
 plannerとSQL生成の既存関数へ渡す[PR #674](https://github.com/Yukihide-Mitsuoka/repchat/pull/674)もmerge済みです。
-現在の[PR #675](https://github.com/Yukihide-Mitsuoka/repchat/pull/675)はGitHub上でOpenです。当初追加した
-GA4固有の契約factoryは、2026-09-12のオーナー指示と
+[PR #675](https://github.com/Yukihide-Mitsuoka/repchat/pull/675)は2026-09-12にmerge済みです。当初追加した
+GA4固有の契約factoryは、オーナー指示と
 [ADR-0025](adr/0025-discover-analysis-contracts-without-source-specific-code.md)に反するため撤去しました。
-PRには、metadata取得時刻を監査情報として保持しつつ契約identityから除外する共通fingerprint修正だけを残します。
+最終差分には、metadata取得時刻を監査情報として保持しつつ契約identityから除外する共通fingerprint修正だけを
+残しました。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -104,10 +100,35 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 | 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`という特定aliasとWeb導線前提のSankey要件が共通経路へ漏れている。時間roleと選択済み意味契約に基づく中立表現へ置換する |
 | 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
 
-除去順序は、(1) 認可済みscopeからのtable・schema・値profile自動発見、(2) 共通の期間・partition・join・grain・
-metric候補生成、(3) registry・profile callback・`metrics.json`の撤去、(4) HTTP・planner・SQL・UIの対象名引数撤去、
-(5) 対象固有fixtureとは別に、同じcode・prompt・設定のまま未知schema最低2種類を通す反復評価、です。
-固有処理が残る間は「任意の分析対象へ設定なしで適用可能」と表現しません。
+### 固有処理を削除する実装計画
+
+以下を順番に小さいPRへ分割します。各PRは`make format`、`make lint`、`make test`を通し、前段の共通境界を
+後段が利用します。対象別の新経路、設定、fallbackを並行して作ってはいけません。
+
+| 段階 | 実装内容 | 主な対象 | 完了条件 |
+|---:|---|---|---|
+| 0 | 再混入防止ratchet | `tests/spikes/report-generation/`、runtime source inventory | runtimeの対象名、既知dataset、profile API、固定schema・metric fileを列挙するarchitecture testを追加する。既存箇所だけを期限付きallowlistにし、各段階で縮小する。新規追加とallowlist増加をCIで拒否する |
+| 1 | 認可scopeからの自動catalog・profile取得 | `bigquery_schema_snapshot.py`、新しい共通discovery module | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、field path、型、mode、partition、clustering、shardを自動取得する。null率、概算distinct、min／max、型別sample等は列分類、送信制御、query・bytes・row上限を共通policyで制限する。対象名や業種名を入力に持たない |
+| 2 | 共通分析契約の自動生成 | `analysis_contract.py`、`analysis_contract_context.py`、共通compiler | catalogとbounded value profileから、業務時刻候補、grain、identifier、dimension、measure、metric、nested path、join候補を同じAI＋deterministic validatorで生成する。期間は自然言語からISO閉区間へ構造化し、metadata上のpartition／shardと照合する。手動意味定義、対象別period parser、識別子補正を使わない |
+| 3 | planner・SQL・検査を契約だけへ接続 | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | plannerとSQL生成がcanonical contract以外のschema説明・metric定義を受け取らない。table allowlist、SELECT-only、`SELECT *`拒否、dry run、scan上限、期間・partition、結果形状、identifier、nested/repeated検査をcontractから導出する。URL、event、Bitcoin等の特殊補正を削除する |
+| 4 | live runtimeをprofileなしへ切替 | `live_engine.py`、`live_http_validation.py`、`live_contracts.py`、`analysis_dashboard_plan.py`、`verify_live_services.py` | HTTP request、保存plan、engine API、CLIから`profile`とGA4既定値を削除する。認証済みconnection scopeから毎回同じdiscovery／contract経路を解決し、契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする |
+| 5 | UI・成果物を中立化 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 固定のGA4／Bitcoin選択肢、期間、例文、metric語彙、source名、問い合わせを削除する。UIには認可scopeから発見したsource summaryとcontract provenanceを表示する。`event_date`を中立なtemporal roleへ置換し、Sankey等は契約が対応する意味roleを持つ場合だけ選択する |
+| 6 | 旧実装を物理削除 | `data_source_profiles.py`、`ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`run_report.py`の旧export | 新runtimeから参照がなくなった時点でregistry、callback、手書きDDL・指標・期間・SQL補正を削除する。互換目的の対象別adapter、feature flag、隠し設定を残さない。runtime inventoryのallowlistを空にする |
+| 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+
+残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
+contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の
+仕組みです。特定datasetのgold SQL・期待値はevaluation fixtureに限って保持し、runtimeからimportしません。
+
+全段階のDefinition of Doneは次のとおりです。
+
+- 新しい分析対象の利用開始に必要な操作が、既存connectionの認可scope付与だけであり、repository、prompt、設定、
+  schema定義、metric定義の変更を要求しない。
+- runtime sourceに対象名、既知dataset/table、対象別profile・branch・prompt・SQL・期間parser・識別子補正・metric fileがない。
+- HTTP、planner、SQL、executor、UI、artifactが同じ自動生成contractを参照し、対象別fallbackを持たない。
+- 未知schema最低2種類が、同一binary・prompt・設定のまま独立参照結果と一致し、安全上限違反をfail closedで拒否する。
+- 利用者確認や手動意味定義を解決策として導入していない。固有処理が残る間は「任意の分析対象へ設定なしで
+  適用可能」と表現しない。
 
 ## 次に着手する作業キュー（2026-09-12）
 
