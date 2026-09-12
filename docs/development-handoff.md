@@ -107,13 +107,13 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 
 段階0は[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)、段階1は
 [PR #678](https://github.com/Yukihide-Mitsuoka/repchat/pull/678)、段階2前半の構造化validatorは
-[PR #679](https://github.com/Yukihide-Mitsuoka/repchat/pull/679)でmerge済みです。対象非依存AI compilerの入力境界も[PR #680](https://github.com/Yukihide-Mitsuoka/repchat/pull/680)でmerge済みで、現在はtoken応答の正規化を実装中です。
+[PR #679](https://github.com/Yukihide-Mitsuoka/repchat/pull/679)でmerge済みです。対象非依存AI compilerの入力境界も[PR #680](https://github.com/Yukihide-Mitsuoka/repchat/pull/680)でmerge済みで、token応答の正規化は[PR #681](https://github.com/Yukihide-Mitsuoka/repchat/pull/681)でreview中です。
 
 | 段階 | 実装内容 | 主な対象 | 完了条件 |
 |---:|---|---|---|
 | 0 | 再混入防止ratchet（PR #677、merge済み） | `tests/spikes/report-generation/source-specific-runtime-ratchet.test.ts` | 13分類のarchitecture testで対象名、既知dataset、profile API、固定schema・metric file、埋め込みSQL／DDL、対象別module・設定資産をファイル別件数として固定した。既存負債の削除時はbaselineも縮小し、新規追加、移動、件数増加をCIで拒否する |
 | 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge済み） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
-| 2 | 共通分析契約の自動生成（PR #679／#680、merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、共通response normalizer | validatorと、discovery snapshotの再検証・不透明token束縛はmerge済み。現在はtoken限定候補からschema、意味role、join、ISO閉区間、partition、実行上限を決定的に組み立て、同じvalidatorへ接続する。未統合の日次shard候補は不完全な契約へ変換せず停止する。手動意味定義、対象別period parser、識別子補正を使わない |
+| 2 | 共通分析契約の自動生成（PR #679／#680 merge済み、PR #681 review中） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py` | validatorと生成入力境界はmerge済み。PR #681でtoken限定候補からschema、意味role、join、ISO閉区間、partition、実行上限を決定的に組み立て、同じvalidatorへ接続する。未統合の日次shard候補は不完全な契約へ変換せず停止する。次は構造化response schemaと生成I/Oを接続する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続 | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | plannerとSQL生成がcanonical contract以外のschema説明・metric定義を受け取らない。table allowlist、SELECT-only、`SELECT *`拒否、dry run、scan上限、期間・partition、結果形状、identifier、nested/repeated検査をcontractから導出する。URL、event、Bitcoin等の特殊補正を削除する |
 | 4 | live runtimeをprofileなしへ切替 | `live_engine.py`、`live_http_validation.py`、`live_contracts.py`、`analysis_dashboard_plan.py`、`verify_live_services.py` | HTTP request、保存plan、engine API、CLIから`profile`とGA4既定値を削除する。認証済みconnection scopeから毎回同じdiscovery／contract経路を解決し、契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする |
 | 5 | UI・成果物を中立化 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 固定のGA4／Bitcoin選択肢、期間、例文、metric語彙、source名、問い合わせを削除する。UIには認可scopeから発見したsource summaryとcontract provenanceを表示する。`event_date`を中立なtemporal roleへ置換し、Sankey等は契約が対応する意味roleを持つ場合だけ選択する |
