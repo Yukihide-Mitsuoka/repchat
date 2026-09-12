@@ -63,3 +63,9 @@ timeまたはrange partitionを併用するshardは両方のfilterを表現で�
 `analysis_contract_context.py`は同じcanonical contract JSONをplannerとSQL担当へ渡します。前者には
 分析候補を含めず、後者にはBigQuery、参照範囲、期間、意味定義の共通制約だけを付与します。
 確定仕様のrevisionへcontract fingerprintを含め、build時に現在契約との一致を要求できます。
+
+`DataSourceProfile.with_contract(...)`は既存profileを変更せず、検証済みcontractを束縛したsourceを返します。
+contract内の全tableがprofileの許可datasetと完全一致しない場合は束縛しません。束縛後は既存の
+`analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
+同じcanonical contractをplannerとSQL担当へ渡します。既定のlive engineでのcontract生成、確定仕様への
+fingerprint bind、build開始時の再取得・一致検査は後続実装です。

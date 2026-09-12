@@ -36,6 +36,51 @@ print(json.dumps({
   });
 });
 
+test('one bound common contract reaches the actual planner and SQL generation paths', () => {
+  const result = python(`
+import hashlib
+import analysis_workflows as workflows
+import data_source_profiles as profiles
+import section_execution as execution
+from analysis_contract import AnalysisContract
+table="bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"
+content={"version":1,"schema":{"fingerprint":"schema-a","retrieved_at":"2026-09-12T00:00:00+00:00","metadata":{"version":1,"tables":[{"table":table}]}},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
+encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+contract=AnalysisContract(encoded,hashlib.sha256(encoded.encode()).hexdigest())
+original=profiles.profile_for("ga4");source=original.with_contract(contract)
+planning=[]
+def propose(_client,_model,objective,period,context,answers,**kwargs):
+ planning.append(context);return ({"profile":"ga4","revision":"plan-bound"},{"input_tokens":1,"output_tokens":1})
+workflows.planner.propose_dashboard=propose
+workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},lambda _event:None,analysis_plan=None,revision_instruction=None,source=source,check_cancelled=lambda:None)
+sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
+generated=[]
+execution.report.generate_request=lambda _client,_model,request,rules:(generated.append(rules) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
+execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
+execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
+execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
+section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"},"source_columns":["metric_value"]}
+execution.run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=10)
+errors=[]
+other=json.loads(encoded);other["schema"]["metadata"]["tables"][0]["table"]="bigquery-public-data.crypto_bitcoin.transactions"
+other_encoded=json.dumps(other,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encoded,hashlib.sha256(other_encoded.encode()).hexdigest())):
+ try:original.with_contract(candidate)
+ except ValueError as error:errors.append(str(error))
+ else:raise AssertionError("unsafe contract binding accepted")
+print(json.dumps({"planner":planning[0],"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.planner, new RegExp(output.fingerprint));
+  assert.match(output.sql, new RegExp(output.fingerprint));
+  assert.doesNotMatch(output.planner, /CREATE TABLE/);
+  assert.doesNotMatch(output.sql, /CREATE TABLE/);
+  assert.equal(output.original, true);
+  assert.equal(output.bound_contract, output.fingerprint);
+  assert.equal(output.errors.length, 2);
+});
+
 test('Bitcoin dashboard planning uses its schema and freezes the selected profile', () => {
   const result = python(`
 import analysis_workflows as workflows
