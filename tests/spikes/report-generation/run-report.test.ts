@@ -150,6 +150,7 @@ test('canonical execution policy enforces exact tables and query limits', () => 
 import sys
 import types
 from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_schema_policy import AnalysisFieldPolicy
 
 google = types.ModuleType("google")
 cloud = types.ModuleType("google.cloud")
@@ -168,6 +169,7 @@ policy=AnalysisExecutionPolicy(
     job_tables=frozenset({"alpha.dataset.allowed"}),
     maximum_bytes_billed=123,
     maximum_result_rows=7,
+    schema_fields=(AnalysisFieldPolicy("alpha.dataset.allowed",("metric_value",),"INT64","NULLABLE",False,False),),
 )
 class Field:
     name="metric_value"

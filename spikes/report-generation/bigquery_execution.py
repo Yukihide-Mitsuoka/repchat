@@ -4,6 +4,7 @@ import re
 import time
 
 from analysis_contract_context import AnalysisExecutionPolicy
+from contract_sql_validation import contract_sql_diagnostic
 
 
 DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
@@ -185,4 +186,7 @@ def validate_sql(
         if policy is not None:
             return None, "rejected: query must reference an analysis contract table"
         return None, f"rejected: query must reference dataset {allowed_dataset}"
+    contract_error = contract_sql_diagnostic(s, policy)
+    if contract_error:
+        return None, f"rejected: {contract_error}"
     return s, None
