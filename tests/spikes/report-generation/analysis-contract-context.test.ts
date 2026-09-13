@@ -90,14 +90,15 @@ metadata={"version":1,"tables":[
  {"table":pattern,"fields":[],"dateShards":{"suffixFormat":"YYYYMMDD","startSuffix":"20260912","endSuffix":"20260913","members":members}},
 ]}
 schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
-content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-13T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":None,"limits":{"maximum_bytes_billed":123,"maximum_result_rows":7}}
+content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-13T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":pattern,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2026-09-12","end":"2026-09-13"},"partitions":[{"table":pattern,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":123,"maximum_result_rows":7}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 policy=c.execution_policy(contract)
 assert policy.query_tables==frozenset({ordinary,pattern})
 assert policy.job_tables==frozenset({ordinary,pattern,*members})
 assert policy.maximum_bytes_billed==123 and policy.maximum_result_rows==7
-for change in ("schema_fingerprint","empty_tables","boolean_limit","bad_member","member_type","unsafe_table"):
+assert policy.period.constraints[0].field_type=="DATE_SHARD" and policy.period.constraints[0].partition
+for change in ("schema_fingerprint","empty_tables","boolean_limit","bad_member","member_type","unsafe_table","missing_period"):
  invalid=json.loads(encoded)
  if change=="schema_fingerprint":invalid["schema"]["fingerprint"]="0"*64
  if change=="empty_tables":invalid["schema"]["metadata"]["tables"]=[]
@@ -105,12 +106,34 @@ for change in ("schema_fingerprint","empty_tables","boolean_limit","bad_member",
  if change=="bad_member":invalid["schema"]["metadata"]["tables"][1]["dateShards"]["members"]=["alpha.dataset.other"]
  if change=="member_type":invalid["schema"]["metadata"]["tables"][1]["dateShards"]["members"]=[{}]
  if change=="unsafe_table":invalid["schema"]["metadata"]["tables"][0]["table"]="alpha.dataset.orders;"
+ if change=="missing_period":invalid["period"]=None
  if change in ("empty_tables","bad_member","member_type","unsafe_table"):
   invalid["schema"]["fingerprint"]=hashlib.sha256(json.dumps(invalid["schema"]["metadata"],ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
  invalid_encoded=json.dumps(invalid,ensure_ascii=False,sort_keys=True,separators=(",",":"))
  try:c.execution_policy(AnalysisContract(invalid_encoded,fingerprint_contract_content(invalid)))
  except c.AnalysisContextError:pass
  else:raise AssertionError("invalid execution policy accepted")
+print("ok")
+`);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('execution policy derives period constraints from contract metadata instead of a profile', () => {
+  const result = python(`
+import hashlib,json
+import analysis_contract_context as c
+from analysis_contract import AnalysisContract,fingerprint_contract_content
+table="alpha.dataset.records"
+metadata={"version":1,"tables":[{"table":table,"fields":[{"name":"occurred_at","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"created_on","type":"DATE","mode":"REQUIRED"}],"timePartitioning":{"type":"DAY","field":"created_on"},"requirePartitionFilter":True}]}
+schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+period={"business_time":{"table":table,"field":"occurred_at"},"timezone":"Asia/Tokyo","range":{"start":"2026-09-01","end":"2026-09-02"},"comparison":{"start":"2026-08-30","end":"2026-08-31"},"partitions":[{"table":table,"path":["created_on"]}]}
+content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-13T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":period,"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
+encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+policy=c.execution_policy(AnalysisContract(encoded,fingerprint_contract_content(content)))
+assert policy.period.start=="2026-08-30" and policy.period.end=="2026-09-02"
+assert policy.period.timezone=="Asia/Tokyo"
+observed={(item.table,item.path,item.field_type,item.partition) for item in policy.period.constraints}
+assert observed=={(table,("occurred_at",),"TIMESTAMP",False),(table,("created_on",),"DATE",True)}
 print("ok")
 `);
   assert.equal(result.status, 0, result.stderr);

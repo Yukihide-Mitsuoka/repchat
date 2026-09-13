@@ -6,12 +6,34 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from analysis_contract import AnalysisContract, fingerprint_contract_content
 
 
 class AnalysisContextError(ValueError):
     """A contract or confirmed specification cannot be safely connected."""
+
+
+@dataclass(frozen=True)
+class AnalysisPeriodConstraint:
+    """One temporal field that must bound the contract scan range."""
+
+    table: str
+    path: tuple[str, ...]
+    field_type: str
+    partition: bool
+
+
+@dataclass(frozen=True)
+class AnalysisPeriodPolicy:
+    """Contract range expressed independently of any data-source profile."""
+
+    start: str
+    end: str
+    timezone: str
+    constraints: tuple[AnalysisPeriodConstraint, ...]
 
 
 @dataclass(frozen=True)
@@ -22,6 +44,7 @@ class AnalysisExecutionPolicy:
     job_tables: frozenset[str]
     maximum_bytes_billed: int
     maximum_result_rows: int
+    period: AnalysisPeriodPolicy | None = None
 
 
 def _contract(contract: AnalysisContract) -> tuple[str, dict]:
@@ -95,6 +118,197 @@ def _qualified_table(value: object) -> str:
     return value
 
 
+def _date(value: object) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise AnalysisContextError("analysis contract period is invalid")
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError:
+        raise AnalysisContextError("analysis contract period is invalid") from None
+
+
+def _period_range(value: object) -> tuple[str, str]:
+    if not isinstance(value, dict) or set(value) != {"start", "end"}:
+        raise AnalysisContextError("analysis contract period is invalid")
+    start, end = _date(value["start"]), _date(value["end"])
+    if start > end:
+        raise AnalysisContextError("analysis contract period is invalid")
+    return start, end
+
+
+def _reference(value: object, tables: dict[str, dict]) -> tuple[str, tuple[str, ...]]:
+    if not isinstance(value, dict) or set(value) not in (
+        {"table", "field"},
+        {"table", "path"},
+    ):
+        raise AnalysisContextError("analysis contract period reference is invalid")
+    table = value.get("table")
+    if not isinstance(table, str) or table not in tables:
+        raise AnalysisContextError("analysis contract period reference is invalid")
+    if "field" in value:
+        field = value.get("field")
+        path = (field,) if isinstance(field, str) and field else ()
+    else:
+        raw_path = value.get("path")
+        path = (
+            tuple(raw_path)
+            if isinstance(raw_path, list)
+            and raw_path
+            and all(isinstance(item, str) and item for item in raw_path)
+            else ()
+        )
+    if not path:
+        raise AnalysisContextError("analysis contract period reference is invalid")
+    return table, path
+
+
+def _field_type(table: dict, path: tuple[str, ...]) -> str:
+    fields = table.get("fields")
+    repeated = False
+    current = None
+    for segment in path:
+        if not isinstance(fields, list):
+            raise AnalysisContextError("analysis contract period field is invalid")
+        current = next(
+            (
+                field
+                for field in fields
+                if isinstance(field, dict) and field.get("name") == segment
+            ),
+            None,
+        )
+        if current is None:
+            raise AnalysisContextError("analysis contract period field is invalid")
+        repeated = repeated or current.get("mode") == "REPEATED"
+        fields = current.get("fields", [])
+    field_type = current.get("type") if isinstance(current, dict) else None
+    if repeated or field_type not in {"DATE", "DATETIME", "TIMESTAMP"}:
+        raise AnalysisContextError("analysis contract period field is invalid")
+    return field_type
+
+
+def _constraint(
+    reference: object,
+    tables: dict[str, dict],
+    *,
+    partition: bool,
+) -> AnalysisPeriodConstraint:
+    table_name, path = _reference(reference, tables)
+    table = tables[table_name]
+    if path == ("_TABLE_SUFFIX",) and table.get("dateShards"):
+        field_type = "DATE_SHARD"
+    elif path == ("_PARTITIONDATE",):
+        partitioning = table.get("timePartitioning")
+        if not isinstance(partitioning, dict) or partitioning.get("field") or partitioning.get("type") != "DAY":
+            raise AnalysisContextError("analysis contract period field is invalid")
+        field_type = "DATE"
+    elif path == ("_PARTITIONTIME",):
+        partitioning = table.get("timePartitioning")
+        if not isinstance(partitioning, dict) or partitioning.get("field"):
+            raise AnalysisContextError("analysis contract period field is invalid")
+        field_type = "TIMESTAMP"
+    else:
+        field_type = _field_type(table, path)
+    return AnalysisPeriodConstraint(table_name, path, field_type, partition)
+
+
+def _has_time_boundary(fields: object, *, repeated: bool = False) -> bool:
+    if not isinstance(fields, list):
+        return False
+    for field in fields:
+        if not isinstance(field, dict):
+            continue
+        nested_repeated = repeated or field.get("mode") == "REPEATED"
+        if (
+            field.get("type") in {"DATE", "DATETIME", "TIMESTAMP"}
+            and not nested_repeated
+            and "policyTags" not in field
+        ):
+            return True
+        if _has_time_boundary(field.get("fields"), repeated=nested_repeated):
+            return True
+    return False
+
+
+def _period_policy(content: dict, tables: list[dict]) -> AnalysisPeriodPolicy | None:
+    raw = content.get("period")
+    if raw is None:
+        if any(
+            table.get("dateShards")
+            or table.get("timePartitioning")
+            or table.get("requirePartitionFilter")
+            or _has_time_boundary(table.get("fields"))
+            for table in tables
+        ):
+            raise AnalysisContextError("analysis contract period is invalid")
+        return None
+    required = {"business_time", "timezone", "range", "partitions"}
+    if (
+        not isinstance(raw, dict)
+        or not required <= set(raw)
+        or set(raw) - (required | {"comparison"})
+        or not isinstance(raw.get("partitions"), list)
+    ):
+        raise AnalysisContextError("analysis contract period is invalid")
+    timezone = raw.get("timezone")
+    if not isinstance(timezone, str) or not timezone:
+        raise AnalysisContextError("analysis contract period is invalid")
+    try:
+        ZoneInfo(timezone)
+    except ZoneInfoNotFoundError:
+        raise AnalysisContextError("analysis contract period is invalid") from None
+    ranges = [_period_range(raw["range"])]
+    if "comparison" in raw:
+        ranges.append(_period_range(raw["comparison"]))
+    by_name = {table["table"]: table for table in tables}
+    constraints: dict[tuple[str, tuple[str, ...]], AnalysisPeriodConstraint] = {}
+    business = _constraint(raw["business_time"], by_name, partition=False)
+    constraints[(business.table, business.path)] = business
+    partitioned_tables = set()
+    for reference in raw["partitions"]:
+        constraint = _constraint(reference, by_name, partition=True)
+        table = by_name[constraint.table]
+        expected_path: tuple[str, ...] | None = None
+        if table.get("dateShards"):
+            expected_path = ("_TABLE_SUFFIX",)
+        elif isinstance(table.get("timePartitioning"), dict):
+            configured = table["timePartitioning"].get("field")
+            expected_path = (
+                (configured,)
+                if configured
+                else (
+                    ("_PARTITIONDATE",)
+                    if table["timePartitioning"].get("type") == "DAY"
+                    else ("_PARTITIONTIME",)
+                )
+            )
+        if expected_path != constraint.path or constraint.table in partitioned_tables:
+            raise AnalysisContextError("analysis contract partition constraint is invalid")
+        partitioned_tables.add(constraint.table)
+        key = (constraint.table, constraint.path)
+        constraints[key] = AnalysisPeriodConstraint(
+            constraint.table,
+            constraint.path,
+            constraint.field_type,
+            partition=True,
+        )
+    required_tables = {
+        table["table"]
+        for table in tables
+        if table.get("dateShards")
+        or table.get("timePartitioning")
+        or table.get("requirePartitionFilter")
+    }
+    if partitioned_tables != required_tables:
+        raise AnalysisContextError("analysis contract partition constraint is invalid")
+    return AnalysisPeriodPolicy(
+        start=min(item[0] for item in ranges),
+        end=max(item[1] for item in ranges),
+        timezone=timezone,
+        constraints=tuple(constraints.values()),
+    )
+
+
 def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
     """Derive exact query scope and execution limits without a second config source."""
     _content_json, content = _contract(contract)
@@ -159,6 +373,7 @@ def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
         job_tables=frozenset(job_tables),
         maximum_bytes_billed=limits["maximum_bytes_billed"],
         maximum_result_rows=limits["maximum_result_rows"],
+        period=_period_policy(content, tables),
     )
 
 
