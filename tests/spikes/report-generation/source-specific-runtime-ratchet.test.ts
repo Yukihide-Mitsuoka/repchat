@@ -130,7 +130,7 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'live_demo.py': 5,
     'live_http.py': 1,
     'live_http_validation.py': 1,
-    'section_execution.py': 2,
+    'section_execution.py': 1,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 1,
   },
