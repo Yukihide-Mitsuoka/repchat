@@ -1,7 +1,7 @@
 ---
 name: requirements
 description: Produce a requirements definition document — purpose-driven, zero-based, objective, complete
-triggers: [requirements definition, 要件定義, spec a feature, write requirements, scope a project, interrogate the plan, grill me]
+triggers: [requirements definition, 要件定義, spec a feature, write requirements, scope a project, interrogate the plan, grill me, grill with docs]
 reads: [.ai/mission.md, .ai/documentation.md, docs/foundation/templates/requirements.md]
 ---
 
@@ -26,18 +26,25 @@ existing solution, so design and acceptance testing can proceed without re-askin
    answer for correction, not a blank or bulk questionnaire. Investigate factual
    codebase questions yourself. Continue until no unresolved fork materially changes the
    purpose; escalate materially ambiguous goals under CLAUDE.md §13.
-3. **Derive the ideal set zero-based.** Use only the purpose and resolved decisions.
+3. **Capture confirmed language at bounded checkpoints.** When discovery establishes a
+   new or changed canonical term, inspect existing code, ADRs, and glossaries, then wait
+   until the human confirms both the term and its meaning. Record a reusable Foundation
+   term in `docs/foundation/glossary.md`, or a project domain term in
+   `docs/glossary.md`. Proposed, contradictory, incidental, or unresolved terms MUST NOT
+   be recorded as established. This procedure MUST NOT modify implementation code or
+   transition into feature work without a separate explicit instruction.
+4. **Derive the ideal set zero-based.** Use only the purpose and resolved decisions.
    Existing implementation must not define the ideal requirements.
-4. **Trace, then reconcile.** Delete candidates that trace to no purpose or metric. Only
+5. **Trace, then reconcile.** Delete candidates that trace to no purpose or metric. Only
    after the ideal set exists, inspect existing assets, constraints, and platform limits;
    record every forced deviation and its reason.
-5. **Classify and prioritize.** Assign stable FR-00x/NFR-00x IDs and MoSCoW priority with
+6. **Classify and prioritize.** Assign stable FR-00x/NFR-00x IDs and MoSCoW priority with
    a one-line basis. State what must hold and why; move unsupported technology choices to
    design.
-6. **Instantiate the template completely.** Follow every embedded instruction and retain
+7. **Instantiate the template completely.** Follow every embedded instruction and retain
    every applicable section. Define terms once, keep unresolved items only under Open
    questions, and apply the placement and project-language rules in `.ai/documentation.md`.
-7. **Verify and self-review.** Check the completed document against the template and the
+8. **Verify and self-review.** Check the completed document against the template and the
    checklist below, then `.ai/review-checklist.md`. Open a `docs:` PR or include it in the
    initiating feature PR.
 
@@ -58,6 +65,7 @@ existing solution, so design and acceptance testing can proceed without re-askin
 
 ## Checklist
 - [ ] Open decisions resolved one fork at a time with recommended drafts
+- [ ] New canonical terms recorded only after human confirmation at a bounded checkpoint
 - [ ] Ideal requirements derived before reconciliation with the implementation
 - [ ] Every requirement has an ID, priority, trace, and objective verification method
 - [ ] Every applicable template section completed; non-scope and open questions explicit

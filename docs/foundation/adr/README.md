@@ -47,5 +47,6 @@ broaden the search under ADR-0012 when relevance is uncertain.
 | [0019](0019-adopt-foundation-into-existing-repositories.md) | Adopt the foundation into existing repositories | existing repositories, onboarding, template inheritance | proposed | 2026-09-02 |
 | [0020](0020-enforce-japanese-pull-request-prose.md) | Enforce Japanese pull request prose | pull requests, language policy, CI, template inheritance | accepted | 2026-09-02 |
 | [0021](0021-scope-japanese-pull-request-prose-to-leaf-repositories.md) | Scope Japanese pull request prose to leaf repositories | pull requests, language policy, repository role, template inheritance | accepted | 2026-09-03 |
+| [0022](0022-integrate-documented-discovery-and-conditional-tdd.md) | Integrate documented discovery and conditional TDD into existing task routes | requirements, architecture, domain terminology, testing, AI workflow | accepted | 2026-09-13 |
 
 <!-- Append new ADRs to this table (newest last). -->

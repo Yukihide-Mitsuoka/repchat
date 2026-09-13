@@ -47,6 +47,26 @@ with weak assertions violates GR-040 in spirit.
 - **Flaky tests** are quarantined with a linked issue within one day — never retried
   into green (GR-040).
 
+## TST-011: Conditional test-driven development
+
+Use test-driven development when the task defines concrete observable behavior, a
+stable observable seam exists, and expected results have an independent basis: an
+accepted requirement, external standard, known-good example, or invariant. Select an
+existing stable seam yourself; ask the human only when a new seam would materially
+change the public design.
+
+Work one behavior slice at a time: make its test fail for the intended reason, add the
+smallest complete behavior that makes it pass, then start the next slice. Test through a
+stable public boundary, and MUST NOT calculate the expected result with the same logic as
+the implementation. While the relevant tests remain green, cleanup MAY restructure only
+code introduced within the current behavior slice. Restructuring pre-existing code or
+unrelated responsibilities belongs in a separate refactor PR under COD-021.
+
+TDD is not required for documentation-only changes, mechanical configuration changes,
+investigation, generated artifacts, or explicitly disposable prototypes. If a behavior
+change appears suitable but TDD is skipped because no stable seam or independent oracle
+exists, state why in the PR. GR-021 and all other test gates still apply.
+
 ## TST-020: Doubles policy
 
 - Mock only at port boundaries (the interfaces defined in `application/`). Never mock
