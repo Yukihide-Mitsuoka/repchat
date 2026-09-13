@@ -22,6 +22,7 @@ assert contract.fingerprint in planner and contract.fingerprint in sql
 assert "未信頼" in planner and "未信頼" in sql
 assert "固定の分析候補" in planner
 assert "SELECT *" in sql
+assert "一意なASCII alias" in sql and "modeがREPEATEDのfieldだけをUNNEST" in sql
 assert "_TABLE_SUFFIX BETWEEN" in sql
 print("ok")
 `,

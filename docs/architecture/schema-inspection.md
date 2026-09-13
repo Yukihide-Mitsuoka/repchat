@@ -100,6 +100,13 @@ repeated・policy tag状態を決定論的に導出します。date shardとinge
 policyへ含めます。不正型、case-insensitiveな同名field、重複path、空のstructured fieldはfail closedです。
 期間SQL検査は各期間fieldの完全path・型がこのpolicyと一致し、repeated・policy tag継承下でないことも要求します。
 
+`contract_sql_validation.py`は契約付きSQLのphysical table aliasをquery scopeごとに解決し、aliasから参照した
+完全nested pathをfield policyへ照合します。restricted field、UNNESTせず参照したrepeated親配下のscalar、
+scalar fieldへのUNNESTを拒否します。schema fieldを指す単純なUNNEST operandは、そのfield自身のmodeが
+REPEATEDであり、各階層のaliasが一意な場合だけ受理します。parenthesisとUNION分岐のalias scopeは分離します。
+計算式で作る配列とCTE出力のlineageはこの検査で推測せず、BigQuery dry runの型検査を維持します。
+`bigquery_execution.validate_sql(...)`は契約付きdry run・実行の前にこの検査を必須とします。
+
 実行policyはcanonical contractの`period`から、業務時刻と各partitionのtable・field path・標準型、
 比較期間を含むscan開始日・終了日、timezoneも導出します。`period=null`は選択schemaに利用可能な
 時間field・partition・date shardがない場合だけ許可し、対象別の期間parserやcallbackをpolicyへ含めません。
@@ -108,8 +115,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はこのfield policyを
-SQLのalias・identifier・UNNEST検査へ接続し、結果形状の検査もcanonical contractから導出します。その後、planner・SQL生成の
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は結果形状の検査を
+canonical contractから導出します。その後、planner・SQL生成の
 legacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
