@@ -5,12 +5,23 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import dataclass
 
 from analysis_contract import AnalysisContract, fingerprint_contract_content
 
 
 class AnalysisContextError(ValueError):
     """A contract or confirmed specification cannot be safely connected."""
+
+
+@dataclass(frozen=True)
+class AnalysisExecutionPolicy:
+    """Exact BigQuery scope and limits derived from one canonical contract."""
+
+    query_tables: frozenset[str]
+    job_tables: frozenset[str]
+    maximum_bytes_billed: int
+    maximum_result_rows: int
 
 
 def _contract(contract: AnalysisContract) -> tuple[str, dict]:
@@ -67,6 +78,88 @@ def sql_rules(contract: AnalysisContract) -> str:
 - semanticsの定義式、grain、relationshipを変更または代用しない。未定義語は推測せず確認を返す。
 {period_rules}
 - limitsは実行側の上限であり、上限以内だと推測したりSQLで無効化したりしない。"""
+
+
+def _qualified_table(value: object) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value.split(".")) != 3
+        or any(not part for part in value.split("."))
+        or any(
+            character.isspace() or character in "`;'\"\\" for character in value
+        )
+        or value.count("*") > 1
+        or ("*" in value and not value.endswith("*"))
+    ):
+        raise AnalysisContextError("analysis contract table scope is invalid")
+    return value
+
+
+def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
+    """Derive exact query scope and execution limits without a second config source."""
+    _content_json, content = _contract(contract)
+    schema = content.get("schema")
+    metadata = schema.get("metadata") if isinstance(schema, dict) else None
+    tables = metadata.get("tables") if isinstance(metadata, dict) else None
+    if (
+        not isinstance(schema, dict)
+        or not isinstance(metadata, dict)
+        or metadata.get("version") != 1
+        or not isinstance(tables, list)
+        or not tables
+    ):
+        raise AnalysisContextError("analysis contract execution schema is invalid")
+    canonical_metadata = json.dumps(
+        metadata, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    if schema.get("fingerprint") != hashlib.sha256(canonical_metadata.encode()).hexdigest():
+        raise AnalysisContextError("analysis contract schema fingerprint is invalid")
+
+    query_tables: set[str] = set()
+    job_tables: set[str] = set()
+    for table in tables:
+        if not isinstance(table, dict):
+            raise AnalysisContextError("analysis contract table scope is invalid")
+        identity = _qualified_table(table.get("table"))
+        if identity in query_tables:
+            raise AnalysisContextError("analysis contract table scope is duplicated")
+        query_tables.add(identity)
+        shards = table.get("dateShards")
+        if shards is None:
+            if identity.endswith("*"):
+                raise AnalysisContextError("analysis contract wildcard scope is invalid")
+            job_tables.add(identity)
+            continue
+        members = shards.get("members") if isinstance(shards, dict) else None
+        if (
+            not identity.endswith("*")
+            or not isinstance(members, list)
+            or not members
+            or any(not isinstance(member, str) for member in members)
+            or len(set(members)) != len(members)
+        ):
+            raise AnalysisContextError("analysis contract date-shard scope is invalid")
+        prefix = identity[:-1]
+        for member in members:
+            physical = _qualified_table(member)
+            if "*" in physical or not physical.startswith(prefix):
+                raise AnalysisContextError("analysis contract date-shard scope is invalid")
+            job_tables.add(physical)
+        job_tables.add(identity)
+
+    limits = content.get("limits")
+    expected_limits = {"maximum_bytes_billed", "maximum_result_rows"}
+    if not isinstance(limits, dict) or set(limits) != expected_limits:
+        raise AnalysisContextError("analysis contract execution limits are invalid")
+    for value in limits.values():
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise AnalysisContextError("analysis contract execution limits are invalid")
+    return AnalysisExecutionPolicy(
+        query_tables=frozenset(query_tables),
+        job_tables=frozenset(job_tables),
+        maximum_bytes_billed=limits["maximum_bytes_billed"],
+        maximum_result_rows=limits["maximum_result_rows"],
+    )
 
 
 def bind_specification(specification: dict, contract: AnalysisContract) -> dict:

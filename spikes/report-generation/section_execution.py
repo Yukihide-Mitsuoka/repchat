@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Callable
 
+import analysis_contract_context
 import data_source_profiles
 import run_report as report
 import sql_contract_validation as sql_contracts
@@ -21,6 +22,7 @@ def _dashboard_sql_diagnostic(
     bq: object,
     allowed_dataset: str,
     period_diagnostic: str,
+    policy: analysis_contract_context.AnalysisExecutionPolicy | None = None,
 ) -> str:
     """Return the first repairable pre-execution diagnostic in policy order."""
     if period_diagnostic:
@@ -29,8 +31,9 @@ def _dashboard_sql_diagnostic(
         sql_contracts.validate_generated_dashboard_sql(section, sql)
     except sql_contracts.SQLContractError as validation_error:
         return str(validation_error)
+    policy_args = {"policy": policy} if policy is not None else {}
     dry_schema, dry_error = report.inspect_bq_schema(
-        bq, sql, allowed_dataset=allowed_dataset
+        bq, sql, allowed_dataset=allowed_dataset, **policy_args
     )
     if dry_error:
         if not report.repairable_dry_run_error(dry_error):
@@ -52,13 +55,16 @@ def _execute_section_result(
     allowed_dataset: str,
     max_result_rows: int,
     cost: float,
+    policy: analysis_contract_context.AnalysisExecutionPolicy | None = None,
 ) -> dict:
     """Reject invalid query results before constructing the result event."""
+    policy_args = {"policy": policy} if policy is not None else {}
     result, error = report.exec_bq(
         bq,
         sql,
         max_results=max_result_rows + 1,
         allowed_dataset=allowed_dataset,
+        **policy_args,
     )
     if error:
         raise SectionExecutionError(f"BigQuery実行に失敗しました: {error}")
@@ -106,6 +112,17 @@ def run_section(
 ) -> float:
     """Generate, validate, execute, and optionally verify one panel."""
     extra = context or {}
+    policy = (
+        analysis_contract_context.execution_policy(source.analysis_contract)
+        if source.analysis_contract is not None
+        else None
+    )
+    result_row_limit = (
+        min(max_result_rows, policy.maximum_result_rows)
+        if policy is not None
+        else max_result_rows
+    )
+    policy_args = {"policy": policy} if policy is not None else {}
 
     def send(event: dict) -> None:
         emit({**event, **extra})
@@ -143,7 +160,9 @@ def run_section(
         return cost
     if not sql:
         raise SectionExecutionError("SQLが返りませんでした。指標定義または質問を確認してください。")
-    normalized, error = report.validate_sql(sql, allowed_dataset)
+    normalized, error = report.validate_sql(
+        sql, allowed_dataset, **policy_args
+    )
     if error:
         raise SectionExecutionError(f"生成SQLを安全検査で拒否しました: {error}")
     assert normalized is not None
@@ -160,6 +179,26 @@ def run_section(
         not allow_period_repair or not section.get("source_columns")
     ):
         raise SectionExecutionError(period_diagnostic)
+    if policy is not None and not section.get("source_columns"):
+        send(
+            {
+                "type": "stage",
+                "stage": "validate",
+                "message": "共通分析契約とBigQuery dry runを照合中です。",
+            }
+        )
+        diagnostic = _dashboard_sql_diagnostic(
+            section,
+            normalized,
+            bq,
+            allowed_dataset,
+            "",
+            policy,
+        )
+        if diagnostic:
+            raise SectionExecutionError(
+                f"共通分析契約の実行前診断を満たさないため実行しません: {diagnostic}"
+            )
     if section.get("source_columns"):
         send(
             {
@@ -177,6 +216,7 @@ def run_section(
                 bq,
                 allowed_dataset,
                 period_diagnostic if allow_period_repair else "",
+                policy,
             )
             if not diagnostic:
                 break
@@ -210,7 +250,7 @@ def run_section(
                     + detail
                 )
             normalized, validation_error = report.validate_sql(
-                repaired_sql, allowed_dataset
+                repaired_sql, allowed_dataset, **policy_args
             )
             if validation_error:
                 raise SectionExecutionError(
@@ -250,8 +290,9 @@ def run_section(
             normalized,
             bq=bq,
             allowed_dataset=allowed_dataset,
-            max_result_rows=max_result_rows,
+            max_result_rows=result_row_limit,
             cost=cost,
+            policy=policy,
         )
     )
     return cost

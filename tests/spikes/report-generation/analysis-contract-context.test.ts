@@ -77,6 +77,45 @@ print("ok")
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('execution policy is derived only from canonical contract scope and limits', () => {
+  const result = python(`
+import hashlib,json
+import analysis_contract_context as c
+from analysis_contract import AnalysisContract,fingerprint_contract_content
+ordinary="alpha.dataset.orders"
+pattern="alpha.dataset.events_*"
+members=["alpha.dataset.events_20260912","alpha.dataset.events_20260913"]
+metadata={"version":1,"tables":[
+ {"table":ordinary,"fields":[]},
+ {"table":pattern,"fields":[],"dateShards":{"suffixFormat":"YYYYMMDD","startSuffix":"20260912","endSuffix":"20260913","members":members}},
+]}
+schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-13T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":None,"limits":{"maximum_bytes_billed":123,"maximum_result_rows":7}}
+encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+contract=AnalysisContract(encoded,fingerprint_contract_content(content))
+policy=c.execution_policy(contract)
+assert policy.query_tables==frozenset({ordinary,pattern})
+assert policy.job_tables==frozenset({ordinary,pattern,*members})
+assert policy.maximum_bytes_billed==123 and policy.maximum_result_rows==7
+for change in ("schema_fingerprint","empty_tables","boolean_limit","bad_member","member_type","unsafe_table"):
+ invalid=json.loads(encoded)
+ if change=="schema_fingerprint":invalid["schema"]["fingerprint"]="0"*64
+ if change=="empty_tables":invalid["schema"]["metadata"]["tables"]=[]
+ if change=="boolean_limit":invalid["limits"]["maximum_bytes_billed"]=True
+ if change=="bad_member":invalid["schema"]["metadata"]["tables"][1]["dateShards"]["members"]=["alpha.dataset.other"]
+ if change=="member_type":invalid["schema"]["metadata"]["tables"][1]["dateShards"]["members"]=[{}]
+ if change=="unsafe_table":invalid["schema"]["metadata"]["tables"][0]["table"]="alpha.dataset.orders;"
+ if change in ("empty_tables","bad_member","member_type","unsafe_table"):
+  invalid["schema"]["fingerprint"]=hashlib.sha256(json.dumps(invalid["schema"]["metadata"],ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+ invalid_encoded=json.dumps(invalid,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+ try:c.execution_policy(AnalysisContract(invalid_encoded,fingerprint_contract_content(invalid)))
+ except c.AnalysisContextError:pass
+ else:raise AssertionError("invalid execution policy accepted")
+print("ok")
+`);
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('forged contracts and mismatched specifications fail closed', () => {
   const result = python(
     setup +

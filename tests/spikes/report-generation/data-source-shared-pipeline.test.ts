@@ -38,12 +38,18 @@ print(json.dumps({
 
 test('one bound common contract reaches the actual planner and SQL generation paths', () => {
   const result = python(`
+import hashlib
 import analysis_workflows as workflows
 import data_source_profiles as profiles
 import section_execution as execution
+from datetime import date,timedelta
 from analysis_contract import AnalysisContract,fingerprint_contract_content
 table="bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"
-content={"version":1,"schema":{"fingerprint":"schema-a","retrieved_at":"2026-09-12T00:00:00+00:00","metadata":{"version":1,"tables":[{"table":table}]}},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
+members=[];current=date(2021,1,1)
+while current<=date(2021,1,31):members.append(table[:-1]+current.strftime("%Y%m%d"));current+=timedelta(days=1)
+metadata={"version":1,"tables":[{"table":table,"fields":[],"dateShards":{"suffixFormat":"YYYYMMDD","startSuffix":"20210101","endSuffix":"20210131","members":members}}]}
+schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-12T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 original=profiles.profile_for("ga4");source=original.with_contract(contract)
@@ -55,11 +61,12 @@ workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics
 sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 generated=[]
 execution.report.generate_request=lambda _client,_model,request,rules:(generated.append(rules) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
-execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
-execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
+inspected=[];executed=[]
+execution.report.inspect_bq_schema=lambda *_args,**kwargs:(inspected.append(kwargs) or ([("metric_value","INT64")],None))
+execution.report.exec_bq=lambda *_args,**kwargs:(executed.append(kwargs) or (([(1,)], ["metric_value"]),None))
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
-section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"},"source_columns":["metric_value"]}
-execution.run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=10)
+section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"}}
+execution.run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=50)
 errors=[]
 other=json.loads(encoded);other["schema"]["metadata"]["tables"][0]["table"]="bigquery-public-data.crypto_bitcoin.transactions"
 other_encoded=json.dumps(other,ensure_ascii=False,sort_keys=True,separators=(",",":"))
@@ -67,7 +74,7 @@ for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encode
  try:original.with_contract(candidate)
  except ValueError as error:errors.append(str(error))
  else:raise AssertionError("unsafe contract binding accepted")
-print(json.dumps({"planner":planning[0],"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors},ensure_ascii=False))
+print(json.dumps({"planner":planning[0],"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors,"dry_run_bytes":inspected[0]["policy"].maximum_bytes_billed,"execution_bytes":executed[0]["policy"].maximum_bytes_billed,"max_results":executed[0]["max_results"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -78,6 +85,9 @@ print(json.dumps({"planner":planning[0],"sql":generated[0],"fingerprint":contrac
   assert.equal(output.original, true);
   assert.equal(output.bound_contract, output.fingerprint);
   assert.equal(output.errors.length, 2);
+  assert.equal(output.dry_run_bytes, 100);
+  assert.equal(output.execution_bytes, 100);
+  assert.equal(output.max_results, 11);
 });
 
 test('Bitcoin dashboard planning uses its schema and freezes the selected profile', () => {

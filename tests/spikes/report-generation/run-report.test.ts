@@ -145,6 +145,90 @@ print(json.dumps({
   });
 });
 
+test('canonical execution policy enforces exact tables and query limits', () => {
+  const result = loadRunReport(`
+import sys
+import types
+from analysis_contract_context import AnalysisExecutionPolicy
+
+google = types.ModuleType("google")
+cloud = types.ModuleType("google.cloud")
+bigquery = types.ModuleType("google.cloud.bigquery")
+class QueryJobConfig:
+    def __init__(self, **kwargs): self.__dict__.update(kwargs)
+bigquery.QueryJobConfig = QueryJobConfig
+cloud.bigquery = bigquery
+google.cloud = cloud
+sys.modules["google"] = google
+sys.modules["google.cloud"] = cloud
+sys.modules["google.cloud.bigquery"] = bigquery
+
+policy=AnalysisExecutionPolicy(
+    query_tables=frozenset({"alpha.dataset.allowed"}),
+    job_tables=frozenset({"alpha.dataset.allowed"}),
+    maximum_bytes_billed=123,
+    maximum_result_rows=7,
+)
+class Field:
+    name="metric_value"
+    field_type="INT64"
+class Row:
+    def values(self):return [1]
+class Rows:
+    schema=[Field()]
+    def __iter__(self):return iter([Row()])
+class Job:
+    statement_type="SELECT"
+    schema=[Field()]
+    def __init__(self,table_id):
+        self.referenced_tables=[types.SimpleNamespace(project="alpha",dataset_id="dataset",table_id=table_id)]
+    def result(self,**_kwargs):return Rows()
+class Client:
+    def __init__(self,table_id):self.table_id=table_id;self.configs=[]
+    def query(self,_sql,job_config):self.configs.append(job_config.__dict__);return Job(self.table_id)
+
+tick=chr(96)
+allowed="SELECT COUNT(1) AS metric_value FROM "+tick+"alpha.dataset.allowed"+tick
+unlisted="SELECT COUNT(1) AS metric_value FROM "+tick+"alpha.dataset.unlisted"+tick
+allowed_validation=module["validate_sql"](allowed,policy=policy)
+unlisted_validation=module["validate_sql"](unlisted,policy=policy)
+client=Client("allowed")
+schema,schema_error=module["inspect_bq_schema"](client,allowed,policy=policy)
+execution,execution_error=module["exec_bq"](client,allowed,max_results=8,policy=policy)
+bad_schema,bad_error=module["inspect_bq_schema"](Client("unlisted"),allowed,policy=policy)
+print(json.dumps({
+    "allowed_validation":allowed_validation,
+    "unlisted_error":unlisted_validation[1],
+    "schema":schema,
+    "schema_error":schema_error,
+    "execution":execution,
+    "execution_error":execution_error,
+    "configs":client.configs,
+    "bad_schema":bad_schema,
+    "bad_error":bad_error,
+}))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    allowed_validation: ['SELECT COUNT(1) AS metric_value FROM `alpha.dataset.allowed`', null],
+    unlisted_error: 'rejected: table is outside the analysis contract',
+    schema: [['metric_value', 'INT64']],
+    schema_error: null,
+    execution: [[[1]], ['metric_value']],
+    execution_error: null,
+    configs: [
+      {
+        dry_run: true,
+        maximum_bytes_billed: 123,
+        use_query_cache: false,
+      },
+      { maximum_bytes_billed: 123, use_query_cache: true },
+    ],
+    bad_schema: null,
+    bad_error: 'bq dry-run rejected: table is outside the analysis contract',
+  });
+});
+
 test('dry-run job statistics enforce SELECT and the allowed dataset', () => {
   const result = loadRunReport(`
 import sys
