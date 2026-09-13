@@ -115,13 +115,15 @@ assert fields["items.sku"]["valueClass"]=="repeated"
 assert fields["items.sku"]["valueSummary"]=={"status":"metadata_only","reason":"repeated"}
 assert fields["secret"]["valueClass"]=="restricted"
 assert fields["secret"]["valueSummary"]=={"status":"metadata_only","reason":"restricted"}
-assert fields["category"]["valueSummary"]["samples"]==["alpha","beta"]
-assert fields["category"]["valueSummary"]["status"]=="bounded_values"
-assert fields["free_text"]["valueSummary"]["status"]=="aggregates"
-assert "samples" not in fields["free_text"]["valueSummary"]
-assert fields["amount"]["valueSummary"]["minimum"]=="1.25"
-assert fields["observed_at"]["valueSummary"]["minimum"]=="2026-01-01T00:00:00+00:00"
-assert fields["payload"]["valueSummary"]=={"status":"aggregates","nullFraction":0.05}
+assert fields["category"]["valueSummary"]=={"status":"metadata_only","reason":"date_shard_candidate"}
+profiled={field["path"]:field for field in content["tables"][2]["fields"]}
+assert profiled["category"]["valueSummary"]["samples"]==["alpha","beta"]
+assert profiled["category"]["valueSummary"]["status"]=="bounded_values"
+assert profiled["free_text"]["valueSummary"]["status"]=="aggregates"
+assert "samples" not in profiled["free_text"]["valueSummary"]
+assert profiled["amount"]["valueSummary"]["minimum"]=="1.25"
+assert profiled["observed_at"]["valueSummary"]["minimum"]=="2026-01-01T00:00:00+00:00"
+assert profiled["payload"]["valueSummary"]=={"status":"aggregates","nullFraction":0.05}
 secret_metadata=next(field for field in content["schema"]["metadata"]["tables"][0]["fields"] if field["name"]=="secret")
 assert secret_metadata["policyTags"]=={"names":["taxonomy/pii"]}
 assert all("secret" not in sql and "items" not in sql for _,sql,_ in client.query_calls)
@@ -130,9 +132,65 @@ assert all(quoted_odd in sql for _,sql,_ in client.query_calls)
 assert all("LIMIT 10000" in sql and "TABLESAMPLE SYSTEM (1 PERCENT)" in sql for _,sql,_ in client.query_calls)
 partition_filter="WHERE source."+chr(96)+"observed_at"+chr(96)+" IS NOT NULL"
 assert all(partition_filter in sql for _,sql,_ in client.query_calls)
-assert [config.get("dry_run",False) for _,_,config in client.query_calls]==[True,True,True,False,False,False]
+assert [name for name,_,_ in client.query_calls]==[exact,exact]
+assert [config.get("dry_run",False) for _,_,config in client.query_calls]==[True,False]
 assert all(call=={"timeout":d.QUERY_TIMEOUT_SECONDS,"max_results":2} for call in client.result_calls)
 assert snapshot.fingerprint==d.discover_scope(Client(),d.AuthorizedScope(datasets=frozenset([dataset]),tables=frozenset([exact]))).fingerprint
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('discovered date shards consolidate and profile through one bounded wildcard', () => {
+  const result = python(
+    setup +
+      String.raw`
+pattern=dataset+".records_*"
+class UnpartitionedTable(Table):
+ def to_api_repr(self):
+  data=super().to_api_repr()
+  if self.name.startswith(dataset+".records_"):
+   data.pop("timePartitioning");data["requirePartitionFilter"]=False
+  return data
+class UnpartitionedClient(Client):
+ def get_table(self,name,**kwargs):
+  self.get_calls.append((name,kwargs));return UnpartitionedTable(name)
+client,physical=discover(UnpartitionedClient())
+consolidated=d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
+content=consolidated.content();tables=content["tables"]
+assert [table["table"] for table in tables]==[pattern,exact]
+wildcard=tables[0]
+assert wildcard["dateShards"]=={"suffixFormat":"YYYYMMDD","startSuffix":"20260101","endSuffix":"20260102","members":[dataset+".records_20260101",dataset+".records_20260102"]}
+assert "dateShardCandidate" not in wildcard
+assert next(field for field in wildcard["fields"] if field["path"]=="category")["valueSummary"]["samples"]==["alpha","beta"]
+assert [name for name,_,_ in client.query_calls]==[exact,exact,pattern,pattern]
+wildcard_sql=[sql for name,sql,_ in client.query_calls if name==pattern]
+assert all("_TABLE_SUFFIX BETWEEN '20260101' AND '20260102'" in sql for sql in wildcard_sql)
+assert client.list_calls==[(dataset,{"max_results":d.MAX_LISTED_TABLES+1,"timeout":30,"retry":None})]*2
+assert consolidated.fingerprint==d.consolidate_date_shards(UnpartitionedClient(),discover(UnpartitionedClient())[1],{pattern:("20260101","20260102")}).fingerprint
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), 'ok');
+});
+
+test('shard consolidation rejects scope expansion and partitioned groups', () => {
+  const result = python(
+    setup +
+      String.raw`
+pattern=dataset+".records_*";client,physical=discover()
+before=len(client.list_calls)
+try:d.consolidate_date_shards(client,physical,{pattern:("20251231","20260102")})
+except d.ScopeDiscoveryError:pass
+else:raise AssertionError("range outside discovered scope accepted")
+assert len(client.list_calls)==before
+try:d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
+except d.ScopeDiscoveryError as error:assert str(error)=="partitioned date-shard groups are unsupported"
+else:raise AssertionError("partitioned shard group accepted")
+assert [name for name,_,_ in client.query_calls]==[exact,exact]
 print("ok")
 `,
   );
@@ -188,6 +246,7 @@ for change in ("statement","reference","bytes","missing"):
  assert client.query_calls
  assert all(config.get("dry_run") for _,_,config in client.query_calls)
  assert not client.result_calls
+listed_tables[:]=["records_alpha","records_beta"]
 client=Client();client.bytes_processed=d.MAX_BYTES_BILLED_TOTAL//3+1
 try:discover(client)
 except d.ScopeDiscoveryError:pass
@@ -227,6 +286,7 @@ test('value field budget retains complete metadata and marks the remainder', () 
     setup +
       String.raw`
 base_fields[:]=[{"name":f"field_{index}","type":"JSON"} for index in range(d.MAX_VALUE_FIELDS_PER_TABLE+2)]
+listed_tables[:]=[]
 client=Client()
 row={"sampled_rows":10}
 for index in range(d.MAX_VALUE_FIELDS_PER_TABLE):row[f"f{index}_nulls"]=index%2

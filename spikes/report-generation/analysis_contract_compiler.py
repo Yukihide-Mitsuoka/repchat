@@ -220,6 +220,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
         "rangePartitioning",
         "clustering",
         "requirePartitionFilter",
+        "dateShards",
     )
     for table_index, entry in enumerate(ordered):
         name = entry.get("table") if isinstance(entry, dict) else None
@@ -266,6 +267,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                 "mode": field["mode"],
                 "value_class": field["valueClass"],
                 "selectable": selectable,
+                "role_selectable": selectable,
             }
             prompt_field = {
                 "token": token,
@@ -284,6 +286,28 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
             if summary is not None:
                 prompt_field["value_summary"] = summary
             prompt_fields.append(prompt_field)
+        if "dateShards" in metadata[name]:
+            token = f"f{len(fields):04d}"
+            fields[token] = {
+                "reference": {"table": name, "field": "_TABLE_SUFFIX"},
+                "table_token": table_token,
+                "type": "DATE",
+                "mode": "REQUIRED",
+                "value_class": "temporal",
+                "selectable": True,
+                "role_selectable": False,
+            }
+            prompt_fields.append(
+                {
+                    "token": token,
+                    "table": table_token,
+                    "field": "_TABLE_SUFFIX",
+                    "type": "DATE",
+                    "mode": "REQUIRED",
+                    "selectable": True,
+                    "role_selectable": False,
+                }
+            )
     expected = {
         (name, *path)
         for name, table in metadata.items()
@@ -328,6 +352,7 @@ def prepare_compiler_input(
                         "clustering",
                         "requirePartitionFilter",
                         "dateShardCandidate",
+                        "dateShards",
                     }
                 },
             }

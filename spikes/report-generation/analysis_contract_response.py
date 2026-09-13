@@ -73,7 +73,7 @@ def _role_definitions(
         name = _text(value["name"], key, 80)
         field_token = _token(value["field"], prepared.fields, key)
         field = prepared.fields[field_token]
-        if not field["selectable"] or field["table_token"] not in selected:
+        if not field["role_selectable"] or field["table_token"] not in selected:
             raise ContractCompilerError(f"generated {key} field is not selectable")
         reference = field["reference"]
         definition = {"field": reference, "expr": expression_for_field(reference)}
@@ -102,7 +102,7 @@ def _metric_definitions(
         field = prepared.fields[field_token]
         aggregation = value["aggregation"]
         if (
-            not field["selectable"]
+            not field["role_selectable"]
             or field["table_token"] not in selected
             or not isinstance(aggregation, str)
             or aggregation not in AGGREGATIONS
@@ -153,7 +153,12 @@ def _time_candidates(
         result.append({"field": field["reference"], "confidence": value["confidence"]})
     if business not in tokens:
         raise ContractCompilerError("business time must be one generated time candidate")
-    result.sort(key=lambda item: (item["field"]["table"], item["field"]["path"]))
+    result.sort(
+        key=lambda item: (
+            item["field"]["table"],
+            item["field"].get("path", [item["field"].get("field", "")]),
+        )
+    )
     return business, result
 
 
@@ -175,8 +180,8 @@ def _relationships(
         right_token = _token(value["right_field"], prepared.fields, "relationship")
         left, right = prepared.fields[left_token], prepared.fields[right_token]
         if (
-            not left["selectable"]
-            or not right["selectable"]
+            not left["role_selectable"]
+            or not right["role_selectable"]
             or left["table_token"] == right["table_token"]
             or {left["table_token"], right["table_token"]} - selected
             or not isinstance(value["cardinality"], str)
@@ -251,7 +256,11 @@ def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) ->
         partition = table.get("timePartitioning")
         if partition is not None and not isinstance(partition, dict):
             raise ContractCompilerError("selected table partition metadata is invalid")
-        if partition:
+        if table.get("dateShards"):
+            period["partitions"].append(
+                {"table": table["table"], "field": "_TABLE_SUFFIX"}
+            )
+        elif partition:
             field = partition.get("field")
             period["partitions"].append(
                 {"table": table["table"], "path": [field]}
@@ -305,7 +314,10 @@ def normalize_contract_response(raw: dict, prepared: CompilerInput) -> AnalysisC
         {"field": field["reference"], "repeated": field["value_class"] == "repeated"}
         for field in prepared.fields.values()
         if field["table_token"] in selected
-        and (len(field["reference"]["path"]) > 1 or field["value_class"] == "repeated")
+        and (
+            len(field["reference"].get("path", [])) > 1
+            or field["value_class"] == "repeated"
+        )
     ]
     semantics["relationships"] = _relationships(raw, prepared, selected)
     selected_names = {prepared.tables[token] for token in selected}

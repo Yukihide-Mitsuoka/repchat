@@ -12,9 +12,12 @@ from decimal import Decimal
 
 from bigquery_schema_snapshot import (
     MAX_FIELDS,
+    MAX_METADATA_BYTES,
+    MAX_SHARDS,
     MAX_TABLES,
     SchemaInspectionError,
     SchemaSnapshot,
+    inspect_date_shards,
     inspect_schema,
 )
 
@@ -264,9 +267,18 @@ def _summary_query(table: dict, fields: list[dict]) -> str:
         "    " + ",\n    ".join(selected),
         f"  FROM `{table['table']}` AS source TABLESAMPLE SYSTEM ({SAMPLE_PERCENT} PERCENT)",
     ]
-    predicate = _partition_predicate(table)
-    if predicate:
-        lines.append(f"  WHERE {predicate}")
+    predicates = []
+    shards = table.get("dateShards")
+    if shards:
+        predicates.append(
+            "_TABLE_SUFFIX BETWEEN "
+            f"'{shards['startSuffix']}' AND '{shards['endSuffix']}'"
+        )
+    partition = _partition_predicate(table)
+    if partition:
+        predicates.append(partition)
+    if predicates:
+        lines.append("  WHERE " + " AND ".join(predicates))
     lines.extend([
         f"  LIMIT {MAX_SAMPLE_ROWS}",
         ") AS bounded_sample",
@@ -274,7 +286,7 @@ def _summary_query(table: dict, fields: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _job_scope_error(job, expected_table: str) -> str | None:
+def _job_scope_error(job, expected: dict) -> str | None:
     if getattr(job, "statement_type", None) != "SELECT":
         return "value summary query was not a SELECT"
     references = getattr(job, "referenced_tables", None)
@@ -288,7 +300,10 @@ def _job_scope_error(job, expected_table: str) -> str | None:
         if not all(isinstance(value, str) and value for value in (project, dataset, table)):
             return "value summary query reported an invalid table reference"
         observed.add(f"{project}.{dataset}.{table}")
-    if observed != {expected_table}:
+    allowed = {expected["table"]}
+    if expected.get("dateShards"):
+        allowed = set(expected["dateShards"]["members"])
+    if observed not in ({expected["table"]}, allowed):
         return "value summary query escaped the authorized table"
     return None
 
@@ -319,7 +334,7 @@ def _dry_run_queries(bq, queries: list[tuple[dict, list[dict], str]]) -> None:
             job = bq.query(sql, job_config=dry_config)
         except Exception:
             raise ScopeDiscoveryError("value summary dry run failed") from None
-        error = _job_scope_error(job, table["table"])
+        error = _job_scope_error(job, table)
         if error:
             raise ScopeDiscoveryError(error)
         processed = getattr(job, "total_bytes_processed", None)
@@ -438,7 +453,7 @@ def _run_queries(bq, queries: list[tuple[dict, list[dict], str]]) -> None:
         try:
             job = bq.query(sql, job_config=run_config)
             rows = list(job.result(timeout=QUERY_TIMEOUT_SECONDS, max_results=2))
-            error = _job_scope_error(job, table["table"])
+            error = _job_scope_error(job, table)
             if error:
                 raise ScopeDiscoveryError(error)
         except ScopeDiscoveryError:
@@ -459,14 +474,31 @@ def _catalog(snapshot: SchemaSnapshot) -> tuple[list[dict], list[tuple[dict, lis
             "location": metadata["location"],
             "fields": _flatten_fields(metadata["fields"]),
         }
-        for key in ("timePartitioning", "rangePartitioning", "clustering", "requirePartitionFilter"):
+        for key in (
+            "timePartitioning",
+            "rangePartitioning",
+            "clustering",
+            "requirePartitionFilter",
+            "dateShards",
+        ):
             if key in metadata:
                 table[key] = metadata[key]
         shard = _date_shard(metadata["table"])
         if shard:
             table["dateShardCandidate"] = shard
         selected = _selectable_fields(table["fields"])
-        if selected:
+        if shard:
+            for field in table["fields"]:
+                reason = (
+                    field["valueClass"]
+                    if field["valueClass"] in ("restricted", "repeated", "structured")
+                    else "date_shard_candidate"
+                )
+                field["valueSummary"] = {
+                    "status": "metadata_only",
+                    "reason": reason,
+                }
+        elif selected:
             queries.append((table, selected, _summary_query(metadata, selected)))
         else:
             for field in table["fields"]:
@@ -476,6 +508,171 @@ def _catalog(snapshot: SchemaSnapshot) -> tuple[list[dict], list[tuple[dict, lis
                 }
         tables.append(table)
     return tables, queries
+
+
+def _validated_content(snapshot: DiscoverySnapshot) -> dict:
+    if not isinstance(snapshot, DiscoverySnapshot):
+        raise ScopeDiscoveryError("a discovery snapshot is required")
+    try:
+        content = json.loads(snapshot.content_json)
+        schema = content["schema"]
+        metadata = schema["metadata"]
+        retrieved = datetime.fromisoformat(snapshot.retrieved_at)
+        canonical_metadata = json.dumps(
+            metadata,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (KeyError, TypeError, ValueError):
+        raise ScopeDiscoveryError("discovery snapshot is invalid") from None
+    if (
+        not isinstance(content, dict)
+        or set(content) != {"version", "schema", "tables", "limits"}
+        or content.get("version") != 1
+        or snapshot.content_json
+        != json.dumps(
+            content,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        or snapshot.fingerprint != hashlib.sha256(snapshot.content_json.encode()).hexdigest()
+        or schema.get("fingerprint")
+        != hashlib.sha256(canonical_metadata.encode()).hexdigest()
+        or retrieved.tzinfo is None
+    ):
+        raise ScopeDiscoveryError("discovery snapshot is invalid")
+    return content
+
+
+def _candidate_groups(content: dict) -> dict[str, set[str]]:
+    groups: dict[str, set[str]] = {}
+    for table in content["tables"]:
+        candidate = table.get("dateShardCandidate") if isinstance(table, dict) else None
+        if candidate is None:
+            continue
+        expected = _date_shard(table.get("table"))
+        if candidate != expected:
+            raise ScopeDiscoveryError("date-shard candidate differs from its table")
+        groups.setdefault(candidate["pattern"], set()).add(table["table"])
+    return groups
+
+
+def _requested_members(pattern: str, start_suffix: str, end_suffix: str) -> list[str]:
+    try:
+        start = datetime.strptime(start_suffix, "%Y%m%d").date()
+        end = datetime.strptime(end_suffix, "%Y%m%d").date()
+    except (TypeError, ValueError):
+        raise ScopeDiscoveryError("date-shard range must use YYYYMMDD") from None
+    if start > end:
+        raise ScopeDiscoveryError("date-shard range start must not follow end")
+    if (end - start).days + 1 > MAX_SHARDS:
+        raise ScopeDiscoveryError("date-shard range exceeds discovery limit")
+    prefix = pattern[:-1]
+    members = []
+    current = start
+    while current <= end:
+        members.append(prefix + current.strftime("%Y%m%d"))
+        current += date.resolution
+    return members
+
+
+def _schema_snapshot(tables: list[dict], retrieved_at: str) -> SchemaSnapshot:
+    metadata = json.dumps(
+        {"version": 1, "tables": sorted(tables, key=lambda table: table["table"])},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    if len(tables) > MAX_TABLES or len(metadata.encode()) > MAX_METADATA_BYTES:
+        raise ScopeDiscoveryError("consolidated schema exceeds discovery limits")
+    return SchemaSnapshot(
+        metadata,
+        hashlib.sha256(metadata.encode()).hexdigest(),
+        retrieved_at,
+    )
+
+
+def consolidate_date_shards(
+    bq,
+    snapshot: DiscoverySnapshot,
+    ranges: dict[str, tuple[str, str]],
+) -> DiscoverySnapshot:
+    """Replace approved physical shard candidates with inspected wildcard tables."""
+    content = _validated_content(snapshot)
+    groups = _candidate_groups(content)
+    if (
+        not isinstance(ranges, dict)
+        or not ranges
+        or len(ranges) > MAX_TABLES
+        or not set(ranges) <= set(groups)
+    ):
+        raise ScopeDiscoveryError("date-shard ranges must select discovered candidates")
+    allowed_patterns = frozenset(groups)
+    replacements, queries, removed = {}, [], set()
+    retrieved_at = snapshot.retrieved_at
+    for pattern in sorted(ranges):
+        value = ranges[pattern]
+        if not isinstance(value, tuple) or len(value) != 2:
+            raise ScopeDiscoveryError("date-shard range must contain start and end")
+        start_suffix, end_suffix = value
+        requested = _requested_members(pattern, start_suffix, end_suffix)
+        if not set(requested) <= groups[pattern]:
+            raise ScopeDiscoveryError("date-shard range escapes discovered scope")
+        try:
+            inspected = inspect_date_shards(
+                bq,
+                pattern,
+                start_suffix=start_suffix,
+                end_suffix=end_suffix,
+                allowed_patterns=allowed_patterns,
+            )
+        except SchemaInspectionError as error:
+            raise ScopeDiscoveryError(str(error)) from None
+        metadata = inspected.metadata()["tables"][0]
+        if datetime.fromisoformat(inspected.retrieved_at) > datetime.fromisoformat(
+            retrieved_at
+        ):
+            retrieved_at = inspected.retrieved_at
+        if "timePartitioning" in metadata or "rangePartitioning" in metadata:
+            raise ScopeDiscoveryError("partitioned date-shard groups are unsupported")
+        catalog, generated_queries = _catalog(inspected)
+        replacements[pattern] = (metadata, catalog[0])
+        queries.extend(generated_queries)
+        removed.update(groups[pattern])
+    _dry_run_queries(bq, queries)
+    _run_queries(bq, queries)
+    schema_tables = [
+        table
+        for table in content["schema"]["metadata"]["tables"]
+        if table["table"] not in removed
+    ] + [value[0] for value in replacements.values()]
+    catalog_tables = [
+        table for table in content["tables"] if table["table"] not in removed
+    ] + [value[1] for value in replacements.values()]
+    schema_snapshot = _schema_snapshot(schema_tables, retrieved_at)
+    result = {
+        **content,
+        "schema": {
+            "fingerprint": schema_snapshot.fingerprint,
+            "metadata": schema_snapshot.metadata(),
+        },
+        "tables": sorted(catalog_tables, key=lambda table: table["table"]),
+    }
+    encoded = json.dumps(
+        result,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    if len(encoded.encode()) > MAX_DISCOVERY_BYTES:
+        raise ScopeDiscoveryError("consolidated discovery exceeds output limit")
+    return DiscoverySnapshot(
+        encoded,
+        hashlib.sha256(encoded.encode()).hexdigest(),
+        retrieved_at,
+    )
 
 
 def discover_scope(bq, scope: AuthorizedScope) -> DiscoverySnapshot:

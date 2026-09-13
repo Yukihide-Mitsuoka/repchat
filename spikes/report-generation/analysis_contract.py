@@ -332,9 +332,20 @@ def _candidate_fields(raw: dict, key: str, tables: dict[str, dict]) -> list[dict
         expected = {"field", "confidence"} if key == "time_candidates" else {"field", "repeated"}
         if not isinstance(candidate, dict) or set(candidate) != expected:
             raise AnalysisContractError(f"semantics.{key} contains an invalid candidate")
-        _table, segments, field, canonical, repeated = _field(
-            tables, candidate["field"], f"semantics.{key}.field"
+        table_name, segments, canonical = _reference_parts(
+            candidate["field"], f"semantics.{key}.field"
         )
+        if (
+            key == "time_candidates"
+            and canonical.get("field") == "_TABLE_SUFFIX"
+            and table_name in tables
+            and "dateShards" in tables[table_name]
+        ):
+            field, repeated = {"type": "DATE"}, False
+        else:
+            _table, segments, field, canonical, repeated = _field(
+                tables, candidate["field"], f"semantics.{key}.field"
+            )
         if key == "time_candidates":
             if field["type"] not in TIME_TYPES or repeated:
                 raise AnalysisContractError("time candidates require non-repeated temporal fields")

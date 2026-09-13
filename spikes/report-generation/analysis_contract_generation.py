@@ -58,12 +58,14 @@ def _available_tokens(prepared: CompilerInput) -> tuple[list[str], list[str], li
     fields = sorted(
         token
         for token, field in prepared.fields.items()
-        if field["selectable"] and field["table_token"] in tables
+        if field["role_selectable"] and field["table_token"] in tables
     )
     temporal = sorted(
         token
-        for token in fields
-        if prepared.fields[token]["value_class"] == "temporal"
+        for token, field in prepared.fields.items()
+        if field["selectable"]
+        and field["table_token"] in tables
+        and field["value_class"] == "temporal"
     )
     if not tables:
         raise ContractCompilerError("no consolidated table is available for generation")
@@ -183,6 +185,7 @@ def _generation_request(prepared: CompilerInput) -> str:
         "規則:\n"
         "- tableとfieldは必ず提示済みtokenだけで返し、実名、SQL、式は返さない。\n"
         "- selectable=falseのfieldとdateShardCandidate付きtableは選ばない。\n"
+        "- role_selectable=falseのfieldはbusiness_timeとtime_candidates以外に使わない。\n"
         "- business_timeは選択tableのtemporal fieldとし、time_candidatesにも含める。\n"
         "- role名とaliasはquestion、table名、path、descriptionだけを根拠にし、sample値を転記しない。\n"
         "- metricは最低1件。sum/avgはnumeric、min/maxはnumericまたはtemporalに限る。\n"
