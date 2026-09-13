@@ -2,7 +2,7 @@
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
 status: active
-updated: 2026-09-11
+updated: 2026-09-14
 ---
 
 # ライブデモのトラブルシューティング
@@ -197,6 +197,18 @@ BigQuery側の検査は役割が異なるため、どちらか一方へのフォ
 検証します。MCPサーバー、追加依存関係、外部実装のコードは導入していません。
 
 **Refs:** [Issue #630](https://github.com/Yukihide-Mitsuoka/repchat/issues/630)
+
+## 「共通分析契約の結果形状とBigQuery出力を照合できません」で停止する
+
+**Cause:** 確定した分析仕様がcanonical contractにないdimension・measure名を使用したか、BigQueryのdry run
+または実行結果が描画契約と異なる列名、structured型、repeated modeを返しました。
+
+**Fix:** 保存済みの分析案は保持します。現在のcanonical contractと分析仕様を再照合し、SQL修正を行う場合は
+分析内容を変えず、指定済みのASCII列別名と非repeated scalar出力を満たしてください。有料の再実行には改めて
+費用確認が必要です。
+
+**Prevention:** canonical semanticsから許可する意味roleを導出し、同じ対象非依存validatorでdry-run schemaと
+実行結果を検査します。未知のrole、対象別の列補正、別chartへの自動置換は行いません。
 
 ## KPIパネルが未確認の比較・派生指標で停止する
 

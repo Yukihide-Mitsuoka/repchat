@@ -38,6 +38,14 @@ class AnalysisPeriodPolicy:
 
 
 @dataclass(frozen=True)
+class AnalysisResultPolicy:
+    """Semantic names permitted in one contract-bound result."""
+
+    dimensions: frozenset[str]
+    measures: frozenset[str]
+
+
+@dataclass(frozen=True)
 class AnalysisExecutionPolicy:
     """Exact BigQuery scope and limits derived from one canonical contract."""
 
@@ -47,6 +55,35 @@ class AnalysisExecutionPolicy:
     maximum_result_rows: int
     period: AnalysisPeriodPolicy | None = None
     schema_fields: tuple[AnalysisFieldPolicy, ...] = ()
+    result: AnalysisResultPolicy | None = None
+
+
+def _result_semantics(content: dict) -> AnalysisResultPolicy:
+    """Derive result-role names without using source or industry knowledge."""
+    semantics = content.get("semantics")
+    if not isinstance(semantics, dict):
+        raise AnalysisContextError("analysis contract result semantics are invalid")
+
+    def names(categories: tuple[str, ...]) -> frozenset[str]:
+        result = set()
+        for category in categories:
+            definitions = semantics.get(category, {})
+            if not isinstance(definitions, dict) or any(
+                not isinstance(name, str)
+                or not name.strip()
+                or name != name.strip()
+                or not isinstance(definition, dict)
+                for name, definition in definitions.items()
+            ):
+                raise AnalysisContextError("analysis contract result semantics are invalid")
+            result.update(definitions)
+        return frozenset(result)
+
+    dimensions = names(("grain", "identifiers", "dimensions"))
+    measures = names(("measures", "metrics"))
+    if dimensions & measures:
+        raise AnalysisContextError("analysis contract result semantics are ambiguous")
+    return AnalysisResultPolicy(dimensions, measures)
 
 
 def _contract(contract: AnalysisContract) -> tuple[str, dict]:
@@ -383,6 +420,7 @@ def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
         maximum_result_rows=limits["maximum_result_rows"],
         period=_period_policy(content, tables),
         schema_fields=schema_fields,
+        result=_result_semantics(content),
     )
 
 

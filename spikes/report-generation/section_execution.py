@@ -7,6 +7,7 @@ from typing import Callable
 
 import analysis_contract_context
 import contract_period_validation
+import contract_result_validation
 import data_source_profiles
 import run_report as report
 import sql_contract_validation as sql_contracts
@@ -64,8 +65,15 @@ def _dashboard_sql_diagnostic(
             raise SectionExecutionError(f"BigQuery dry runに失敗しました: {dry_error}")
         return dry_error
     assert dry_schema is not None
+    contract_diagnostic = contract_result_validation.contract_result_diagnostic(
+        section, dry_schema, policy
+    )
+    if contract_diagnostic:
+        return contract_diagnostic
     try:
-        sql_contracts.validate_dashboard_dry_run_schema(section, dry_schema)
+        sql_contracts.validate_dashboard_dry_run_schema(
+            section, [(field[0], field[1]) for field in dry_schema]
+        )
     except sql_contracts.SQLContractError as validation_error:
         return str(validation_error)
     return ""
@@ -98,6 +106,11 @@ def _execute_section_result(
         raise SectionExecutionError(
             f"結果が{max_result_rows}行を超えたため描画しません。集計条件を追加してください。"
         )
+    contract_diagnostic = contract_result_validation.contract_result_diagnostic(
+        section, columns, policy
+    )
+    if contract_diagnostic:
+        raise SectionExecutionError(contract_diagnostic)
     verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
     try:
         visualization = visualization_results.dashboard_visualization(
