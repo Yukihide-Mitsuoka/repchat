@@ -115,15 +115,46 @@ print("ok")
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('ingestion-time partitions use an explicit BigQuery partition pseudocolumn', () => {
+test('time-free contracts are limited to schemas without a time boundary', () => {
+  const result = python(
+    setup +
+      `
+try:a.compile_contract(snapshot,semantics,None,limits)
+except a.AnalysisContractError:pass
+else:raise AssertionError("temporal schema accepted without a period")
+table=schema["tables"][0];table["fields"]=[field for field in table["fields"] if field["name"]!="occurred_at"];table.pop("timePartitioning");table["requirePartitionFilter"]=False
+table["fields"].extend([
+ {"name":"restricted_at","type":"TIMESTAMP","mode":"NULLABLE","policyTags":{"names":["projects/example/locations/us/taxonomies/1/policyTags/1"]}},
+ {"name":"repeated_at","type":"DATE","mode":"REPEATED"},
+])
+encoded=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"));snapshot=SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),"2026-09-13T00:00:00+00:00")
+assert a.compile_contract(snapshot,semantics,None,limits).content()["period"] is None
+table["rangePartitioning"]={"field":"items","range":{"start":"0","end":"10","interval":"1"}};table["requirePartitionFilter"]=True
+encoded=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"));snapshot=SchemaSnapshot(encoded,hashlib.sha256(encoded.encode()).hexdigest(),"2026-09-13T00:00:00+00:00")
+try:a.compile_contract(snapshot,semantics,None,limits)
+except a.AnalysisContractError:pass
+else:raise AssertionError("required partition accepted without a period")
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('ingestion-time partitions expose an explicit business-time pseudocolumn', () => {
   const result = python(
     setup +
       `
 schema["tables"][0]["timePartitioning"]={"type":"DAY"}
+schema["tables"][0]["fields"]=[field for field in schema["tables"][0]["fields"] if field["name"]!="occurred_at"]
 schema_json=json.dumps(schema,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 snapshot=SchemaSnapshot(schema_json,hashlib.sha256(schema_json.encode()).hexdigest(),"2026-09-06T00:00:00+00:00")
+period["business_time"]={"table":"example.dataset.events","field":"_PARTITIONDATE"}
 period["partitions"]=[{"table":"example.dataset.events","field":"_PARTITIONDATE"}]
-assert a.compile_contract(snapshot,semantics,period,limits).content()["period"]["partitions"][0]["field"]=="_PARTITIONDATE"
+semantics["time_candidates"]=[{"field":{"table":"example.dataset.events","field":"_PARTITIONDATE"},"confidence":"high"}]
+content=a.compile_contract(snapshot,semantics,period,limits).content()
+assert content["period"]["business_time"]["field"]=="_PARTITIONDATE"
+assert content["period"]["partitions"][0]["field"]=="_PARTITIONDATE"
+assert content["semantics"]["time_candidates"][0]["field"]["field"]=="_PARTITIONDATE"
 period["partitions"][0]["field"]="occurred_at"
 try:a.compile_contract(snapshot,semantics,period,limits)
 except a.AnalysisContractError:pass
