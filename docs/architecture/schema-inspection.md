@@ -43,6 +43,12 @@ partition、clustering、resource tagの相違があれば停止します。CMEK
 したがって同じschemaを日数分複製せず、fingerprintは実際に選択した日次表集合を含みます。
 この処理も行queryを行わず、列挙・metadata取得のprovider失敗内容を外へ出しません。
 
+`discover_scope(...)`は日次suffixを持つ物理表を候補として記録しますが、候補ごとの行queryは行いません。
+runtimeで決定した期間を`consolidate_date_shards(...)`へ渡すと、その期間が発見済みscope内に完全に収まることを
+API呼出し前に検査し、`inspect_date_shards(...)`を通過した非partitioned集合だけをwildcardへ置換します。
+値profileは置換後のwildcardに対して一度だけ取得し、`_TABLE_SUFFIX`の閉区間、dry run、参照表、bytes、row、
+field上限を通常表と同じpolicyで検査します。未発見日、schema drift、非日付一致、partition併用はfail closedです。
+
 ## 共通分析契約
 
 `analysis_contract.py`はsnapshotと自動生成した意味候補・期間条件・実行上限を検証し、計画とSQL生成が
@@ -77,8 +83,9 @@ contract内の全tableがprofileの許可datasetと完全一致しない場合�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は認可済みscopeから
-table、schema、値profileを共通処理で取得して分析契約を自動生成します。対象固有のfactory、profile、
-metrics fileは追加しません。生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は生成候補の期間から
+shard統合rangeを決定する共通orchestrationと、時間fieldを持たないschemaの契約境界を実装します。
+対象固有のfactory、profile、metrics fileは追加しません。生成経路への供給とbuild時のschema再検証も
+同じ共通契約へ接続します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
