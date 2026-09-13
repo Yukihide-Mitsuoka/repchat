@@ -95,6 +95,11 @@ date shardをdry runで照合する物理table、query bytes上限、結果行�
 dry-run job metadataの両方をexact table scopeへ照合した後だけ、同じbytes上限で実行します。
 同一dataset内でも契約にないtableは許可しません。legacy profileの固定上限は契約付き経路へ混入しません。
 
+`analysis_schema_policy.py`は同じcontract metadataから各tableの完全field path、標準型、mode、親から継承した
+repeated・policy tag状態を決定論的に導出します。date shardとingestion-time partitionの疑似fieldも同じ
+policyへ含めます。不正型、case-insensitiveな同名field、重複path、空のstructured fieldはfail closedです。
+期間SQL検査は各期間fieldの完全path・型がこのpolicyと一致し、repeated・policy tag継承下でないことも要求します。
+
 実行policyはcanonical contractの`period`から、業務時刻と各partitionのtable・field path・標準型、
 比較期間を含むscan開始日・終了日、timezoneも導出します。`period=null`は選択schemaに利用可能な
 時間field・partition・date shardがない場合だけ許可し、対象別の期間parserやcallbackをpolicyへ含めません。
@@ -103,8 +108,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はidentifier、
-nested／repeated path、結果形状の検査をcanonical contractから導出します。その後、planner・SQL生成の
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はこのfield policyを
+SQLのalias・identifier・UNNEST検査へ接続し、結果形状の検査もcanonical contractから導出します。その後、planner・SQL生成の
 legacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 

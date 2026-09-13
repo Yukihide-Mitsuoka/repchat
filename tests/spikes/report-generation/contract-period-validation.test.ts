@@ -14,11 +14,14 @@ function validate(
   const result = python(`
 import analysis_contract_context as context
 import contract_period_validation as validation
+from analysis_schema_policy import AnalysisFieldPolicy
 payload=json.loads(${JSON.stringify(JSON.stringify({ constraints, sqls }))})
-constraints=tuple(context.AnalysisPeriodConstraint(**item) for item in payload["constraints"])
+constraints=tuple(context.AnalysisPeriodConstraint(item["table"],tuple(item["path"]),item["field_type"],item["partition"]) for item in payload["constraints"])
 policy=context.AnalysisPeriodPolicy("2026-08-30","2026-09-02","Asia/Tokyo",constraints)
+fields=tuple(AnalysisFieldPolicy(item.table,item.path,"STRING" if item.field_type=="DATE_SHARD" else item.field_type,"REQUIRED",False,False) for item in constraints)
+execution=context.AnalysisExecutionPolicy(frozenset(item.table for item in constraints),frozenset(item.table for item in constraints),100,10,policy,fields)
 print(json.dumps({
- "diagnostics":[validation.contract_period_diagnostic(sql,policy) for sql in payload["sqls"]],
+ "diagnostics":[validation.contract_period_diagnostic(sql,execution) for sql in payload["sqls"]],
  "guidance":validation.contract_period_repair_guidance(policy),
 },ensure_ascii=False))
 `);
@@ -87,11 +90,13 @@ test('contract-bound execution avoids profile period callbacks', () => {
   const result = python(`
 import section_execution as execution
 import analysis_contract_context as context
+from analysis_schema_policy import AnalysisFieldPolicy
 from data_source_profiles import DataSourceProfile
 table="alpha.dataset.records"
 constraints=(context.AnalysisPeriodConstraint(table,("created_on",),"DATE",True),context.AnalysisPeriodConstraint(table,("occurred_at",),"TIMESTAMP",False))
 period=context.AnalysisPeriodPolicy("2026-09-01","2026-09-02","Asia/Tokyo",constraints)
-policy=context.AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10,period)
+fields=(AnalysisFieldPolicy(table,("created_on",),"DATE","REQUIRED",False,False),AnalysisFieldPolicy(table,("occurred_at",),"TIMESTAMP","REQUIRED",False,False))
+policy=context.AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10,period,fields)
 execution.analysis_contract_context.execution_policy=lambda _contract:policy
 callbacks=[]
 def unexpected(name):
@@ -132,4 +137,32 @@ print(json.dumps({"diagnostic":validation.contract_period_diagnostic("SELECT 1",
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), { diagnostic: '', guidance: '' });
+});
+
+test('period validation rejects fields absent from the canonical schema policy', () => {
+  const result = python(`
+import analysis_contract_context as context
+import contract_period_validation as validation
+from analysis_schema_policy import AnalysisFieldPolicy
+table="alpha.dataset.records"
+constraint=context.AnalysisPeriodConstraint(table,("created_on",),"DATE",True)
+period=context.AnalysisPeriodPolicy("2026-09-01","2026-09-02","UTC",(constraint,))
+variants=(
+ (),
+ (AnalysisFieldPolicy(table,("other",),"DATE","REQUIRED",False,False),),
+ (AnalysisFieldPolicy(table,("created_on",),"TIMESTAMP","REQUIRED",False,False),),
+ (AnalysisFieldPolicy(table,("created_on",),"DATE","REPEATED",True,False),),
+ (AnalysisFieldPolicy(table,("created_on",),"DATE","REQUIRED",False,True),),
+)
+sql="SELECT 1 FROM "+chr(96)+table+chr(96)+" WHERE created_on BETWEEN DATE '2026-09-01' AND DATE '2026-09-02'"
+diagnostics=[]
+for fields in variants:
+ execution=context.AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10,period,fields)
+ diagnostics.append(validation.contract_period_diagnostic(sql,execution))
+print(json.dumps(diagnostics,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  for (const diagnostic of JSON.parse(result.stdout)) {
+    assert.match(diagnostic, /schema policy/);
+  }
 });

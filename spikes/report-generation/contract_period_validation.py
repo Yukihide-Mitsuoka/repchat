@@ -5,7 +5,11 @@ from __future__ import annotations
 import re
 from datetime import date, timedelta
 
-from analysis_contract_context import AnalysisPeriodConstraint, AnalysisPeriodPolicy
+from analysis_contract_context import (
+    AnalysisExecutionPolicy,
+    AnalysisPeriodConstraint,
+    AnalysisPeriodPolicy,
+)
 
 
 _CLAUSE_BOUNDARIES = {
@@ -177,12 +181,22 @@ def _allowed_literals(policy: AnalysisPeriodPolicy) -> frozenset[str]:
     )
 
 
-def contract_period_diagnostic(
-    sql: str, policy: AnalysisPeriodPolicy | None
-) -> str:
+def contract_period_diagnostic(sql: str, execution: AnalysisExecutionPolicy | None) -> str:
     """Describe contract scan bounds missing from actual SQL WHERE clauses."""
-    if policy is None:
+    if execution is None or execution.period is None:
         return ""
+    policy = execution.period
+    schema = {(field.table, field.path): field for field in execution.schema_fields}
+    for constraint in policy.constraints:
+        field = schema.get((constraint.table, constraint.path))
+        expected_type = "STRING" if constraint.field_type == "DATE_SHARD" else constraint.field_type
+        if (
+            field is None
+            or field.field_type != expected_type
+            or field.repeated
+            or field.restricted
+        ):
+            return "共通分析契約の期間fieldをschema policyへ安全に照合できないため実行しません。"
     tables = re.findall(
         r"(?:\bFROM|\bJOIN|,)\s+`?([A-Za-z0-9_-]+\.[A-Za-z0-9_]+\.[A-Za-z0-9_*]+)",
         _masked(sql),

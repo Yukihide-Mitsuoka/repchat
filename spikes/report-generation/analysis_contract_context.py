@@ -10,6 +10,7 @@ from datetime import date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from analysis_contract import AnalysisContract, fingerprint_contract_content
+from analysis_schema_policy import AnalysisFieldPolicy, SchemaPolicyError, derive_schema_policy
 
 
 class AnalysisContextError(ValueError):
@@ -45,6 +46,7 @@ class AnalysisExecutionPolicy:
     maximum_bytes_billed: int
     maximum_result_rows: int
     period: AnalysisPeriodPolicy | None = None
+    schema_fields: tuple[AnalysisFieldPolicy, ...] = ()
 
 
 def _contract(contract: AnalysisContract) -> tuple[str, dict]:
@@ -368,12 +370,17 @@ def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
     for value in limits.values():
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise AnalysisContextError("analysis contract execution limits are invalid")
+    try:
+        schema_fields = derive_schema_policy(tables)
+    except SchemaPolicyError:
+        raise AnalysisContextError("analysis contract schema field policy is invalid") from None
     return AnalysisExecutionPolicy(
         query_tables=frozenset(query_tables),
         job_tables=frozenset(job_tables),
         maximum_bytes_billed=limits["maximum_bytes_billed"],
         maximum_result_rows=limits["maximum_result_rows"],
         period=_period_policy(content, tables),
+        schema_fields=schema_fields,
     )
 
 
