@@ -34,6 +34,13 @@ MODEL_KEYS = {
     "period",
 }
 CARDINALITIES = {"one_to_one", "one_to_many", "many_to_one", "many_to_many"}
+PERIOD_KEYS = {
+    "start",
+    "end",
+    "comparison_enabled",
+    "comparison_start",
+    "comparison_end",
+}
 
 
 def _token(value, values: dict, label: str) -> str:
@@ -211,29 +218,15 @@ def _relationships(
     )
 
 
-def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) -> dict:
-    keys = {
-        "start",
-        "end",
-        "comparison_enabled",
-        "comparison_start",
-        "comparison_end",
-    }
-    if not isinstance(raw, dict) or set(raw) != keys:
+def normalize_generated_period(raw: dict, as_of: date) -> dict:
+    """Validate one generated closed date range without parsing target-specific text."""
+    if type(as_of) is not date or not isinstance(raw, dict) or set(raw) != PERIOD_KEYS:
         raise ContractCompilerError("generated period is invalid")
-    for key in keys - {"comparison_enabled"}:
+    for key in PERIOD_KEYS - {"comparison_enabled"}:
         _text(raw[key], f"period {key}", 10, empty=True)
-    period = {
-        "business_time": business,
-        "timezone": CONTRACT_TIMEZONE,
-        "range": {"start": raw["start"], "end": raw["end"]},
-        "partitions": [],
-    }
+    ranges = [{"start": raw["start"], "end": raw["end"]}]
     if raw["comparison_enabled"] is True:
-        period["comparison"] = {
-            "start": raw["comparison_start"],
-            "end": raw["comparison_end"],
-        }
+        ranges.append({"start": raw["comparison_start"], "end": raw["comparison_end"]})
     elif (
         raw["comparison_enabled"] is not False
         or raw["comparison_start"] != ""
@@ -241,17 +234,32 @@ def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) ->
     ):
         raise ContractCompilerError("disabled comparison period must be empty")
     try:
-        ranges = [period["range"]]
-        if "comparison" in period:
-            ranges.append(period["comparison"])
         if any(
-            date.fromisoformat(value[key]) > prepared.as_of
+            date.fromisoformat(value[key]) > as_of
             for value in ranges
             for key in ("start", "end")
         ):
             raise ContractCompilerError("generated period extends beyond as_of")
+        if any(value["start"] > value["end"] for value in ranges):
+            raise ContractCompilerError("generated period start must not follow end")
     except ValueError:
         raise ContractCompilerError("generated period must use ISO dates") from None
+    return dict(raw)
+
+
+def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) -> dict:
+    normalized = normalize_generated_period(raw, prepared.as_of)
+    period = {
+        "business_time": business,
+        "timezone": CONTRACT_TIMEZONE,
+        "range": {"start": normalized["start"], "end": normalized["end"]},
+        "partitions": [],
+    }
+    if normalized["comparison_enabled"]:
+        period["comparison"] = {
+            "start": normalized["comparison_start"],
+            "end": normalized["comparison_end"],
+        }
     for table in schema["tables"]:
         partition = table.get("timePartitioning")
         if partition is not None and not isinstance(partition, dict):
