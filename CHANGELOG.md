@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.24.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.24.0) (2026-09-13)
+
+
+### Features
+
+* **schema:** shard期間を共通契約へ固定 ([#673](https://github.com/Yukihide-Mitsuoka/repchat/issues/673)) ([90079f6](https://github.com/Yukihide-Mitsuoka/repchat/commit/90079f6b79019cda832c1018b9f81ef584022e8a))
+* **schema:** shard期間生成を汎用契約へ接続 ([#684](https://github.com/Yukihide-Mitsuoka/repchat/issues/684)) ([4dcf5c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/4dcf5c8244f61f12d1156b3d4a6ef664aaca3e50)), closes [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)
+* **schema:** 共通契約のidentityを安定化 ([#675](https://github.com/Yukihide-Mitsuoka/repchat/issues/675)) ([57d8946](https://github.com/Yukihide-Mitsuoka/repchat/commit/57d8946da1840f520f89970daec70dcd3c58af70))
+* **schema:** 共通契約を生成sourceへ束縛 ([#674](https://github.com/Yukihide-Mitsuoka/repchat/issues/674)) ([ac73eaa](https://github.com/Yukihide-Mitsuoka/repchat/commit/ac73eaa106522cca4c25c5874c4b999323156d2c))
+* **schema:** 日次shardを汎用契約へ統合 ([#683](https://github.com/Yukihide-Mitsuoka/repchat/issues/683)) ([4c38e46](https://github.com/Yukihide-Mitsuoka/repchat/commit/4c38e4693b4eb4b055fdc40a8d3a6ffa39a17ea7))
+* **schema:** 日次shard集合を完全解決 ([#672](https://github.com/Yukihide-Mitsuoka/repchat/issues/672)) ([f045f00](https://github.com/Yukihide-Mitsuoka/repchat/commit/f045f0071f34b24652831ff5151969461be4741f))
+* **schema:** 時間なしschemaを汎用契約で表現 ([#685](https://github.com/Yukihide-Mitsuoka/repchat/issues/685)) ([97aaf56](https://github.com/Yukihide-Mitsuoka/repchat/commit/97aaf5609cf9a555778f96e27ac9a277aea95f8c))
+* **schema:** 汎用契約生成の入力を固定する ([#680](https://github.com/Yukihide-Mitsuoka/repchat/issues/680)) ([067776b](https://github.com/Yukihide-Mitsuoka/repchat/commit/067776bcc84305461afc9fa997d7ce7a4a328b38))
+* **schema:** 汎用契約生成をVertex I/Oへ接続 ([#682](https://github.com/Yukihide-Mitsuoka/repchat/issues/682)) ([c5f6d56](https://github.com/Yukihide-Mitsuoka/repchat/commit/c5f6d5625ac8d396e322933ee5d8af7f1ca25603))
+* **schema:** 生成候補を汎用契約へ正規化する ([#681](https://github.com/Yukihide-Mitsuoka/repchat/issues/681)) ([e0bf835](https://github.com/Yukihide-Mitsuoka/repchat/commit/e0bf835aa7d3a3a069c483d14404d3efb41309e7))
+* **schema:** 発見済み意味roleを構造検証 ([#679](https://github.com/Yukihide-Mitsuoka/repchat/issues/679)) ([bcd0b92](https://github.com/Yukihide-Mitsuoka/repchat/commit/bcd0b921c8b45a11fa5ad97d961d7dfae83366fa))
+* **schema:** 認可scopeから汎用catalogを自動発見 ([#678](https://github.com/Yukihide-Mitsuoka/repchat/issues/678)) ([18767e9](https://github.com/Yukihide-Mitsuoka/repchat/commit/18767e956702e221b036321d1774ed306f2431ad))
+
+
+### Bug Fixes
+
+* Bitcoin月範囲と混合グラフの可読性を直す ([#666](https://github.com/Yukihide-Mitsuoka/repchat/issues/666)) ([b041fce](https://github.com/Yukihide-Mitsuoka/repchat/commit/b041fce8539d5bb7093afa7885937b7238043d62)), closes [#665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)
+* **demo:** [#658](https://github.com/Yukihide-Mitsuoka/repchat/issues/658) comparison tableの指標契約を修正 ([#660](https://github.com/Yukihide-Mitsuoka/repchat/issues/660)) ([a94ce93](https://github.com/Yukihide-Mitsuoka/repchat/commit/a94ce93e90e7bafaa04e31209255ce2c586bd592))
+* **demo:** [#662](https://github.com/Yukihide-Mitsuoka/repchat/issues/662) 期間修正診断を具体化 ([#663](https://github.com/Yukihide-Mitsuoka/repchat/issues/663)) ([d582c5c](https://github.com/Yukihide-Mitsuoka/repchat/commit/d582c5c66d86c6bee51b59ea2efc53c12c14a089))
+* **demo:** role-based chart契約を整合 ([#669](https://github.com/Yukihide-Mitsuoka/repchat/issues/669)) ([d9dbcab](https://github.com/Yukihide-Mitsuoka/repchat/commit/d9dbcab86faffcfda03207b500a112bbdfacd177)), closes [#659](https://github.com/Yukihide-Mitsuoka/repchat/issues/659)
+* **demo:** Vertex APIエラーを安全に分類する ([#652](https://github.com/Yukihide-Mitsuoka/repchat/issues/652)) ([090b191](https://github.com/Yukihide-Mitsuoka/repchat/commit/090b1917e92b9b40c67cefd9adfee45aba9d0224))
+* **demo:** ダッシュボード計画schemaを平坦化する ([#655](https://github.com/Yukihide-Mitsuoka/repchat/issues/655)) ([1ff0760](https://github.com/Yukihide-Mitsuoka/repchat/commit/1ff07606fb0b47273987e5d84cdad2282c764fc4))
+
 ## [1.23.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.22.3...v1.23.0) (2026-09-07)
 
 
