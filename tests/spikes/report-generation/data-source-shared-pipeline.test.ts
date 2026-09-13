@@ -47,7 +47,7 @@ from analysis_contract import AnalysisContract,fingerprint_contract_content
 table="bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"
 members=[];current=date(2021,1,1)
 while current<=date(2021,1,31):members.append(table[:-1]+current.strftime("%Y%m%d"));current+=timedelta(days=1)
-metadata={"version":1,"tables":[{"table":table,"fields":[],"dateShards":{"suffixFormat":"YYYYMMDD","startSuffix":"20210101","endSuffix":"20210131","members":members}}]}
+metadata={"version":1,"tables":[{"table":table,"fields":[{"name":"event_id","type":"STRING","mode":"REQUIRED"}],"dateShards":{"suffixFormat":"YYYYMMDD","startSuffix":"20210101","endSuffix":"20210131","members":members}}]}
 schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
 content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-12T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))

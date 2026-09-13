@@ -25,7 +25,7 @@ def _period_diagnostic(
 ) -> str:
     """Use canonical policy when present and keep legacy callbacks isolated."""
     if policy is not None:
-        return contract_period_validation.contract_period_diagnostic(sql, policy.period)
+        return contract_period_validation.contract_period_diagnostic(sql, policy)
     return sql_contracts.sql_period_diagnostic(sql, period, fallback)
 
 
