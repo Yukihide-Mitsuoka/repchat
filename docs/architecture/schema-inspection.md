@@ -98,12 +98,14 @@ dry-run job metadataの両方をexact table scopeへ照合した後だけ、同�
 実行policyはcanonical contractの`period`から、業務時刻と各partitionのtable・field path・標準型、
 比較期間を含むscan開始日・終了日、timezoneも導出します。`period=null`は選択schemaに利用可能な
 時間field・partition・date shardがない場合だけ許可し、対象別の期間parserやcallbackをpolicyへ含めません。
+`contract_period_validation.py`はこのpolicyだけを使い、単一参照tableの実際の`WHERE`句に全制約の型別scan範囲があるか検査します。複数tableはidentifier scopeとの安全な関連付けが未実装のためfail closedです。
+SELECT式、コメント、無関係な文字列は制約を満たさず、契約付き実行は旧profileの期間検査・修正callbackを呼びません。
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はこのperiod policyを
-SQLの期間・partition検査へ接続し、identifier、nested／repeated path、結果形状の検査をcanonical contractから導出します。その後、planner・
-SQL生成のlegacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はidentifier、
+nested／repeated path、結果形状の検査をcanonical contractから導出します。その後、planner・SQL生成の
+legacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

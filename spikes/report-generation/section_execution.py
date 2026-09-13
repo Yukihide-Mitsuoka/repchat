@@ -6,6 +6,7 @@ import hashlib
 from typing import Callable
 
 import analysis_contract_context
+import contract_period_validation
 import data_source_profiles
 import run_report as report
 import sql_contract_validation as sql_contracts
@@ -14,6 +15,29 @@ import visualization_results
 
 class SectionExecutionError(RuntimeError):
     """Raised when a section cannot safely complete its execution pipeline."""
+
+
+def _period_diagnostic(
+    sql: str,
+    period: dict[str, str],
+    policy: analysis_contract_context.AnalysisExecutionPolicy | None,
+    fallback: Callable[[str, dict[str, str]], None],
+) -> str:
+    """Use canonical policy when present and keep legacy callbacks isolated."""
+    if policy is not None:
+        return contract_period_validation.contract_period_diagnostic(sql, policy.period)
+    return sql_contracts.sql_period_diagnostic(sql, period, fallback)
+
+
+def _period_repair_guidance(
+    period: dict[str, str],
+    policy: analysis_contract_context.AnalysisExecutionPolicy | None,
+    fallback: Callable[[dict[str, str]], str],
+) -> str:
+    """Render repair instructions from the same boundary used for validation."""
+    if policy is not None:
+        return contract_period_validation.contract_period_repair_guidance(policy.period)
+    return fallback(period)
 
 
 def _dashboard_sql_diagnostic(
@@ -168,12 +192,14 @@ def run_section(
     assert normalized is not None
     normalized = source.normalize_sql(normalized)
     allow_period_repair = extra.get("operation") == "dashboard"
-    period_diagnostic = sql_contracts.sql_period_diagnostic(
-        normalized, period, source.require_sql_period
+    fallback_period_check = source.require_sql_period
+    fallback_period_guidance = source.period_repair_guidance
+    period_diagnostic = _period_diagnostic(
+        normalized, period, policy, fallback_period_check
     )
     if period_diagnostic and allow_period_repair:
         period_diagnostic += (
-            f" 修正要件: {source.period_repair_guidance(period)}"
+            f" 修正要件: {_period_repair_guidance(period, policy, fallback_period_guidance)}"
         )
     if period_diagnostic and (
         not allow_period_repair or not section.get("source_columns")
@@ -258,12 +284,13 @@ def run_section(
                 )
             assert normalized is not None
             normalized = source.normalize_sql(normalized)
-            period_diagnostic = sql_contracts.sql_period_diagnostic(
-                normalized, period, source.require_sql_period
+            period_diagnostic = _period_diagnostic(
+                normalized, period, policy, fallback_period_check
             )
             if period_diagnostic and allow_period_repair:
                 period_diagnostic += (
-                    f" 修正要件: {source.period_repair_guidance(period)}"
+                    " 修正要件: "
+                    + _period_repair_guidance(period, policy, fallback_period_guidance)
                 )
             if period_diagnostic and not allow_period_repair:
                 raise SectionExecutionError(period_diagnostic)
