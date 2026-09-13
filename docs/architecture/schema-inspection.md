@@ -49,6 +49,13 @@ API呼出し前に検査し、`inspect_date_shards(...)`を通過した非partit
 値profileは置換後のwildcardに対して一度だけ取得し、`_TABLE_SUFFIX`の閉区間、dry run、参照表、bytes、row、
 field上限を通常表と同じpolicyで検査します。未発見日、schema drift、非日付一致、partition併用はfail closedです。
 
+`analysis_contract_orchestration.py`は日次shard候補がある場合だけ、完全契約の生成前に1回の構造化生成を
+追加します。質問と発見済みcatalogからopaqueなshard group token、対象期間、任意の比較期間だけを選ばせ、
+決定論的な検査で両期間を包含するscan範囲へ変換して`consolidate_date_shards(...)`へ渡します。統合後の
+catalogから完全契約を生成するときは同じ期間をresponse schemaとnormalizerの両方で固定し、生成結果が
+期間を変更した場合は拒否します。shard候補がなければ事前生成を行わず、従来どおり完全契約を1回だけ生成します。
+対象名、日付文字列、table名を解釈するparserや対象別設定は使いません。
+
 ## 共通分析契約
 
 `analysis_contract.py`はsnapshotと自動生成した意味候補・期間条件・実行上限を検証し、計画とSQL生成が
@@ -83,9 +90,8 @@ contract内の全tableがprofileの許可datasetと完全一致しない場合�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は生成候補の期間から
-shard統合rangeを決定する共通orchestrationと、時間fieldを持たないschemaの契約境界を実装します。
-対象固有のfactory、profile、metrics fileは追加しません。生成経路への供給とbuild時のschema再検証も
-同じ共通契約へ接続します。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は時間fieldを
+持たないschemaの契約境界を実装します。対象固有のfactory、profile、metrics fileは追加しません。
+生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

@@ -237,3 +237,102 @@ assert models.calls==0
   );
   assert.equal(result.status, 0, result.stderr);
 });
+
+test('generic orchestration selects opaque shard groups before contract generation', () => {
+  const result = python(
+    setup +
+      String.raw`
+import sys,types
+import analysis_contract_orchestration as o
+from analysis_contract import AnalysisContract
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+source_metadata=copy.deepcopy(metadata["tables"][0]);source_catalog=copy.deepcopy(content["tables"][0])
+metadata["tables"]=[];content["tables"]=[]
+for suffix in ("20260801","20260802"):
+ name="alpha.dataset.records_"+suffix;pattern="alpha.dataset.records_*"
+ table=copy.deepcopy(source_metadata);table["table"]=name;table.pop("timePartitioning");table["requirePartitionFilter"]=False
+ catalog=copy.deepcopy(source_catalog);catalog["table"]=name;catalog.pop("timePartitioning");catalog["requirePartitionFilter"]=False
+ catalog["dateShardCandidate"]={"pattern":pattern,"suffixFormat":"YYYYMMDD","suffix":suffix}
+ for field in catalog["fields"]:
+  reason=field["valueClass"] if field["valueClass"] in ("restricted","repeated","structured") else "date_shard_candidate"
+  field["valueSummary"]={"status":"metadata_only","reason":reason}
+ metadata["tables"].append(table);content["tables"].append(catalog)
+schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+discovery=snapshot(content);prepared=o.prepare_shard_plan(discovery,"2日間を前日と比較",as_of=date(2026,9,13));catalog=json.loads(prepared.catalog_json)
+assert prepared.groups=={"s000":"alpha.dataset.records_*"}
+assert catalog["shard_groups"]==[{"available_end":"20260802","available_start":"20260801","pattern":"alpha.dataset.records_*","table_tokens":["t000","t001"],"token":"s000"}]
+plan={"shard_groups":["s000"],"period":{"start":"2026-08-02","end":"2026-08-02","comparison_enabled":True,"comparison_start":"2026-08-01","comparison_end":"2026-08-01"}}
+calls=[]
+class Models:
+ def generate_content(self,**kwargs):
+  calls.append(kwargs)
+  return types.SimpleNamespace(text=json.dumps(plan),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=types.SimpleNamespace(prompt_token_count=5,candidates_token_count=3,thoughts_token_count=1))
+captured={}
+def consolidate(bq,value,ranges):captured["bq"]=bq;captured["ranges"]=ranges;return "consolidated"
+def generate(vertex,model,value,question,*,as_of,fixed_period=None):
+ captured["contract"]=(vertex,model,value,question,as_of,fixed_period)
+ return AnalysisContract("{}","contract-fingerprint"),{"input_tokens":7,"output_tokens":2}
+o.consolidate_date_shards=consolidate;o.generate_contract=generate
+bq=object();vertex=types.SimpleNamespace(models=Models())
+contract,usage=o.generate_discovered_contract(bq,vertex,"test-model",discovery,"2日間を前日と比較",as_of=date(2026,9,13))
+assert len(calls)==1 and calls[0]["config"].response_schema["properties"]["shard_groups"]["items"]["enum"]==["s000"]
+assert "alpha.dataset.records" not in json.dumps(calls[0]["config"].response_schema)
+assert captured["bq"] is bq and captured["ranges"]=={"alpha.dataset.records_*":("20260801","20260802")}
+assert captured["contract"]==(vertex,"test-model","consolidated","2日間を前日と比較",date(2026,9,13),plan["period"])
+assert contract.fingerprint=="contract-fingerprint" and usage=={"input_tokens":12,"output_tokens":6}
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('generic orchestration bypasses shard planning for ordinary tables', () => {
+  const result = python(
+    setup +
+      String.raw`
+import analysis_contract_orchestration as o
+from analysis_contract import AnalysisContract
+calls=[]
+def generate(vertex,model,value,question,*,as_of,fixed_period=None):
+ calls.append((vertex,model,value,question,as_of,fixed_period))
+ return AnalysisContract("{}","ordinary"),{"input_tokens":4,"output_tokens":2}
+o.generate_contract=generate
+bq=object();vertex=object();discovery=snapshot(content)
+contract,usage=o.generate_discovered_contract(bq,vertex,"test-model",discovery,"分析",as_of=date(2026,9,13))
+assert calls==[(vertex,"test-model",discovery,"分析",date(2026,9,13),None)]
+assert contract.fingerprint=="ordinary" and usage=={"input_tokens":4,"output_tokens":2}
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('fixed shard period cannot drift during full contract generation', () => {
+  const result = python(
+    normalizationSetup +
+      String.raw`
+import sys,types
+import analysis_contract_generation as g
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+fixed=copy.deepcopy(raw["period"]);changed=copy.deepcopy(raw);changed["period"]["start"]="2026-08-02"
+calls=[]
+class Models:
+ def generate_content(self,**kwargs):
+  calls.append(kwargs)
+  return types.SimpleNamespace(text=json.dumps(changed),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=types.SimpleNamespace())
+try:g.generate_contract(types.SimpleNamespace(models=Models()),"test-model",snapshot(content),"期間比較",as_of=date(2026,9,13),fixed_period=fixed)
+except c.ContractCompilerError as error:assert str(error)=="generated period differs from the fixed period"
+else:raise AssertionError("generated period drift was accepted")
+period_schema=calls[0]["config"].response_schema["properties"]["period"]["properties"]
+assert period_schema["start"]["enum"]==["2026-08-01"] and period_schema["comparison_end"]["enum"]==["2026-07-31"]
+assert len(calls)==1
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});

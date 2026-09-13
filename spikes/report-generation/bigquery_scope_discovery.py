@@ -559,6 +559,16 @@ def _candidate_groups(content: dict) -> dict[str, set[str]]:
     return groups
 
 
+def date_shard_candidate_groups(
+    snapshot: DiscoverySnapshot,
+) -> dict[str, tuple[str, ...]]:
+    """Return validated candidate members keyed by their discovered wildcard."""
+    groups = _candidate_groups(_validated_content(snapshot))
+    return {
+        pattern: tuple(sorted(members)) for pattern, members in sorted(groups.items())
+    }
+
+
 def _requested_members(pattern: str, start_suffix: str, end_suffix: str) -> list[str]:
     try:
         start = datetime.strptime(start_suffix, "%Y%m%d").date()
