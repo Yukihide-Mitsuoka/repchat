@@ -2,7 +2,7 @@
 id: adr-0025
 title: ADR-0025 — 分析対象固有のコードや設定なしに分析契約を自動生成する
 status: accepted
-updated: 2026-09-12
+updated: 2026-09-13
 ---
 
 # ADR-0025: 分析対象固有のコードや設定なしに分析契約を自動生成する
@@ -57,6 +57,12 @@ Option 3を採用する。新しい分析対象を利用可能にするための
 分析契約は認可済みscopeから自動でtableを発見し、bounded metadata inspection、bounded value profiling、
 schema linking、期間・join・grain・metric候補の推論を同じpipelineで行って生成する。SQLの参照範囲、
 dry run、費用上限、結果形状、期間・partition、識別子、nested/repeatedの検査も対象非依存で実装する。
+
+選択したschemaに非repeatedの時間field、検査済みdate shard、またはingestion-time partition疑似fieldが
+存在する場合は、分析契約に業務時刻と期間を必須とする。いずれも存在しない場合だけ、canonical contractの
+`period`を`null`として期間条件が適用不能であることを明示する。生成時の空文字をcanonical contractへ残さず、
+SQL生成は`period=null`から期間、timezone、疑似fieldを推測しない。必須partition filterをこの境界で表現
+できないtableは、期間なしとして通過させずfail closedにする。
 
 ADR-0014は生成物の所有・配置だけに適用し、新しい分析対象を使うための指標定義やデータソース契約登録を
 正当化しない。自動生成した契約を将来保存する場合も、その保存は利用開始前の手動設定または開発作業にしてはならない。

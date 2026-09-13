@@ -286,12 +286,25 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
             if summary is not None:
                 prompt_field["value_summary"] = summary
             prompt_fields.append(prompt_field)
+        synthetic = None
         if "dateShards" in metadata[name]:
+            synthetic = ("_TABLE_SUFFIX", "DATE")
+        elif (
+            isinstance(metadata[name].get("timePartitioning"), dict)
+            and not metadata[name]["timePartitioning"].get("field")
+        ):
+            synthetic = (
+                ("_PARTITIONDATE", "DATE")
+                if metadata[name]["timePartitioning"].get("type") == "DAY"
+                else ("_PARTITIONTIME", "TIMESTAMP")
+            )
+        if synthetic is not None:
+            field_name, field_type = synthetic
             token = f"f{len(fields):04d}"
             fields[token] = {
-                "reference": {"table": name, "field": "_TABLE_SUFFIX"},
+                "reference": {"table": name, "field": field_name},
                 "table_token": table_token,
-                "type": "DATE",
+                "type": field_type,
                 "mode": "REQUIRED",
                 "value_class": "temporal",
                 "selectable": True,
@@ -301,8 +314,8 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                 {
                     "token": token,
                     "table": table_token,
-                    "field": "_TABLE_SUFFIX",
-                    "type": "DATE",
+                    "field": field_name,
+                    "type": field_type,
                     "mode": "REQUIRED",
                     "selectable": True,
                     "role_selectable": False,

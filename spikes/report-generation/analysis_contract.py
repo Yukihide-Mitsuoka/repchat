@@ -184,11 +184,54 @@ def expression_for_field(reference: dict, aggregation: str | None = None) -> str
     return f"{function}({distinct}{quoted})"
 
 
-def _period(schema: dict, raw: dict) -> dict:
+def _contains_business_time(fields: list, *, repeated: bool = False) -> bool:
+    for field in fields:
+        if not isinstance(field, dict):
+            raise AnalysisContractError("schema contains an invalid field")
+        nested_repeated = repeated or field.get("mode") == "REPEATED"
+        if (
+            field.get("type") in TIME_TYPES
+            and not nested_repeated
+            and "policyTags" not in field
+        ):
+            return True
+        if _contains_business_time(field.get("fields", []), repeated=nested_repeated):
+            return True
+    return False
+
+
+def _ingestion_time_field(table: dict, reference: dict) -> dict | None:
+    partition = table.get("timePartitioning")
+    if not isinstance(partition, dict) or partition.get("field"):
+        return None
+    field = reference.get("field")
+    if field == "_PARTITIONTIME":
+        return {"type": "TIMESTAMP", "mode": "REQUIRED"}
+    if field == "_PARTITIONDATE" and partition.get("type") == "DAY":
+        return {"type": "DATE", "mode": "REQUIRED"}
+    return None
+
+
+def _period(schema: dict, raw: dict | None) -> dict | None:
+    tables = {table["table"]: table for table in schema["tables"]}
+    if raw is None:
+        if any(
+            table.get("dateShards")
+            or table.get("timePartitioning")
+            or _contains_business_time(table.get("fields", []))
+            for table in tables.values()
+        ):
+            raise AnalysisContractError(
+                "period is required when selected schema has a time boundary"
+            )
+        if any(table.get("requirePartitionFilter") for table in tables.values()):
+            raise AnalysisContractError(
+                "period cannot omit a required partition filter"
+            )
+        return None
     required = {"business_time", "timezone", "range", "partitions"}
     if not isinstance(raw, dict) or not required <= set(raw) or set(raw) - (required | {"comparison"}):
         raise AnalysisContractError("period has unsupported or missing fields")
-    tables = {table["table"]: table for table in schema["tables"]}
     shard_ranges = {
         name: _date_shards(metadata)
         for name, metadata in tables.items()
@@ -203,13 +246,16 @@ def _period(schema: dict, raw: dict) -> dict:
     if canonical.get("field") == "_TABLE_SUFFIX" and table in shard_ranges:
         field = {"type": "DATE", "mode": "REQUIRED"}
         repeated = False
+    elif pseudo := _ingestion_time_field(tables[table], canonical):
+        field = pseudo
+        repeated = False
     else:
         _, segments, field, canonical, repeated = _field(
             tables, business_time, "period.business_time"
         )
     if field["type"] not in TIME_TYPES or repeated:
         raise AnalysisContractError(
-            "period.business_time must reference one DATE, DATETIME, TIMESTAMP, or date-shard suffix field"
+            "period.business_time must reference a supported temporal field"
         )
     timezone = _nonempty(raw["timezone"], "period.timezone")
     try:
@@ -247,7 +293,7 @@ def _period(schema: dict, raw: dict) -> dict:
         if ptable in shard_ranges:
             matches = pcanonical.get("field") == "_TABLE_SUFFIX" and shard_ranges[ptable] == scan_range
         elif partition and not partition.get("field"):
-            matches = pcanonical.get("field") in ("_PARTITIONDATE", "_PARTITIONTIME")
+            matches = _ingestion_time_field(tables[ptable], pcanonical) is not None
         else:
             _, psegments, pfield, pcanonical, repeated = _field(
                 tables, reference, "period.partitions"
@@ -342,6 +388,12 @@ def _candidate_fields(raw: dict, key: str, tables: dict[str, dict]) -> list[dict
             and "dateShards" in tables[table_name]
         ):
             field, repeated = {"type": "DATE"}, False
+        elif (
+            key == "time_candidates"
+            and table_name in tables
+            and (pseudo := _ingestion_time_field(tables[table_name], canonical))
+        ):
+            field, repeated = pseudo, False
         else:
             _table, segments, field, canonical, repeated = _field(
                 tables, candidate["field"], f"semantics.{key}.field"
@@ -444,7 +496,12 @@ def _limits(raw: dict) -> dict:
     return dict(raw)
 
 
-def compile_contract(snapshot: SchemaSnapshot, semantics: dict, period: dict, limits: dict) -> AnalysisContract:
+def compile_contract(
+    snapshot: SchemaSnapshot,
+    semantics: dict,
+    period: dict | None,
+    limits: dict,
+) -> AnalysisContract:
     """Validate explicit inputs and freeze their canonical representation."""
     try:
         schema = snapshot.metadata()

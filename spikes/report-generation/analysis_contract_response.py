@@ -26,6 +26,7 @@ CONTRACT_TIMEZONE = "UTC"
 ROLE_KEYS = ("grain", "identifiers", "dimensions", "measures")
 MODEL_KEYS = {
     "tables",
+    "time_enabled",
     "business_time",
     "time_candidates",
     *ROLE_KEYS,
@@ -41,8 +42,6 @@ PERIOD_KEYS = {
     "comparison_start",
     "comparison_end",
 }
-
-
 def _token(value, values: dict, label: str) -> str:
     if not isinstance(value, str) or value not in values:
         raise ContractCompilerError(f"generated {label} token is invalid")
@@ -137,9 +136,28 @@ def _metric_definitions(
 
 def _time_candidates(
     raw: dict, prepared: CompilerInput, selected: set[str]
-) -> tuple[str, list[dict]]:
-    business = _token(raw.get("business_time"), prepared.fields, "business time")
+) -> tuple[str | None, list[dict]]:
     values = raw.get("time_candidates")
+    available = {
+        token
+        for token, field in prepared.fields.items()
+        if field["value_class"] == "temporal" and field["table_token"] in selected
+    }
+    if not available:
+        if (
+            raw.get("time_enabled") is not False
+            or raw.get("business_time") != ""
+            or values != []
+        ):
+            raise ContractCompilerError(
+                "generated time boundary conflicts with selected schema"
+            )
+        return None, []
+    if raw.get("time_enabled") is not True:
+        raise ContractCompilerError(
+            "generated time boundary conflicts with selected schema"
+        )
+    business = _token(raw.get("business_time"), prepared.fields, "business time")
     if not isinstance(values, list) or not 1 <= len(values) <= MAX_ROLE_ITEMS:
         raise ContractCompilerError("generated time candidates are invalid")
     result, tokens = [], set()
@@ -247,7 +265,21 @@ def normalize_generated_period(raw: dict, as_of: date) -> dict:
     return dict(raw)
 
 
-def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) -> dict:
+def _period(
+    raw: dict, prepared: CompilerInput, schema: dict, business: dict | None
+) -> dict | None:
+    if business is None:
+        if (
+            not isinstance(raw, dict)
+            or set(raw) != PERIOD_KEYS
+            or raw.get("comparison_enabled") is not False
+            or any(
+                not isinstance(raw.get(key), str) or raw[key] != ""
+                for key in PERIOD_KEYS - {"comparison_enabled"}
+            )
+        ):
+            raise ContractCompilerError("generated period must be empty without time")
+        return None
     normalized = normalize_generated_period(raw, prepared.as_of)
     period = {
         "business_time": business,
@@ -273,7 +305,14 @@ def _period(raw: dict, prepared: CompilerInput, schema: dict, business: dict) ->
             period["partitions"].append(
                 {"table": table["table"], "path": [field]}
                 if field
-                else {"table": table["table"], "field": "_PARTITIONDATE"}
+                else {
+                    "table": table["table"],
+                    "field": (
+                        "_PARTITIONDATE"
+                        if partition.get("type") == "DAY"
+                        else "_PARTITIONTIME"
+                    ),
+                }
             )
         elif table.get("requirePartitionFilter"):
             raise ContractCompilerError(
@@ -312,12 +351,17 @@ def normalize_contract_response(raw: dict, prepared: CompilerInput) -> AnalysisC
     if selected & _date_shard_tokens(prepared):
         raise ContractCompilerError("date-shard candidates require consolidated metadata")
     business_token, time_candidates = _time_candidates(raw, prepared, selected)
-    business = prepared.fields[business_token]["reference"]
+    business = (
+        prepared.fields[business_token]["reference"]
+        if business_token is not None
+        else None
+    )
     semantics = {
         key: _role_definitions(raw, key, prepared, selected) for key in ROLE_KEYS
     }
     semantics["metrics"] = _metric_definitions(raw, prepared, selected)
-    semantics["time_candidates"] = time_candidates
+    if time_candidates:
+        semantics["time_candidates"] = time_candidates
     semantics["nested_paths"] = [
         {"field": field["reference"], "repeated": field["value_class"] == "repeated"}
         for field in prepared.fields.values()

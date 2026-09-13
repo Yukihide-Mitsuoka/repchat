@@ -60,6 +60,23 @@ print("ok")
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('SQL context does not invent time constraints for a time-free contract', () => {
+  const result = python(
+    setup +
+      `
+time_free={**content,"period":None}
+time_free_json=json.dumps(time_free,ensure_ascii=False,sort_keys=True,separators=(",",":"))
+time_free_contract=AnalysisContract(time_free_json,fingerprint_contract_content(time_free))
+planner=c.planner_context(time_free_contract);sql=c.sql_rules(time_free_contract)
+assert "適用可能な場合の期間" in planner
+assert "periodはnull" in sql and "期間、timezone、partition疑似列を推測して追加しない" in sql
+assert "periodのbusiness_timeで対象期間を絞り" not in sql
+print("ok")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('forged contracts and mismatched specifications fail closed', () => {
   const result = python(
     setup +

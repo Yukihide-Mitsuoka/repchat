@@ -28,6 +28,7 @@ from vertex_generation import generate_content
 CONTRACT_MAX_OUTPUT_TOKENS = 16384
 RESPONSE_KEYS = (
     "tables",
+    "time_enabled",
     "business_time",
     "time_candidates",
     *ROLE_KEYS,
@@ -72,8 +73,6 @@ def _available_tokens(prepared: CompilerInput) -> tuple[list[str], list[str], li
         raise ContractCompilerError("no consolidated table is available for generation")
     if not fields:
         raise ContractCompilerError("no selectable field is available for generation")
-    if not temporal:
-        raise ContractCompilerError("no temporal field is available for generation")
     return tables, fields, temporal
 
 
@@ -97,7 +96,27 @@ def _contract_response_schema(
     prepared: CompilerInput, *, fixed_period: dict | None = None
 ) -> dict:
     tables, fields, temporal = _available_tokens(prepared)
+    if fixed_period is not None and not temporal:
+        raise ContractCompilerError("fixed period requires a temporal field")
     named_field = _named_field_schema(fields)
+    time_candidates = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "field": _enum(temporal) if temporal else {"type": "string"},
+                "confidence": _enum(["high", "medium", "low"]),
+            },
+            "required": ["field", "confidence"],
+        },
+    }
+    # Vertex can reject maxItems=0; the normalizer requires an empty list when
+    # no temporal token exists, so omit both provider bounds in that case.
+    if temporal:
+        time_candidates.update({
+            "minItems": 1 if fixed_period is not None else 0,
+            "maxItems": min(MAX_ROLE_ITEMS, len(temporal)),
+        })
     properties = {
         "tables": {
             "type": "array",
@@ -105,20 +124,13 @@ def _contract_response_schema(
             "maxItems": min(MAX_TABLES, len(tables)),
             "items": _enum(tables),
         },
-        "business_time": _enum(temporal),
-        "time_candidates": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": min(MAX_ROLE_ITEMS, len(temporal)),
-            "items": {
-                "type": "object",
-                "properties": {
-                    "field": _enum(temporal),
-                    "confidence": _enum(["high", "medium", "low"]),
-                },
-                "required": ["field", "confidence"],
-            },
-        },
+        "time_enabled": {"type": "boolean"},
+        "business_time": (
+            _enum(temporal if fixed_period is not None else ["", *temporal])
+            if temporal
+            else {"type": "string"}
+        ),
+        "time_candidates": time_candidates,
         **{
             key: {
                 "type": "array",
@@ -209,7 +221,10 @@ def _generation_request(
         "- tableとfieldは必ず提示済みtokenだけで返し、実名、SQL、式は返さない。\n"
         "- selectable=falseのfieldとdateShardCandidate付きtableは選ばない。\n"
         "- role_selectable=falseのfieldはbusiness_timeとtime_candidates以外に使わない。\n"
-        "- business_timeは選択tableのtemporal fieldとし、time_candidatesにも含める。\n"
+        "- 選択tableにtemporal fieldがあればtime_enabled=trueとし、business_timeを"
+        "time_candidatesにも含める。\n"
+        "- 選択tableにtemporal fieldがなければtime_enabled=false、business_timeは空文字、"
+        "time_candidatesは空配列、periodの文字列は空、comparison_enabled=falseとする。\n"
         "- role名とaliasはquestion、table名、path、descriptionだけを根拠にし、sample値を転記しない。\n"
         "- metricは最低1件。sum/avgはnumeric、min/maxはnumericまたはtemporalに限る。\n"
         "- relationshipは選択した異なるtable間で型が一致する明確な根拠がある場合だけ返す。\n"

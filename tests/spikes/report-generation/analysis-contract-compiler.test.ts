@@ -51,7 +51,7 @@ second=copy.deepcopy(metadata["tables"][0]);second["table"]="beta.dataset.record
 second_catalog=copy.deepcopy(content["tables"][0]);second_catalog["table"]="beta.dataset.records";second_catalog["timePartitioning"]={"type":"DAY"};content["tables"].append(second_catalog)
 schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
 prepared=c.prepare_compiler_input(snapshot(content),"期間比較",as_of=date(2026,9,13))
-raw={"tables":["t001","t000"],"business_time":"f0000","time_candidates":[{"field":"f0006","confidence":"low"},{"field":"f0000","confidence":"high"}],"grain":[],"identifiers":[{"name":"entity","field":"f0002","aliases":["id"]}],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":["sum","aggregate"],"aggregation":"sum","unit":"count"}],"relationships":[{"left_field":"f0002","right_field":"f0008","cardinality":"many_to_one"}],"period":{"start":"2026-08-01","end":"2026-08-31","comparison_enabled":True,"comparison_start":"2026-07-01","comparison_end":"2026-07-31"}}
+raw={"tables":["t001","t000"],"time_enabled":True,"business_time":"f0000","time_candidates":[{"field":"f0006","confidence":"low"},{"field":"f0000","confidence":"high"}],"grain":[],"identifiers":[{"name":"entity","field":"f0002","aliases":["id"]}],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":["sum","aggregate"],"aggregation":"sum","unit":"count"}],"relationships":[{"left_field":"f0002","right_field":"f0008","cardinality":"many_to_one"}],"period":{"start":"2026-08-01","end":"2026-08-31","comparison_enabled":True,"comparison_start":"2026-07-01","comparison_end":"2026-07-31"}}
 `;
 
 test('token candidates become one canonical schema-validated contract', () => {
@@ -88,7 +88,7 @@ assert next(field for field in catalog["fields"] if field["token"]==suffix)["rol
 response_schema=g._contract_response_schema(prepared)
 assert suffix in response_schema["properties"]["business_time"]["enum"]
 assert suffix not in response_schema["properties"]["metrics"]["items"]["properties"]["field"]["enum"]
-raw={"tables":["t000"],"business_time":suffix,"time_candidates":[{"field":suffix,"confidence":"high"}],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"2026-08-01","end":"2026-08-02","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
+raw={"tables":["t000"],"time_enabled":True,"business_time":suffix,"time_candidates":[{"field":suffix,"confidence":"high"}],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"2026-08-01","end":"2026-08-02","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
 contract=r.normalize_contract_response(raw,prepared).content()
 assert contract["period"]["business_time"]=={"table":pattern,"field":"_TABLE_SUFFIX"}
 assert contract["period"]["partitions"]==[{"table":pattern,"field":"_TABLE_SUFFIX"}]
@@ -106,7 +106,7 @@ test('unsafe generated candidates and unconsolidated shards fail closed', () => 
     normalizationSetup +
       String.raw`
 cases=[]
-for change in ("restricted","string_sum","future","confidence","cardinality","same_table","incompatible","extra"):
+for change in ("restricted","string_sum","future","confidence","cardinality","same_table","incompatible","disabled_time","extra"):
  value=copy.deepcopy(raw)
  if change=="restricted":value["metrics"][0]["field"]="f0005"
  if change=="string_sum":value["metrics"][0]["field"]="f0002"
@@ -115,6 +115,7 @@ for change in ("restricted","string_sum","future","confidence","cardinality","sa
  if change=="cardinality":value["relationships"][0]["cardinality"]=[]
  if change=="same_table":value["relationships"][0]["right_field"]="f0002"
  if change=="incompatible":value["relationships"][0]["right_field"]="f0007"
+ if change=="disabled_time":value.update({"time_enabled":False,"business_time":"","time_candidates":[],"period":{"start":"","end":"","comparison_enabled":False,"comparison_start":"","comparison_end":""}})
  if change=="extra":value["unexpected"]=True
  cases.append(value)
 sharded=copy.deepcopy(content);sharded["tables"][0]["dateShardCandidate"]={"pattern":"alpha.dataset.records_*","suffixFormat":"YYYYMMDD","suffix":"20260801"}
@@ -175,11 +176,94 @@ assert call["contents"].endswith(prepared.catalog_json) and "dateShardCandidate�
 assert config.system_instruction==g.SYSTEM_INSTRUCTION and config.response_mime_type=="application/json" and config.max_output_tokens==g.CONTRACT_MAX_OUTPUT_TOKENS
 assert response_schema["required"]==list(g.RESPONSE_KEYS) and response_schema["propertyOrdering"]==list(g.RESPONSE_KEYS)
 assert response_schema["properties"]["tables"]["items"]["enum"]==["t000","t001"]
-assert response_schema["properties"]["business_time"]["enum"]==["f0000","f0006"]
+assert response_schema["properties"]["business_time"]["enum"]==["","f0000","f0006","f0012"]
+assert prepared.fields["f0012"]["reference"]=={"table":"beta.dataset.records","field":"_PARTITIONDATE"}
 encoded_schema=json.dumps(response_schema,ensure_ascii=False)
 assert "alpha.dataset.records" not in encoded_schema and "observed_at" not in encoded_schema
 assert contract.content()["semantics"]["metrics"]["total"]["aggregation"]=="sum"
 assert usage=={"input_tokens":11,"output_tokens":10}
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('tables without a time boundary generate an explicit time-free contract', () => {
+  const result = python(
+    setup +
+      String.raw`
+import sys,types
+import analysis_contract_generation as g
+import analysis_contract_response as r
+table=content["schema"]["metadata"]["tables"][0];table["fields"]=[field for field in table["fields"] if field["name"]!="observed_at"];table.pop("timePartitioning");table["requirePartitionFilter"]=False
+catalog=content["tables"][0];catalog["fields"]=[field for field in catalog["fields"] if field["path"]!="observed_at"];catalog.pop("timePartitioning");catalog["requirePartitionFilter"]=False
+schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+discovery=snapshot(content);prepared=c.prepare_compiler_input(discovery,"合計を確認",as_of=date(2026,9,13))
+raw={"tables":["t000"],"time_enabled":False,"business_time":"","time_candidates":[],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":"f0000","aliases":[]}],"metrics":[{"name":"total","field":"f0000","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"","end":"","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
+google=types.ModuleType("google");genai=types.ModuleType("google.genai")
+class GenerateContentConfig:
+ def __init__(self,**kwargs):self.__dict__.update(kwargs)
+genai.types=types.SimpleNamespace(GenerateContentConfig=GenerateContentConfig)
+google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=genai
+calls=[]
+class Models:
+ def generate_content(self,**kwargs):
+  calls.append(kwargs)
+  return types.SimpleNamespace(text=json.dumps(raw),candidates=[types.SimpleNamespace(finish_reason="STOP")],usage_metadata=types.SimpleNamespace())
+contract,usage=g.generate_contract(types.SimpleNamespace(models=Models()),"test-model",discovery,"合計を確認",as_of=date(2026,9,13))
+response_schema=calls[0]["config"].response_schema;time_schema=response_schema["properties"]["time_candidates"]
+assert "enum" not in response_schema["properties"]["business_time"]
+assert "minItems" not in time_schema and "maxItems" not in time_schema
+assert contract.content()["period"] is None and "time_candidates" not in contract.content()["semantics"]
+assert usage=={"input_tokens":0,"output_tokens":0}
+for change in ("enabled","period","boolean"):
+ invalid=copy.deepcopy(raw)
+ if change=="enabled":invalid["time_enabled"]=True
+ if change=="period":invalid["period"]["start"]="2026-09-01"
+ if change=="boolean":invalid["period"]["comparison_enabled"]=0
+ try:r.normalize_contract_response(invalid,prepared)
+ except c.ContractCompilerError:pass
+ else:raise AssertionError("invalid time-free response accepted")
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('time applicability follows selected tables rather than the whole catalog', () => {
+  const result = python(
+    setup +
+      String.raw`
+import analysis_contract_response as r
+other_metadata=copy.deepcopy(metadata["tables"][0]);other_metadata["table"]="beta.dataset.records";other_metadata["fields"]=[field for field in other_metadata["fields"] if field["name"]!="observed_at"];other_metadata.pop("timePartitioning");other_metadata["requirePartitionFilter"]=False;metadata["tables"].append(other_metadata)
+other_catalog=copy.deepcopy(content["tables"][0]);other_catalog["table"]="beta.dataset.records";other_catalog["fields"]=[field for field in other_catalog["fields"] if field["path"]!="observed_at"];other_catalog.pop("timePartitioning");other_catalog["requirePartitionFilter"]=False;content["tables"].append(other_catalog)
+schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+prepared=c.prepare_compiler_input(snapshot(content),"二つ目の表の合計",as_of=date(2026,9,13));amount=next(token for token,field in prepared.fields.items() if field["reference"]=={"table":"beta.dataset.records","path":["amount"]})
+raw={"tables":["t001"],"time_enabled":False,"business_time":"","time_candidates":[],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":amount,"aliases":[]}],"metrics":[{"name":"total","field":amount,"aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"","end":"","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
+contract=r.normalize_contract_response(raw,prepared).content()
+assert contract["period"] is None
+assert [table["table"] for table in contract["schema"]["metadata"]["tables"]]==["beta.dataset.records"]
+`,
+  );
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('ingestion-time partition metadata supplies a generic temporal token', () => {
+  const result = python(
+    setup +
+      String.raw`
+import analysis_contract_response as r
+table=content["schema"]["metadata"]["tables"][0];table["fields"]=[field for field in table["fields"] if field["name"]!="observed_at"];table["timePartitioning"]={"type":"DAY"};table["requirePartitionFilter"]=True
+catalog=content["tables"][0];catalog["fields"]=[field for field in catalog["fields"] if field["path"]!="observed_at"];catalog["timePartitioning"]={"type":"DAY"};catalog["requirePartitionFilter"]=True
+schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+prepared=c.prepare_compiler_input(snapshot(content),"30日間の合計",as_of=date(2026,9,13))
+synthetic=next(token for token,field in prepared.fields.items() if field["reference"].get("field")=="_PARTITIONDATE")
+raw={"tables":["t000"],"time_enabled":True,"business_time":synthetic,"time_candidates":[{"field":synthetic,"confidence":"high"}],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":"f0000","aliases":[]}],"metrics":[{"name":"total","field":"f0000","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"2026-08-15","end":"2026-09-13","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
+contract=r.normalize_contract_response(raw,prepared).content()
+assert contract["period"]["business_time"]=={"table":"alpha.dataset.records","field":"_PARTITIONDATE"}
+assert contract["period"]["partitions"]==[{"table":"alpha.dataset.records","field":"_PARTITIONDATE"}]
+assert contract["semantics"]["time_candidates"]==[{"field":{"table":"alpha.dataset.records","field":"_PARTITIONDATE"},"confidence":"high"}]
+table["timePartitioning"]={"type":"HOUR"};catalog["timePartitioning"]={"type":"HOUR"};schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+hourly=c.prepare_compiler_input(snapshot(content),"1時間の合計",as_of=date(2026,9,13))
+assert any(field["reference"].get("field")=="_PARTITIONTIME" and field["type"]=="TIMESTAMP" for field in hourly.fields.values())
 `,
   );
   assert.equal(result.status, 0, result.stderr);

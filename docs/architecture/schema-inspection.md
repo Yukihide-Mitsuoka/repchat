@@ -59,9 +59,10 @@ catalogから完全契約を生成するときは同じ期間をresponse schema�
 ## 共通分析契約
 
 `analysis_contract.py`はsnapshotと自動生成した意味候補・期間条件・実行上限を検証し、計画とSQL生成が
-共有する不変JSONへcompileします。業務時刻は実在するDATE／DATETIME／TIMESTAMP列、または検査済み
-date shardの`_TABLE_SUFFIX`を参照し、IANA timezone、対象期間、任意の比較期間を別フィールドで保持します。
-期間は`YYYY-MM-DD`の閉区間です。
+共有する不変JSONへcompileします。業務時刻は実在する非repeatedのDATE／DATETIME／TIMESTAMP列、検査済み
+date shardの`_TABLE_SUFFIX`、またはingestion-time partitionの`_PARTITIONDATE`／`_PARTITIONTIME`を
+参照します。適用可能な期間はIANA timezone、`YYYY-MM-DD`の閉区間、任意の比較期間を別フィールドで保持します。
+選択schemaにこれらの時間境界がない場合だけ`period`を`null`とし、生成・SQL文脈が期間を補いません。
 各time partitioned tableの絞り込み列を明示し、必須tableの欠落、API metadataとの不一致、重複を拒否します。
 ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示します。
 `dateShards`を持つtableは`_TABLE_SUFFIX`を必須制約とし、snapshotの開始・終了日が対象期間と比較期間を
@@ -90,8 +91,8 @@ contract内の全tableがprofileの許可datasetと完全一致しない場合�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は時間fieldを
-持たないschemaの契約境界を実装します。対象固有のfactory、profile、metrics fileは追加しません。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はplanner、SQL生成、
+SQL検査をcanonical contractだけへ接続します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
