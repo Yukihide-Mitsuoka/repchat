@@ -88,7 +88,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'sql_generation.py': 1,
     'sql_prompt_context.py': 3,
     'tenant_serve.py': 1,
-    'verify_live_services.py': 1,
   },
   sourceProfileApi: {
     'analysis_dashboard_plan.py': 2,
@@ -101,7 +100,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'live_engine.py': 12,
     'live_http_validation.py': 9,
     'section_execution.py': 3,
-    'verify_live_services.py': 4,
   },
   fixedSchemaKnowledge: {
     'bitcoin_profile.py': 14,
