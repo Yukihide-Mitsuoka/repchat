@@ -26,14 +26,18 @@ meeting the Definition of Done (WF-090).
    or decomposition. If MNT-002 or GR-025 applies, resolve it before adding behavior.
 4. Plan the seam: which layer does each piece belong to? New use case in
    `application/`, domain logic in `domain/`, I/O in `infrastructure/` adapters.
-5. Create branch `feat/<issue>-<slug>`.
-6. Implement in thin vertical slices: domain → application → interface, committing
+5. Apply TST-011 when a stable observable seam and independent expected-value basis
+   exist: prove one behavior slice red, make it green with the smallest complete
+   behavior, then clean up only code introduced in that slice while it stays green. If
+   an apparently suitable behavior change skips TDD, state why in the PR.
+6. Create branch `feat/<issue>-<slug>`.
+7. Implement in thin vertical slices: domain → application → interface, committing
    per slice with tests in the same commit.
-7. Cover error paths and boundaries (TST-002), not just the happy path.
-8. Update docs per the doc-update matrix (DOC-030): MODULE.md, `docs/api/`,
+8. Cover error paths and boundaries (TST-002), not just the happy path.
+9. Update docs per the doc-update matrix (DOC-030): MODULE.md, `docs/api/`,
    `.env.example`, glossary.
-9. Run `make format && make lint && make test`.
-10. Self-review with review.skill.md; then open the PR with the template fully filled.
+10. Run `make format && make lint && make test`.
+11. Self-review with review.skill.md; then open the PR with the template fully filled.
 
 ## Decision criteria
 - **Where does logic go?** If it needs I/O → infrastructure. If it orchestrates →
