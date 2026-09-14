@@ -434,6 +434,7 @@ def bind_specification(specification: dict, contract: AnalysisContract) -> dict:
     except (TypeError, ValueError):
         raise AnalysisContextError("analysis specification is not JSON serializable") from None
     revision = bound.pop("revision", "")
+    bound.pop("profile", None)
     match = re.fullmatch(r"(plan|insight)-[0-9a-f]{12}", str(revision))
     if not match:
         raise AnalysisContextError("analysis specification revision is invalid")

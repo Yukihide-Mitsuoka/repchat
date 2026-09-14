@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+import analysis_contract_context
 import analysis_planner as planner
 import data_source_profiles
 import meeting_report as meeting
@@ -132,15 +133,21 @@ def plan_dashboard(
     """Propose a reviewable dashboard plan without querying BigQuery."""
     try:
         selected_source = source or data_source_profiles.profile_for("ga4")
+        contract = selected_source.analysis_contract
         period_resolver = period_for_question or selected_source.period_for_question
         period = period_resolver(question)
         current_plan = (
             planner.confirm_dashboard_plan(
-                analysis_plan, expected_profile=selected_source.key
+                analysis_plan,
+                expected_profile=selected_source.key if contract is None else None,
             )
             if analysis_plan
             else None
         )
+        if current_plan is not None and contract is not None:
+            analysis_contract_context.require_specification_contract(
+                current_plan, contract
+            )
         emit({"type": "plan_stage", "message": "分析目的と指標定義を照合中です。"})
         context = (
             context_for_profile(metrics, selected_source.key)
@@ -156,8 +163,10 @@ def plan_dashboard(
             answers,
             current_plan=current_plan,
             instruction=revision_instruction,
-            profile=selected_source.key,
+            profile=selected_source.key if contract is None else None,
         )
+        if contract is not None:
+            plan = analysis_contract_context.bind_specification(plan, contract)
         check_cancelled()
         emit(
             {
