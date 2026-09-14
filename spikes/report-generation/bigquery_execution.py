@@ -75,7 +75,14 @@ def inspect_bq_schema(
         metadata_error = _dry_run_metadata_error(job, allowed_dataset, policy)
         if metadata_error:
             return None, metadata_error
-        return [(field.name, field.field_type) for field in job.schema], None
+        return [
+            (
+                (field.name, field.field_type, field.mode)
+                if isinstance(getattr(field, "mode", None), str)
+                else (field.name, field.field_type)
+            )
+            for field in job.schema
+        ], None
     except Exception as error:  # noqa: BLE001 — dry-run diagnostics are user-actionable
         why = ""
         errors = getattr(error, "errors", None)

@@ -107,6 +107,12 @@ REPEATEDであり、各階層のaliasが一意な場合だけ受理します。p
 計算式で作る配列とCTE出力のlineageはこの検査で推測せず、BigQuery dry runの型検査を維持します。
 `bigquery_execution.validate_sql(...)`は契約付きdry run・実行の前にこの検査を必須とします。
 
+`analysis_contract_context.execution_policy(...)`はcanonical semanticsのgrain・identifier・dimensionと
+measure・metricから、結果で利用可能な意味role名も導出します。`contract_result_validation.py`は確定sectionが
+そのroleだけを使用すること、dry-run schemaの列名が描画契約のASCII aliasと一致すること、出力が非repeatedの
+標準scalar型であることを検査します。実行後も同じ列名を再検査し、dry runと実行の間の形状差を描画へ渡しません。
+描画仕様がない分析結果についてはroleや列名を推測せず、既存のdry run、参照scope、費用・行数上限だけを適用します。
+
 実行policyはcanonical contractの`period`から、業務時刻と各partitionのtable・field path・標準型、
 比較期間を含むscan開始日・終了日、timezoneも導出します。`period=null`は選択schemaに利用可能な
 時間field・partition・date shardがない場合だけ許可し、対象別の期間parserやcallbackをpolicyへ含めません。
@@ -115,8 +121,7 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は結果形状の検査を
-canonical contractから導出します。その後、planner・SQL生成の
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はplanner・SQL生成の
 legacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 

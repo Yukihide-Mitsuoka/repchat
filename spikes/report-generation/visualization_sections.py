@@ -41,6 +41,8 @@ def build_planned_analysis_section(
         "max_result_rows": DASHBOARD_ROW_LIMITS[chart],
         "dimension_count": len(panel["dimensions"]),
         "measure_count": len(panel["measures"]),
+        "semantic_dimensions": list(panel["dimensions"]),
+        "semantic_measures": list(panel["measures"]),
         "result_roles": CHART_RESULT_ROLE_CONTRACTS[chart],
     }
     dimensions = panel["dimensions"]
