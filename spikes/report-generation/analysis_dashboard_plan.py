@@ -55,16 +55,9 @@ def normalize_dashboard_plan(
     *,
     allow_layout_gaps: bool = False,
     allowed_metrics: tuple[str, ...] = (),
-    profile: str | None = "ga4",
 ) -> dict:
     """Validate model output and produce a deterministic proposed revision."""
-    if profile is not None and (
-        not isinstance(profile, str) or not re.fullmatch(r"[a-z0-9_-]{1,40}", profile)
-    ):
-        raise PlannerError("分析計画のデータソースprofileが不正です。")
     plan = _normalize_plan_header(raw, objective, period, answers)
-    if profile is not None:
-        plan["profile"] = profile
     raw_panels = raw.get("panels", [])
     if not isinstance(raw_panels, list) or not 1 <= len(raw_panels) <= MAX_PANEL_COUNT:
         raise PlannerError(f"分析計画のパネルは1〜{MAX_PANEL_COUNT}件にしてください。")
@@ -128,7 +121,7 @@ def normalize_dashboard_plan(
                 if not re.search(r"(?:上位|トップ)\s*\d+", suggestion):
                     suggestion += "。経路は上位10件に絞って"
                 suggestion += (
-                    f"。3ページ分は遷移元・遷移先の隣接edgeとして表し、"
+                    f"。3段階分は遷移元・遷移先の隣接edgeとして表し、"
                     f"区分軸2件と{measures[0]}1指標で返して"
                 )
             raise PlannerError(
@@ -162,23 +155,33 @@ def normalize_dashboard_plan(
     return _revisioned_plan(plan)
 
 
-def confirm_dashboard_plan(
-    plan: dict, *, expected_profile: str | None = None
-) -> dict:
+def confirm_dashboard_plan(plan: dict) -> dict:
     """Revalidate an edited AI-authored proposal and freeze its full specification."""
+    supported_fields = {
+        "analysis_contract_fingerprint",
+        "answers",
+        "audience",
+        "clarifications",
+        "comparison",
+        "hypotheses",
+        "objective",
+        "objective_summary",
+        "organization_context",
+        "organization_context_revision",
+        "panels",
+        "period",
+        "revision",
+        "status",
+    }
+    if not isinstance(plan, dict):
+        raise PlannerError("分析計画のデータ接続bindingが不正です。")
     fingerprint = plan.get("analysis_contract_fingerprint")
-    stored_profile = plan.get("profile")
-    if fingerprint is not None and (
-        not isinstance(fingerprint, str)
+    if (
+        bool(set(plan) - supported_fields)
+        or not isinstance(fingerprint, str)
         or not re.fullmatch(r"[0-9a-f]{64}", fingerprint)
-        or stored_profile is not None
     ):
         raise PlannerError("分析計画のデータ接続bindingが不正です。")
-    profile = None if fingerprint is not None else plan.get("profile", "ga4")
-    if expected_profile is not None and profile != expected_profile:
-        raise PlannerError(
-            "確定した分析仕様のデータソースが現在の選択と一致しません。"
-        )
     answers = plan.get("answers", {})
     if not isinstance(answers, dict):
         raise PlannerError("確認事項の回答がobjectではありません。")
@@ -208,10 +211,8 @@ def confirm_dashboard_plan(
         plan.get("period", {}),
         answers,
         allow_layout_gaps=True,
-        profile=profile,
     )
-    if fingerprint is not None:
-        confirmed["analysis_contract_fingerprint"] = fingerprint
+    confirmed["analysis_contract_fingerprint"] = fingerprint
     if confirmed["clarifications"]:
         raise PlannerError("未回答の確認事項があります。")
     confirmed["status"] = "confirmed"

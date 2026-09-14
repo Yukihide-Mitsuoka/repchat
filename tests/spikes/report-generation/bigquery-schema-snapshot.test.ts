@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { python } from './live-demo-test-helpers.ts';
+import { python } from './python-test-helpers.ts';
 
 const setup = `
 import copy

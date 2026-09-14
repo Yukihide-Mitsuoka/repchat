@@ -11,7 +11,7 @@ from visualization_contracts import CHART_PLANNING_RULES
 def build_dashboard_planning_request(
     objective: str,
     period: dict[str, str],
-    metrics: str,
+    context: str,
     answers: dict[str, str],
     *,
     current_plan: dict | None,
@@ -20,7 +20,7 @@ def build_dashboard_planning_request(
     max_panel_count: int,
     dynamic_panel_fields: tuple[str, ...],
     max_sankey_paths: int,
-    max_sankey_pages: int,
+    max_sankey_stages: int,
     has_governed_metrics: bool,
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
@@ -49,20 +49,20 @@ def build_dashboard_planning_request(
 - 新しい仕様は既存仕様と重複させず、変更後は重複なしの1〜{max_panel_count}件にする。
 - 上限{max_panel_count}件へ達した場合は追加せず、その理由を目的要約へ明記する。"""
     metric_rule = (
-        "measuresは上の「指標定義」に名前がある指標だけにする。"
-        "目標値や目標達成度など、定義にない基準を作らない。"
+        "measuresは上の共通分析契約に名前がある指標だけにする。"
+        "目標値や目標達成度など、契約にない基準を作らない。"
         if has_governed_metrics
-        else "measuresは上のスキーマから計算根拠を説明できる指標だけにする。"
-        "外部データやスキーマにない意味を補わず、定義が必要ならclarificationsで確認する。"
+        else "共通分析契約に実行可能な指標がないため分析仕様を作らない。"
+        "契約外の指標や意味を補わない。"
     )
-    return f"""次の依頼から、選択されたデータソースの分析ダッシュボードを計画する。
+    return f"""次の依頼と共通分析契約から、分析ダッシュボードを計画する。
 
 依頼: {objective}
 対象期間: {period['label']}
 読者回答: {answered}
 {revision_context}
-スキーマ・指標定義:
-{metrics}
+共通分析契約:
+{context}
 
 規則:
 - 目的を意思決定へ言い換え、検証可能な仮説を最大3件にする。
@@ -71,13 +71,13 @@ def build_dashboard_planning_request(
 - dimensionsとmeasuresにはSQL関数やSQL式ではなく、人が読める表示名を書く。
 - execution_promptにはSQLを書かない。対象期間、比較、必要な出力の意図が分かる自然な仕様にする。
   dimensionsとmeasuresは構造化フィールドを正本とし、execution_promptで表示名を逐語的に繰り返す必要はない。
-- 比較や派生指標が意思決定に有用なら候補として提案してよい。ただし、データソースから確認できる
-  期間・粒度・指標で実行できるかを判断し、追加の範囲や定義が必要ならclarificationsで確認する。
+- 比較や派生指標が意思決定に有用なら候補として提案してよい。ただし、共通分析契約から確認できる
+  期間・粒度・指標で実行できるかを判断し、追加の範囲が必要ならclarificationsで確認する。
   確認前のexecution_promptやmeasuresには未確認の実行条件を含めず、確認済みなら必要な期間と出力列を
   仕様へ明示する。
 - 各可視化の結果は最大行数以内で判断できる集計粒度にする。高カーディナリティの区分軸は上位件数と並び順をexecution_promptへ明記する。
 - {" ".join(CHART_PLANNING_RULES)}
-- ページ回遊のsankeyは上位{max_sankey_paths}経路・最大{max_sankey_pages}ページにする。指定した最終ページへ到達した完全な経路を集計して上位経路を選んだ後、dimensionsを遷移元・遷移先の2件とする隣接edgeへ変換する手順をexecution_promptへ明記する。
+- 段階遷移のsankeyは上位{max_sankey_paths}経路・最大{max_sankey_stages}段階にする。指定した最終段階へ到達した完全な経路を集計して上位経路を選んだ後、dimensionsを遷移元・遷移先の2件とする隣接edgeへ変換する手順をexecution_promptへ明記する。
 - KPI・グラフの選択理由をパネルごとに日本語で説明する。
 - 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。

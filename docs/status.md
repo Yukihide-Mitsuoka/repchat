@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-09-12
+updated: 2026-09-14
 ---
 
 # 実装状況サマリー
@@ -30,7 +30,13 @@ updated: 2026-09-12
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #357](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)。
+**現在の作業**: 対象固有runtimeの完全削除と、canonical analysis contractだけを受け取る共通境界への統一。
+PR #698 merge後に残っていたprofile互換、対象別schema・期間規則・SQL補正、旧live engine／HTTP／UI／CLIを
+削除した。再混入防止ratchetのruntime inventoryは全分類0件で、保存plan、planner、SQL生成、BigQuery実行、
+結果検査はcontract fingerprintとexecution policyを必須とする。`make demo`は廃止し、認可済みconnection scopeから
+discovery、contract生成、planner、SQL、検査、実行をつなぐ対象非依存runtime entryができるまで実行経路を提供しない。
+
+**以下は過去の実装履歴**: [Issue #357](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)。
 Issue #352／PR #353で成果物tree、中央下端composer、右Artifact／Inspector paneへ統合し、PR #354で
 選択titleをcompact headerへ限定した。Issue #355／PR #356ではcomposer幅、dashboard row resize、左paneの
 compact spacing、pane境界を改善してmerge済み。現在は「どんな分析をしたらいい？」等の探索的な問いを
@@ -123,7 +129,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 | | 結果 | 確認状況 |
 |---|---|---|
-| **起動を1コマンドに** | `make demo PROJECT=<project>`。AIが分析仕様を作成するライブデモを起動する | ローカルでVertex AIによる計画、利用者の確定、BigQuery実行前後の契約検査、描画まで確認。固定レポートrunnerは廃止 |
+| **旧デモ起動経路** | 対象別profileへ依存していたため2026-09-14に廃止 | 過去のローカル検証結果は履歴として保持するが、対象非依存runtimeの実証には数えない |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
 | **生成経路の画面内表示** | ライブ画面で質問、AI分析仕様、生成BigQuery SQL、理由、検査状態、結果を表示する | 単一グラフとダッシュボードの両方で、AI仕様とSQL・結果形状の一致を確認してから描画する |
 | **高度な分析** | 利用者の目的からAIが複数パネルとlayoutを作成し、再提案で追加・変更・削除する | 固定6分析のショーケースは廃止。初回件数だけを既定6件とし、内容は固定しない |
@@ -145,7 +151,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | 破棄 | `make destroy` は `ALLOW_DESTROY` が要る（ADR-0012 T7）。**破棄系のコマンドを出すときは、確認コマンドを破棄コマンドより先に提示すること**（オーナー指示） |
 | スパイクの費用 | レポート生成1回で**実Vertex 約¥2＋実BigQuery**。スキャンは `_TABLE_SUFFIX` で1か月・`maximum_bytes_billed` 20GiB に制限済み |
 | 認証 | `gcloud auth application-default login` が要る（Evidence も `authenticator: gcloud-cli` でADCを使う。**鍵ファイルは不要**） |
-| Python | `make demo`が`spikes/report-generation/out/.demo/venv`へpin済み依存を隔離して用意する |
+| Python | 対象別demo用venvと起動targetは廃止済み。共通moduleの検証は`make test-unit`で行う |
 
 **踏みやすい落とし穴（全部、実際に踏んだもの）。**
 
@@ -253,7 +259,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。既存の公開データ向け実装には対象別profile・期間規則・意味定義が残り、任意schema対応ではない | 認可済みscopeからschema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する同一pipelineへ置換し、対象別コード・設定なしに複数の未知schemaを独立review済み参照結果と反復照合する（ADR-0025、Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。対象別profile・期間規則・意味定義と旧demo runtimeは削除済み。共通module境界はあるが、connection scopeから実行までのruntime entryはまだない | 認可済みscopeからschema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する同一pipelineを結線し、対象別コード・設定なしに複数の未知schemaを独立review済み参照結果と反復照合する（ADR-0025、Issue #188） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | Issue #160=`proceed`、#179/#188完了、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |

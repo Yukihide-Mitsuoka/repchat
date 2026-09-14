@@ -308,6 +308,7 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 period={"from":"20210101","to":"20210131","label":"2021年1月"}
 plan={
+ "analysis_contract_fingerprint":"0"*64,
  "objective":"購入成果を改善する",
  "objective_summary":"購入成果の課題を判断する",
  "audience":"月次会議",
@@ -346,6 +347,7 @@ period={"from":"20210101","to":"20210131","label":"2021年1月"}
 def panel(index,row):return {"title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":"目的に必要","execution_prompt":f"2021年1月の指標{index}を1行で出す","dimensions":[],"measures":[f"指標{index}"],"layout_row":row,"layout_weight":index}
 raw={"objective_summary":"成果を判断する","audience":"責任者","comparison":"月内比較","hypotheses":["差がある"],"clarifications":[],"panels":[panel(1,1),panel(2,2),panel(3,3)]}
 plan=p.normalize_dashboard_plan(raw,"ダッシュボードを作って",period,{"audience":"責任者"})
+plan["analysis_contract_fingerprint"]="0"*64
 plan["panels"]=[plan["panels"][0],plan["panels"][2]]
 confirmed=p.confirm_dashboard_plan(plan)
 print(json.dumps([[item["layout_row"],item["layout_weight"]] for item in confirmed["panels"]]))`,

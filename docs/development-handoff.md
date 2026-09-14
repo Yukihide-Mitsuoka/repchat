@@ -27,6 +27,22 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 
 ## 現在の作業
 
+[PR #698](https://github.com/Yukihide-Mitsuoka/repchat/pull/698)はmerge済みです。ただしmerge後の監査で、
+保存planのprofile互換、対象別profile／期間規則／SQL補正、旧ライブUIと補助runnerがruntimeに残っていることを
+確認しました。オーナーは互換性を不要と判断し、対象固有処理を一旦すべて削除するよう指示しました。
+
+現在のbranchでは、対象別profile・metric file・SQL補正・期間parser・旧live engine／HTTP／UI／renderer／CLIを
+物理削除し、planner、SQL生成、BigQuery実行、結果検査をcanonical analysis contract必須へ変更しています。
+保存planはcontract fingerprintがない場合、未知fieldを持つ場合、またはfingerprintが一致しない場合に拒否します。
+再混入防止ratchetのruntime inventoryは全分類0件です。`make demo`と対象別検証runnerは意図的に廃止しており、
+互換adapterや既知対象fallbackとして復元してはいけません。
+
+次は、認可済みconnection scopeからdiscovery、contract生成、planner、SQL、検査、実行を一つにつなぐ対象非依存の
+runtime entryを実装します。それが完成するまでは実行可能なデモがない状態を正しいfail-closedとして扱います。
+その後、同一binary・prompt・設定で未知schemaを反復評価します。実Vertex AI・BigQueryは費用承認なしに実行しません。
+
+### 過去の実装履歴
+
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
 マージ済みです。実Vertex AI・BigQueryを使う公開GA4経路でも6パネルbuildまで完了しました。検証範囲と
@@ -82,22 +98,22 @@ GA4固有の契約factoryは、オーナー指示と
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。
 
-live engine・単一Insight・Bitcoinのschema・期間規則はまだ手書きprofileです。Issue #654の公開GA4経路は実Vertex AI／BigQueryで検証済みですが、
-未知schemaの実値照合・独立レビュー・反復評価は未完了であり、共通経路化だけで任意schema対応を実証済みとは
-しません。
+旧live engine・対象別schema・期間規則は現在のbranchで削除しました。過去に公開データで行った実Vertex AI／
+BigQuery検証は履歴としてのみ有効で、現在の対象非依存経路の実証には数えません。未知schemaの実値照合・
+独立レビュー・反復評価は未完了です。
 
-## 固有処理の全リポジトリ監査（2026-09-12）
+## 固有処理の全リポジトリ監査（2026-09-14更新）
 
 `src/`、`infra/`、`migrations/`、`scripts/`、`spikes/`、`tests/`、`docs/`を横断検索し、runtimeへの
 import経路と実行時分岐を確認しました。製品本体の`src/`には分析対象固有の処理を確認していません。
-一方、製品化前の`spikes/report-generation/`には次の固有処理が残っています。
+2026-09-12に検出した`spikes/report-generation/`のruntime負債は、現在のbranchで次のように除去しました。
 
 | 分類 | 検出箇所 | 判定・扱い |
 |---|---|---|
-| 対象registryと既定値 | `data_source_profiles.py`、`live_http_validation.py`、`live_engine.py`、`analysis_workflows.py`、`analysis_dashboard_plan.py`、`analysis_planner.py`、`live_contracts.py`、`verify_live_services.py` | GA4／Bitcoinの登録済み対象だけを受け付け、複数箇所でGA4を既定値にする実行時固有処理。共通の自動発見pipelineへ置換して削除する |
-| 手書きschema・意味・期間・SQL補正 | `ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別DDL、metric、期間、partition、識別子、URL処理、datasetを埋め込む実行時固有処理。対象別例外を増やさず削除する |
-| UIと補助実行経路 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`tenant_serve.py`、`evidence_components.py` | 固定の対象選択肢・文言・問い合わせ・source名を持つ。UIから対象名分岐を除き、認可済みscopeの自動発見結果だけを表示する |
-| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`という特定aliasとWeb導線前提のSankey要件が共通経路へ漏れている。時間roleと選択済み意味契約に基づく中立表現へ置換する |
+| 対象registryと既定値 | 対象別profile、旧live engine／HTTP、検証runner | 物理削除。workflowと保存planはcanonical contract必須へ変更し、profile互換も削除 |
+| 手書きschema・意味・期間・SQL補正 | 対象別profile、metric file、prompt context、SQL validator／executorのfallback | 物理削除。期間・dataset・上限・fieldはcontract execution policyだけから導出 |
+| UIと補助実行経路 | 旧live UI、chart renderer、Evidence adapter、tenant demo server | 物理削除。対象非依存runtime entryが完成するまで代替UIを置かない |
+| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`をtemporal roleへ置換し、Web導線を前提にしない表現へ変更 |
 | 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
 
 ### 固有処理を削除する実装計画
@@ -129,10 +145,10 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 0 | 再混入防止ratchet（PR #677、merge済み） | `tests/spikes/report-generation/source-specific-runtime-ratchet.test.ts` | 13分類のarchitecture testで対象名、既知dataset、profile API、固定schema・metric file、埋め込みSQL／DDL、対象別module・設定資産をファイル別件数として固定した。既存負債の削除時はbaselineも縮小し、新規追加、移動、件数増加をCIで拒否する |
 | 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge済み） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
 | 2 | 共通分析契約の自動生成（PR #679〜#685 merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py`、`analysis_contract_generation.py`、`analysis_contract_orchestration.py`、`bigquery_scope_discovery.py` | validator、生成入力、token限定normalizer、構造化response schema、対象非依存prompt、単一Vertex生成I/O、日次shardの検査済みwildcard統合と二段階生成はmerge済み。PR #685では利用可能な時間境界がない選択schemaだけ`period=null`でcompileし、ingestion-time partitionには標準疑似fieldを合成した。表現不能な必須partition filterは拒否する。手動意味定義、対象別period parser、識別子補正を使わない |
-| 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695、#696、#697 merge済み。PR #698 review中） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | PR #687〜#696では契約由来のscope・上限・期間・field・SQL・結果形状検査、PR #697ではplannerのVertex AI request・response schema seedからprofile IDを除去した。PR #698ではcanonical contract付き保存planからprofile IDを除去し、contract fingerprintを含むrevisionへ置換して変更提案時の一致を要求する。legacy planのprofile照合はlive runtime移行まで維持する。次はSQL生成のlegacy profile入力とURL等の特殊補正を削除する |
-| 4 | live runtimeをprofileなしへ切替 | `live_engine.py`、`live_http_validation.py`、`live_contracts.py`、`analysis_dashboard_plan.py`、`verify_live_services.py` | HTTP request、保存plan、engine API、CLIから`profile`とGA4既定値を削除する。認証済みconnection scopeから毎回同じdiscovery／contract経路を解決し、契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする |
-| 5 | UI・成果物を中立化 | `live_ui_base.py`、`live_ui_interactions.py`、`live_demo.py`、`evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 固定のGA4／Bitcoin選択肢、期間、例文、metric語彙、source名、問い合わせを削除する。UIには認可scopeから発見したsource summaryとcontract provenanceを表示する。`event_date`を中立なtemporal roleへ置換し、Sankey等は契約が対応する意味roleを持つ場合だけ選択する |
-| 6 | 旧実装を物理削除 | `data_source_profiles.py`、`ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`run_report.py`の旧export | 新runtimeから参照がなくなった時点でregistry、callback、手書きDDL・指標・期間・SQL補正を削除する。互換目的の対象別adapter、feature flag、隠し設定を残さない。runtime inventoryのallowlistを空にする |
+| 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695、#696、#697、#698 merge済み。互換削除は現在のbranch） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | canonical contract、fingerprint、execution policyを必須化。legacy profile入力、固定期間検査、特殊な識別子／URL補正、上限の既定値を削除 |
+| 4 | live runtimeをprofileなしへ切替（現在のbranchで削除方針へ変更） | 旧live engine／HTTP／CLI | 対象別経路を汎用に見せる互換層を作らず物理削除。新runtime entryは認可scopeから共通discovery／contract経路だけを呼ぶ別作業とする |
+| 5 | UI・成果物を中立化（現在のbranch） | 旧live UI／renderer／Evidence adapter、`visualization_contracts.py`、`visualization_sections.py` | 旧UI一式を削除し、分析表現だけを対象非依存に修正。新UIは対象非依存runtime entryの後に実装する |
+| 6 | 旧実装を物理削除（現在のbranch） | 対象別profile、metric file、prompt context、旧export | registry、callback、手書きDDL・指標・期間・SQL補正を削除。互換adapter、feature flag、隠し設定を残さず、runtime inventoryを空にした |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
@@ -149,7 +165,7 @@ contract fingerprint、provenance、結果形状、一般的なchart capability�
 - 利用者確認や手動意味定義を解決策として導入していない。固有処理が残る間は「任意の分析対象へ設定なしで
   適用可能」と表現しない。
 
-## 次に着手する作業キュー（2026-09-12）
+## 次に着手する作業キュー（2026-09-14）
 
 各作業の受入条件と進捗はリンク先のGitHub Issueを正本とします。この表は再開時の実施順序、
 着手条件、完了判定だけを保持します。
@@ -194,7 +210,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 | GitHub App・ArtifactBundle配送 | [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)はaccepted、実装Issueは未作成 | #180の公開契約確定後、共通pipeline、GitHub publisher、managed publisher、隔離build、有効化を個別Issueにする。閲覧経路からGitHubを呼ばず、失敗版を有効化しない |
 | 顧客オンボーディング | セキュリティ説明、監査ログ説明、接続、撤退時削除は未着手 | [ロードマップ](roadmap.md#次デザインパートナー1社でのphase-1本番運用)を正本とする。実顧客dataを扱う前に対象顧客の要件から実装Issueを作る |
 | 列レベル制御・LLM送信前マスキング | 未実装の条件付き前提 | [AIガバナンス要件](ai-governance-requirements.md#着手条件トリガー)を正本とし、AI分析報告の製品実装より先に設計する。顧客の列分類を確認せず方式を固定しない |
-| 実サービス総合検証 | 固定応答と公開GA4の一部は確認済み。全workflowの追加実行は費用承認待ち | [ロードマップの残課題](roadmap.md#残課題)と`spikes/report-generation/verify_live_services.py`を正本とし、対象、Vertex AI、BigQueryの費用を分けて承認後に実行する |
+| 実サービス総合検証 | 旧対象別runtimeの結果は履歴のみ。対象非依存runtimeでの検証は未実施 | [ロードマップの残課題](roadmap.md#残課題)を正本とし、共通runtime entry完成後に対象、Vertex AI、BigQueryの費用を分けて承認して実行する。削除済みrunnerは復元しない |
 | 適応型分析メモリー | 要件と[ADR-0018](adr/0018-govern-adaptive-analysis-memory.md)は完成、製品実装は未着手 | [要件](requirements/adaptive-analysis-memory.md#12-milestoneと実装時期)に従い、#179・#188と#180のrevision契約が成立した後にPhase 1実装Issueを作る。生会話、SQL、結果を正本にしない |
 | version管理panel・SQL workspace | [ADR-0022](adr/0022-compose-derived-dashboards-from-versioned-panels.md)はproposed、製品実装は未着手 | #179／#180後に、panel revision、派生dashboard、利用者SQLの検証を独立Issueへ分割する。AI生成原本を上書きしない |
 | cohort・計測実装支援 | 要件作成Issueは完了、製品実装は未着手 | [cohort要件](requirements/governed-cohort-analysis.md#12-実装時期)と[計測実装要件](requirements/measurement-implementation-assistant.md#12-実装時期と製品境界)の開始条件を満たした時点で、実装Issueを新設する |
@@ -203,25 +219,24 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 | 本番edge防御・共有中間結果 | ADR-0020／0021はproposed、設計Issueは完了 | 実顧客dataのinternet公開前、または実測費用がbottleneckになった場合だけADRをreviewし、承認と費用確認後に実装Issueを作る |
 | 自動オンボーディング・custom role・pentest・SOC 2・SLA | 現在は実装しない | [ロードマップ](roadmap.md#将来実測で必要になった場合のみ)の実測トリガーが成立した場合だけ要件化する |
 
-旧整理の可視化未対応一覧は、2026-09-11の実装状態には適用しません。
-[可視化カバレッジ](requirements/evidence-cloud-visualization-coverage.md#7-現在の要約)ではAI plannerが
-42種類を選択でき、代表fixtureのブラウザ描画を確認済みです。残る部分対応はbarの利用者指定orientationと
-long形式、Evidenceのinline `Value`、Donutです。任意JavaScriptを含む高度なEChartsは安全性、再現性、
-accessibilityの契約がないため意図的に未対応です。42種類の宣言済み対応が実サービス上でも同じ意味を持つかは
-#659の監査が完了するまで確定しません。
+旧整理の可視化未対応一覧は現在の実装状態には適用しません。
+[可視化カバレッジ](requirements/evidence-cloud-visualization-coverage.md#3-現在地)の42種類はplanner入力、
+SQL出力role、行数上限、結果validatorの「契約あり」を意味します。旧rendererは削除済みなので、現在はどのchartも
+end-to-end対応とは表現しません。新rendererは対象非依存runtime entryの完成後に同じcontract fingerprintへ接続し、
+未知schema、accessibility、狭いviewportを検証してから対応済みへ変更します。
 
 旧整理で未完了またはclose候補だった#169、#281、#292、#293、#295、#315、#323、#355、#366、
 #374、#418、#420はGitHub上でCLOSEDです。#345も要件・境界を作るdocs IssueとしてCLOSEDであり、
 将来のAPI実装は開始条件の成立後に別Issueを作ります。これらを現在の作業キューへ戻しません。
 
-以下は製品化の前提と過去の検証記録です。2026-09-11時点でデモprocessのHTTP応答を確認しています。
+以下は製品化の前提と過去の検証記録です。旧デモのHTTP応答確認は現在の実行可能性を意味しません。
 
 ## 製品化の前提と過去の検証記録
 
 | 項目 | 現在地 |
 |------|--------|
-| 作業 | Issue #665のBitcoin月範囲・Mixed-Type可読性修正、固定応答確認、ブラウザ描画、必須CI、マージを完了。次の必須作業は上記キュー1の設定不要schema汎用化と固有処理撤去 |
-| デモ実行状態 | 2026-09-11にPR #666をマージした最新mainからlocalhost:8765を再起動し、HTTP 200を確認した。Issue #665修正後の追加有料buildは未実施 |
+| 作業 | 対象別profile、旧live runtime、UI、renderer、CLIを削除し、共通分析契約だけを受け取るmodule境界へ統一中。次は認可scopeから実行までの対象非依存runtime entry |
+| デモ実行状態 | 実行可能なデモはない。旧localhost demoとMake targetは意図的に廃止し、互換経路も残していない |
 | 直近完了 | [Issue #665](https://github.com/Yukihide-Mitsuoka/repchat/issues/665)／[PR #666](https://github.com/Yukihide-Mitsuoka/repchat/pull/666)でBitcoinの月範囲をpartition範囲として固定し、大数Mixed-Typeの軸・月・表示名を改善した |
 | AIができること | Issue #654の承認済み実検証は完了済み。追加の実Vertex AI相談またはSQL生成・BigQuery実行は、対象と費用を提示してオーナー承認を得た場合だけ行う |
 | 停止条件 | 固有処理が残る状態を汎用対応と扱わない。未知schemaの反復評価を通すまで、対象非依存性を実証済みとしない |
@@ -235,18 +250,14 @@ accessibilityの契約がないため意図的に未対応です。42種類の�
    [§5](positioning.md#5-未検証の仮説と検証方法)で、対象顧客、差別化、検証対象を確認する。
 3. [roadmap](roadmap.md)で実施順序を確認する。
 4. 下の設計判断索引から、変更対象に関係するADRを全文読む。
-5. デモを扱う場合だけ[デモ手順](demo.md)と
+5. 分析runtimeを扱う場合は[分析デモの現在地](demo.md)と
    [report-generation spike](../spikes/report-generation/README.md)を読む。
 
-## 直近の生成エラーと修正状態
+## 旧デモの生成エラー記録
 
-2026-08-10に、同じ確定済みダッシュボードから会議報告を生成した複数の有料呼出しが、AI応答ごとに
-limitationsの数値、根拠外の`22`、または根拠外の`3000`、`4000`、`6`で停止した。左ナビゲーションは
-根拠bundleを変更しておらず、独立した各Vertex AI応答をstrict validatorが拒否していた。追加修正では
-strict validatorを維持し、生成経路だけで妥当な項目を保持、不正項目を警告付きで除外し、空の必須区分を
-根拠付き定型項目で補う。自動再実行はしない。原因と利用者向け動作は
-[トラブルシューティング](troubleshooting/live-demo.md#会議報告のlimitationsには根拠リンクのない数値を書けません)
-を正本とする。実生成はPRのCIとmerge後に費用を再承認した場合だけ行う。
+旧デモに固有の生成エラーとUI修正はGit履歴に残っていますが、削除済みruntimeの復元根拠にはしません。
+現在の共通moduleでエラーが再現した場合だけ、canonical contract、fingerprint、execution policyの境界で新たに
+診断します。既知対象の値や旧補正をfallbackとして移植せず、有料実行は費用を再承認した場合だけ行います。
 
 ## 次タスクの分岐
 
@@ -258,15 +269,15 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 完了した競合・配信境界整理 | [#338 Evidence Cloud positioning and embedded delivery](https://github.com/Yukihide-Mitsuoka/repchat/issues/338)。Evidence Cloud公式仕様を事実側へ置き、RepChatの差別化仮説とauthoring／publishing／embedded deliveryのroute・permission分離を記録する | [競合比較](competitive-landscape.md)、[ポジショニング](positioning.md)、[分析ワークスペースUI要件](requirements/analysis-workspace-ui.md) |
 | 現在のUI情報設計 | [#179 dashboard／SQL来歴UX](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)。外部UIは情報構造の参考に限定し、RepChat機能mapping、左右pane、responsive、keyboard、可視context、Insight保存／昇格、review／publish、embedded previewを再現可能な要件として固定する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、Issue #179 |
 | 完了した会議報告修正 | [#295 evidence validation](https://github.com/Yukihide-Mitsuoka/repchat/issues/295)／[PR #333](https://github.com/Yukihide-Mitsuoka/repchat/pull/333)。strict validatorを維持し、生成経路では根拠外数値を含む項目だけを除外する | [トラブルシューティング](troubleshooting/live-demo.md)、`meeting_report.py` |
-| 過去のdashboard行修正 | [#362 row completeness](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)。当時のserver側行補完は[#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で廃止。現在はAIが作成した`layout_row`と`layout_weight`を検証して使用し、固定パネルIDを補完しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py` |
-| 現在のdashboard閲覧UX | [#364 dashboard focus mode](https://github.com/Yukihide-Mitsuoka/repchat/issues/364)。build成功時だけ右paneを閉じ、composerを小型ランチャーへ縮小する。hoverでは状態を変えず、click／keyboardで下書きとactionを保持した入力欄へ復帰する | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
-| 直近のデモUX | [#352 unified analysis workspace](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。4つのpeer modeを成果物treeと分析スレッドへ変え、中央下端の共通composerからdashboard／Insight／reportを明示選択する。単一グラフは右Artifact Preview、dashboard／reportは中央の成果物pageとし、既存の費用gate・SQL検査・根拠検証を維持する。左右toggleはviewport端へ固定して開閉時に座標を変えない。選択titleは左treeと44px headerだけに置き、本文上部の大型重複blockを廃止する。履歴操作はブラウザへ委ね、永続履歴・保存・Git連携は未実装 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
-| 完了したデモ調整 | [#355 composer and dashboard row resize](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)／[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356)。composerは中央列追従、22px角丸、初期960px上限を導入した。現行の768px上限と自動伸長は[#359](https://github.com/Yukihide-Mitsuoka/repchat/issues/359)が上書きする。dashboardは同じ行の全境界を操作可能にし、隣接cardだけを連動させる。左paneは一行title、hover／focus marquee、16px icon列、4px gap／paddingへ圧縮する。順序変更、自由配置、永続化はしない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`live_demo.py`、`live-demo.test.ts` |
-| 完了した分析相談UX | [#373 stateful AI consultation](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)。Vertex AIへschema・metric・期間・目的・最大8 turnの履歴を渡し、分析仕様を新規に作らせる。選択はcomposer反映だけで、SQL生成・BigQueryは別費用gate後 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、[デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py`、各test |
-| 完了したdashboard planner | [#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)。初回提案数と最大件数だけを管理者設定とし、AIが作るtitle、KPI、軸、chart、判断用途、理由、日本語実行仕様を固定候補IDへ置換せずfreeze・buildする | [デモ手順](demo.md)、`analysis_planner.py`、`live_demo.py`、各test |
-| 直近のデモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326)。custom depthの最終ページ到達前に利用者指定件数の上位経路を選ぶSQLと、指定depth未満の結果を拒否する。現行上限は4ページ | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
-| 直近の認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322)。`RefreshError`を安全な復旧手順へ変換し、ADC再認証とデモ再起動を確認済み。実問い合わせは費用再確認後だけ行う | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
-| 直近のデモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320)。複数workspaceのSVG ID衝突を修正し、固定データで二つ同時描画を検証済み | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md)、`live_demo.py` |
+| 過去のdashboard行修正 | [#362 row completeness](https://github.com/Yukihide-Mitsuoka/repchat/issues/362)。当時のserver側行補完は[#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)で廃止。現在はAIが作成した`layout_row`と`layout_weight`を検証して使用し、固定パネルIDを補完しない | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)、`analysis_planner.py`。旧UIは削除済み |
+| 旧dashboard閲覧UX | [#364 dashboard focus mode](https://github.com/Yukihide-Mitsuoka/repchat/issues/364)。旧UIでのfocus mode実装履歴 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)。旧UIとtestは削除済み |
+| 旧デモUX | [#352 unified analysis workspace](https://github.com/Yukihide-Mitsuoka/repchat/issues/352)。旧workspace shellの実装履歴 | [分析ワークスペースUI要件](requirements/analysis-workspace-ui.md)。旧UIとtestは削除済み |
+| 旧デモ調整 | [#355 composer and dashboard row resize](https://github.com/Yukihide-Mitsuoka/repchat/issues/355)／[PR #356](https://github.com/Yukihide-Mitsuoka/repchat/pull/356) | Git履歴。旧UIとtestは削除済み |
+| 完了した分析相談UX | [#373 stateful AI consultation](https://github.com/Yukihide-Mitsuoka/repchat/issues/373)。共通workflowの契約検証だけを残し、旧UIは削除 | `analysis_planner.py`、`analysis_workflows.py`、各test |
+| 完了したdashboard planner | [#374 dynamic dashboard planner](https://github.com/Yukihide-Mitsuoka/repchat/issues/374)。固定候補IDへ置換しないplanner契約 | `analysis_planner.py`、各test。旧UIは削除済み |
+| 旧デモ阻害解消 | [#325 requested navigation depth](https://github.com/Yukihide-Mitsuoka/repchat/issues/325)／[PR #326](https://github.com/Yukihide-Mitsuoka/repchat/pull/326) | Git履歴。対象固有の旧runtimeは削除済み |
+| 旧認証修正 | [#321 ADC再認証エラー](https://github.com/Yukihide-Mitsuoka/repchat/issues/321)／[PR #322](https://github.com/Yukihide-Mitsuoka/repchat/pull/322) | Git履歴。対象固有の旧runtimeは削除済み |
+| 旧デモ修正 | [#319 Sankey SVG ID分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/319)／[PR #320](https://github.com/Yukihide-Mitsuoka/repchat/pull/320) | Git履歴。旧rendererは削除済み |
 | 現在の要件記録 | [#317 会議意思決定ループ](https://github.com/Yukihide-Mitsuoka/repchat/issues/317)／[PR #318](https://github.com/Yukihide-Mitsuoka/repchat/pull/318)。会議報告を最大3件の意思決定、担当付きアクション、次回の効果検証へ接続する将来要件を記録する | [会議意思決定ループ要件](requirements/meeting-decision-loop.md)、[適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、Issue #181 |
 | 完了したVertex AI費用表示修正 | [#311 thought token accounting](https://github.com/Yukihide-Mitsuoka/repchat/issues/311)／[PR #335](https://github.com/Yukihide-Mitsuoka/repchat/pull/335)。分析計画とSQL生成のthought tokensを費用へ含める | [demo](demo.md)、`analysis_planner.py`、`run_report.py` |
 | 完了したdoctorのslow test分離 | [#315 foundation test split](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)。`setup-github.sh` wrapperではなく、一時Gitリポジトリを反復する`test_template_inheritance_plan.py`をslow suiteへ分離した。`make doctor`と`make doctor-slow`をCIの独立jobで実行し、timeout延長・retry・skipは行わない | `scripts/foundation_test_runner.py`、`scripts/template-check.sh`、`Makefile`、`.github/workflows/ci.yml` |
@@ -275,7 +286,7 @@ strict validatorを維持し、生成経路だけで妥当な項目を保持、�
 | 現在のbuild費用設計 | [#306 cost-gated shared intermediates](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)。direct実行を既定とし、実測thresholdを満たすbuildだけに共有中間結果を提案するproposed ADRをreviewする | ADR-0013/0014/0015、ADR-0021、Issue #180 |
 | 現在の本番security設計 | [#302 production edge and origin protection](https://github.com/Yukihide-Mitsuoka/repchat/issues/302)。Cloudflare WAFとCloud Armorの責任境界、Cloud Run direct URL遮断、費用、rolloutをproposed ADRとしてレビューする | ADR-0005/0006/0010/0012、ADR-0020 |
 | 現在のPhase 0設計 | [#300 scoped context memory](https://github.com/Yukihide-Mitsuoka/repchat/issues/300)。データソース契約、任意org unit、用途別context compiler、UIの必須／任意文脈をproposed ADRとしてレビューする | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018、ADR-0019 |
-| #297 merge後のデモ確認 | 最新mainから`make demo-live PROJECT=<project>`で再起動する。HTTP 200と固定応答テストは無料で確認できる。実会議報告生成は別途費用確認する | [デモ手順](demo.md)、[トラブルシューティング](troubleshooting/live-demo.md) |
+| 旧デモ確認 | 廃止済み。対象別demo targetを再起動・復元しない | [分析デモの現在地](demo.md)、[旧ライブデモの廃止](troubleshooting/live-demo.md) |
 | 固定応答確認後 | 実Vertex AI相談の費用を提示して承認を得てから同じ依頼を1回実行する。相談成功後のBigQuery buildは別の費用確認とし、同時に承認された扱いにしない | #273、#180 |
 | #179と#188が完了 | [#180 対話による分析仕様確定とbuild](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | #179の設計成果、ADR-0013/0015 |
 | #180でanalysis specification revision契約を確定 | 適応型分析メモリーPhase 1の実装Issueを作る | [適応型分析メモリー要件](requirements/adaptive-analysis-memory.md)、ADR-0018。初期は手動方針・承認・表示・取消だけ |
@@ -312,13 +323,13 @@ ADR-0013、ADR-0019、ADR-0024はこの判断で置き換えられました。�
 
 ## 誤って前提にしてはいけないこと
 
-- ローカルデモは`spikes/`内にあり、本番の認証、gate、executor、顧客Git配送を通らない。
+- 実行可能なローカルデモは現在ない。旧デモの検証結果を対象非依存runtimeの証拠にしない。
 - 公開GA4の成功は未知の独自nested/repeated schemaへの対応を証明しない。
 - 生成SQLの構文は毎回同じでなくてよい。指標の意味、出力形状、既知値照合を固定する。
 - 生の会話履歴、生成SQL、query resultは分析方針メモリーの正本ではない。類似度を認可境界に使わない。
 - BigQuery SQLとEvidence SQLの双方で必要列を明示し、`SELECT *`を生成しない。
 - 顧客Gitをページ表示時に参照せず、失敗したbuildを有効化しない。
-- `make demo`は実Vertex AIとBigQueryを使う。実行前に費用を明示し、オーナーの同意を得る。
+- 実Vertex AIとBigQueryを使う新runtime評価は、対象非依存entry完成後に費用を明示し、オーナーの同意を得る。
 - 測っていない結果、独自schema品質、更新SLO、製品統合状態を実証済みと書かない。
 
 この文書は、現在のIssue、停止条件、次タスクの分岐、または設計判断の正本が変わったときに更新します。

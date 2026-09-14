@@ -41,7 +41,7 @@ fields=(
 )
 policy=AnalysisExecutionPolicy(frozenset({records,accounts,${JSON.stringify(events)}}),frozenset({records,accounts,${JSON.stringify(events)}}),100,20,None,fields)
 if payload["execution"]:
- output=[bigquery_execution.validate_sql(sql,"ignored",policy=policy)[1] for sql in payload["sqls"]]
+ output=[bigquery_execution.validate_sql(sql,policy=policy)[1] for sql in payload["sqls"]]
 else:
  output=[validation.contract_sql_diagnostic(sql,policy) for sql in payload["sqls"]]
 print(json.dumps(output,ensure_ascii=False))`,

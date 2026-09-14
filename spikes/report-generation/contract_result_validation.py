@@ -49,12 +49,11 @@ def _columns(columns: object) -> list[tuple[str, str | None, str | None]]:
 def contract_result_diagnostic(
     section: dict,
     columns: object,
-    execution: AnalysisExecutionPolicy | None,
+    execution: AnalysisExecutionPolicy,
 ) -> str:
     """Return a stable refusal for semantic or physical result-shape drift."""
     if (
-        execution is None
-        or execution.result is None
+        execution.result is None
         or not isinstance(section, dict)
         or not section.get("source_columns")
     ):

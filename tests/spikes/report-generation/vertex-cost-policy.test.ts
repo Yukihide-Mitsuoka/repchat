@@ -21,19 +21,25 @@ function python(body: string) {
 test('consultation, dashboard planning and meeting report use the current rounded Vertex cost', () => {
   const output = python(`
 import analysis_workflows as workflows
+import types
 usage={"input_tokens":1000,"output_tokens":1000}
-workflows.planner.propose_consultation=lambda *_args,**_kwargs:({},usage)
+workflows.analysis_contract_context.planner_context=lambda _contract:"context"
+workflows.analysis_contract_context.planning_period=lambda _contract:{}
+workflows.analysis_contract_context.execution_policy=lambda _contract:types.SimpleNamespace(result=types.SimpleNamespace(measures={"measure"}))
+workflows.analysis_contract_context.require_specification_contract=lambda *_args:None
+workflows.analysis_contract_context.bind_specification=lambda value,_contract:value
+workflows.planner.propose_consultation=lambda *_args,**_kwargs:({"recommendations":[]},usage)
 workflows.planner.propose_dashboard=lambda *_args,**_kwargs:({},usage)
 workflows.meeting.generate=lambda *_args,**_kwargs:({},usage)
 events=[]
 workflows.consult(
- object(),workflows.report.DEFAULT_MODEL,"metrics","question",[],"ga4",events.append,
- context_for_profile=lambda *_args:"context",check_cancelled=lambda:None,
+ object(),workflows.report.DEFAULT_MODEL,"question",[],object(),events.append,
+ check_cancelled=lambda:None,
 )
 workflows.plan_dashboard(
- object(),workflows.report.DEFAULT_MODEL,"metrics","question",{},events.append,
- analysis_plan=None,revision_instruction=None,period_for_question=lambda _question:{},
- context_for_profile=lambda *_args:"context",check_cancelled=lambda:None,
+ object(),workflows.report.DEFAULT_MODEL,"question",{},events.append,
+ contract=object(),analysis_plan=None,revision_instruction=None,
+ check_cancelled=lambda:None,
 )
 workflows.generate_meeting_report(
  object(),workflows.report.DEFAULT_MODEL,{"build_revision":"build-1"},"build-1",events.append,
@@ -50,19 +56,23 @@ print(json.dumps([
 test('SQL generation returns and emits the current Vertex cost', () => {
   const output = python(`
 import section_execution as execution
+import types
 usage={"input_tokens":1000,"output_tokens":1000}
 sql="SELECT 1 AS metric_value"
+policy=types.SimpleNamespace(maximum_result_rows=10,period=None,result=None)
+execution.analysis_contract_context.execution_policy=lambda _contract:policy
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
 execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
-execution.report.validate_sql=lambda value,_dataset:(value,None)
-execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
+execution.report.validate_sql=lambda value,**_kwargs:(value,None)
+execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
 execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 events=[]
 cost=execution.run_section(
- {"shape":{"columns":["metric_value"]}}, {}, events.append,
- client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
- source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+ {"shape":{"columns":["metric_value"]}}, events.append,
+ client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+ contract=object(),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({"returned":cost,"emitted":result["cost_jpy"]}))
@@ -73,14 +83,17 @@ print(json.dumps({"returned":cost,"emitted":result["cost_jpy"]}))
 test('one SQL repair adds its Vertex cost before the result event', () => {
   const output = python(`
 import section_execution as execution
+import types
 initial_usage={"input_tokens":1000,"output_tokens":1000}
 repair_usage={"input_tokens":2000,"output_tokens":2000}
 initial="SELECT 1 AS metric_value"
 repaired="SELECT COUNT(*) AS metric_value FROM source"
+policy=types.SimpleNamespace(maximum_result_rows=10,period=None,result=None)
+execution.analysis_contract_context.execution_policy=lambda _contract:policy
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},initial_usage)
 execution.report.generation_request=lambda *_args:"analysis request"
-execution.report.validate_sql=lambda value,_dataset:(value,None)
-execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
+execution.report.validate_sql=lambda value,**_kwargs:(value,None)
 checks=[]
 def validate(_section,_sql):
  checks.append(_sql)
@@ -94,8 +107,8 @@ execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 events=[]
 cost=execution.run_section(
  {"source_columns":["metric_value"],"shape":{"columns":["metric_value"]}},
- {},events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
- rules="rules",source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+ events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+ contract=object(),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({

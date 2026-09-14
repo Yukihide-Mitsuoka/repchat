@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { ROOT } from './live-demo-test-helpers.ts';
+import { ROOT } from './python-test-helpers.ts';
 
 const RUNTIME_ROOT = path.join(ROOT, 'spikes/report-generation');
 const RUNTIME_EXTENSIONS = new Set(['.js', '.json', '.py', '.toml', '.yaml', '.yml']);
@@ -10,7 +10,8 @@ const RUNTIME_EXTENSIONS = new Set(['.js', '.json', '.py', '.toml', '.yaml', '.y
 const RULES = {
   knownSourceIdentity: {
     target: 'content',
-    pattern: /\b(?:ga4|bitcoin)\b|ga4_obfuscated_sample_ecommerce|crypto_bitcoin/giu,
+    pattern:
+      /\b(?:ga4|bitcoin|thelook)\b|ga4_obfuscated_sample_ecommerce|crypto_bitcoin|thelook_ecommerce/giu,
   },
   sourceProfileApi: {
     target: 'content',
@@ -37,7 +38,8 @@ const RULES = {
   },
   fixedBusinessVocabulary: {
     target: 'content',
-    pattern: /ECサイト|購入|売上|セッション|商品|Bitcoin取引/gu,
+    pattern:
+      /ECサイト|購入|売上|セッション|商品|Bitcoin取引|ページ回遊|最終ページ|全ページ列|URLをnode|page path|max_navigation_pages|navigation_depth/gu,
   },
   fixedDatasetConstant: {
     target: 'content',
@@ -45,7 +47,7 @@ const RULES = {
   },
   embeddedQuery: {
     target: 'content',
-    pattern: /\bSELECT\b[^;\n]{0,400}\bFROM\b/giu,
+    pattern: /["'`]\s*SELECT\b[^;\n]{0,400}\bFROM\b/giu,
   },
   embeddedSchema: {
     target: 'content',
@@ -135,7 +137,7 @@ test('ratchet detects source-specific behavior in a new runtime file', () => {
         'load("metrics.json")',
         'period_for_question("2021年1月の購入")',
         'CREATE TABLE example (amount INT64)',
-        'SELECT amount FROM `vendor.customer.orders`',
+        'query = "SELECT amount FROM `vendor.customer.orders`"',
       ].join('\n'),
     },
     { relative: 'source_metrics.yaml', source: '{}' },

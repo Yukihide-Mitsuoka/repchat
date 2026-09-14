@@ -6,8 +6,10 @@ import hashlib
 import json
 from typing import Callable
 
+import analysis_contract_context
 import analysis_planner as planner
 import meeting_report as meeting
+from analysis_contract import AnalysisContract
 
 
 class DashboardBuildError(RuntimeError):
@@ -56,14 +58,14 @@ def dashboard_sections_for_plan(
     question: str,
     plan: dict,
     *,
-    period_for_question: Callable[[str], dict[str, str]],
+    contract: AnalysisContract,
     planned_analysis_section: Callable[[dict], dict],
     max_panel_count: int,
 ) -> tuple[dict, list[dict]]:
     """Turn AI-authored analysis specifications into guarded generation sections."""
     if "ダッシュボード" not in question:
         raise DashboardBuildError("依頼に「ダッシュボード」を含めてください。")
-    period = period_for_question(question)
+    period = analysis_contract_context.planning_period(contract)
     if plan.get("period") != period:
         raise DashboardBuildError("確定した分析仕様の対象期間が依頼文と一致しません。")
     sections = [planned_analysis_section(panel) for panel in plan.get("panels", [])]
@@ -79,9 +81,8 @@ def build_dashboard(
     analysis_plan: dict | None,
     emit: Callable[[dict], None],
     *,
-    profile: str,
-    metric_definitions: dict,
-    sections_for_plan: Callable[[str, dict, str], tuple[dict, list[dict]]],
+    contract: AnalysisContract,
+    sections_for_plan: Callable[[str, dict, AnalysisContract], tuple[dict, list[dict]]],
     layout_rows_for_plan: Callable[[list[dict]], list[dict]],
     run_section: Callable[..., float],
     check_cancelled: Callable[[], None],
@@ -91,12 +92,13 @@ def build_dashboard(
     if analysis_plan is None:
         raise DashboardBuildError("AIが作成した分析仕様を確定してからbuildしてください。")
     try:
-        confirmed = planner.confirm_dashboard_plan(
-            analysis_plan, expected_profile=profile
-        )
+        confirmed = planner.confirm_dashboard_plan(analysis_plan)
+        analysis_contract_context.require_specification_contract(confirmed, contract)
     except planner.PlannerError as error:
         raise DashboardBuildError(str(error)) from error
-    period, sections = sections_for_plan(question, confirmed, profile)
+    except analysis_contract_context.AnalysisContextError as error:
+        raise DashboardBuildError(str(error)) from error
+    period, sections = sections_for_plan(question, confirmed, contract)
     layout_rows = layout_rows_for_plan(confirmed["panels"])
     emit(
         {
@@ -152,7 +154,10 @@ def build_dashboard(
                 )
 
         total_cost += run_section(
-            section, period, capture, context, profile=profile
+            section,
+            capture,
+            contract=contract,
+            context=context,
         )
         if "rows" not in evidence:
             continue
@@ -168,7 +173,7 @@ def build_dashboard(
         )
         evidence_panels.append(evidence)
     bundle = {
-        "profile": profile,
+        "analysis_contract_fingerprint": contract.fingerprint,
         "plan_revision": confirmed["revision"],
         "organization_context_revision": confirmed["organization_context_revision"],
         "organization_context": confirmed["organization_context"],
@@ -180,7 +185,6 @@ def build_dashboard(
             "period": confirmed["period"],
             "hypotheses": confirmed["hypotheses"],
         },
-        "metric_definitions": metric_definitions,
         "panels": evidence_panels,
     }
     canonical = json.dumps(bundle, ensure_ascii=False, sort_keys=True)

@@ -51,6 +51,20 @@ def confirm_analysis_specification(raw: dict) -> dict:
     """Validate and revision one AI-authored single-insight specification."""
     if not isinstance(raw, dict):
         raise PlannerError("分析相談の候補がobjectではありません。")
+    supported_fields = {
+        *CONSULTATION_FIELDS,
+        "analysis_contract_fingerprint",
+        "revision",
+        "visualization",
+    }
+    if set(raw) - supported_fields:
+        raise PlannerError("分析相談のデータ接続bindingが不正です。")
+    fingerprint = raw.get("analysis_contract_fingerprint")
+    if fingerprint is not None and (
+        not isinstance(fingerprint, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", fingerprint)
+    ):
+        raise PlannerError("分析相談のデータ接続bindingが不正です。")
     raw = flatten_visualization(raw)
     recommendation = {
         field: bounded_consultation_text(
@@ -71,6 +85,8 @@ def confirm_analysis_specification(raw: dict) -> dict:
     recommendation["measures"] = consultation_terms(
         raw.get("measures"), "指標", minimum=1
     )
+    if fingerprint is not None:
+        recommendation["analysis_contract_fingerprint"] = fingerprint
     validate_chart_shape(
         chart, recommendation["dimensions"], recommendation["measures"]
     )

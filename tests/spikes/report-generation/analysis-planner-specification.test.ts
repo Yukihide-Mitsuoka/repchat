@@ -39,6 +39,7 @@ client=types.SimpleNamespace(models=Models())
 first,_usage=p.propose_dashboard(client,"test-model","2021年1月の購入成果を改善するダッシュボードを作って",period,"指標定義",{})
 answered={**base,"clarifications":[],"audience":"マーケティング責任者"}
 second=p.normalize_dashboard_plan(answered,first["objective"],period,{"audience":"マーケティング責任者"})
+second["analysis_contract_fingerprint"]="0"*64
 confirmed=p.confirm_dashboard_plan(second)
 errors=[]
 for changed in [
@@ -89,7 +90,7 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 panels=p._dashboard_response_schema({})["properties"]["panels"]
-print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_PAGES}ページ" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
+print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_STAGES}段階" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
@@ -106,7 +107,7 @@ print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標�
   });
 });
 
-test('planner prompt validates comparisons against the source contract', () => {
+test('planner prompt validates comparisons against the analysis contract', () => {
   const result = spawnSync(
     'python3',
     [
@@ -115,7 +116,7 @@ test('planner prompt validates comparisons against the source contract', () => {
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
-print(json.dumps({"comparison_rule":"比較や派生指標が意思決定に有用なら候補として提案してよい" in request,"source_contract":"データソースから確認できる" in request,"clarifications":"clarificationsで確認する" in request},ensure_ascii=False))`,
+print(json.dumps({"comparison_rule":"比較や派生指標が意思決定に有用なら候補として提案してよい" in request,"source_contract":"共通分析契約から確認できる" in request,"clarifications":"clarificationsで確認する" in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
@@ -166,7 +167,7 @@ seeded_orders=[]
 for index in range(8):
  visualization=p._dashboard_response_schema({},seed=f"依頼{index}")["properties"]["panels"]["items"]["properties"]["visualization"]
  seeded_orders.append(visualization["properties"]["chart"]["enum"])
-bar_contract=p.CHART_SHAPE_CONTRACTS["bar"]
+bar_contract=p.CHART_SOURCE_SHAPE_CONTRACTS["bar"]
 bar_shape={"dimensions":list(bar_contract[:2]),"measures":list(bar_contract[2:])}
 catalog_markers=[f"- {chart}:" for chart in p.DASHBOARD_CHARTS]
 layout_heuristics=["同時に読む組み合わせ","重要度","表示密度","chart typeだけから幅"]

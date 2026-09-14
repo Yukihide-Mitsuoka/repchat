@@ -7,7 +7,7 @@
 
 .PHONY: setup format lint test test-unit test-integration coverage build run \
         security-scan sbom clean help doctor doctor-slow \
-        deploy destroy infra-plan demo demo-live
+        deploy destroy infra-plan
 
 FILE ?=
 
@@ -73,14 +73,6 @@ doctor: ## Self-check the template: metadata invariants + guard-hook tests (foun
 
 doctor-slow: ## Run foundation tests that create temporary Git repositories
 	@python3 scripts/foundation_test_runner.py --suite slow
-
-demo: demo-live ## Open the AI-planned live demo
-
-demo-live: ## Open the live Japanese prompt → graph/dashboard demo (each run is paid)
-	python3 spikes/report-generation/live_demo.py \
-		$(if $(PROJECT),--project "$(PROJECT)") \
-		$(if $(filter yes,$(ACCEPT_COST)),--accept-cost) \
-		$(if $(filter yes,$(DRY_RUN)),--dry-run)
 
 # --- deployment (project-specific; ADR-0012) ---------------------------------
 # Needs GOOGLE_CLOUD_PROJECT plus gcloud and terraform. Docker is NOT required:

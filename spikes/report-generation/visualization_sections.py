@@ -5,8 +5,8 @@ from __future__ import annotations
 from visualization_contracts import (
     CHART_RESULT_ROLE_CONTRACTS,
     DASHBOARD_ROW_LIMITS,
-    MAX_SANKEY_PAGES,
     MAX_SANKEY_PATHS,
+    MAX_SANKEY_STAGES,
     SUPPORTED_DASHBOARD_CHARTS,
 )
 
@@ -66,11 +66,11 @@ def build_planned_analysis_section(
         ]
     elif chart in {"line", "area", "calendar_heatmap", "sparkline"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["event_date", "metric_value"]
+        section["source_columns"] = ["temporal_dimension", "metric_value"]
     elif chart in {"multi_line", "stacked_area", "percent_stacked_area"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
-            "event_date",
+            "temporal_dimension",
             *[f"metric_{index}" for index in range(1, len(measures) + 1)],
         ]
     elif chart == "histogram":
@@ -150,7 +150,11 @@ def build_planned_analysis_section(
             "rows": "区分と日付の組み合わせごとに1行",
             "columns": dimensions + measures,
         }
-        section["source_columns"] = ["category", "event_date", "metric_value"]
+        section["source_columns"] = [
+            "category",
+            "temporal_dimension",
+            "metric_value",
+        ]
     elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
@@ -160,25 +164,23 @@ def build_planned_analysis_section(
             "columns": display_dimensions + measures,
         }
         section["source_columns"] = ["source", "target", "metric_value"]
-        section["max_navigation_pages"] = MAX_SANKEY_PAGES
-        section["max_navigation_paths"] = MAX_SANKEY_PATHS
+        section["max_transition_stages"] = MAX_SANKEY_STAGES
+        section["max_transition_paths"] = MAX_SANKEY_PATHS
         section["generation_requirements"] = [
             "最終列のASCII別名はsource、target、metric_valueにする",
-            f"sourceとtargetには1.〜{MAX_SANKEY_PAGES}.のページ段階が"
+            f"sourceとtargetには1.〜{MAX_SANKEY_STAGES}.の段階が"
             "判別できる"
             "番号接頭辞を付ける",
-            "指定した最終ページへ到達した完全な経路を集計し、全ページ列を"
+            "指定した最終段階へ到達した完全な経路を集計し、全段階列を"
             f"安定した順序条件へ含めてmetric_valueの上位{MAX_SANKEY_PATHS}経路を"
             "先に選ぶ",
             "上位経路を選んだ後で、各経路をsourceとtargetの隣接edgeへ"
             "変換する",
-            f"回遊は最初の{MAX_SANKEY_PAGES}ページまでとし、"
-            f"{MAX_SANKEY_PAGES}ページ目より後のnodeやedgeは返さない",
-            f"3〜{MAX_SANKEY_PAGES}ページの回遊もsourceとtargetの隣接edgeとして"
+            f"遷移は最初の{MAX_SANKEY_STAGES}段階までとし、"
+            f"{MAX_SANKEY_STAGES}段階目より後のnodeやedgeは返さない",
+            f"3〜{MAX_SANKEY_STAGES}段階の遷移もsourceとtargetの隣接edgeとして"
             "縦持ちで返す",
             "同一sourceとtargetの組はSUMして1行に集約する",
-            "URLをnode名に使う場合はscheme、host、query、fragmentを除いた"
-            "page pathを表示名にする",
         ]
     elif chart in {"flow_sankey", "flow_sankey_vertical"}:
         section["shape"] = {
@@ -196,7 +198,11 @@ def build_planned_analysis_section(
             "rows": "日付ごとに1行。注釈がない日はannotation_labelをNULLにする",
             "columns": dimensions + measures,
         }
-        section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
+        section["source_columns"] = [
+            "temporal_dimension",
+            "annotation_label",
+            "metric_value",
+        ]
     elif chart == "delta":
         measure = measures[0]
         section["shape"] = {
@@ -373,7 +379,7 @@ def _append_generation_requirements(section: dict) -> None:
             "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
             "calendar_heatmap", "annotated_line", "sparkline",
         }:
-            ordering = "event_dateの昇順"
+            ordering = "temporal_dimensionの昇順"
         elif chart == "histogram":
             ordering = "bin_startの昇順"
         elif chart in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:

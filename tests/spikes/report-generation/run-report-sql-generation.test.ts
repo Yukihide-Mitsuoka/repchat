@@ -158,33 +158,25 @@ print(json.dumps({"calls":calls,"limits":limits,"errors":errors}, ensure_ascii=F
 test('SQL repair keeps the confirmed analysis contract and warehouse diagnostic', () => {
   const result = loadRunReport(`
 section = {
-    "title": "主要ページ間回遊フロー",
-    "text": "2021年1月の主要ページ間回遊を集計する",
-    "compare": "execution",
-    "component": "sankey",
-    "shape": {"rows": "遷移ごとに1行", "columns": ["遷移元", "遷移先", "件数"]},
-    "source_columns": ["source", "target", "metric_value"],
-    "generation_requirements": ["ORDER BY metric_value DESC LIMIT 100を明示する"],
+    "title": "group comparison",
+    "text": "compare the measured values by group",
+    "shape": {"rows": "one row per group", "columns": ["group", "value"]},
+    "source_columns": ["group_key", "metric_value"],
 }
-period = {"from": "20210101", "to": "20210131"}
 request = module["repair_request"](
-    module["generation_request"](section, period),
-    "SELECT broken AS source FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
+    module["generation_request"](section),
+    "SELECT broken AS group_key FROM source_table",
     "Correlated subqueries that reference other tables are not supported",
 )
-rules = module["prompt_rules"]("")
-print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
+print(json.dumps({"request": request}, ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.match(output.request, /分析内容、対象期間、出力列の数・順序・別名.*変更せず/);
   assert.match(output.request, /Correlated subqueries that reference other tables/);
-  assert.match(output.request, /source、target、metric_value/);
-  assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
-  assert.match(output.request, /未確認の期間・派生指標が含まれる場合は、推測で列を追加せず/);
-  assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
-  assert.match(output.rules, /NET\.PARSE_URL/);
-  assert.match(output.rules, /REGEXP_EXTRACT/);
+  assert.match(output.request, /group_key/);
+  assert.match(output.request, /metric_value/);
+  assert.doesNotMatch(output.request, /GA4|Bitcoin|NET\.PARSE_URL/);
 });
 
 test('only BigQuery compiler BadRequest diagnostics are repairable', () => {

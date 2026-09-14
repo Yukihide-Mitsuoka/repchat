@@ -181,9 +181,9 @@ def _allowed_literals(policy: AnalysisPeriodPolicy) -> frozenset[str]:
     )
 
 
-def contract_period_diagnostic(sql: str, execution: AnalysisExecutionPolicy | None) -> str:
+def contract_period_diagnostic(sql: str, execution: AnalysisExecutionPolicy) -> str:
     """Describe contract scan bounds missing from actual SQL WHERE clauses."""
-    if execution is None or execution.period is None:
+    if execution.period is None:
         return ""
     policy = execution.period
     schema = {(field.table, field.path): field for field in execution.schema_fields}

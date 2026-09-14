@@ -23,7 +23,7 @@ test('renderer capabilities are represented by one chart and shape contract', ()
 schema=p._visualization_response_schema(p.SUPPORTED_DASHBOARD_CHARTS,seed="依頼A")
 print(json.dumps({
  "charts":schema["properties"]["chart"]["enum"],
- "contracts":p.CHART_SHAPE_CONTRACTS,
+ "contracts":p.CHART_SOURCE_SHAPE_CONTRACTS,
  "row_limits":p.DASHBOARD_ROW_LIMITS,
 },ensure_ascii=False))
 `);
@@ -176,16 +176,8 @@ google.genai=genai;sys.modules["google"]=google;sys.modules["google.genai"]=gena
 vertex_usage=types.ModuleType("vertex_usage")
 vertex_usage.token_counts=lambda _usage:{"input_tokens":1,"output_tokens":1}
 sys.modules["vertex_usage"]=vertex_usage
-metrics='''指標定義:
-- 指標「セッション数」 = COUNT(*)
-- 指標「ユーザー数」 = COUNT(DISTINCT user_pseudo_id)
-- 指標「閲覧数」 = COUNTIF(event_name = "page_view")
-- 指標「商品閲覧数」 = COUNTIF(event_name = "view_item")
-- 指標「カート追加数」 = COUNTIF(event_name = "add_to_cart")
-- 指標「購入件数」 = COUNTIF(event_name = "purchase")
-- 指標「購入金額」 = SUM(ecommerce.purchase_revenue)
-- 軸「日付」 = event_date'''
-names=p._defined_metric_names(metrics)
+context='共通分析契約JSON'
+names=("measure_a","measure_b")
 raw={
  "objective_summary":"目的を確認する","audience":"責任者","comparison":"月内比較",
  "hypotheses":["指標を比較する"],
@@ -194,14 +186,14 @@ raw={
   "title":"未定義指標","kpi":"目標達成度","chart":"scorecard",
   "decision":"目標達成度を判断する","reason":"判断に必要",
   "execution_prompt":"2021年1月の目標達成度を集計する",
-  "dimensions":[],"measures":["目標達成度"],"layout_row":1,"layout_weight":100
+  "dimensions":[],"measures":["unknown_measure"],"layout_row":1,"layout_weight":100
  }]
 }
 valid={**raw,"panels":[{
- "title":"定義済み指標","kpi":"セッション数","chart":"scorecard",
- "decision":"セッション数を判断する","reason":"判断に必要",
- "execution_prompt":"2021年1月のセッション数を集計する",
- "dimensions":[],"measures":["セッション数"],"layout_row":1,"layout_weight":100
+ "title":"定義済み指標","kpi":"measure_a","chart":"scorecard",
+ "decision":"measure_aを判断する","reason":"判断に必要",
+ "execution_prompt":"対象期間のmeasure_aを集計する",
+ "dimensions":[],"measures":["measure_a"],"layout_row":1,"layout_weight":100
 }]}
 captured={}
 class Models:
@@ -213,11 +205,11 @@ client=types.SimpleNamespace(models=Models())
 error=""
 suggestion=""
 try:
- p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
+ p.propose_dashboard(client,"test-model","対象期間のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"対象期間"},context,{},allowed_metrics=names)
 except Exception as caught:
  error=f"{type(caught).__name__}: {caught}"
  suggestion=getattr(caught,"suggested_instruction","")
-accepted,_usage=p.propose_dashboard(client,"test-model","2021年1月のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"2021年1月"},metrics,{})
+accepted,_usage=p.propose_dashboard(client,"test-model","対象期間のダッシュボードを作る",{"from":"20210101","to":"20210131","label":"対象期間"},context,{},allowed_metrics=names)
 schema=captured["schema"]
 visualization=schema["properties"]["panels"]["items"]["properties"]["visualization"]
 measure_enum=visualization["properties"]["measures"]["items"].get("enum")
@@ -232,11 +224,11 @@ print(json.dumps({"schema_bytes":len(schema_json.encode()),"names":names,"descri
   assert.deepEqual(new Set(output.description_metrics), new Set(output.names));
   assert.equal(output.description_metrics.length, output.names.length);
   assert.equal(output.measure_enum, null);
-  assert.match(output.error, /指標定義にない指標.*目標達成度/);
-  assert.match(output.suggestion, /セッション数/);
-  assert.match(output.suggestion, /購入金額/);
+  assert.match(output.error, /指標定義にない指標.*unknown_measure/);
+  assert.match(output.suggestion, /measure_a/);
+  assert.match(output.suggestion, /measure_b/);
   assert.match(output.suggestion, /だけを使って再提案/);
-  assert.deepEqual(output.accepted, ['セッション数']);
+  assert.deepEqual(output.accepted, ['measure_a']);
 });
 
 test('answered clarification schema avoids the provider-invalid zero item bound', () => {

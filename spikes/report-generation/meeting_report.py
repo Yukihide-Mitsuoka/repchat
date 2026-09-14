@@ -1,4 +1,4 @@
-"""Evidence-bounded executive commentary for the local dashboard demo."""
+"""Evidence-bounded executive commentary for contract-bound analysis."""
 
 from __future__ import annotations
 

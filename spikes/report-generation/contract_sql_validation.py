@@ -243,10 +243,8 @@ def _unqualified_restricted(tokens, bindings, fields) -> None:
             raise _PolicyMismatch
 
 
-def contract_sql_diagnostic(sql: str, execution: AnalysisExecutionPolicy | None) -> str:
+def contract_sql_diagnostic(sql: str, execution: AnalysisExecutionPolicy) -> str:
     """Return a stable refusal when SQL paths contradict canonical schema policy."""
-    if execution is None:
-        return ""
     try:
         tokens = _tokens(sql)
         fields = _field_index(execution)

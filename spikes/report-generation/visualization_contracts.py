@@ -14,9 +14,9 @@ class VisualizationContract:
     max_result_rows: int
 
 
-MAX_SANKEY_PAGES = 4
+MAX_SANKEY_STAGES = 4
 MAX_SANKEY_PATHS = 10
-MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_PAGES - 1)
+MAX_SANKEY_EDGE_ROWS = MAX_SANKEY_PATHS * (MAX_SANKEY_STAGES - 1)
 MAX_FLOW_SANKEY_EDGES = 50
 MAX_CALENDAR_YEARS = 5
 MAX_CALENDAR_ROWS = MAX_CALENDAR_YEARS * 366
@@ -78,8 +78,6 @@ SUPPORTED_DASHBOARD_CHARTS = tuple(
 CHART_SOURCE_SHAPE_CONTRACTS = {
     contract.chart: contract.source_shape for contract in VISUALIZATION_CONTRACTS
 }
-# Backwards-compatible name for callers that already consume the planner shape.
-CHART_SHAPE_CONTRACTS = CHART_SOURCE_SHAPE_CONTRACTS
 DASHBOARD_ROW_LIMITS = {
     contract.chart: contract.max_result_rows for contract in VISUALIZATION_CONTRACTS
 }
@@ -96,14 +94,14 @@ CHART_RESULT_ROLE_CONTRACTS = {
     "grouped_bar": ("category", "metric_*"),
     "stacked_bar": ("category", "metric_*"),
     "percent_stacked_bar": ("category", "metric_*"),
-    "line": ("event_date", "metric_value"),
-    "multi_line": ("event_date", "metric_*"),
-    "area": ("event_date", "metric_value"),
-    "stacked_area": ("event_date", "metric_*"),
-    "percent_stacked_area": ("event_date", "metric_*"),
+    "line": ("temporal_dimension", "metric_value"),
+    "multi_line": ("temporal_dimension", "metric_*"),
+    "area": ("temporal_dimension", "metric_value"),
+    "stacked_area": ("temporal_dimension", "metric_*"),
+    "percent_stacked_area": ("temporal_dimension", "metric_*"),
     "histogram": ("bin_start", "frequency"),
     "donut": ("category", "metric_value"),
-    "calendar_heatmap": ("event_date", "metric_value"),
+    "calendar_heatmap": ("temporal_dimension", "metric_value"),
     "scatter": ("category", "series?", "x_value", "y_value"),
     "bubble": ("category", "series?", "x_value", "y_value", "size_value"),
     "funnel": ("stage", "metric_value"),
@@ -117,13 +115,13 @@ CHART_RESULT_ROLE_CONTRACTS = {
         "comparison_value",
         "delta_value",
     ),
-    "sparkline_table": ("category", "event_date", "metric_value"),
+    "sparkline_table": ("category", "temporal_dimension", "metric_value"),
     "sankey": ("source", "target", "metric_value"),
     "sankey_vertical": ("source", "target", "metric_value"),
     "flow_sankey": ("source", "target", "metric_value"),
     "flow_sankey_vertical": ("source", "target", "metric_value"),
-    "annotated_line": ("event_date", "annotation_label", "metric_value"),
-    "sparkline": ("event_date", "metric_value"),
+    "annotated_line": ("temporal_dimension", "annotation_label", "metric_value"),
+    "sparkline": ("temporal_dimension", "metric_value"),
     "mixed_bar_line": ("category", "metric_*"),
     "delta": ("current_value", "comparison_value"),
     "box_plot": (

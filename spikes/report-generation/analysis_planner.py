@@ -1,8 +1,6 @@
-"""Structured, reviewable analysis planning for the local dashboard demo."""
+"""Structured, reviewable planning bound to a discovered analysis contract."""
 
 from __future__ import annotations
-
-import re
 
 from analysis_dashboard_plan import (
     CLARIFICATION_FIELDS,
@@ -49,15 +47,14 @@ from structured_response import (
 )
 from visualization_contracts import (
     CHART_RESULT_ROLE_CONTRACTS,
-    CHART_SHAPE_CONTRACTS,
     CHART_SOURCE_SHAPE_CONTRACTS,
     DASHBOARD_ROW_LIMITS,
     MAX_CALENDAR_ROWS,
     MAX_CALENDAR_YEARS,
     MAX_FLOW_SANKEY_EDGES,
     MAX_SANKEY_EDGE_ROWS,
-    MAX_SANKEY_PAGES,
     MAX_SANKEY_PATHS,
+    MAX_SANKEY_STAGES,
     SANKEY_CHARTS,
     STAGED_SANKEY_CHARTS,
     SUPPORTED_DASHBOARD_CHARTS,
@@ -65,11 +62,6 @@ from visualization_contracts import (
 from vertex_generation import generate_content
 
 DASHBOARD_MAX_OUTPUT_TOKENS = 32768
-
-
-def _defined_metric_names(metrics: str) -> tuple[str, ...]:
-    """Extract only customer-defined metric names from the rendered definition block."""
-    return tuple(dict.fromkeys(re.findall(r'^- 指標「([^」]+)」', metrics, re.MULTILINE)))
 
 
 PLAN_SCHEMA, DYNAMIC_PLAN_SCHEMA = build_plan_schemas(
@@ -126,9 +118,10 @@ def _dashboard_response_schema(
 def dashboard_planning_request(
     objective: str,
     period: dict[str, str],
-    metrics: str,
+    context: str,
     answers: dict[str, str],
     *,
+    allowed_metrics: tuple[str, ...] = (),
     current_plan: dict | None = None,
     instruction: str | None = None,
 ) -> str:
@@ -136,7 +129,7 @@ def dashboard_planning_request(
     return build_dashboard_planning_request(
         objective,
         period,
-        metrics,
+        context,
         answers,
         current_plan=current_plan,
         instruction=instruction,
@@ -144,8 +137,8 @@ def dashboard_planning_request(
         max_panel_count=MAX_PANEL_COUNT,
         dynamic_panel_fields=DYNAMIC_PANEL_FIELDS,
         max_sankey_paths=MAX_SANKEY_PATHS,
-        max_sankey_pages=MAX_SANKEY_PAGES,
-        has_governed_metrics=bool(_defined_metric_names(metrics)),
+        max_sankey_stages=MAX_SANKEY_STAGES,
+        has_governed_metrics=bool(allowed_metrics),
     )
 
 
@@ -154,26 +147,26 @@ def propose_dashboard(
     model: str,
     objective: str,
     period: dict,
-    metrics: str,
+    context: str,
     answers: dict,
     *,
+    allowed_metrics: tuple[str, ...] = (),
     current_plan: dict | None = None,
     instruction: str | None = None,
-    profile: str | None = "ga4",
 ):
     """Ask Vertex AI to author bounded dashboard panel specifications."""
     from google.genai import types
     from vertex_usage import token_counts
 
-    metric_names = _defined_metric_names(metrics)
     response = generate_content(
         client,
         model=model,
         contents=dashboard_planning_request(
             objective,
             period,
-            metrics,
+            context,
             answers,
+            allowed_metrics=allowed_metrics,
             current_plan=current_plan,
             instruction=instruction,
         ),
@@ -185,7 +178,7 @@ def propose_dashboard(
                 answers,
                 revising=current_plan is not None,
                 seed=f"{objective}\n{instruction or ''}",
-                metric_names=metric_names,
+                metric_names=allowed_metrics,
             ),
         ),
     )
@@ -195,8 +188,7 @@ def propose_dashboard(
         objective,
         period,
         answers,
-        allowed_metrics=metric_names,
-        profile=profile,
+        allowed_metrics=allowed_metrics,
     ), token_counts(response.usage_metadata)
 
 

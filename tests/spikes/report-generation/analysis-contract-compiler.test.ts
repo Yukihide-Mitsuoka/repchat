@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { python } from './live-demo-test-helpers.ts';
+import { python } from './python-test-helpers.ts';
 
 const setup = String.raw`
 import copy,hashlib,json

@@ -3,38 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import Callable
 
 
 class SQLContractError(ValueError):
     """Raised when generated SQL cannot satisfy its confirmed execution contract."""
-
-
-def require_sql_period(sql: str, period: dict[str, str]) -> None:
-    """Fail closed when generated SQL does not use the requested date shard."""
-    ranges = re.findall(
-        r"_TABLE_SUFFIX\s+BETWEEN\s+['\"](\d{8})['\"]\s+AND\s+['\"](\d{8})['\"]",
-        sql,
-        flags=re.IGNORECASE,
-    )
-    expected = (period["from"], period["to"])
-    if not ranges or any(found != expected for found in ranges):
-        raise SQLContractError(
-            f"生成SQLの対象期間が問い合わせの{period['label']}と一致しません。"
-        )
-
-
-def sql_period_diagnostic(
-    sql: str,
-    period: dict[str, str],
-    require_period: Callable[[str, dict[str, str]], None] = require_sql_period,
-) -> str:
-    """Return a repair diagnostic without changing the fail-closed contract."""
-    try:
-        require_period(sql, period)
-    except (SQLContractError, ValueError) as error:
-        return str(error)
-    return ""
 
 
 def top_level_select_expressions(sql: str) -> tuple[list[str], str]:

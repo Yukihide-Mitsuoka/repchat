@@ -15,12 +15,17 @@ function sectionExecution(body: string) {
       `import json,sys
 sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
 import section_execution as execution
+from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_schema_policy import AnalysisFieldPolicy
 usage={"input_tokens":1000,"output_tokens":1000}
-table=chr(96)+execution.report.DATASET+".events_*"+chr(96)
-sql="SELECT COUNT(*) AS metric_value FROM "+table+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
-period={"from":"20210101","to":"20210131","label":"2021年1月"}
+table="project.dataset.records"
+policy=AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),1000,100,None,(AnalysisFieldPolicy(table,("record_id",),"STRING","REQUIRED",False,False),))
+execution.analysis_contract_context.execution_policy=lambda _contract:policy
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
+sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
 execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
+execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
 ${body}`,
     ],
     { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
@@ -36,9 +41,9 @@ execution.report.exec_bq=lambda *_args,**_kwargs:(None,"backend unavailable")
 events=[]
 try:
  execution.run_section(
-  {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
-  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+  {"title":"結果検証用","planned_visualization":"unsupported"}, events.append,
+  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+  contract=object(),max_result_rows=10,
  )
 except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
@@ -50,7 +55,7 @@ print(json.dumps({
   assert.deepEqual(output, {
     message: 'BigQuery実行に失敗しました: backend unavailable',
     results: [],
-    stages: ['generate', 'execute'],
+    stages: ['generate', 'validate', 'execute'],
   });
 });
 
@@ -64,9 +69,9 @@ execution.report.exec_bq=execute
 events=[]
 try:
  execution.run_section(
-  {"title":"結果検証用","planned_visualization":"unsupported"}, period, events.append,
-  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=2,
+  {"title":"結果検証用","planned_visualization":"unsupported"}, events.append,
+  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+  contract=object(),max_result_rows=2,
  )
 except execution.SectionExecutionError as error:message=str(error)
 print(json.dumps({
@@ -88,9 +93,9 @@ execution.report.exec_bq=lambda *_args,**_kwargs:(([('invalid',)], ["metric_valu
 events=[]
 try:
  execution.run_section(
-  {"title":"結果検証用","planned_visualization":"scorecard"}, period, events.append,
-  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
-  source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+  {"title":"結果検証用","planned_visualization":"scorecard"}, events.append,
+  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+  contract=object(),max_result_rows=10,
  )
 except execution.SectionExecutionError as error:
  message=str(error)
@@ -119,29 +124,28 @@ def execute(_bq,_sql,**kwargs):
 execution.report.exec_bq=execute
 events=[]
 cost=execution.run_section(
- {"shape":{"columns":["日付","値"]},"navigation_depth":4,"title":"時系列","planned_visualization":"line"}, period, events.append,
- client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
- source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+ {"shape":{"columns":["日付","値"]},"title":"時系列","planned_visualization":"line"}, events.append,
+ client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+ contract=object(),max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({
  "returned_cost":cost,
  "max_results":query_options[0]["max_results"],
- "allowed_dataset":query_options[0]["allowed_dataset"],
+ "contract_policy":query_options[0]["policy"] is policy,
  "result":result,
 }))
 `);
   assert.deepEqual(output, {
     returned_cost: 1.3949999999999998,
     max_results: 11,
-    allowed_dataset: 'bigquery-public-data.ga4_obfuscated_sample_ecommerce',
+    contract_policy: true,
     result: {
       type: 'result',
       columns: ['日付', '値'],
       source_columns: ['raw_date', 'raw_value'],
       rows: [['2021-01-01', 2.5]],
       visualization: 'line',
-      navigation_depth: 4,
       verification: 'unverified',
       verification_label: '実行済み・AI分析仕様と形状照合済み',
       cost_jpy: 1.395,
