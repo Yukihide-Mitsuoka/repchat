@@ -21,7 +21,9 @@ prove the fix with a regression test that fails on the old code, and prevent rec
 ## Process
 1. Reproduce the bug locally; capture the exact failing observation.
 2. Write the regression test that encodes the *expected* behavior. Run it — it MUST
-   fail, and fail for the right reason. Commit it first (`test(scope): reproduce #N`).
+   fail, and fail for the right reason. Derive the expected result from accepted
+   behavior or an independent invariant, never from the fix's own logic. Follow TST-011
+   one behavior slice at a time. Commit it first (`test(scope): reproduce #N`).
 3. Diagnose the root cause: trace from symptom to cause; state the cause in one
    sentence. If you can't, you're not ready to fix.
 4. Implement the smallest complete correction at the cause, not the smallest line count.

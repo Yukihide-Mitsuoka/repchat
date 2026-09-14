@@ -29,17 +29,25 @@ human, then implemented incrementally.
    critical unknown blocks comparison (timebox it).
 3. Compare options against: simplicity, blast radius (ARC-020), reversibility,
    operational cost, security posture (GR-030), vendor lock-in.
-4. Draft the ADR from `docs/foundation/templates/adr.md`: context, decision, consequences
+4. At a bounded checkpoint, record a new canonical term only after the human confirms
+   both the term and its meaning. Reusable Foundation terms belong in
+   `docs/foundation/glossary.md`; project domain terms belong in `docs/glossary.md`.
+   Leave proposed, contradictory, incidental, and unresolved vocabulary out.
+5. Draft the ADR from `docs/foundation/templates/adr.md`: context, decision, consequences
    (including negative ones — an ADR without downsides is not credible).
-5. Open the ADR as its own PR (or the first commit of the change PR). **Human approval
+6. Open the ADR as its own PR (or the first commit of the change PR). **Human approval
    of the ADR is the gate** (GR-022) — do not implement past it.
-6. Implement incrementally: expand → migrate → contract. Every intermediate state green
+7. Implement incrementally: expand → migrate → contract. Every intermediate state green
    and releasable. Update `.ai/architecture.md`, MODULE.md files, `docs/architecture/`.
-7. Append the decision to `.ai/decision-log.md`.
+8. Append the decision to `.ai/decision-log.md`.
 
 ## Decision criteria
-- **Is it architectural?** Changes to layers, module boundaries, storage tech, public
-  API shape, cross-cutting patterns, or anything hard to reverse → yes (GR-022).
+- **Is it architectural?** Every decision in GR-022's scope — layers, module
+  boundaries, storage technology, public API shape, or cross-cutting patterns — MUST
+  use this procedure regardless of reversibility or familiarity.
+- **Smaller decision?** For a choice outside GR-022, use an ADR only when it is hard to
+  reverse, surprising without its context, and the result of a real trade-off. When any
+  condition is absent, use a COD-052 decision-log entry or why-comment instead.
 - **Choosing between options**: prefer the one that is easiest to undo. When two are
   close, pick the one an unfamiliar agent can understand fastest.
 - **Extract a service?** Only with a proven scaling/isolation need — modular monolith
@@ -57,3 +65,4 @@ human, then implemented incrementally.
 - [ ] Consequences section lists real downsides and the migration/rollback path
 - [ ] Every implementation step green and releasable (expand→migrate→contract)
 - [ ] All architecture docs and MODULE.md files consistent with the new reality
+- [ ] Confirmed canonical terms recorded in the appropriate glossary; unresolved terms omitted

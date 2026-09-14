@@ -22,16 +22,20 @@ specifications, and never flake.
    issue text. Each behavior = at least one test.
 2. Choose the pyramid level (TST-001): default to unit at the use-case level; go up a
    level only when the behavior spans a real boundary.
-3. Write tests Arrange-Act-Assert, one behavior each, names as specifications
+3. Identify the stable observable seam and an independent expected-value basis. When
+   TST-011 applies, prove one behavior slice red for the intended reason and make it
+   green before starting the next; never derive the expected value from implementation
+   logic.
+4. Write tests Arrange-Act-Assert, one behavior each, names as specifications
    (`test_expired_token_is_rejected` — TST-010).
-4. Cover the boundary matrix per behavior: empty / one / many / max / invalid type /
+5. Cover the boundary matrix per behavior: empty / one / many / max / invalid type /
    dependency failure (TST-002).
-5. Verify each test can fail: mutate the code mentally (or actually) — if no plausible
+6. Verify each test can fail: mutate the code mentally (or actually) — if no plausible
    bug flips it red, the test is decorative; strengthen or delete it.
-6. For flaky tests: reproduce (`--repeat` / stress), find the nondeterminism source
+7. For flaky tests: reproduce (`--repeat` / stress), find the nondeterminism source
    (time, order, shared state, network — TST-010), fix it. Quarantine + issue if not
    fixable today; never blind-retry (GR-040).
-7. Run the full suite; check runtime stayed within budgets (TST-001).
+8. Run the full suite; check runtime stayed within budgets (TST-001).
 
 ## Decision criteria
 - **Mock or fake or real?** Ports → fakes preferred, mocks acceptable; domain → never
