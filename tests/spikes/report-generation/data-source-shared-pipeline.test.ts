@@ -55,9 +55,16 @@ contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 original=profiles.profile_for("ga4");source=original.with_contract(contract)
 planning=[]
 def propose(_client,_model,objective,period,context,answers,**kwargs):
- planning.append(context);return ({"profile":"ga4","revision":"plan-bound"},{"input_tokens":1,"output_tokens":1})
+ planning.append({"context":context,"profile":kwargs.get("profile")});return ({"profile":"ga4","revision":"plan-123456789abc"},{"input_tokens":1,"output_tokens":1})
 workflows.planner.propose_dashboard=propose
-workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},lambda _event:None,analysis_plan=None,revision_instruction=None,source=source,check_cancelled=lambda:None)
+events=[]
+workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},events.append,analysis_plan=None,revision_instruction=None,source=source,check_cancelled=lambda:None)
+mismatched={**events[-1]["plan"],"analysis_contract_fingerprint":"0"*64}
+workflows.planner.confirm_dashboard_plan=lambda candidate,**_kwargs:candidate
+try:
+ workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},lambda _event:None,analysis_plan=mismatched,revision_instruction="変更",source=source,check_cancelled=lambda:None)
+except workflows.AnalysisWorkflowError as error:mismatch_error=str(error)
+else:raise AssertionError("mismatched contract accepted")
 sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
 generated=[]
 execution.report.generate_request=lambda _client,_model,request,rules:(generated.append(rules) or ({"sql":sql,"reason":"集計","undefined_terms":[]},{"input_tokens":1,"output_tokens":1}))
@@ -74,11 +81,16 @@ for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encode
  try:original.with_contract(candidate)
  except ValueError as error:errors.append(str(error))
  else:raise AssertionError("unsafe contract binding accepted")
-print(json.dumps({"planner":planning[0],"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors,"dry_run_bytes":inspected[0]["policy"].maximum_bytes_billed,"execution_bytes":executed[0]["policy"].maximum_bytes_billed,"max_results":executed[0]["max_results"]},ensure_ascii=False))
+planned=events[-1]["plan"]
+print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]["profile"],"plan_profile":planned.get("profile"),"plan_fingerprint":planned.get("analysis_contract_fingerprint"),"mismatch_error":mismatch_error,"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors,"dry_run_bytes":inspected[0]["policy"].maximum_bytes_billed,"execution_bytes":executed[0]["policy"].maximum_bytes_billed,"max_results":executed[0]["max_results"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.match(output.planner, new RegExp(output.fingerprint));
+  assert.equal(output.planner_profile, null);
+  assert.equal(output.plan_profile, null);
+  assert.equal(output.plan_fingerprint, output.fingerprint);
+  assert.match(output.mismatch_error, /schema differs/);
   assert.match(output.sql, new RegExp(output.fingerprint));
   assert.doesNotMatch(output.planner, /CREATE TABLE/);
   assert.doesNotMatch(output.sql, /CREATE TABLE/);

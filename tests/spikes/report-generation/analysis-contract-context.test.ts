@@ -5,6 +5,7 @@ import { python } from './live-demo-test-helpers.ts';
 const setup = `
 import hashlib,json
 import analysis_contract_context as c
+import analysis_dashboard_plan as planner
 from analysis_contract import AnalysisContract,fingerprint_contract_content
 content={"version":1,"schema":{"fingerprint":"schema-a","retrieved_at":"2026-09-07T00:00:00+00:00","metadata":{"tables":[]}},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":"p.d.t","field":"at"},"timezone":"UTC","range":{"start":"2026-01-01","end":"2026-01-31"},"partitions":[]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
@@ -35,13 +36,19 @@ test('binding creates an independent revision tied to the contract', () => {
   const result = python(
     setup +
       `
-source={"revision":"plan-123456789abc","objective":"比較"}
+source={"revision":"plan-123456789abc","objective":"比較","profile":"legacy-source"}
 bound=c.bind_specification(source,contract)
-assert source=={"revision":"plan-123456789abc","objective":"比較"}
+assert source=={"revision":"plan-123456789abc","objective":"比較","profile":"legacy-source"}
 assert bound["analysis_contract_fingerprint"]==contract.fingerprint
+assert "profile" not in bound
 assert bound["revision"].startswith("plan-") and bound["revision"]!=source["revision"]
 assert c.bind_specification(bound,contract)==bound
 c.require_specification_contract(bound,contract)
+raw={"objective_summary":"比較する","audience":"責任者","comparison":"区分間","hypotheses":["差がある"],"clarifications":[],"panels":[{"title":"集計","kpi":"合計","chart":"scorecard","decision":"判断する","reason":"必要","execution_prompt":"合計を出す","dimensions":[],"measures":["合計"],"layout_row":1,"layout_weight":1}]}
+normalized=planner.normalize_dashboard_plan(raw,"比較する",{"from":"20260101","to":"20260131","label":"2026年1月"},{"audience":"責任者"},profile=None)
+confirmed=planner.confirm_dashboard_plan(c.bind_specification(normalized,contract))
+assert confirmed["analysis_contract_fingerprint"]==contract.fingerprint
+assert "profile" not in confirmed
 print("ok")
 `,
   );
