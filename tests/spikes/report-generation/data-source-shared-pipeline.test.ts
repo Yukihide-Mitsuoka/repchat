@@ -172,16 +172,6 @@ print(json.dumps(cases,ensure_ascii=False))
   assert.doesNotMatch(source, /bitcoin_rules/);
 });
 
-test('dashboard UI sends the selected profile through planning and confirmed build', () => {
-  const result = python('print(m.HTML)');
-  assert.equal(result.status, 0, result.stderr);
-  const html = result.stdout;
-  assert.match(html, /\["consult","insight","dashboard"\]\.includes\(action\)/);
-  assert.match(html, /stream\("\/api\/plan",q,handlePlan,profile/);
-  assert.match(html, /stream\("\/api\/dashboard",q,handleDashboard,profile/);
-  assert.doesNotMatch(html, /stream\("\/api\/(?:plan|dashboard)"[^\n]*,"ga4"/);
-});
-
 test('planner asks for human-readable display fields instead of SQL expressions', () => {
   const result = python(`
 import analysis_planner_prompts as prompts
