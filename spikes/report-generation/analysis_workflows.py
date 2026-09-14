@@ -96,7 +96,6 @@ def consult(
             question,
             history,
             context_for_profile(metrics, profile),
-            profile,
         )
         check_cancelled()
         emit(

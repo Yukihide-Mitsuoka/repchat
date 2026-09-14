@@ -42,10 +42,9 @@ def consultation_request(
     question: str,
     history: list[dict[str, str]],
     context: str,
-    profile: str,
 ) -> str:
     """Build one bounded, history-aware consultation turn."""
-    return build_consultation_request(question, history, context, profile)
+    return build_consultation_request(question, history, context)
 
 
 def confirm_analysis_specification(raw: dict) -> dict:
@@ -131,7 +130,6 @@ def propose_consultation(
     question: str,
     history: list[dict[str, str]],
     context: str,
-    profile: str,
     *,
     load_response,
 ):
@@ -142,7 +140,7 @@ def propose_consultation(
     response = generate_content(
         client,
         model=model,
-        contents=consultation_request(question, history, context, profile),
+        contents=consultation_request(question, history, context),
         config=types.GenerateContentConfig(
             system_instruction=(
                 "あなたは利用者の意思決定を明確にし、実行可能な分析だけを提案する"
@@ -150,7 +148,7 @@ def propose_consultation(
             ),
             response_mime_type="application/json",
             max_output_tokens=CONSULTATION_MAX_OUTPUT_TOKENS,
-            response_schema=consultation_schema(seed=f"{profile}\n{question}"),
+            response_schema=consultation_schema(seed=question),
         ),
     )
     return normalize_consultation(

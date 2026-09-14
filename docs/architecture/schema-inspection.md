@@ -89,6 +89,10 @@ contract内の全tableがprofileの許可datasetと完全一致しない場合�
 `analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
 同じcanonical contractをplannerとSQL担当へ渡します。
 
+plannerのdashboard計画と分析相談は、Vertex AIへのrequestとresponse schema seedへprofile IDを渡しません。
+認可済みscopeから生成したcanonical contract文脈、利用者の目的、履歴、確認済み条件だけを生成入力にします。
+移行中の保存planとlive runtimeにはprofile識別子が残るため、分析対象非依存の実行を完了した状態ではありません。
+
 `analysis_contract_context.execution_policy(...)`はcanonical contractから、SQLで参照できる完全修飾table、
 date shardをdry runで照合する物理table、query bytes上限、結果行上限を導出します。契約付きsourceの
 `section_execution.run_section`は描画仕様の有無にかかわらずBigQuery dry runを必須とし、SQL本文と
@@ -121,8 +125,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はplanner・SQL生成の
-legacy profile入力を除去します。対象固有のfactory、profile、metrics fileは追加しません。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次は保存planのprofile bindingと
+SQL生成のlegacy profile入力・特殊補正を除去します。対象固有のfactory、profile、metrics fileは追加しません。
 生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
