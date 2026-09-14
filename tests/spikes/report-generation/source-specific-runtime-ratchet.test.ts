@@ -68,115 +68,9 @@ const RULES = {
 type RuleName = keyof typeof RULES;
 type Inventory = Record<RuleName, Record<string, number>>;
 
-const EXPECTED_LEGACY_INVENTORY: Inventory = {
-  knownSourceIdentity: {
-    'analysis_dashboard_plan.py': 2,
-    'analysis_planner.py': 1,
-    'analysis_workflows.py': 1,
-    'bigquery_execution.py': 1,
-    'bitcoin_profile.py': 10,
-    'data_source_profiles.py': 6,
-    'evidence_components.py': 1,
-    'ga4_profile.py': 5,
-    'live_contracts.py': 2,
-    'live_demo.py': 8,
-    'live_engine.py': 5,
-    'live_http_validation.py': 1,
-    'live_ui_base.py': 12,
-    'live_ui_interactions.py': 3,
-    'metrics.json': 2,
-    'sql_generation.py': 1,
-    'sql_prompt_context.py': 3,
-    'tenant_serve.py': 1,
-    'verify_live_services.py': 1,
-  },
-  sourceProfileApi: {
-    'analysis_dashboard_plan.py': 2,
-    'analysis_planner.py': 1,
-    'analysis_workflows.py': 13,
-    'dashboard_build.py': 2,
-    'data_source_profiles.py': 10,
-    'live_contracts.py': 9,
-    'live_demo.py': 4,
-    'live_engine.py': 12,
-    'live_http_validation.py': 9,
-    'section_execution.py': 3,
-    'verify_live_services.py': 4,
-  },
-  fixedSchemaKnowledge: {
-    'bitcoin_profile.py': 14,
-    'ga4_profile.py': 2,
-    'metrics.json': 18,
-    'run_report.py': 1,
-    'sql_prompt_context.py': 22,
-    'tenant_serve.py': 5,
-    'visualization_contracts.py': 9,
-    'visualization_sections.py': 5,
-  },
-  fixedMetricAsset: {
-    'live_demo.py': 1,
-    'live_engine.py': 3,
-    'sql_prompt_context.py': 1,
-  },
-  sourceSpecificSqlRepair: {
-    'analysis_workflows.py': 4,
-    'bitcoin_profile.py': 3,
-    'dashboard_build.py': 2,
-    'data_source_profiles.py': 11,
-    'ga4_profile.py': 2,
-    'live_contracts.py': 4,
-    'live_demo.py': 5,
-    'live_http.py': 1,
-    'live_http_validation.py': 1,
-    'section_execution.py': 1,
-    'sql_generation.py': 1,
-    'sql_prompt_context.py': 1,
-  },
-  fixedDemoPeriod: {
-    'bitcoin_profile.py': 2,
-    'ga4_profile.py': 3,
-    'live_demo.py': 2,
-    'live_ui_base.py': 3,
-  },
-  fixedBusinessVocabulary: {
-    'data_source_profiles.py': 2,
-    'live_demo.py': 9,
-    'live_ui_base.py': 4,
-    'live_ui_interactions.py': 1,
-    'metrics.json': 17,
-    'sql_prompt_context.py': 6,
-  },
-  fixedDatasetConstant: {
-    'bigquery_execution.py': 1,
-    'bitcoin_profile.py': 2,
-    'tenant_serve.py': 1,
-  },
-  embeddedQuery: {
-    'analysis_consultation.py': 1,
-    'analysis_dashboard_plan.py': 1,
-    'evidence_components.py': 1,
-    'live_ui_base.py': 1,
-    'metrics.json': 4,
-    'sql_display.py': 1,
-    'tenant_serve.py': 3,
-  },
-  embeddedSchema: {
-    'bitcoin_profile.py': 1,
-    'sql_prompt_context.py': 1,
-  },
-  qualifiedTableLiteral: {
-    'sql_prompt_context.py': 1,
-    'tenant_serve.py': 1,
-  },
-  sourceSpecificModuleName: {
-    'bitcoin_profile.py': 1,
-    'data_source_profiles.py': 1,
-    'ga4_profile.py': 1,
-  },
-  runtimeConfigAsset: {
-    'metrics.json': 1,
-  },
-};
+const EXPECTED_LEGACY_INVENTORY = Object.fromEntries(
+  Object.keys(RULES).map((rule) => [rule, {}]),
+) as Inventory;
 
 function runtimeFiles(directory: string): string[] {
   const files: string[] = [];
@@ -221,12 +115,12 @@ function inventory(root: string): Inventory {
   );
 }
 
-test('source-specific runtime debt cannot grow or move without shrinking the ratchet', () => {
+test('runtime contains no source-specific behavior or compatibility fallback', () => {
   const observed = inventory(RUNTIME_ROOT);
   assert.deepEqual(
     observed,
     EXPECTED_LEGACY_INVENTORY,
-    `Remove runtime debt and shrink this baseline in the same change; never add, move, or increase entries. Observed inventory:\n${JSON.stringify(observed, null, 2)}`,
+    `Source-specific runtime behavior is forbidden. Observed inventory:\n${JSON.stringify(observed, null, 2)}`,
   );
 });
 
