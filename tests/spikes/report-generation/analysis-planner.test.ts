@@ -36,7 +36,7 @@ raw={
  "follow_up_question":"成果と集客のどちらを優先しますか？",
 }
 normalized=p.normalize_consultation(raw)
-request=p.consultation_request("他にない？",history,context,"ga4")
+request=p.consultation_request("他にない？",history,context)
 errors=[]
 for invalid in [
  {**raw,"recommendations":[raw["recommendations"][0],raw["recommendations"][0]]},
@@ -55,6 +55,7 @@ print(json.dumps({
  "history_in_request":all(item["content"] in request for item in history),
  "current_in_request":"他にない？" in request,
  "context_in_request":"medium" in request,
+ "profile_not_in_request":"分析対象profile" not in request and "ga4" not in request.lower(),
  "errors":errors,
 },ensure_ascii=False))`,
     ],
@@ -72,6 +73,7 @@ print(json.dumps({
     history_in_request: true,
     current_in_request: true,
     context_in_request: true,
+    profile_not_in_request: true,
     errors: [
       '分析相談に重複した候補があります。',
       '分析相談の実行依頼にはSQLを書けません。',
@@ -275,7 +277,7 @@ for _ in range(3):
  try:p.propose_dashboard(client,"test-model","目的",period,"指標定義",{})
  except p.PlannerError as error:errors.append(str(error))
 for _ in range(3):
- try:p.propose_consultation(client,"test-model","質問",[],"文脈","ga4")
+ try:p.propose_consultation(client,"test-model","質問",[],"文脈")
  except p.PlannerError as error:errors.append(str(error))
 print(json.dumps({"calls":calls,"limits":limits,"errors":errors},ensure_ascii=False))`,
     ],

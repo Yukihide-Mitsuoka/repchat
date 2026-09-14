@@ -71,7 +71,7 @@ type Inventory = Record<RuleName, Record<string, number>>;
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
     'analysis_dashboard_plan.py': 2,
-    'analysis_planner.py': 2,
+    'analysis_planner.py': 1,
     'analysis_workflows.py': 1,
     'bigquery_execution.py': 1,
     'bitcoin_profile.py': 10,
@@ -91,10 +91,8 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'verify_live_services.py': 1,
   },
   sourceProfileApi: {
-    'analysis_consultation.py': 2,
     'analysis_dashboard_plan.py': 2,
-    'analysis_planner.py': 3,
-    'analysis_planner_prompts.py': 2,
+    'analysis_planner.py': 1,
     'analysis_workflows.py': 13,
     'dashboard_build.py': 2,
     'data_source_profiles.py': 10,

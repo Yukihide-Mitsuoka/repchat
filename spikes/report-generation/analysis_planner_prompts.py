@@ -21,7 +21,6 @@ def build_dashboard_planning_request(
     dynamic_panel_fields: tuple[str, ...],
     max_sankey_paths: int,
     max_sankey_pages: int,
-    profile: str,
     has_governed_metrics: bool,
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
@@ -60,7 +59,6 @@ def build_dashboard_planning_request(
 
 依頼: {objective}
 対象期間: {period['label']}
-データソースprofile: {profile}
 読者回答: {answered}
 {revision_context}
 スキーマ・指標定義:
@@ -92,7 +90,6 @@ def build_consultation_request(
     question: str,
     history: list[dict[str, str]],
     context: str,
-    profile: str,
 ) -> str:
     """Build one bounded, history-aware consultation turn."""
     transcript = "\n".join(
@@ -105,7 +102,6 @@ def build_consultation_request(
 
 今回の利用者発言: {question}
 
-分析対象profile: {profile}
 利用できるスキーマ・指標・期間の文脈:
 {context}
 

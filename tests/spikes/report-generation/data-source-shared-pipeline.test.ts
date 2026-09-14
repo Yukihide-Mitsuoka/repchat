@@ -173,9 +173,12 @@ test('dashboard UI sends the selected profile through planning and confirmed bui
 test('planner asks for human-readable display fields instead of SQL expressions', () => {
   const result = python(`
 import analysis_planner_prompts as prompts
-request=prompts.build_consultation_request("月別に集計して",[],"schema","bitcoin")
-print(json.dumps({"display_rule":"SQL関数やSQL式ではなく、人が読める表示名" in request},ensure_ascii=False))
+request=prompts.build_consultation_request("月別に集計して",[],"schema")
+print(json.dumps({"display_rule":"SQL関数やSQL式ではなく、人が読める表示名" in request,"profile_not_in_request":"分析対象profile" not in request and "bitcoin" not in request.lower()},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), { display_rule: true });
+  assert.deepEqual(JSON.parse(result.stdout), {
+    display_rule: true,
+    profile_not_in_request: true,
+  });
 });

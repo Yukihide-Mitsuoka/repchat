@@ -89,7 +89,7 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 panels=p._dashboard_response_schema({})["properties"]["panels"]
-print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_PAGES}ページ" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
+print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_PAGES}ページ" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
@@ -99,6 +99,7 @@ print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標�
     metrics: true,
     new_specs: true,
     fixed_ids: false,
+    profile_not_in_request: true,
     count: [6, 6],
     questions: true,
     sankey_limit: true,
@@ -158,7 +159,7 @@ for chart,(dimensions,measures) in shapes.items():
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 dashboard_visualization=p.DYNAMIC_PLAN_SCHEMA["properties"]["panels"]["items"]["properties"]["visualization"]
 schema_charts=dashboard_visualization["properties"]["chart"]["enum"]
-consultation=p.consultation_request("目的",[],"指標定義","ga4")
+consultation=p.consultation_request("目的",[],"指標定義")
 consultation_visualization=p._consultation_schema()["properties"]["recommendations"]["items"]["properties"]["visualization"]
 consultation_charts=consultation_visualization["properties"]["chart"]["enum"]
 seeded_orders=[]
