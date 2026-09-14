@@ -190,7 +190,7 @@ RepChatが検証する差は次のworkflowです。
 詳細な範囲、受入条件、Amplitude／Evidence Cloudとの同一課題benchmarkは
 [統制されたコホート分析要件](requirements/governed-cohort-analysis.md)と
 [#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)を正本とします。predictive cohort、実験配信、
-session replayを初期範囲へ含めず、Issue #160が`proceed`になるまで製品実装しません。
+session replayを初期範囲へ含めず、対象非依存pipelineと分析契約の品質境界が安定するまで製品実装しません。
 
 #### 計測設計支援で競う境界
 

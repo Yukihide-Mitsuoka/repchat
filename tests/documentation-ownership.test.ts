@@ -72,3 +72,28 @@ test('project roadmap and requirements use the project documentation convention'
   assert.match(requirements, /docs\/foundation\/templates\/requirements\.md/u);
   assert.doesNotMatch(requirements, /docs\/templates\/requirements\.md/u);
 });
+
+test('active planning documents do not restore the owner-withheld gate', async () => {
+  const activePlanningDocuments = [
+    'docs/roadmap.md',
+    'docs/status.md',
+    'docs/competitive-landscape.md',
+    'docs/requirements/action-package-api.md',
+    'docs/requirements/adaptive-analysis-memory.md',
+    'docs/requirements/analysis-workspace-ui.md',
+    'docs/requirements/governed-cohort-analysis.md',
+    'docs/requirements/measurement-implementation-assistant.md',
+    'docs/requirements/meeting-decision-loop.md',
+    'docs/adr/0019-separate-datasource-knowledge-from-scoped-analysis-context.md',
+    'docs/adr/0020-protect-production-edge-and-cloud-run-origins.md',
+    'docs/adr/0021-gate-shared-intermediates-on-measured-build-cost.md',
+    'docs/adr/0022-compose-derived-dashboards-from-versioned-panels.md',
+    'docs/adr/0023-unify-workflow-while-isolating-external-action.md',
+  ];
+  const withheldIssueReference = ['#', '160'].join('');
+
+  for (const document of activePlanningDocuments) {
+    const content = await readFile(`${repositoryRoot}/${document}`, 'utf8');
+    assert.equal(content.includes(withheldIssueReference), false, document);
+  }
+});

@@ -50,10 +50,9 @@ PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitH
 BigQueryおよび新しいR17参照値は未測定。#283の固定応答テストと無料のローカル描画は、実データ照合の
 代替にはしない。
 
-デモ阻害の解消後は[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)で、初期主要顧客に
-該当する参加者へ5分デモを行い、価値仮説を`proceed` / `revise` / `reject`に分類する。結果が出るまで
-製品実装を開始しない。条件付きの次タスク順と設計判断索引は
-[development-handoff](development-handoff.md)を参照する。
+現在は、分析対象固有のcode・profile・設定・既知知識を除去し、認可済みscopeから同じ共通pipelineが
+分析契約を自動生成する状態への移行を最優先とする。固有処理が残る間は任意schema対応または製品能力と
+表明しない。現在の作業順と設計判断索引は[development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /
 [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)（2026-08-02 merge済み）で、ライブ画面の
@@ -254,7 +253,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
 | **未知の独自nested schemaでのNL→SQL品質** | **未検証**。既存の公開データ向け実装には対象別profile・期間規則・意味定義が残り、任意schema対応ではない | 認可済みscopeからschema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する同一pipelineへ置換し、対象別コード・設定なしに複数の未知schemaを独立review済み参照結果と反復照合する（ADR-0025、Issue #188） |
-| **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | Issue #160=`proceed`、#179/#188完了、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
+| **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | #188の対象非依存品質境界、#179、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |

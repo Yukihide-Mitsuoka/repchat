@@ -128,7 +128,7 @@ load testでretrieval・compileのp95 200msを目標とする。
 **Follow-ups:**
 
 - 本ADRをrepository ownerが承認または修正する。
-- Issue #160が`proceed`となり、#179、#188、#180の開始条件を満たした後だけPhase 1実装Issueを作る。
+- #188の対象非依存品質境界、#179、#180の開始条件を満たした後だけPhase 1実装Issueを作る。
 - design partnerにorg unitの必要性、初回登録時間、適用文脈の理解、質問削減、p95、token数を確認する。
 - cache、pgvector、Memory Bankは実測値が目標を外れた場合だけ独立ADRで評価する。
 

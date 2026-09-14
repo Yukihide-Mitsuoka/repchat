@@ -1,19 +1,19 @@
 ---
 id: adr-0018
 title: 適応型分析メモリーを版管理された方針として統制する
-status: accepted
-updated: 2026-08-02
+status: accepted; ordering clauses superseded by ADR-0026
+updated: 2026-09-15
 ---
 
 # ADR-0018: 適応型分析メモリーを版管理された方針として統制する
 
 | 項目 | 値 |
 |------|----|
-| 状態 | accepted |
+| 状態 | accepted。実装順序・開始条件だけ[ADR-0026](0026-prioritize-target-independent-readiness.md)が置換 |
 | 日付 | 2026-08-02 |
 | 決定者 | repository owner |
 | 作成者 | Codex |
-| 置換対象／置換後 | — |
+| 置換対象／置換後 | 実装順序・開始条件は[ADR-0026](0026-prioritize-target-independent-readiness.md)へ置換。メモリー統制の判断は維持 |
 
 ## 背景
 

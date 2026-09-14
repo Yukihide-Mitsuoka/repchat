@@ -54,7 +54,8 @@ AI生成原本を維持しながら、利用者作成、参照追加、fork編�
 
 ## Decision
 
-Option 4を提案する。repository ownerが本ADRを承認し、Issue #160が`proceed`になるまで製品実装を開始しない。
+Option 4を提案する。repository ownerが本ADRを承認し、#179/#180のrevision・build契約と#188の
+対象非依存品質境界が確定するまで製品実装を開始しない。
 
 ### D1. panelを独立した不変revisionにする
 
@@ -149,7 +150,7 @@ data version、freshness条件がすべて一致する場合だけ既存result r
 
 ### D10. 実装順序を固定する
 
-1. Issue #160を`proceed`に分類する。
+1. Issue #188で対象固有処理を除去し、対象非依存pipelineの品質境界を確定する。
 2. Issue #179で閲覧・来歴・deep linkのinteractionと認可境界を確定する。
 3. Issue #180でanalysis specification、dashboard、panel、resultのrevision関係と非同期buildを確定する。
 4. SQL workspaceと派生dashboard compositionを別の実装Issueへ分割する。
@@ -175,7 +176,7 @@ data version、freshness条件がすべて一致する場合だけ既存result r
 
 - repository ownerが本ADRを承認、修正または却下する。
 - Issue #179/#180の設計成果からAPI、data model、ArtifactBundle schemaを具体化する。
-- Issue #160が`proceed`になるまで、SQL workspaceまたはdashboard compositionを製品実装しない。
+- #188の対象非依存品質境界と#179/#180の契約が確定するまで、SQL workspaceまたはdashboard compositionを製品実装しない。
 - design partnerへ「参照追加」「fork」「空dashboard」の理解可能性と実際の調整頻度を確認する。
 
 ## Rollback
@@ -188,7 +189,6 @@ custom composition capabilityを無効化し、AI生成dashboard revisionだけ�
 - [Issue #308](https://github.com/Yukihide-Mitsuoka/repchat/issues/308)
 - [Issue #179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)
 - [Issue #180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)
-- [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)
 - [ADR-0013](0013-metric-definitions-live-in-our-own-layer.md)
 - [ADR-0014](0014-who-owns-the-generated-artifacts.md)
 - [ADR-0015](0015-publish-artifacts-through-customer-git.md)

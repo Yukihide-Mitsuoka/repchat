@@ -45,7 +45,7 @@ SQL来歴確認、会議報告を一つの再現可能なワークスペース�
 | C-1 | 制約 | ChatGPT／Evidence Cloud／Evidence Studioの商標、文章、アイコン、非公開design token、DOM/CSSを複製しない。公開情報から得た情報構造だけを参考にする | ブランド混同と継続的な追随負債を避ける |
 | C-2 | 制約 | テナント、分析コレクション、GCP project、顧客Git repositoryを同一概念として扱わない | 認可境界と保存先の混同を防ぐ |
 | C-3 | 制約 | SQL、取得データ、来歴は権限を持つ利用者だけへ表示する | Issue #179の認可要件を守る |
-| C-4 | 制約 | Issue #160が`proceed`になるまで、この文書を根拠に製品UIを先行実装しない | デモ検証前の過剰実装を防ぐ |
+| C-4 | 制約 | #188の対象非依存品質境界とIssue #179のinteractionが確定するまで、この文書を根拠に製品UIを先行実装しない | 未確定の分析経路をUIで固定しない |
 | C-5 | 制約 | 永続履歴、Git branch操作、アカウント設定をローカルデモで実装済みと表示しない | デモ能力と製品要件を区別する |
 | C-6 | 制約 | authoring、publishing、embedded deliveryを別のroute、permission、audit eventとして扱う | 顧客向け閲覧経路からSQL編集や未承認revisionへ到達することを防ぐ |
 
@@ -602,7 +602,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | R-3 | 左右paneが中央dashboardを狭め、デモより見づらくなる | 中 | 高 | §8、全状態visual regression、中央幅の保護 |
 | R-4 | 機能を左navへ詰め込み、初見利用者が迷う | 中 | 中 | primary 4項目、secondary collection、user testで検証 |
 | R-5 | SQL／dataを便利さのため閲覧者へ漏らす | 低 | 高 | permissionでtabとAPIを同時に遮断する |
-| R-6 | 永続履歴やGit状態を先に作り、Issue #160前に製品範囲が拡大する | 中 | 高 | C-4、C-5、milestone順序を守る |
+| R-6 | 永続履歴やGit状態を先に作り、対象非依存の分析経路より製品範囲が先行する | 中 | 高 | C-4、C-5、milestone順序を守る |
 | R-7 | 競合追随でEvidence Cloud／Evidence Studioの情報構造をそのまま複製し、RepChatの対話→仕様確認→費用gateを弱める | 中 | 高 | §5.1の「採用しない短絡」と既存ADRを実装契約にする |
 | R-8 | page-aware AIが不可視のfilterやmemoryを使い、利用者が回答条件を誤認する | 中 | 高 | MAIN-009、MAIN-013、INS-011で送信文脈を明示する |
 | R-9 | quick answerを無制限に保存してInsightが検索不能になる | 中 | 中 | collection、status、archive、参照先を必須metadataにし、retentionをQ-2で決める |
@@ -615,7 +615,7 @@ app shell自体に新しい有料infraや外部UI libraryを必須としませ�
 | milestone | 範囲 | 開始条件 |
 |-----------|------|----------|
 | M0 文書・fixture | 全要件、状態行列、fixture定義 | この文書のreview |
-| M1 shell prototype | APP、NAV、INS、responsive、a11y | Issue #160が`proceed`、Issue #179のprototype承認 |
+| M1 shell prototype | APP、NAV、INS、responsive、a11y | #188の対象非依存品質境界とIssue #179のprototype承認 |
 | M2 product routing | deep link、permission、artifact API、job復元、可視context bar | 本番role・認証とrevision contract確定 |
 | M3 Insight／dashboard composition lifecycle | quick answer保存、methodology／来歴、派生dashboard、共有layout revision、review／publish | Issue #180のspecification revisionとIssue #308のpanel composition確定 |
 | M4 history／search／settings | NAV-003、NAV-005〜NAV-011、OVR-003 | retention、search scope、Git UIの別Issue承認 |

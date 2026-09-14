@@ -36,7 +36,7 @@ Evidence Cloudとの差は描画componentではなく、意味を確定してか
 | A-2 | 競合事実 | Amplitudeはbehavioral cohort、retention、cohort比較、再利用を製品化している | 同等の意味契約を持たない簡易heatmapでは対抗にならない |
 | A-3 | 競合事実 | Evidence CloudはSQL、custom component、agent skillsでcohort reportを構成でき、Evidence Labsにも実験的componentがある | 「cohort chartがある」だけではEvidence Cloudとの差にならない |
 | A-4 | 検証対象の仮説 | 最小コホートレポートだけでも、汎用BIより準備が少ない日本語の定型分析として採用理由になる | 利用意向が上がらなければ差別化と表現せず、Phase 2以降を再評価する |
-| C-1 | 制約 | Issue #160が`proceed`になるまで製品実装しない | 今回は要件、競合境界、実装順序だけを記録する |
+| C-1 | 制約 | #188の対象非依存品質境界と分析契約が安定するまで製品実装しない | 今回は要件、競合境界、実装順序だけを記録する |
 | C-2 | 制約 | cohort specificationをfreezeする前にSQLを生成・実行しない | AIの暗黙解釈を分析定義にしない |
 | C-3 | 制約 | 未成熟期間を0として表示せず、空欄または未確定として扱う | 観測不足を離脱と誤認させない |
 | C-4 | 制約 | 指標、event、identity、timezone、source contractが未定義または不整合なら確認または拒否する | 自然言語だけで意味を補わない |
@@ -62,7 +62,7 @@ Evidence Cloudとの差は描画componentではなく、意味を確定してか
 - **対象:** acquisition／activation cohort、behavioral cohort、exact-period／on-or-after retention、
   cohort比較、heatmap・table・curve、定義revision、費用承認、SQL・集計data・根拠、再利用、監査。
 - **対象外:** predictive cohort、propensity model、experiment配信、push通知、広告activation、session replay、
-  Amplitude互換API、自由な任意code実行、Issue #160判定前の製品実装。
+  Amplitude互換API、自由な任意code実行、対象非依存の分析契約が安定する前の製品実装。
 
 ### 3.1 最小コホートレポートの位置づけ
 
@@ -219,7 +219,7 @@ on-or-afterか、購入者の判定期間を提案する。利用者が確認し
 | 段階 | 範囲 | 開始条件 |
 |------|------|----------|
 | Phase 0 — 要件とbenchmark設計 | 本文書、競合境界、reference fixture、同一課題benchmark | 今回。製品実装なし |
-| Phase 1 — 最小コホートレポート | 公開GA4のacquisition cohort、exact-period、未成熟blank、heatmap・table、SQL・data・根拠 | #160=`proceed`、費用承認、reference SQL review |
+| Phase 1 — 最小コホートレポート | 対象非依存契約から生成するacquisition cohort、exact-period、未成熟blank、heatmap・table、SQL・data・根拠 | #188の対象非依存品質境界、費用承認、reference SQL review |
 | Phase 2 — 製品analysis | versioned specification、on-or-after、費用gate、provenance、認可、publish | #179/#180のrevision・build契約と#188の品質境界が安定 |
 | Phase 3 — reusable behavioral cohort | event・property定義、used-by、cohort比較、dashboard・Insight・会議report参照 | Phase 2の正確性・越境・費用試験が成功 |
 | Phase 4 — activation拡張 | predictive cohort、experiment・施策連携 | design partnerの反復需要と別要件・ADRが承認済み |

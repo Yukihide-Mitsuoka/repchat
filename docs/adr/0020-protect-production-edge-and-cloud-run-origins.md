@@ -162,7 +162,7 @@ postureを下げるため、incident時の期限付き例外として人の明�
 **Follow-ups:**
 
 - 本ADRをrepository ownerが承認、修正または却下する。
-- Issue #160が`proceed`となり、実顧客dataを扱う本番環境の構築直前にimplementation Issueを作る。
+- 実顧客dataを扱う本番環境の構築直前に、費用とsecurity境界を再確認してimplementation Issueを作る。
 - implementationではsecurity-property test、`make security-scan`、費用見積り、Terraform planの人間reviewを必須にする。
 - 本番role・authenticationを決めるIssue #194と、service-to-service identityの将来判断を混ぜない。
 
