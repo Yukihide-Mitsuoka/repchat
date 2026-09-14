@@ -23,8 +23,8 @@ RepChatは、計測設計、分析、dashboard、会議報告、意思決定、�
 分析権限を持つ利用者が本番変更または支出を起こせる設計になり得る。
 
 広告発注、予算管理、決済をRepChatの基本機能にしないまま、顧客または第三者のsystemが承認済み施策を
-受け取り、実行結果を返せる余地を残す必要がある。Issue #160が未判定のため、現時点では将来契約だけを決め、
-API、CSV、connectorを実装しない。
+受け取り、実行結果を返せる余地を残す必要がある。Issue #181のaction revisionと最初のconsumerが未確定なため、
+現時点では将来契約だけを決め、API、CSV、connectorを実装しない。
 
 ## Options considered
 
@@ -51,7 +51,8 @@ permission、API、credential、audit streamで扱う。承認済み施策はpro
 
 ## Decision
 
-Option 4を提案する。repository ownerが本ADRを承認し、Issue #160が`proceed`になるまで実装しない。
+Option 4を提案する。repository ownerが本ADRを承認し、Issue #181のaction revisionと最初のconsumerが
+確定するまで実装しない。
 
 ### D1. 同一workspaceは同一pageを意味しない
 
@@ -100,7 +101,7 @@ Core APIはpackageの取得、export、外部status・実績の受領を提供�
 **Follow-ups:**
 
 - [施策パッケージAPI要件](../requirements/action-package-api.md)を正本としてreviewする。
-- Issue #160が`proceed`となり、Issue #181のaction revisionが安定した後だけ実装Issueを作る。
+- Issue #181のaction revisionが安定し、最初のconsumerを確認した後だけ実装Issueを作る。
 - 最初の実需要が確認できるまでOpenAPI、CSV profile、provider adapterを実装しない。
 
 ## Rollback

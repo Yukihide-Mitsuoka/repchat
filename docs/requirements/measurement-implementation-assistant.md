@@ -30,7 +30,7 @@ updated: 2026-08-11
 |----|------|------|----------------------|
 | A-1 | 仮説 | 上流のevent・parameter・identity定義を整えると、下流のSQL、cohort、報告の品質と再利用性が上がる | design partnerで改善が見られなければ分析機能へ集中する |
 | A-2 | 仮説 | 顧客固有の自動変更より、一般的best practiceに沿うreview可能な設計と差分の方が初期価値を出しやすい | 設定代行需要だけなら別serviceまたは別製品を再評価する |
-| C-1 | 制約 | Issue #160が`proceed`になるまで製品実装しない | 今回は要件と実装順序だけを記録する |
+| C-1 | 制約 | #188の対象非依存pipelineを阻害せず、3社の現行設計例から共通契約を検証できるまで製品実装しない | 今回は要件と実装順序だけを記録する |
 | C-2 | 制約 | Design ModeはGTM、site、GA4 propertyを変更またはpublishしない | 顧客が成果物をreviewし、新規workspaceでpreviewする |
 | C-3 | 制約 | RepChatはbrowserを操作せず、Apply Modeは公式GTM APIのquick previewまでに限定する | UI変更、MFA、session、実site操作を製品責務にしない |
 | C-4 | 制約 | `tagmanager.publish`権限を初期OAuth scopeへ含めない | 編集と本番公開を分離する |
@@ -198,7 +198,7 @@ Apply Modeを有効にした場合だけ、次を追加する。
 | 段階 | 範囲 | 開始条件 |
 |------|------|----------|
 | Phase 0 — 要件 | 本文書、reference plan、security・product境界 | 今回。製品実装なし |
-| Phase 1 — Design Mode | GA4推奨event、dataLayer、code、manifest、import JSON、QA・rollback手順 | #160=`proceed`、3社の現行設計例、reference site |
+| Phase 1 — Design Mode | GA4推奨event、dataLayer、code、manifest、import JSON、QA・rollback手順 | #188の対象非依存品質境界、3社の現行設計例、reference site |
 | Phase 2 — read-only audit | container export/API inventory、best-practice差分、影響する下流metricの列挙 | Phase 1で設計時間または欠陥率が改善 |
 | Phase 3 — Apply Mode（API previewまで） | isolated workspace、sync/conflict、apply、quick preview、manual test handoff | auth・token custody・incident要件をADRで承認 |
 

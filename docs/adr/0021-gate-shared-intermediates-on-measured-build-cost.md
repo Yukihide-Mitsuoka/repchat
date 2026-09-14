@@ -65,8 +65,8 @@ cost planner、来歴表示、temporary data管理が必要になるが、対象
 
 ## Decision
 
-Option 4を提案する。repository ownerが本ADRを承認し、Issue #160の製品実装開始条件を満たすまで、
-共有中間結果を実装または有効化しない。
+Option 4を提案する。repository ownerが本ADRと実測thresholdを承認するまで、共有中間結果を実装または
+有効化しない。
 
 ### D1. 直接実行を標準とする
 
@@ -74,7 +74,7 @@ Option 4を提案する。repository ownerが本ADRを承認し、Issue #160の�
 判定単位は個別のbuild workloadとし、直接実行に対する絶対削減額と削減率の両方が、実測後に定める
 thresholdを超える場合だけ候補にする。
 
-thresholdは本ADRで推測しない。Issue #160が`proceed`となった後、代表的なdesign partner workloadで、
+thresholdは本ADRで推測しない。代表的なworkloadで、
 direct planの実処理量、shared planの実処理量、一時storage、実行時間、失敗時再実行費用を測って決める。
 threshold未設定、推定不能、差が小さい場合は直接実行へ倒す。
 
@@ -178,8 +178,7 @@ shared jobの再実行費用が許容できない場合は直接実行を使う�
 **Follow-ups:**
 
 - repository ownerが本ADRを承認、修正または却下する。
-- Issue #160が`proceed`となり、Issue #180のproduction build設計へ着手する時点で、Issue #306の
-  measurement spikeを独立PRとして計画する。
+- Issue #180のproduction build設計へ着手する時点で、Issue #306のmeasurement spikeを独立PRとして計画する。
 - 公開またはsynthetic dataでdirect/sharedの実処理量と結果一致を測る。費用承認なしに実BigQueryを
   実行しない。
 - thresholdは測定結果とdesign partnerの費用規模から別revisionで確定し、本ADRへ推測値を追記しない。
@@ -194,7 +193,6 @@ temporary dataが残った場合はjob/sessionを終了し、保持上限後に�
 
 - [Issue #306](https://github.com/Yukihide-Mitsuoka/repchat/issues/306)
 - [Issue #180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)
-- [Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)
 - [ADR-0013](0013-metric-definitions-live-in-our-own-layer.md)
 - [ADR-0014](0014-who-owns-the-generated-artifacts.md)
 - [ADR-0015](0015-publish-artifacts-through-customer-git.md)

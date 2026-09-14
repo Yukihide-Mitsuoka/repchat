@@ -16,14 +16,14 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 ## 次の依頼を選ぶ優先順位
 
-2026-08-22時点では、未解消の不具合と検証阻害を先に解消し、その後に以下の順で依頼を選びます。
+2026-09-15時点では、分析対象固有のcode・設定・既知知識を除去し、対象非依存pipelineの品質境界を
+確定してから、以下の順で依頼を選びます。
 各Issueが受入条件の正本であり、この表は開始順序と依存関係だけを管理します。
 
 | 優先 | 段階 | 依頼候補 | 目的 | 開始・完了条件 |
 |---:|---|---|---|---|
-| 1 | 検証ゲート | [#160 デザインパートナー検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/160) | 現在のAI提案・SQL・dashboardが実利用者の意思決定に使えるか判定する | 現在。オーナーが参加者を選定し、5分デモ後に`proceed` / `revise` / `reject`を確定する |
-| 2 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | 対象別コード・設定・既知知識に依存せず、認可済みscopeから未知schemaを自動理解して分析・SQL・描画する | 同一コードのまま未知・非公開相当2種類以上を独立レビュー済み参照結果と反復照合する。共通処理の改善限界が証拠で確定するまで、利用者確認や手動意味定義を解決策にしない |
-| 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #160=`proceed`。#188とは独立に開始し、interaction・deep link・認可境界を先に確定する |
+| 1 | 基盤品質 | [#188 未知のnested schema検証](https://github.com/Yukihide-Mitsuoka/repchat/issues/188) | 対象別コード・設定・既知知識に依存せず、認可済みscopeから未知schemaを自動理解して分析・SQL・描画する | 固有処理を全削除し、同一コードのまま未知・非公開相当2種類以上を独立レビュー済み参照結果と反復照合する。共通処理の改善限界が証拠で確定するまで、利用者確認や手動意味定義を解決策にしない |
+| 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #188の対象非依存pipelineと品質境界を壊さないことを確認し、interaction・deep link・認可境界を確定する |
 | 3 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | 対話、immutable specification revision、承認、非同期build、再開、公開を製品契約にする | #179のinteractionと#188のschema品質境界が確定した後 |
 | 4 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | AI配置と利用者の幅調整を構造化revisionとして保存・公開し、共有相手に再現する | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
 | 5 | 意思決定支援 | [#181 根拠付き経営報告とアクション](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | 根拠へ追跡できる判断、施策、担当、成功指標、検証方法を生成し、人間の承認後だけ配布する | #180の統制された生成・公開経路と、SQL・結果・根拠のrevision追跡が安定した後 |
@@ -32,8 +32,8 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 | 着手直前 | 本番化 | [#194 課金・認証方式](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) | 閲覧者・作成者・管理者の課金区分、初期認証方式、利用者管理主体をオーナー判断で確定する | 課金または本番オンボーディングへ着手する直前。オーナー判断なしにAIが方式を選ばない |
 | リリース前 | リリース | [#251 検証可能なrelease artifact](https://github.com/Yukihide-Mitsuoka/repchat/issues/251) | 実行コード、設定、依存関係、検査結果を同じ不変artifactとprovenanceへ結び付ける | 配布対象とconsumerを確定し、`make build`またはpublish jobがattestation対象を生成できる時点 |
 
-同順位の#179と#188は独立した依頼として並行できます。#160が`revise`または`reject`の場合は、
-優先3以降へ進まず、観測結果からpositioningと本ロードマップを再評価します。
+#188の対象非依存化が現在の最優先です。固有処理が残る間は、それをデモ、製品能力、または後続機能の
+前提として扱いません。#179以降は、対象非依存pipelineを後退させない範囲で順に進めます。
 
 ## 残課題
 
@@ -86,14 +86,9 @@ Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視�
   → **スパイクでは一本通った**（日本語→SQL→検証→描画→テナント別配信、LOG-0065〜0076）。**`src/` は未着手**。
 - ⏸️ デザインパートナー候補1社との本番検証に必要なセキュリティ説明、監査ログ、
   撤退時データ削除の要件を具体化する。
-- **現在の最優先：[Issue #160](https://github.com/Yukihide-Mitsuoka/repchat/issues/160)の
-  デザインパートナー候補の選定・日程調整・5分デモ**（人間側の実行）。
-  基盤の技術的不確実性は縮小したが、実顧客schemaでの生成品質と需要は未検証であり、ここが律速になる。
-  #160の結果を`proceed` / `revise` / `reject`に分類するまで、上の製品実装2件を開始しない。
-- **2026-08-02のオーナー優先順位：** 人間側の#160準備と並行し、AI側はSQL表示改善、組織コンテキストを
-  含む分析メモリー要件、非GA4公開nested/repeated dataset 1種類のデモ、#180と#181のローカル
-  プロトタイプを小さいPRに分けて進める。#188の2種類評価と設計パートナー検証は省略せず、#160が
-  `proceed`になるまで製品実装または検証済み能力とは扱わない。
+- **現在の最優先：** 分析対象固有のcode・profile・設定・固定prompt・固定SQL・期間parser・識別子補正・
+  指標定義を削除し、認可済みscopeから同じ共通pipelineが契約を自動生成する状態へ移行する。
+  未知schemaの反復評価が完了するまで、任意schema対応または製品能力とは表明しない。
 - 🧪 **Issue #188の最初の非GA4縦切り:** Bitcoin公開取引の`outputs`と内側の`addresses`を
   二段階で展開する単一グラフ経路を追加した。基準SQLのdry runは約2.91GiB。実値照合、独立レビュー、
   未知・非公開相当2種類の反復評価は未完了であり、任意schema対応とは表明しない。
@@ -130,19 +125,19 @@ Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視�
 - データ量がボトルネックになった場合に、部分再生成とキャッシュ失効を最適化する。
 - dashboard buildのBigQuery費用が実測上のbottleneckになった場合だけ、direct実行との絶対削減額・削減率を
   比較し、条件を満たすbuildへ共有中間結果を提案する（Issue #306、ADR-0021 proposed）。customer
-  datasetの書き込み権限は既定で増やさず、Issue #160の`proceed`とADR承認前に実装しない。
+  datasetの書き込み権限は既定で増やさず、実測thresholdとADR承認前に実装しない。
 - Issue #179/#180のrevision契約と非同期buildが確定した後、版管理されたpanelをSQL workspaceで新規作成・
   forkし、AI生成原本を変更せず派生dashboardへ合成する（Issue #308、ADR-0022 proposed）。利用者SQLは
   untrusted inputとして検証する。構造化された行と相対幅は共有layout revisionとして保存・公開できるように
   する（[Issue #371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)）。design partnerの調整頻度が
   確認できるまで任意code、自由配置、個人layoutの永続化へ広げない。
-- Issue #160が`proceed`となり、#179/#180のrevision・build契約と#188のschema品質境界が安定した後、
+- #179/#180のrevision・build契約と#188の対象非依存schema品質境界が安定した後、
   日本語で分析主体、起点・復帰event、retention方式、期間、timezoneを確定し、未成熟期間を0にしない
   統制されたコホート分析を公開GA4からpilotする（[#341](https://github.com/Yukihide-Mitsuoka/repchat/issues/341)、
   [要件](requirements/governed-cohort-analysis.md)）。最初はAmplitude代替ではなく、acquisition cohort、
   exact-period、未成熟期間、heatmap・table、SQL・data・根拠に限定した日本語の定型分析として、汎用BIより
   準備が少ないかを測る。predictive cohort、実験配信、session replayは初期範囲に含めない。
-- 同じく#160が`proceed`となり、design partnerから現行のGA4/GTM設計例を3社分得られた後、分析目的から
+- design partnerから現行のGA4/GTM設計例を3社分得られた後、分析目的から
   GA4 recommended event、dataLayer、code、GTM構成、import成果物、QA・rollback手順を作るDesign Modeを
   pilotする（[#343](https://github.com/Yukihide-Mitsuoka/repchat/issues/343)、
   [要件](requirements/measurement-implementation-assistant.md)）。後続Apply Modeも公式GTM APIによる隔離workspace、
@@ -156,7 +151,7 @@ Issue [#410](https://github.com/Yukihide-Mitsuoka/repchat/issues/410)の可視�
   効果検証へ接続する（Issue #181、[会議意思決定ループ要件](requirements/meeting-decision-loop.md)）。
   最初は会議パック、決定・アクション永続化は適応型分析メモリーPhase 1と本番role・認証の後に行う。
 - AI plannerの分析考察とグラフ選定を分離する必要が実測で確認された場合、[可視化選定skill](requirements/evidence-cloud-visualization-coverage.md#8-将来の可視化選定skill)を実装する。
-  分析目的・データ形状・表示文脈から対応済みchart capabilityを比較し、最大3候補、選定理由、除外理由、必要な変換、confidenceを返す。未対応グラフへの自動置換は行わず、実行後の形状再検査で不適合を停止する。開始条件は#160の`proceed`、#179/#180のrevision・build契約確定、代表シナリオでの現行AI-only planner baselineの取得とする。
+  分析目的・データ形状・表示文脈から対応済みchart capabilityを比較し、最大3候補、選定理由、除外理由、必要な変換、confidenceを返す。未対応グラフへの自動置換は行わず、実行後の形状再検査で不適合を停止する。開始条件は#179/#180のrevision・build契約確定、#188の対象非依存品質境界確定、代表シナリオでの現行AI-only planner baselineの取得とする。
 - 実顧客で同種修正の反復が観測された場合に、適応型分析メモリーの候補抽出、scope確認、再確認・昇格提案を
   段階導入する。自動昇格は行わず、類似検索や外部Memory Bankはpolicy量またはlookup遅延が測定上の
   bottleneckになった場合だけ派生indexとして評価する（[要件](requirements/adaptive-analysis-memory.md)）。

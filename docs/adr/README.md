@@ -38,7 +38,7 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0015](0015-publish-artifacts-through-customer-git.md) | 顧客Gitをbuild時の生成物配送境界にする | accepted | 2026-07-29 |
 | [0016](0016-authenticate-oversized-foundation-sync-prs.md) | 大規模な基盤同期PRを厳密に認証する | accepted | 2026-07-29 |
 | [0017](0017-use-slack-as-an-authorized-analysis-interface.md) | Slackを認可付き分析インターフェースとして使う | proposed | 2026-07-30 |
-| [0018](0018-govern-adaptive-analysis-memory.md) | 適応型分析メモリーを版管理された方針として統制する | accepted | 2026-08-02 |
+| [0018](0018-govern-adaptive-analysis-memory.md) | 適応型分析メモリーを版管理された方針として統制する | accepted。実装順序・開始条件はADR-0026が置換 | 2026-08-02 |
 | [0019](0019-separate-datasource-knowledge-from-scoped-analysis-context.md) | データソース知識と分析文脈を分離し、用途別にコンパイルする | superseded by ADR-0025 | 2026-08-09 |
 | [0020](0020-protect-production-edge-and-cloud-run-origins.md) | 本番の公開入口とCloud Run originを二層で保護する | proposed | 2026-08-09 |
 | [0021](0021-gate-shared-intermediates-on-measured-build-cost.md) | 共有中間結果を実測費用で限定する | proposed | 2026-08-09 |
@@ -47,5 +47,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 
 | [0024](0024-build-analysis-context-from-inspected-schema.md) | 承認済み接続先のschemaから共通分析契約を作る | superseded by ADR-0025 | 2026-09-05 |
 | [0025](0025-discover-analysis-contracts-without-source-specific-code.md) | 分析対象固有のコードや設定なしに分析契約を自動生成する | accepted | 2026-09-12 |
+| [0026](0026-prioritize-target-independent-readiness.md) | 分析対象非依存の準備完了を製品機能より先にする | accepted | 2026-09-15 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->

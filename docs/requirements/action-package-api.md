@@ -26,7 +26,7 @@ updated: 2026-08-11
 | ID | 種別 | 内容 | 誤っていた場合の影響 |
 |----|------|------|----------------------|
 | A-1 | 仮説 | 根拠とKPIを持つ施策を機械可読で渡せば、転記と効果検証の欠落を減らせる | design partnerに連携需要がなければ実装しない |
-| C-1 | 制約 | Issue #160が`proceed`になるまで実装しない | 今回は契約と境界だけを記録する |
+| C-1 | 制約 | Issue #181の承認済みaction revisionと最初のconsumerが確定するまで実装しない | 今回は契約と境界だけを記録する |
 | C-2 | 制約 | Action Packageは人間の承認済みAction Proposalからだけ発行する | AI提案を外部指示にしない |
 | C-3 | 制約 | JSONを正本とし、CSV、webhook、provider形式を正本にしない | format追加でdomain contractを分岐させない |
 | C-4 | 制約 | Coreは広告公開、予算変更、振込、決済を実行しない | 支出とproduction変更を別責任にする |
@@ -178,7 +178,7 @@ media spendはRepChat利用料から分離表示する。
 | R-1 | packageが支出命令と誤解される | 中 | 高 | `external-only`、承認、期限、非実行表示 |
 | R-2 | CSV profileが顧客ごとに増える | 高 | 中 | 反復需要があるprofileだけversion管理する |
 | R-3 | 外部statusが虚偽または古い | 中 | 高 | source、取得時刻、external ref、別revision表示 |
-| R-4 | 汎用APIを先行実装して利用者がいない | 高 | 中 | #160とIssue #181後、最初のconsumer確定まで実装しない |
+| R-4 | 汎用APIを先行実装して利用者がいない | 高 | 中 | Issue #181後、最初のconsumer確定まで実装しない |
 | R-5 | developer tokenで顧客間dataを取得する | 低 | 最高 | tenant binding、scope、rotation、負のE2E |
 
 ## 12. 実装時期
@@ -186,7 +186,7 @@ media spendはRepChat利用料から分離表示する。
 | phase | 範囲 | 開始条件 |
 |------|------|----------|
 | Phase 0 | 本要件、ADR-0023、consumer interview | 今回。実装なし |
-| Phase 1 | read-only JSON package、revoke、audit | #160=`proceed`、Issue #181 action revision安定、consumer 1件 |
+| Phase 1 | read-only JSON package、revoke、audit | Issue #181 action revision安定、consumer 1件 |
 | Phase 2 | CSV profile、webhook | 同一formatの反復需要2件以上 |
 | Phase 3 | external outcome取込と効果評価 | Phase 1の越境・冪等・監査試験成功 |
 
