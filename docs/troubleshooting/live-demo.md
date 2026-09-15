@@ -55,29 +55,12 @@ URL、ページ一覧、イベント名、または計算定義を入力する�
 Vertex AIへ再送します。回答にない条件の補完、固定SQLへの置換、自動再試行はありません。BigQueryは再生成された
 SQLの安全検査・dry run・結果形状検査を通過した場合だけ実行されます。
 
-## 費用承認後の実サービス検証
+## 実サービス検証
 
-固定応答テストだけでは実Vertex AIの構造化応答、BigQueryのdry run・実行、会議報告の根拠検証を確認できません。
-費用を承認した担当者が、次のランナーを一度だけ実行してdashboard・insight・会議報告を各1経路確認できます。
-
-```bash
-gcloud auth application-default login
-python3 spikes/report-generation/verify_live_services.py \
-  --project <project> \
-  --profile <ga4またはbitcoin> \
-  --dashboard-question '<対象期間と分析目的を含む依頼文>' \
-  --insight-question '<対象期間と単一分析の依頼文>' \
-  --output /private/tmp/repchat-live-verification.json \
-  --accept-cost
-```
-
-`--accept-cost`がない場合はGoogleクライアントを作成せず終了します。ランナーはAIが作った計画・相談候補を
-そのまま使い、固定パネル・固定SQL・数値の代用はしません。出力JSONには実行ステージ、件数、列名、可視化種別、
-SQLハッシュ、行数、検証状態、推定費用だけを保存し、SQL本文・取得行・会議報告本文は保存しません。未定義語や
-検証エラーで止まった場合も、その理由を品質記録へ残して自動再実行しません。
-
-選択したprofileはdashboard計画・build・insight相談・SQL実行に共通で渡します。依頼文は両方とも必須で、
-未指定・空欄なら認証確認前に終了します。特定データソース向けの既定質問はありません。
+対象別profileを必須にした旧実サービス検証runnerは削除しました。既知データだけを通すrunnerを対象非依存性の
+証拠にはしません。認可済みscopeから同じ共通runtimeが分析契約を生成し、未知schemaを反復評価できるharnessが
+完成するまで、代替runnerや対象別fixtureを製品runtimeへ追加しません。実Vertex AIまたはBigQueryを使う評価は、
+新しいharnessの費用を分離して承認した後だけ実行します。
 
 ## `make doctor`の時間とHTTP round-tripの切り分け
 
