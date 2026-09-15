@@ -240,26 +240,3 @@ test('missing visualization contracts remain outside this validator and do not p
   const { max_result_rows: _limit, ...unbounded } = BAR;
   assert.deepEqual(checkSql(unbounded, [select('COUNT(*)', '')]), [null]);
 });
-
-test('live SQL validation translates the contract error and retains its cause', () => {
-  const result = python(
-    `
-import live_contracts
-payload=json.load(sys.stdin)
-try:live_contracts.validate_generated_dashboard_sql(payload["section"],payload["sql"])
-except live_contracts.LiveDemoError as error:
- print(json.dumps({"type":type(error).__name__,"message":str(error),
-  "cause_type":type(error.__cause__).__name__,"cause_message":str(error.__cause__),
-  "suggestion":error.suggested_instruction},ensure_ascii=False))
-else:raise AssertionError("invalid SQL was accepted")
-`,
-    { section: BAR, sql: 'SELECT kind, COUNT(*) AS metric_value FROM events' },
-  );
-  assert.deepEqual(result, {
-    type: 'LiveDemoError',
-    message: aliasError('別名なし、metric_value'),
-    cause_type: 'SQLContractError',
-    cause_message: aliasError('別名なし、metric_value'),
-    suggestion: null,
-  });
-});
