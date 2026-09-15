@@ -79,7 +79,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'evidence_components.py': 1,
     'ga4_profile.py': 5,
     'live_contracts.py': 2,
-    'live_http_validation.py': 1,
     'metrics.json': 2,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 3,
@@ -92,7 +91,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'dashboard_build.py': 2,
     'data_source_profiles.py': 10,
     'live_contracts.py': 9,
-    'live_http_validation.py': 9,
     'section_execution.py': 3,
   },
   fixedSchemaKnowledge: {
@@ -115,7 +113,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'data_source_profiles.py': 11,
     'ga4_profile.py': 2,
     'live_contracts.py': 4,
-    'live_http_validation.py': 1,
     'section_execution.py': 1,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 1,
