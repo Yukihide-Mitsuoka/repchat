@@ -79,8 +79,9 @@ GA4固有の契約factoryは、オーナー指示と
 残しました。
 
 [PR #709](https://github.com/Yukihide-Mitsuoka/repchat/pull/709)で旧ライブデモ入口を削除しました。
-現在は入口から未参照になった旧UI補助moduleを小さいPRで物理削除しています。`live_ui_base.py`と
-`live_ui_interactions.py`を最初に削除し、次に`live_ui_shell.py`と`live_ui_theme.py`を削除します。
+[PR #710](https://github.com/Yukihide-Mitsuoka/repchat/pull/710)で`live_ui_base.py`と
+`live_ui_interactions.py`も削除済みです。現在は入口から未参照の`live_ui_shell.py`と
+`live_ui_theme.py`を物理削除し、次に旧`live_engine.py`と`live_http*.py`を小さいPRへ分けて削除します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -136,7 +137,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 2 | 共通分析契約の自動生成（PR #679〜#685 merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py`、`analysis_contract_generation.py`、`analysis_contract_orchestration.py`、`bigquery_scope_discovery.py` | validator、生成入力、token限定normalizer、構造化response schema、対象非依存prompt、単一Vertex生成I/O、日次shardの検査済みwildcard統合と二段階生成はmerge済み。PR #685では利用可能な時間境界がない選択schemaだけ`period=null`でcompileし、ingestion-time partitionには標準疑似fieldを合成した。表現不能な必須partition filterは拒否する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | 契約由来のscope・上限・期間・field・SQL・結果形状検査を接続し、plannerの生成入力と契約付き保存planからprofile IDを除去した。残存作業は、旧runtimeのprofile照合、SQL生成のlegacy profile入力、URL等の特殊補正の削除 |
 | 4 | live runtimeをprofileなしへ切替 | `live_engine.py`、`live_http_validation.py`、`live_contracts.py`、`analysis_dashboard_plan.py` | HTTP request、保存plan、engine API、CLIから`profile`とGA4既定値を削除する。認証済みconnection scopeから毎回同じdiscovery／contract経路を解決し、契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする。対象別profileを必須にした旧実サービス検証runnerは削除済み |
-| 5 | UI・成果物を中立化 | `live_ui_shell.py`、`live_ui_theme.py`、`evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口と`live_ui_base.py`、`live_ui_interactions.py`は削除済み。入口から未参照の旧shell・themeを次に削除し、残る固定のmetric語彙、source名、問い合わせを除去する。`event_date`を中立なtemporal roleへ置換し、可視化は契約が対応する意味roleを持つ場合だけ選択する |
+| 5 | UI・成果物を中立化 | `evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payloadは削除済み。残る固定のmetric語彙、source名、問い合わせを除去する。`event_date`を中立なtemporal roleへ置換し、可視化は契約が対応する意味roleを持つ場合だけ選択する |
 | 6 | 旧実装を物理削除 | `data_source_profiles.py`、`ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`run_report.py`の旧export | 新runtimeから参照がなくなった時点でregistry、callback、手書きDDL・指標・期間・SQL補正を削除する。互換目的の対象別adapter、feature flag、隠し設定を残さない。runtime inventoryのallowlistを空にする |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
