@@ -1,14 +1,14 @@
 ---
 id: troubleshooting-live-demo
 title: ライブデモのトラブルシューティング
-status: active
-updated: 2026-09-14
+status: historical
+updated: 2026-09-15
 ---
 
 # ライブデモのトラブルシューティング
 
-この文書は、`make demo-live`が結果の描画を停止した場合の確認方法を示します。実Vertex AIまたは
-BigQueryを再実行する前に、画面のエラーと生成済みSQLを確認してください。
+対象別profileを使う旧ライブデモ入口は削除済みです。この文書は過去の障害と対策を保持する履歴であり、
+現在の実行手順ではありません。対象非依存runtimeが完成するまで代替入口は追加しません。
 
 ## Vertex AIのリクエストが拒否される
 
@@ -237,8 +237,9 @@ planner promptにも同じ意味契約を渡します。修正版をマージし
 
 ```bash
 gcloud auth application-default login
-make demo-live PROJECT=<project>
 ```
+
+再認証後に利用していた旧ライブデモの再起動コマンドは削除済みです。
 
 修正版は認証期限切れを画面へ明示し、認証情報やGoogle SDKの例外本文は表示しません。失敗した問い合わせを
 自動再実行しないため、再認証後も画面の費用確認を経て利用者が明示的に実行します。

@@ -59,9 +59,7 @@ BigQuery実行前に検査します。実行後も同じ描画契約で結果形
 gcloud auth application-default login
 ```
 
-```bash
-make demo-live PROJECT=kotonoha-bi-dev
-```
+対象別profileを使う旧ライブデモ入口は削除済みです。対象非依存runtimeが完成するまで代替コマンドはありません。
 
 スキャン量は `_TABLE_SUFFIX` で1か月に限定し、`maximum_bytes_billed` を 20GiB に設定しています。
 
@@ -252,10 +250,9 @@ gcloud auth application-default login
 
 | 用途 | コマンド |
 |---|---|
-| AIが考察するライブデモ | `make demo PROJECT=kotonoha-bi-dev` |
-| 同じライブデモを明示して起動 | `make demo-live PROJECT=kotonoha-bi-dev` |
+| 旧ライブデモ入口 | 削除済み。対象別profileと固定知識を含むため使用しない |
 
-`demo-live`は`127.0.0.1:8765`だけで待ち受け、ダッシュボード、作成・編集、会議報告、単一グラフを
+旧ライブデモは`127.0.0.1:8765`だけで待ち受け、ダッシュボード、作成・編集、会議報告、単一グラフを
 左ナビゲーションで切り替える分析ワークスペースを表示します。左ナビゲーションと右のパネル詳細は
 個別に開閉でき、デスクトップでは境界のドラッグまたは左右矢印キーで幅を変更できます。ダッシュボードを
 既定の成果物ビューとし、buildが完了したら作成・編集から自動で戻り、会議報告が生成されたら独立した

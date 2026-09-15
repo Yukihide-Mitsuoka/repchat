@@ -88,7 +88,7 @@ def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Pat
 
 if __name__ == "__main__":
     print(
-        "固定レポートrunnerは削除されました。AI分析仕様を作成するmake demo-liveを使用してください。",
+        "固定レポートrunnerと対象別ライブデモ入口は削除されました。",
         file=sys.stderr,
     )
     raise SystemExit(2)

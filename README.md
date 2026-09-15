@@ -48,14 +48,11 @@ make format
 make lint
 make test
 make doctor
-make demo-live PROJECT=<gcp-project>
 ```
 
-`demo-live`は起動時に費用確認を行い、同意後にデモ用venvのpin済みPython依存を
-確認・導入します。実Vertex AIとBigQueryは、日本語の問い合わせを送信したときに使用します。
-中央下部の共通入力欄はdesktopで768pxを上限とし、入力内容に合わせて上方向へ伸長します。
-通常の回遊Sankeyは連続する同一ページビューを1回の滞在へ統合し、段階遷移または参照値が
-分析仕様と一致しない場合はグラフ表示を停止します。
+対象別profileと固定例を使う旧ライブデモ入口は削除済みです。認可済みscopeから分析契約を自動生成する
+対象非依存runtimeが完成するまで、代替のデモコマンドは提供しません。現在の作業順は
+[開発引き継ぎ](docs/development-handoff.md)を参照してください。
 
 基盤規約は[ai-dev-foundation](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation)
 からレビューPRで同期します。RepChat固有のREADME、規約、ワークフロー、アプリケーション、
