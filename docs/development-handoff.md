@@ -81,8 +81,9 @@ GA4固有の契約factoryは、オーナー指示と
 [PR #709](https://github.com/Yukihide-Mitsuoka/repchat/pull/709)で旧ライブデモ入口を削除しました。
 [PR #710](https://github.com/Yukihide-Mitsuoka/repchat/pull/710)で`live_ui_base.py`と
 `live_ui_interactions.py`も削除済みです。[PR #711](https://github.com/Yukihide-Mitsuoka/repchat/pull/711)で
-入口から未参照の`live_ui_shell.py`と`live_ui_theme.py`も削除しました。現在は旧`live_engine.py`を
-物理削除し、次に`live_http*.py`を小さいPRへ分けて削除します。
+入口から未参照の`live_ui_shell.py`と`live_ui_theme.py`も削除しました。
+[PR #712](https://github.com/Yukihide-Mitsuoka/repchat/pull/712)では旧`live_engine.py`を物理削除しています。
+merge後は`live_http*.py`を小さいPRへ分けて削除します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
