@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-09-11
+updated: 2026-09-15
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -94,17 +94,13 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、各モジュールの失敗をライブデモの公開エラー・期間・検証契約へ変換する境界は
 [`live_contracts.py`](../../spikes/report-generation/live_contracts.py)、1パネルの生成から実行までの順序は
 [`section_execution.py`](../../spikes/report-generation/section_execution.py)、確定パネルから根拠bundleを組み立てる順序は
-[`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、単一処理のロック・キャンセル・各workflowへの接続は
-[`live_engine.py`](../../spikes/report-generation/live_engine.py)、localhostの入力検証とNDJSON配信は
-[`live_http.py`](../../spikes/report-generation/live_http.py)、実描画は
-[`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)、ライブ画面の基礎HTML文書は
-[`live_ui_base.py`](../../spikes/report-generation/live_ui_base.py)、基礎テーマは
-[`live_ui_theme.py`](../../spikes/report-generation/live_ui_theme.py)、ペイン・レスポンシブ・composerのスタイルは
-[`live_ui_shell.py`](../../spikes/report-generation/live_ui_shell.py)、ワークスペース操作と未定義語の確認UIは
-[`live_ui_interactions.py`](../../spikes/report-generation/live_ui_interactions.py)、Evidenceのpage組み立ては
+[`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、実描画は
+[`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)、Evidenceのpage組み立ては
 [`evidence_page.py`](../../spikes/report-generation/evidence_page.py)、成果物の安全なファイル出力は
 [`evidence_output.py`](../../spikes/report-generation/evidence_output.py)、componentへの変換は
 [`evidence_components.py`](../../spikes/report-generation/evidence_components.py)を根拠とする。
+旧ライブデモ入口はPR #709で削除済みであり、残る`live_engine.py`、`live_http*.py`、
+`live_ui_shell.py`、`live_ui_theme.py`は実行入口から未参照の旧補助moduleとして削除対象です。
 
 ## 3. 標準chart component
 
