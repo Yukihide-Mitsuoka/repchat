@@ -62,7 +62,7 @@ Sankey linkを遷移元色から遷移先色へのgradientにした。固定応�
 gradient 7本、console error/warning 0。費用を伴うVertex AI・BigQueryは再実行していない。
 
 **直前の実装修正**: [Issue #217](https://github.com/Yukihide-Mitsuoka/repchat/issues/217) /
-[PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)（2026-08-02 merge済み）。`demo-live`起動時に
+[PR #218](https://github.com/Yukihide-Mitsuoka/repchat/pull/218)（2026-08-02 merge済み）。旧デモ入口の起動時に
 pin済み依存を確認して必要時だけvenvへ再起動する形へ修正し、unit testとPR CIは成功した。修正後の実Vertex AI・
 BigQuery問い合わせと実ブラウザ確認は未実施で、検証費用は発生していない。
 
@@ -122,7 +122,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 | | 結果 | 確認状況 |
 |---|---|---|
-| **起動を1コマンドに** | `make demo PROJECT=<project>`。AIが分析仕様を作成するライブデモを起動する | ローカルでVertex AIによる計画、利用者の確定、BigQuery実行前後の契約検査、描画まで確認。固定レポートrunnerは廃止 |
+| **旧デモ入口** | **削除済み**。対象別profile、固定期間・語彙・例を含むため、現行能力として提供しない | 過去の実行結果は対象非依存性の証拠にしない。代替入口は共通runtime完成後に設計する |
 | **説明資料** | [Looker Studio利用者向け5分説明](demo.md) | 日本語→SQL→照合→ページ、Looker Studioとの差、実測範囲と未統合のgate・認証・executorを5分の順番で分離した。実際の利用者が5分で理解できるかは次の対面検証で測る |
 | **生成経路の画面内表示** | ライブ画面で質問、AI分析仕様、生成BigQuery SQL、理由、検査状態、結果を表示する | 単一グラフとダッシュボードの両方で、AI仕様とSQL・結果形状の一致を確認してから描画する |
 | **高度な分析** | 利用者の目的からAIが複数パネルとlayoutを作成し、再提案で追加・変更・削除する | 固定6分析のショーケースは廃止。初回件数だけを既定6件とし、内容は固定しない |
@@ -130,9 +130,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 **やらないこと**: 製品機能。Issue #173は既存経路を画面から検証可能にする変更で、
 `src/`を触らず`spikes/`内で完結する。
 
-**次のボトルネック**: デザインパートナーへ5分デモを見せ、
-[demo.md](demo.md)末尾の6問を聞く。
-「BIを入れたが使われていない」痛みと、非エンジニアがこの成果物を使えるかはコードでは測れない。
+**現在のボトルネック**: 対象固有のcode・profile・設定・固定prompt・SQL・期間parser・識別子補正・
+指標定義をすべて削除し、未知schemaを同じ共通pipelineで反復評価できる状態にすること。
 
 ### 0.2 手を動かす前に知っておくこと
 
@@ -144,7 +143,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | 破棄 | `make destroy` は `ALLOW_DESTROY` が要る（ADR-0012 T7）。**破棄系のコマンドを出すときは、確認コマンドを破棄コマンドより先に提示すること**（オーナー指示） |
 | スパイクの費用 | レポート生成1回で**実Vertex 約¥2＋実BigQuery**。スキャンは `_TABLE_SUFFIX` で1か月・`maximum_bytes_billed` 20GiB に制限済み |
 | 認証 | `gcloud auth application-default login` が要る（Evidence も `authenticator: gcloud-cli` でADCを使う。**鍵ファイルは不要**） |
-| Python | `make demo`が`spikes/report-generation/out/.demo/venv`へpin済み依存を隔離して用意する |
+| Python | 旧ライブデモ入口は削除済み。対象非依存runtime用の実行入口は未実装 |
 
 **踏みやすい落とし穴（全部、実際に踏んだもの）。**
 
