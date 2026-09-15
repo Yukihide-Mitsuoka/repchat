@@ -83,7 +83,8 @@ GA4固有の契約factoryは、オーナー指示と
 `live_ui_interactions.py`も削除済みです。[PR #711](https://github.com/Yukihide-Mitsuoka/repchat/pull/711)で
 入口から未参照の`live_ui_shell.py`と`live_ui_theme.py`も削除しました。
 [PR #712](https://github.com/Yukihide-Mitsuoka/repchat/pull/712)で旧`live_engine.py`も物理削除しました。
-現在は旧`live_http.py`、`live_http_dispatch.py`、`live_http_response.py`を削除し、次に
+[PR #713](https://github.com/Yukihide-Mitsuoka/repchat/pull/713)では旧`live_http.py`、
+`live_http_dispatch.py`、`live_http_response.py`を削除しています。merge後は
 `live_http_validation.py`を独立PRで削除します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
