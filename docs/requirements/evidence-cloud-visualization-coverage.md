@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -99,8 +99,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`evidence_page.py`](../../spikes/report-generation/evidence_page.py)、成果物の安全なファイル出力は
 [`evidence_output.py`](../../spikes/report-generation/evidence_output.py)、componentへの変換は
 [`evidence_components.py`](../../spikes/report-generation/evidence_components.py)を根拠とする。
-旧ライブデモ入口、UI payload、`live_engine.py`はPR #709以降の削除PRで除去済みです。
-残る`live_http*.py`は実行入口から未参照の旧補助moduleとして削除対象です。
+旧ライブデモ入口、UI payload、`live_engine.py`、HTTP入口・dispatch・responseはPR #709以降の削除PRで
+除去済みです。残る`live_http_validation.py`は実行入口から未参照の旧補助moduleとして削除対象です。
 
 ## 3. 標準chart component
 
