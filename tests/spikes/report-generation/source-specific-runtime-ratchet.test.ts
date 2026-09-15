@@ -115,7 +115,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'data_source_profiles.py': 11,
     'ga4_profile.py': 2,
     'live_contracts.py': 4,
-    'live_http.py': 1,
     'live_http_validation.py': 1,
     'section_execution.py': 1,
     'sql_generation.py': 1,

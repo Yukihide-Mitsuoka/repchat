@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-15
+updated: 2026-09-16
 ---
 
 # 開発引き継ぎ
@@ -82,8 +82,9 @@ GA4固有の契約factoryは、オーナー指示と
 [PR #710](https://github.com/Yukihide-Mitsuoka/repchat/pull/710)で`live_ui_base.py`と
 `live_ui_interactions.py`も削除済みです。[PR #711](https://github.com/Yukihide-Mitsuoka/repchat/pull/711)で
 入口から未参照の`live_ui_shell.py`と`live_ui_theme.py`も削除しました。
-[PR #712](https://github.com/Yukihide-Mitsuoka/repchat/pull/712)では旧`live_engine.py`を物理削除しています。
-merge後は`live_http*.py`を小さいPRへ分けて削除します。
+[PR #712](https://github.com/Yukihide-Mitsuoka/repchat/pull/712)で旧`live_engine.py`も物理削除しました。
+現在は旧`live_http.py`、`live_http_dispatch.py`、`live_http_response.py`を削除し、次に
+`live_http_validation.py`を独立PRで削除します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
