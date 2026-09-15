@@ -85,7 +85,8 @@ GA4固有の契約factoryは、オーナー指示と
 [PR #712](https://github.com/Yukihide-Mitsuoka/repchat/pull/712)で旧`live_engine.py`も物理削除しました。
 [PR #713](https://github.com/Yukihide-Mitsuoka/repchat/pull/713)では旧`live_http.py`、
 `live_http_dispatch.py`、`live_http_response.py`を削除しました。実行入口から未参照だった
-`live_http_validation.py`も後続の独立PRで削除しています。
+`live_http_validation.py`は[PR #714](https://github.com/Yukihide-Mitsuoka/repchat/pull/714)で削除しています。
+merge後は、実行時未参照でテストだけが参照する旧`live_contracts.py` facadeを独立PRで削除します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
