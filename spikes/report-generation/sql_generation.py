@@ -57,7 +57,7 @@ SHAPE_HINT = {
 }
 
 
-def generation_request(section: dict, period: dict) -> str:
+def generation_request(section: dict, period: dict | None) -> str:
     """Build the user-level analysis contract independently of the model client."""
     # ADR-0013 C4. A declared shape beats a generic hint: LOG-0071 measured the
     # funnel coming back long on one run and wide on the next, with identical
@@ -80,9 +80,14 @@ def generation_request(section: dict, period: dict) -> str:
         shape = SHAPE_HINT[section["compare"]]
         if section["component"] == "line":
             shape = "1列目に日付、2列目に値の、2列で返すこと。"
+    period_instruction = (
+        f"契約の対象期間は {period['from']} から {period['to']}。"
+        if period is not None
+        else "契約に時間境界はない。期間や日付列を推測して追加しない。"
+    )
     request = (
         f"{section['text']}\n"
-        f"（対象期間: _TABLE_SUFFIX は '{period['from']}' から '{period['to']}'）\n"
+        f"（{period_instruction}）\n"
         f"（出力形式: {shape}）"
         "\n（SQLの責務: 最終SELECTは、確認済み仕様で明示されたdimensionsとmeasuresだけを返す。"
         "execution_promptの判断目的に未確認の期間・派生指標が含まれる場合は、推測で列を追加せず、"
@@ -131,11 +136,11 @@ def generate(
     client,
     model: str,
     section: dict,
-    period: dict,
+    period: dict | None,
     rules: str,
     clarification_answer: str | None = None,
 ):
-    """Generate SQL for the original GA4 report contract."""
+    """Generate SQL for one common-contract report section."""
     request = generation_request(section, period)
     if clarification_answer:
         request += (

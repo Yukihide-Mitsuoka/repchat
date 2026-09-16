@@ -76,14 +76,12 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'evidence_components.py': 1,
     'ga4_profile.py': 5,
     'metrics.json': 2,
-    'sql_generation.py': 1,
     'sql_prompt_context.py': 3,
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {
     'dashboard_build.py': 2,
     'data_source_profiles.py': 10,
-    'section_execution.py': 3,
   },
   fixedSchemaKnowledge: {
     'bitcoin_profile.py': 14,
@@ -103,7 +101,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'dashboard_build.py': 2,
     'data_source_profiles.py': 11,
     'ga4_profile.py': 2,
-    'section_execution.py': 1,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 1,
   },

@@ -86,27 +86,25 @@ test('DATE, DATETIME and TIMESTAMP constraints use generic type-specific bounds'
   assert.match(output.guidance, /TIMESTAMP\('2026-08-30 00:00:00', 'Asia\/Tokyo'\)/);
 });
 
-test('contract-bound execution avoids profile period callbacks', () => {
+test('contract-bound execution repairs period constraints from one policy', () => {
   const result = python(`
 import section_execution as execution
 import analysis_contract_context as context
 from analysis_schema_policy import AnalysisFieldPolicy
-from data_source_profiles import DataSourceProfile
 table="alpha.dataset.records"
 constraints=(context.AnalysisPeriodConstraint(table,("created_on",),"DATE",True),context.AnalysisPeriodConstraint(table,("occurred_at",),"TIMESTAMP",False))
 period=context.AnalysisPeriodPolicy("2026-09-01","2026-09-02","Asia/Tokyo",constraints)
 fields=(AnalysisFieldPolicy(table,("created_on",),"DATE","REQUIRED",False,False),AnalysisFieldPolicy(table,("occurred_at",),"TIMESTAMP","REQUIRED",False,False))
 policy=context.AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10,period,fields)
 execution.analysis_contract_context.execution_policy=lambda _contract:policy
-callbacks=[]
-def unexpected(name):
- def invoke(*_args,**_kwargs):callbacks.append(name);raise AssertionError(name)
- return invoke
-source=DataSourceProfile("opaque","Opaque","alpha.dataset",False,lambda _metrics:"",lambda _metrics:"",unexpected("period_for_question"),lambda *_args:"request",lambda sql:sql,unexpected("require_sql_period"),unexpected("period_repair_guidance"),object())
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
+execution.analysis_contract_context.planning_period=lambda _contract:{"from":"2026-09-01","to":"2026-09-02","label":"2026-09-01〜2026-09-02"}
+contract=object()
 initial="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE created_on BETWEEN DATE '2026-09-01' AND DATE '2026-09-01'"
 repaired="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE created_on BETWEEN DATE '2026-09-01' AND DATE '2026-09-02' AND occurred_at >= TIMESTAMP('2026-09-01 00:00:00', 'Asia/Tokyo') AND occurred_at < TIMESTAMP('2026-09-03 00:00:00', 'Asia/Tokyo')"
 usage={"input_tokens":1,"output_tokens":1}
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"initial","undefined_terms":[]},usage)
+execution.report.generation_request=lambda *_args,**_kwargs:"request"
 diagnostics=[]
 execution.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({"sql":repaired,"reason":"repaired","undefined_terms":[]},usage))
 execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
@@ -115,13 +113,12 @@ execution.report.exec_bq=lambda _bq,sql,**_kwargs:(executed.append(sql) or (([(1
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 section={"title":"集計","planned_visualization":"scorecard","source_columns":["metric_value"],"nonnull_metric_columns":["metric_value"],"shape":{"columns":["値"]}}
 events=[]
-execution.run_section(section,{},events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=50,rules="rules",context={"operation":"dashboard"})
-print(json.dumps({"callbacks":callbacks,"diagnostics":diagnostics,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"]},ensure_ascii=False))
+execution.run_section(section,events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=50,context={"operation":"dashboard"})
+print(json.dumps({"diagnostics":diagnostics,"executed":executed,"stages":[event.get("stage") for event in events if event["type"]=="stage"]},ensure_ascii=False))
 `);
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.deepEqual(output.callbacks, []);
   assert.equal(output.diagnostics.length, 1);
   assert.match(output.diagnostics[0], /created_on BETWEEN DATE '2026-09-01' AND DATE '2026-09-02'/);
   assert.match(output.diagnostics[0], /occurred_at >= TIMESTAMP/);

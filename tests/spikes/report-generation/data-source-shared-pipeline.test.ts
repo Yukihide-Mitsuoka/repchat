@@ -1,8 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { ROOT, python } from './live-demo-test-helpers.ts';
+import { python } from './live-demo-test-helpers.ts';
 
 test('GA4 and Bitcoin expose only data-source contracts to one shared pipeline', () => {
   const result = python(`
@@ -73,7 +71,7 @@ execution.report.inspect_bq_schema=lambda *_args,**kwargs:(inspected.append(kwar
 execution.report.exec_bq=lambda *_args,**kwargs:(executed.append(kwargs) or (([(1,)], ["metric_value"]),None))
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"}}
-execution.run_section(section,{"from":"20210101","to":"20210131","label":"2021年1月"},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=50)
+execution.run_section(section,lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=50)
 errors=[]
 other=json.loads(encoded);other["schema"]["metadata"]["tables"][0]["table"]="bigquery-public-data.crypto_bitcoin.transactions"
 other_encoded=json.dumps(other,ensure_ascii=False,sort_keys=True,separators=(",",":"))
@@ -102,47 +100,50 @@ print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]
   assert.equal(output.max_results, 11);
 });
 
-test('one section executor changes behavior only through the selected data-source contract', () => {
+test('one section executor enforces only the selected common contract policy', () => {
   const result = python(`
-import data_source_profiles as profiles
 import section_execution as execution
+from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_schema_policy import AnalysisFieldPolicy
 usage={"input_tokens":1,"output_tokens":1}
 tick=chr(96)
 cases={}
-for key,period,sql in [
- ("ga4",{"from":"20210101","to":"20210131","label":"2021年1月"},"SELECT COUNT(*) AS metric_value FROM "+tick+"bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*"+tick+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"),
- ("bitcoin",{"from":"2024-01-01","to":"2024-01-31","partition":"2024-01-01","label":"2024年1月"},"SELECT COUNT(*) AS metric_value FROM "+tick+"bigquery-public-data.crypto_bitcoin.transactions"+tick+" WHERE block_timestamp_month = DATE '2024-01-01'"),
-]:
- source=profiles.profile_for(key);generated=[];executed=[]
+contracts={"first":object(),"second":object()}
+definitions=[
+ ("first","alpha.dataset.records_a",3),
+ ("second","alpha.dataset.records_b",7),
+]
+policies={id(contracts[key]):AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,row_limit,schema_fields=(AnalysisFieldPolicy(table,("record_id",),"STRING","REQUIRED",False,False),)) for key,table,row_limit in definitions}
+execution.analysis_contract_context.execution_policy=lambda contract:policies[id(contract)]
+execution.analysis_contract_context.sql_rules=lambda contract:"rules-"+next(key for key,value in contracts.items() if value is contract)
+execution.analysis_contract_context.planning_period=lambda _contract:None
+for key,table,_row_limit in definitions:
+ contract=contracts[key];sql="SELECT COUNT(*) AS metric_value FROM "+tick+table+tick;generated=[];executed=[]
  execution.report.generate_request=lambda _client,_model,request,rules:(generated.append((request,rules)) or ({"sql":sql,"reason":"集計","undefined_terms":[]},usage))
  execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
  execution.report.exec_bq=lambda _bq,query,**kwargs:(executed.append((query,kwargs)) or (([(1,)], ["metric_value"]),None))
  execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
  events=[]
  section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"},"source_columns":["metric_value"]}
- execution.run_section(section,period,events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=10)
- cases[key]={"allowed":executed[0][1]["allowed_dataset"],"generated":len(generated),"results":len([event for event in events if event["type"]=="result"])}
+ execution.run_section(section,events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=10)
+ cases[key]={"query_tables":sorted(executed[0][1]["policy"].query_tables),"max_results":executed[0][1]["max_results"],"rules":generated[0][1],"results":len([event for event in events if event["type"]=="result"])}
 print(json.dumps(cases,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    ga4: {
-      allowed: 'bigquery-public-data.ga4_obfuscated_sample_ecommerce',
-      generated: 1,
+    first: {
+      query_tables: ['alpha.dataset.records_a'],
+      max_results: 4,
+      rules: 'rules-first',
       results: 1,
     },
-    bitcoin: {
-      allowed: 'bigquery-public-data.crypto_bitcoin',
-      generated: 1,
+    second: {
+      query_tables: ['alpha.dataset.records_b'],
+      max_results: 8,
+      rules: 'rules-second',
       results: 1,
     },
   });
-  const source = readFileSync(
-    path.join(ROOT, 'spikes/report-generation/section_execution.py'),
-    'utf8',
-  );
-  assert.doesNotMatch(source, /profile\s*==\s*["']bitcoin["']/);
-  assert.doesNotMatch(source, /bitcoin_rules/);
 });
 
 test('planner asks for human-readable display fields instead of SQL expressions', () => {

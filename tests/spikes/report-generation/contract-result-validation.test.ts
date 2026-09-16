@@ -59,14 +59,15 @@ test('dry-run and execution result drift stop before an invalid result is emitte
 import section_execution as execution
 from analysis_contract_context import AnalysisExecutionPolicy,AnalysisResultPolicy
 from analysis_schema_policy import AnalysisFieldPolicy
-from data_source_profiles import DataSourceProfile
 table='alpha.dataset.records'
 policy=AnalysisExecutionPolicy(
  frozenset({table}),frozenset({table}),100,10,schema_fields=(AnalysisFieldPolicy(table,('id',),'STRING','REQUIRED',False,False),),
  result=AnalysisResultPolicy(frozenset(),frozenset({'Total'})),
 )
 execution.analysis_contract_context.execution_policy=lambda _contract:policy
-source=DataSourceProfile('opaque','Opaque','alpha.dataset',False,lambda _value:'',lambda _value:'',lambda _value:{},lambda *_args:'request',lambda sql:sql,lambda *_args:None,lambda *_args:'',object())
+execution.analysis_contract_context.sql_rules=lambda _contract:'rules'
+execution.analysis_contract_context.planning_period=lambda _contract:None
+contract=object()
 sql='SELECT COUNT(*) AS metric_value FROM '+chr(96)+table+chr(96)
 usage={'input_tokens':1,'output_tokens':1}
 execution.report.generate_request=lambda *_args,**_kwargs:({'sql':sql,'reason':'集計','undefined_terms':[]},usage)
@@ -75,14 +76,14 @@ diagnostics=[]
 execution.report.repair=lambda _client,_model,_request,_sql,diagnostic,_rules:(diagnostics.append(diagnostic) or ({'sql':'','reason':'shape mismatch','undefined_terms':[]},usage))
 executed=[]
 execution.report.exec_bq=lambda *_args,**_kwargs:(executed.append(True) or (([(1,)],['wrong_name']),None))
-section={'title':'集計','text':'合計する','planned_visualization':'scorecard','source_columns':['metric_value'],'semantic_dimensions':[],'semantic_measures':['Total'],'shape':{'columns':['合計']}}
+section={'title':'集計','text':'合計する','planned_visualization':'scorecard','source_columns':['metric_value'],'semantic_dimensions':[],'semantic_measures':['Total'],'shape':{'columns':['合計'],'rows':'1行'}}
 try:
- execution.run_section(section,{},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=10,rules='rules',context={'operation':'dashboard'})
+ execution.run_section(section,lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=10,context={'operation':'dashboard'})
 except execution.SectionExecutionError as error:dry_message=str(error)
 else:raise AssertionError('mismatched result executed')
 execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([('metric_value','INT64','NULLABLE')],None)
 try:
- execution.run_section(section,{},lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,source=source,max_result_rows=10,rules='rules',context={'operation':'dashboard'})
+ execution.run_section(section,lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=10,context={'operation':'dashboard'})
 except execution.SectionExecutionError as error:execution_message=str(error)
 else:raise AssertionError('drifted result emitted')
 print(json.dumps({'dry_message':dry_message,'execution_message':execution_message,'diagnostics':diagnostics,'executed':executed},ensure_ascii=False))
