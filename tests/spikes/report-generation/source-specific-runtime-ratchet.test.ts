@@ -71,17 +71,13 @@ type Inventory = Record<RuleName, Record<string, number>>;
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
     'bigquery_execution.py': 1,
-    'bitcoin_profile.py': 10,
     'evidence_components.py': 1,
-    'ga4_profile.py': 5,
     'metrics.json': 2,
     'sql_prompt_context.py': 3,
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {},
   fixedSchemaKnowledge: {
-    'bitcoin_profile.py': 14,
-    'ga4_profile.py': 2,
     'metrics.json': 18,
     'run_report.py': 1,
     'sql_prompt_context.py': 22,
@@ -93,22 +89,16 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'sql_prompt_context.py': 1,
   },
   sourceSpecificSqlRepair: {
-    'bitcoin_profile.py': 3,
-    'ga4_profile.py': 2,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 1,
   },
-  fixedDemoPeriod: {
-    'bitcoin_profile.py': 2,
-    'ga4_profile.py': 3,
-  },
+  fixedDemoPeriod: {},
   fixedBusinessVocabulary: {
     'metrics.json': 17,
     'sql_prompt_context.py': 6,
   },
   fixedDatasetConstant: {
     'bigquery_execution.py': 1,
-    'bitcoin_profile.py': 2,
     'tenant_serve.py': 1,
   },
   embeddedQuery: {
@@ -120,17 +110,13 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'tenant_serve.py': 3,
   },
   embeddedSchema: {
-    'bitcoin_profile.py': 1,
     'sql_prompt_context.py': 1,
   },
   qualifiedTableLiteral: {
     'sql_prompt_context.py': 1,
     'tenant_serve.py': 1,
   },
-  sourceSpecificModuleName: {
-    'bitcoin_profile.py': 1,
-    'ga4_profile.py': 1,
-  },
+  sourceSpecificModuleName: {},
   runtimeConfigAsset: {
     'metrics.json': 1,
   },
