@@ -120,7 +120,7 @@ def consultation_terms(
 def normalize_plan_header(
     raw: dict,
     objective: str,
-    period: dict[str, str],
+    period: dict[str, str] | None,
     answers: dict[str, str] | None,
     clarification_fields: tuple[str, ...],
 ) -> dict:
@@ -128,7 +128,7 @@ def normalize_plan_header(
     answers = answers or {}
     if not isinstance(raw, dict):
         raise PlannerError("分析計画がJSON objectではありません。")
-    if (
+    if period is not None and (
         not isinstance(period, dict)
         or not all(isinstance(period.get(key), str) for key in ("from", "to", "label"))
     ):

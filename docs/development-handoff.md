@@ -89,8 +89,10 @@ GA4固有の契約factoryは、オーナー指示と
 実行時未参照でテストだけが参照していた旧`live_contracts.py` facadeは
 [PR #715](https://github.com/Yukihide-Mitsuoka/repchat/pull/715)で削除しました。
 `analysis_dashboard_plan.py`に残る旧profileの保存・既定値・照合経路は
-[PR #716](https://github.com/Yukihide-Mitsuoka/repchat/pull/716)で削除しています。merge後は、
-`analysis_workflows.py`のprofile registry・既定対象選択を共通契約入力へ置換します。
+[PR #716](https://github.com/Yukihide-Mitsuoka/repchat/pull/716)で削除しました。
+`analysis_workflows.py`のprofile registry・既定対象選択は
+[PR #717](https://github.com/Yukihide-Mitsuoka/repchat/pull/717)で共通契約必須入力へ置換しています。merge後は、
+`section_execution.py`の`DataSourceProfile`入力を共通契約由来の実行policy・SQL規則へ置換します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -109,7 +111,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 
 | 分類 | 検出箇所 | 判定・扱い |
 |---|---|---|
-| 対象registryと既定値 | `data_source_profiles.py`、`analysis_workflows.py` | GA4／Bitcoinの登録済み対象だけを受け付け、複数箇所でGA4を既定値にする実行時固有処理。共通の自動発見pipelineへ置換して削除する。保存dashboard planの旧profile、旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`は削除済み |
+| 対象registryと既定値 | `data_source_profiles.py` | GA4／Bitcoinの登録済み対象だけを受け付ける実行時固有処理。共通の自動発見pipelineへ置換して削除する。workflowと保存dashboard planの旧profile、旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`は削除済み |
 | 手書きschema・意味・期間・SQL補正 | `ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別DDL、metric、期間、partition、識別子、URL処理、datasetを埋め込む実行時固有処理。対象別例外を増やさず削除する |
 | UIと補助実行経路 | `tenant_serve.py`、`evidence_components.py` | 固定の対象選択肢・文言・source名を持つ。旧ライブデモ入口と`live_ui_base.py`、`live_ui_interactions.py`は削除済み。残るUI補助moduleも共通runtimeへ移行せず、固有知識を持つものは削除する |
 | 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`という特定aliasとWeb導線前提のSankey要件が共通経路へ漏れている。時間roleと選択済み意味契約に基づく中立表現へ置換する |
@@ -145,7 +147,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge済み） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
 | 2 | 共通分析契約の自動生成（PR #679〜#685 merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py`、`analysis_contract_generation.py`、`analysis_contract_orchestration.py`、`bigquery_scope_discovery.py` | validator、生成入力、token限定normalizer、構造化response schema、対象非依存prompt、単一Vertex生成I/O、日次shardの検査済みwildcard統合と二段階生成はmerge済み。PR #685では利用可能な時間境界がない選択schemaだけ`period=null`でcompileし、ingestion-time partitionには標準疑似fieldを合成した。表現不能な必須partition filterは拒否する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | 契約由来のscope・上限・期間・field・SQL・結果形状検査を接続し、plannerの生成入力と契約付き保存planからprofile IDを除去した。残存作業は、旧runtimeのprofile照合、SQL生成のlegacy profile入力、URL等の特殊補正の削除 |
-| 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。残るworkflowのprofile registry依存を、認証済みconnection scopeから同じdiscovery／contract経路を解決する処理へ置換する。契約取得不能時は対象別fallbackへ戻らず共通診断でfail closedにする |
+| 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `evidence_components.py`、`tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payloadは削除済み。残る固定のmetric語彙、source名、問い合わせを除去する。`event_date`を中立なtemporal roleへ置換し、可視化は契約が対応する意味roleを持つ場合だけ選択する |
 | 6 | 旧実装を物理削除 | `data_source_profiles.py`、`ga4_profile.py`、`bitcoin_profile.py`、`sql_prompt_context.py`、`metrics.json`、`run_report.py`の旧export | 新runtimeから参照がなくなった時点でregistry、callback、手書きDDL・指標・期間・SQL補正を削除する。互換目的の対象別adapter、feature flag、隠し設定を残さない。runtime inventoryのallowlistを空にする |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |

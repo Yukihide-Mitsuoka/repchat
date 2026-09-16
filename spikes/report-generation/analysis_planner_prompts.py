@@ -10,7 +10,7 @@ from visualization_contracts import CHART_PLANNING_RULES
 
 def build_dashboard_planning_request(
     objective: str,
-    period: dict[str, str],
+    period: dict[str, str] | None,
     metrics: str,
     answers: dict[str, str],
     *,
@@ -55,10 +55,20 @@ def build_dashboard_planning_request(
         else "measuresは上のスキーマから計算根拠を説明できる指標だけにする。"
         "外部データやスキーマにない意味を補わず、定義が必要ならclarificationsで確認する。"
     )
+    period_label = (
+        period["label"]
+        if period is not None
+        else "なし（契約に時間境界がないため推測しない）"
+    )
+    temporal_rule = (
+        "execution_promptには契約の対象期間を明示する。"
+        if period is not None
+        else "execution_promptに期間、日付列、比較期間を推測して追加しない。"
+    )
     return f"""次の依頼から、選択されたデータソースの分析ダッシュボードを計画する。
 
 依頼: {objective}
-対象期間: {period['label']}
+対象期間: {period_label}
 読者回答: {answered}
 {revision_context}
 スキーマ・指標定義:
@@ -69,8 +79,9 @@ def build_dashboard_planning_request(
 - 固定済みの分析候補から選ばず、目的と仮説から分析仕様そのものを新規に考える。
 - 各パネルには構造化出力schemaで要求された分析仕様と、SQL生成へ渡す具体的な1行の日本語execution_promptを書く。
 - dimensionsとmeasuresにはSQL関数やSQL式ではなく、人が読める表示名を書く。
-- execution_promptにはSQLを書かない。対象期間、比較、必要な出力の意図が分かる自然な仕様にする。
+- execution_promptにはSQLを書かない。比較と必要な出力の意図が分かる自然な仕様にする。
   dimensionsとmeasuresは構造化フィールドを正本とし、execution_promptで表示名を逐語的に繰り返す必要はない。
+- {temporal_rule}
 - 比較や派生指標が意思決定に有用なら候補として提案してよい。ただし、データソースから確認できる
   期間・粒度・指標で実行できるかを判断し、追加の範囲や定義が必要ならclarificationsで確認する。
   確認前のexecution_promptやmeasuresには未確認の実行条件を含めず、確認済みなら必要な期間と出力列を

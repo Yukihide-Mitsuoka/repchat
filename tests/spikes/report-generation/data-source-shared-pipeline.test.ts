@@ -55,14 +55,14 @@ contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 original=profiles.profile_for("ga4");source=original.with_contract(contract)
 planning=[]
 def propose(_client,_model,objective,period,context,answers,**kwargs):
- planning.append({"context":context,"profile":kwargs.get("profile")});return ({"profile":"ga4","revision":"plan-123456789abc"},{"input_tokens":1,"output_tokens":1})
+ planning.append({"context":context,"profile":kwargs.get("profile")});return ({"revision":"plan-123456789abc"},{"input_tokens":1,"output_tokens":1})
 workflows.planner.propose_dashboard=propose
 events=[]
-workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},events.append,analysis_plan=None,revision_instruction=None,source=source,check_cancelled=lambda:None)
+workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"2021年1月のダッシュボードを作って",{},events.append,contract=contract,analysis_plan=None,revision_instruction=None,check_cancelled=lambda:None)
 mismatched={**events[-1]["plan"],"analysis_contract_fingerprint":"0"*64}
 workflows.planner.confirm_dashboard_plan=lambda candidate,**_kwargs:candidate
 try:
- workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"legacy metrics","2021年1月のダッシュボードを作って",{},lambda _event:None,analysis_plan=mismatched,revision_instruction="変更",source=source,check_cancelled=lambda:None)
+ workflows.plan_dashboard(object(),workflows.report.DEFAULT_MODEL,"2021年1月のダッシュボードを作って",{},lambda _event:None,contract=contract,analysis_plan=mismatched,revision_instruction="変更",check_cancelled=lambda:None)
 except workflows.AnalysisWorkflowError as error:mismatch_error=str(error)
 else:raise AssertionError("mismatched contract accepted")
 sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)+" WHERE _TABLE_SUFFIX BETWEEN '20210101' AND '20210131'"
@@ -100,33 +100,6 @@ print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]
   assert.equal(output.dry_run_bytes, 100);
   assert.equal(output.execution_bytes, 100);
   assert.equal(output.max_results, 11);
-});
-
-test('Bitcoin dashboard planning uses its schema without persisting a selected profile', () => {
-  const result = python(`
-import analysis_workflows as workflows
-import data_source_profiles as profiles
-source=profiles.profile_for("bitcoin")
-question="2024年1月のBitcoin取引構造を判断するダッシュボードを作って"
-calls=[]
-def propose(_client,_model,objective,period,context,answers,**kwargs):
- calls.append({"objective":objective,"period":period,"context":context,"profile":kwargs.get("profile")})
- return ({"revision":"plan-bitcoin"},{"input_tokens":1,"output_tokens":1})
-workflows.planner.propose_dashboard=propose
-events=[]
-workflows.plan_dashboard(
- object(),workflows.report.DEFAULT_MODEL,"ga4 metrics",question,{},events.append,
- analysis_plan=None,revision_instruction=None,source=source,check_cancelled=lambda:None,
-)
-print(json.dumps({"calls":calls,"plan":events[-1]["plan"]},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  const output = JSON.parse(result.stdout);
-  assert.equal(output.calls[0].profile, null);
-  assert.equal(output.calls[0].period.partition, '2024-01-01');
-  assert.match(output.calls[0].context, /crypto_bitcoin\.transactions/);
-  assert.doesNotMatch(output.calls[0].context, /GA4 export/);
-  assert.equal(output.plan.profile, undefined);
 });
 
 test('one section executor changes behavior only through the selected data-source contract', () => {
