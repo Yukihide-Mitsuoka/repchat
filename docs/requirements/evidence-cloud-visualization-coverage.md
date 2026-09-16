@@ -92,8 +92,8 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`sql_contract_validation.py`](../../spikes/report-generation/sql_contract_validation.py)、データセット境界のSQL検証・dry-run schema検査・BigQuery実行は
 [`bigquery_execution.py`](../../spikes/report-generation/bigquery_execution.py)、結果形状検証は
 [`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、1パネルの生成から実行までの順序は
-[`section_execution.py`](../../spikes/report-generation/section_execution.py)、確定パネルから根拠bundleを組み立てる順序は
-[`dashboard_build.py`](../../spikes/report-generation/dashboard_build.py)、実描画は
+[`section_execution.py`](../../spikes/report-generation/section_execution.py)を根拠とする。確定パネルから根拠bundleを
+組み立てる旧実装は対象別profileと手動metric定義へ依存していたため削除済みで、対象非依存のbundle組立経路は未実装である。実描画は
 [`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)、Evidenceのpage組み立ては
 [`evidence_page.py`](../../spikes/report-generation/evidence_page.py)、成果物の安全なファイル出力は
 [`evidence_output.py`](../../spikes/report-generation/evidence_output.py)、componentへの変換は
