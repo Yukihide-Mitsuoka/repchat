@@ -88,7 +88,9 @@ GA4固有の契約factoryは、オーナー指示と
 `live_http_validation.py`は[PR #714](https://github.com/Yukihide-Mitsuoka/repchat/pull/714)で削除しました。
 実行時未参照でテストだけが参照していた旧`live_contracts.py` facadeは
 [PR #715](https://github.com/Yukihide-Mitsuoka/repchat/pull/715)で削除しました。
-`analysis_dashboard_plan.py`に残る旧profileの保存・既定値・照合経路を後続の独立PRで削除します。
+`analysis_dashboard_plan.py`に残る旧profileの保存・既定値・照合経路は
+[PR #716](https://github.com/Yukihide-Mitsuoka/repchat/pull/716)で削除しています。merge後は、
+`analysis_workflows.py`のprofile registry・既定対象選択を共通契約入力へ置換します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
