@@ -155,6 +155,22 @@ print(json.dumps({"calls":calls,"limits":limits,"errors":errors}, ensure_ascii=F
   });
 });
 
+test('SQL generation uses only the optional common-contract time boundary', () => {
+  const result = loadRunReport(`
+section={"text":"合計する","shape":{"columns":["値"],"rows":"1行"},"source_columns":["metric_value"]}
+bounded=module["generation_request"](section,{"from":"2026-09-01","to":"2026-09-02","label":"ignored"})
+timeless=module["generation_request"](section,None)
+print(json.dumps({"bounded":bounded,"timeless":timeless},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.match(output.bounded, /契約の対象期間は 2026-09-01 から 2026-09-02/);
+  assert.doesNotMatch(output.bounded, /_TABLE_SUFFIX/);
+  assert.match(output.timeless, /契約に時間境界はない/);
+  assert.match(output.timeless, /期間や日付列を推測して追加しない/);
+  assert.doesNotMatch(output.timeless, /_TABLE_SUFFIX/);
+});
+
 test('SQL repair keeps the confirmed analysis contract and warehouse diagnostic', () => {
   const result = loadRunReport(`
 section = {

@@ -8,10 +8,10 @@ from typing import Callable
 import analysis_contract_context
 import contract_period_validation
 import contract_result_validation
-import data_source_profiles
 import run_report as report
 import sql_contract_validation as sql_contracts
 import visualization_results
+from analysis_contract import AnalysisContract
 
 
 class SectionExecutionError(RuntimeError):
@@ -20,34 +20,25 @@ class SectionExecutionError(RuntimeError):
 
 def _period_diagnostic(
     sql: str,
-    period: dict[str, str],
-    policy: analysis_contract_context.AnalysisExecutionPolicy | None,
-    fallback: Callable[[str, dict[str, str]], None],
+    policy: analysis_contract_context.AnalysisExecutionPolicy,
 ) -> str:
-    """Use canonical policy when present and keep legacy callbacks isolated."""
-    if policy is not None:
-        return contract_period_validation.contract_period_diagnostic(sql, policy)
-    return sql_contracts.sql_period_diagnostic(sql, period, fallback)
+    """Validate time constraints only through the canonical contract policy."""
+    return contract_period_validation.contract_period_diagnostic(sql, policy)
 
 
 def _period_repair_guidance(
-    period: dict[str, str],
-    policy: analysis_contract_context.AnalysisExecutionPolicy | None,
-    fallback: Callable[[dict[str, str]], str],
+    policy: analysis_contract_context.AnalysisExecutionPolicy,
 ) -> str:
     """Render repair instructions from the same boundary used for validation."""
-    if policy is not None:
-        return contract_period_validation.contract_period_repair_guidance(policy.period)
-    return fallback(period)
+    return contract_period_validation.contract_period_repair_guidance(policy.period)
 
 
 def _dashboard_sql_diagnostic(
     section: dict,
     sql: str,
     bq: object,
-    allowed_dataset: str,
     period_diagnostic: str,
-    policy: analysis_contract_context.AnalysisExecutionPolicy | None = None,
+    policy: analysis_contract_context.AnalysisExecutionPolicy,
 ) -> str:
     """Return the first repairable pre-execution diagnostic in policy order."""
     if period_diagnostic:
@@ -56,9 +47,8 @@ def _dashboard_sql_diagnostic(
         sql_contracts.validate_generated_dashboard_sql(section, sql)
     except sql_contracts.SQLContractError as validation_error:
         return str(validation_error)
-    policy_args = {"policy": policy} if policy is not None else {}
     dry_schema, dry_error = report.inspect_bq_schema(
-        bq, sql, allowed_dataset=allowed_dataset, **policy_args
+        bq, sql, allowed_dataset="", policy=policy
     )
     if dry_error:
         if not report.repairable_dry_run_error(dry_error):
@@ -84,19 +74,17 @@ def _execute_section_result(
     sql: str,
     *,
     bq: object,
-    allowed_dataset: str,
     max_result_rows: int,
     cost: float,
-    policy: analysis_contract_context.AnalysisExecutionPolicy | None = None,
+    policy: analysis_contract_context.AnalysisExecutionPolicy,
 ) -> dict:
     """Reject invalid query results before constructing the result event."""
-    policy_args = {"policy": policy} if policy is not None else {}
     result, error = report.exec_bq(
         bq,
         sql,
         max_results=max_result_rows + 1,
-        allowed_dataset=allowed_dataset,
-        **policy_args,
+        allowed_dataset="",
+        policy=policy,
     )
     if error:
         raise SectionExecutionError(f"BigQuery実行に失敗しました: {error}")
@@ -136,30 +124,21 @@ def _execute_section_result(
 
 def run_section(
     section: dict,
-    period: dict[str, str],
     emit: Callable[[dict], None],
     *,
     client: object,
     bq: object,
     model: str,
-    source: data_source_profiles.DataSourceProfile,
+    contract: AnalysisContract,
     max_result_rows: int,
-    rules: str | None = None,
     context: dict | None = None,
 ) -> float:
     """Generate, validate, execute, and optionally verify one panel."""
     extra = context or {}
-    policy = (
-        analysis_contract_context.execution_policy(source.analysis_contract)
-        if source.analysis_contract is not None
-        else None
-    )
-    result_row_limit = (
-        min(max_result_rows, policy.maximum_result_rows)
-        if policy is not None
-        else max_result_rows
-    )
-    policy_args = {"policy": policy} if policy is not None else {}
+    policy = analysis_contract_context.execution_policy(contract)
+    result_row_limit = min(max_result_rows, policy.maximum_result_rows)
+    sql_rules = analysis_contract_context.sql_rules(contract)
+    period = analysis_contract_context.planning_period(contract)
 
     def send(event: dict) -> None:
         emit({**event, **extra})
@@ -171,16 +150,14 @@ def run_section(
             "message": "Vertex AIでSQLを生成中です。",
         }
     )
-    request = source.generation_request(section, period)
+    request = report.generation_request(section, period)
     if extra.get("clarification_answer"):
         request += (
             "\n（利用者が未定義条件について追加した回答。ここに書かれた条件だけを使って対象を確定し、"
             "回答にない条件は推測しない）\n"
             f"{extra['clarification_answer'].strip()}"
         )
-    sql_rules = rules if rules is not None else source.sql_rules("")
     answer, usage = report.generate_request(client, model, request, sql_rules)
-    allowed_dataset = source.allowed_dataset
     cost = report.vertex_cost_jpy(model, usage)
     sql = (answer.get("sql") or "").strip()
     undefined = answer.get("undefined_terms") or []
@@ -197,28 +174,21 @@ def run_section(
         return cost
     if not sql:
         raise SectionExecutionError("SQLが返りませんでした。指標定義または質問を確認してください。")
-    normalized, error = report.validate_sql(
-        sql, allowed_dataset, **policy_args
-    )
+    normalized, error = report.validate_sql(sql, "", policy=policy)
     if error:
         raise SectionExecutionError(f"生成SQLを安全検査で拒否しました: {error}")
     assert normalized is not None
-    normalized = source.normalize_sql(normalized)
     allow_period_repair = extra.get("operation") == "dashboard"
-    fallback_period_check = source.require_sql_period
-    fallback_period_guidance = source.period_repair_guidance
-    period_diagnostic = _period_diagnostic(
-        normalized, period, policy, fallback_period_check
-    )
+    period_diagnostic = _period_diagnostic(normalized, policy)
     if period_diagnostic and allow_period_repair:
         period_diagnostic += (
-            f" 修正要件: {_period_repair_guidance(period, policy, fallback_period_guidance)}"
+            f" 修正要件: {_period_repair_guidance(policy)}"
         )
     if period_diagnostic and (
         not allow_period_repair or not section.get("source_columns")
     ):
         raise SectionExecutionError(period_diagnostic)
-    if policy is not None and not section.get("source_columns"):
+    if not section.get("source_columns"):
         send(
             {
                 "type": "stage",
@@ -230,7 +200,6 @@ def run_section(
             section,
             normalized,
             bq,
-            allowed_dataset,
             "",
             policy,
         )
@@ -246,14 +215,13 @@ def run_section(
                 "message": "描画仕様とBigQuery dry runの出力schemaを照合中です。",
             }
         )
-        analysis_request = source.generation_request(section, period)
+        analysis_request = request
         repair_used = False
         while True:
             diagnostic = _dashboard_sql_diagnostic(
                 section,
                 normalized,
                 bq,
-                allowed_dataset,
                 period_diagnostic if allow_period_repair else "",
                 policy,
             )
@@ -289,21 +257,18 @@ def run_section(
                     + detail
                 )
             normalized, validation_error = report.validate_sql(
-                repaired_sql, allowed_dataset, **policy_args
+                repaired_sql, "", policy=policy
             )
             if validation_error:
                 raise SectionExecutionError(
                     f"修正SQLを安全検査で拒否しました: {validation_error}"
                 )
             assert normalized is not None
-            normalized = source.normalize_sql(normalized)
-            period_diagnostic = _period_diagnostic(
-                normalized, period, policy, fallback_period_check
-            )
+            period_diagnostic = _period_diagnostic(normalized, policy)
             if period_diagnostic and allow_period_repair:
                 period_diagnostic += (
                     " 修正要件: "
-                    + _period_repair_guidance(period, policy, fallback_period_guidance)
+                    + _period_repair_guidance(policy)
                 )
             if period_diagnostic and not allow_period_repair:
                 raise SectionExecutionError(period_diagnostic)
@@ -329,7 +294,6 @@ def run_section(
             section,
             normalized,
             bq=bq,
-            allowed_dataset=allowed_dataset,
             max_result_rows=result_row_limit,
             cost=cost,
             policy=policy,

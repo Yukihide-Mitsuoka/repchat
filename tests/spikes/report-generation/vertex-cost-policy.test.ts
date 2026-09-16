@@ -53,19 +53,28 @@ print(json.dumps([
 test('SQL generation returns and emits the current Vertex cost', () => {
   const output = python(`
 import section_execution as execution
+from analysis_contract_context import AnalysisExecutionPolicy
 usage={"input_tokens":1000,"output_tokens":1000}
-sql="SELECT 1 AS metric_value"
+table="alpha.dataset.records"
+sql="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)
+policy=AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10)
+contract=object()
+execution.analysis_contract_context.execution_policy=lambda _contract:policy
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
+execution.analysis_contract_context.planning_period=lambda _contract:None
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
 execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
-execution.report.validate_sql=lambda value,_dataset:(value,None)
-execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
+execution.report.validate_sql=lambda value,_dataset,**_kwargs:(value,None)
+execution.sql_contracts.validate_generated_dashboard_sql=lambda *_args,**_kwargs:None
+execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
+execution.sql_contracts.validate_dashboard_dry_run_schema=lambda *_args,**_kwargs:None
 execution.report.exec_bq=lambda *_args,**_kwargs:(([(1,)], ["metric_value"]),None)
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 events=[]
 cost=execution.run_section(
- {"shape":{"columns":["metric_value"]}}, {}, events.append,
- client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,rules="rules",
- source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+ {"shape":{"columns":["metric_value"]}}, events.append,
+ client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+ contract=contract,max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({"returned":cost,"emitted":result["cost_jpy"]}))
@@ -76,14 +85,20 @@ print(json.dumps({"returned":cost,"emitted":result["cost_jpy"]}))
 test('one SQL repair adds its Vertex cost before the result event', () => {
   const output = python(`
 import section_execution as execution
+from analysis_contract_context import AnalysisExecutionPolicy
 initial_usage={"input_tokens":1000,"output_tokens":1000}
 repair_usage={"input_tokens":2000,"output_tokens":2000}
-initial="SELECT 1 AS metric_value"
-repaired="SELECT COUNT(*) AS metric_value FROM source"
+table="alpha.dataset.records"
+initial="SELECT COUNT(*) AS metric_value FROM "+chr(96)+table+chr(96)
+repaired="SELECT COUNT(1) AS metric_value FROM "+chr(96)+table+chr(96)
+policy=AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),100,10)
+contract=object()
+execution.analysis_contract_context.execution_policy=lambda _contract:policy
+execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
+execution.analysis_contract_context.planning_period=lambda _contract:None
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},initial_usage)
 execution.report.generation_request=lambda *_args:"analysis request"
-execution.report.validate_sql=lambda value,_dataset:(value,None)
-execution.sql_contracts.sql_period_diagnostic=lambda *_args:""
+execution.report.validate_sql=lambda value,_dataset,**_kwargs:(value,None)
 checks=[]
 def validate(_section,_sql):
  checks.append(_sql)
@@ -97,8 +112,8 @@ execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 events=[]
 cost=execution.run_section(
  {"source_columns":["metric_value"],"shape":{"columns":["metric_value"]}},
- {},events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
- rules="rules",source=execution.data_source_profiles.profile_for("ga4"),max_result_rows=10,
+ events.append,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
+ contract=contract,max_result_rows=10,
 )
 result=next(event for event in events if event["type"]=="result")
 print(json.dumps({
@@ -109,7 +124,10 @@ print(json.dumps({
   assert.deepEqual(output, {
     returned: 4.185,
     emitted: 4.185,
-    checked: ['SELECT 1 AS metric_value', 'SELECT COUNT(*) AS metric_value FROM source'],
+    checked: [
+      'SELECT COUNT(*) AS metric_value FROM `alpha.dataset.records`',
+      'SELECT COUNT(1) AS metric_value FROM `alpha.dataset.records`',
+    ],
     stages: ['generate', 'validate', 'repair', 'execute'],
   });
 });
