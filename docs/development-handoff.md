@@ -101,8 +101,8 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 [PR #721](https://github.com/Yukihide-Mitsuoka/repchat/pull/721)では、testだけが参照していた
 `data_source_profiles.py`と旧registry自体のテストを削除し、共通contractがplanner・SQL・実行policyへ
 直結する検査を維持し、merge済みです。
-現在の`codex/188-remove-legacy-profiles`では、実行経路から未参照の`ga4_profile.py`と
-`bitcoin_profile.py`を物理削除します。この変更の次は`sql_prompt_context.py`と`metrics.json`の
+[PR #722](https://github.com/Yukihide-Mitsuoka/repchat/pull/722)では、実行経路から未参照の
+`ga4_profile.py`と`bitcoin_profile.py`を物理削除します。この変更の次は`sql_prompt_context.py`と`metrics.json`の
 参照経路を確認し、対象別のschema・指標・SQL補正を共通実装へ移さず順次削除します。
 PR #721と現在の変更はそれぞれ、2026-09-16に変更前後の`make test-unit`、変更後の`make format`、
 `make lint`、`make test`が成功しました。
