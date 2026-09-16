@@ -45,7 +45,8 @@ assert bound["revision"].startswith("plan-") and bound["revision"]!=source["revi
 assert c.bind_specification(bound,contract)==bound
 c.require_specification_contract(bound,contract)
 raw={"objective_summary":"比較する","audience":"責任者","comparison":"区分間","hypotheses":["差がある"],"clarifications":[],"panels":[{"title":"集計","kpi":"合計","chart":"scorecard","decision":"判断する","reason":"必要","execution_prompt":"合計を出す","dimensions":[],"measures":["合計"],"layout_row":1,"layout_weight":1}]}
-normalized=planner.normalize_dashboard_plan(raw,"比較する",{"from":"20260101","to":"20260131","label":"2026年1月"},{"audience":"責任者"},profile=None)
+normalized=planner.normalize_dashboard_plan(raw,"比較する",{"from":"20260101","to":"20260131","label":"2026年1月"},{"audience":"責任者"})
+assert "profile" not in normalized
 confirmed=planner.confirm_dashboard_plan(c.bind_specification(normalized,contract))
 assert confirmed["analysis_contract_fingerprint"]==contract.fingerprint
 assert "profile" not in confirmed

@@ -137,10 +137,7 @@ def plan_dashboard(
         period_resolver = period_for_question or selected_source.period_for_question
         period = period_resolver(question)
         current_plan = (
-            planner.confirm_dashboard_plan(
-                analysis_plan,
-                expected_profile=selected_source.key if contract is None else None,
-            )
+            planner.confirm_dashboard_plan(analysis_plan)
             if analysis_plan
             else None
         )
@@ -163,7 +160,6 @@ def plan_dashboard(
             answers,
             current_plan=current_plan,
             instruction=revision_instruction,
-            profile=selected_source.key if contract is None else None,
         )
         if contract is not None:
             plan = analysis_contract_context.bind_specification(plan, contract)

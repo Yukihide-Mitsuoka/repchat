@@ -91,9 +91,7 @@ def build_dashboard(
     if analysis_plan is None:
         raise DashboardBuildError("AIが作成した分析仕様を確定してからbuildしてください。")
     try:
-        confirmed = planner.confirm_dashboard_plan(
-            analysis_plan, expected_profile=profile
-        )
+        confirmed = planner.confirm_dashboard_plan(analysis_plan)
     except planner.PlannerError as error:
         raise DashboardBuildError(str(error)) from error
     period, sections = sections_for_plan(question, confirmed, profile)

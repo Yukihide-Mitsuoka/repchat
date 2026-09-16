@@ -102,7 +102,7 @@ print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]
   assert.equal(output.max_results, 11);
 });
 
-test('Bitcoin dashboard planning uses its schema and freezes the selected profile', () => {
+test('Bitcoin dashboard planning uses its schema without persisting a selected profile', () => {
   const result = python(`
 import analysis_workflows as workflows
 import data_source_profiles as profiles
@@ -110,8 +110,8 @@ source=profiles.profile_for("bitcoin")
 question="2024年1月のBitcoin取引構造を判断するダッシュボードを作って"
 calls=[]
 def propose(_client,_model,objective,period,context,answers,**kwargs):
- calls.append({"objective":objective,"period":period,"context":context,"profile":kwargs["profile"]})
- return ({"profile":"bitcoin","revision":"plan-bitcoin"},{"input_tokens":1,"output_tokens":1})
+ calls.append({"objective":objective,"period":period,"context":context,"profile":kwargs.get("profile")})
+ return ({"revision":"plan-bitcoin"},{"input_tokens":1,"output_tokens":1})
 workflows.planner.propose_dashboard=propose
 events=[]
 workflows.plan_dashboard(
@@ -122,11 +122,11 @@ print(json.dumps({"calls":calls,"plan":events[-1]["plan"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.calls[0].profile, 'bitcoin');
+  assert.equal(output.calls[0].profile, null);
   assert.equal(output.calls[0].period.partition, '2024-01-01');
   assert.match(output.calls[0].context, /crypto_bitcoin\.transactions/);
   assert.doesNotMatch(output.calls[0].context, /GA4 export/);
-  assert.equal(output.plan.profile, 'bitcoin');
+  assert.equal(output.plan.profile, undefined);
 });
 
 test('one section executor changes behavior only through the selected data-source contract', () => {
