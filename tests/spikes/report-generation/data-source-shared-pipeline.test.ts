@@ -2,43 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { python } from './live-demo-test-helpers.ts';
 
-test('GA4 and Bitcoin expose only data-source contracts to one shared pipeline', () => {
-  const result = python(`
-import data_source_profiles as profiles
-observed={}
-for key in profiles.profile_keys():
- source=profiles.profile_for(key)
- observed[key]={
-  "key":source.key,
-  "dataset":source.allowed_dataset,
-  "context":source.planner_context("defined metrics"),
-  "rules":source.sql_rules("defined metrics"),
- }
-print(json.dumps({
- "keys":list(profiles.profile_keys()),
- "ga4_dataset":observed["ga4"]["dataset"],
- "bitcoin_dataset":observed["bitcoin"]["dataset"],
- "ga4_schema":"events_*" in observed["ga4"]["context"],
- "bitcoin_schema":"outputs ARRAY<STRUCT" in observed["bitcoin"]["context"],
- "no_analysis_catalog":all(not hasattr(source,name) for source in profiles.all_profiles() for name in ["panels","queries","examples"]),
-},ensure_ascii=False))
-`);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), {
-    keys: ['ga4', 'bitcoin'],
-    ga4_dataset: 'bigquery-public-data.ga4_obfuscated_sample_ecommerce',
-    bitcoin_dataset: 'bigquery-public-data.crypto_bitcoin',
-    ga4_schema: true,
-    bitcoin_schema: true,
-    no_analysis_catalog: true,
-  });
-});
-
-test('one bound common contract reaches the actual planner and SQL generation paths', () => {
+test('one common contract reaches the actual planner and SQL generation paths', () => {
   const result = python(`
 import hashlib
 import analysis_workflows as workflows
-import data_source_profiles as profiles
 import section_execution as execution
 from datetime import date,timedelta
 from analysis_contract import AnalysisContract,fingerprint_contract_content
@@ -50,7 +17,6 @@ schema_fingerprint=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_ke
 content={"version":1,"schema":{"fingerprint":schema_fingerprint,"retrieved_at":"2026-09-12T00:00:00+00:00","metadata":metadata},"semantics":{"grain":{},"metrics":{},"dimensions":{},"relationships":[]},"period":{"business_time":{"table":table,"field":"_TABLE_SUFFIX"},"timezone":"UTC","range":{"start":"2021-01-01","end":"2021-01-31"},"partitions":[{"table":table,"field":"_TABLE_SUFFIX"}]},"limits":{"maximum_bytes_billed":100,"maximum_result_rows":10}}
 encoded=json.dumps(content,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 contract=AnalysisContract(encoded,fingerprint_contract_content(content))
-original=profiles.profile_for("ga4");source=original.with_contract(contract)
 planning=[]
 def propose(_client,_model,objective,period,context,answers,**kwargs):
  planning.append({"context":context,"profile":kwargs.get("profile")});return ({"revision":"plan-123456789abc"},{"input_tokens":1,"output_tokens":1})
@@ -72,15 +38,8 @@ execution.report.exec_bq=lambda *_args,**kwargs:(executed.append(kwargs) or (([(
 execution.visualization_results.dashboard_visualization=lambda *_args:"scalar"
 section={"title":"対象","text":"対象を集計","planned_visualization":"scorecard","shape":{"columns":["値"],"rows":"1行"}}
 execution.run_section(section,lambda _event:None,client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,contract=contract,max_result_rows=50)
-errors=[]
-other=json.loads(encoded);other["schema"]["metadata"]["tables"][0]["table"]="bigquery-public-data.crypto_bitcoin.transactions"
-other_encoded=json.dumps(other,ensure_ascii=False,sort_keys=True,separators=(",",":"))
-for candidate in (AnalysisContract(encoded,"0"*64),AnalysisContract(other_encoded,fingerprint_contract_content(other))):
- try:original.with_contract(candidate)
- except ValueError as error:errors.append(str(error))
- else:raise AssertionError("unsafe contract binding accepted")
 planned=events[-1]["plan"]
-print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]["profile"],"plan_profile":planned.get("profile"),"plan_fingerprint":planned.get("analysis_contract_fingerprint"),"mismatch_error":mismatch_error,"sql":generated[0],"fingerprint":contract.fingerprint,"original":"CREATE TABLE" in original.planner_context(""),"bound_contract":source.analysis_contract.fingerprint,"errors":errors,"dry_run_bytes":inspected[0]["policy"].maximum_bytes_billed,"execution_bytes":executed[0]["policy"].maximum_bytes_billed,"max_results":executed[0]["max_results"]},ensure_ascii=False))
+print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]["profile"],"plan_profile":planned.get("profile"),"plan_fingerprint":planned.get("analysis_contract_fingerprint"),"mismatch_error":mismatch_error,"sql":generated[0],"fingerprint":contract.fingerprint,"dry_run_bytes":inspected[0]["policy"].maximum_bytes_billed,"execution_bytes":executed[0]["policy"].maximum_bytes_billed,"max_results":executed[0]["max_results"]},ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -92,9 +51,6 @@ print(json.dumps({"planner":planning[0]["context"],"planner_profile":planning[0]
   assert.match(output.sql, new RegExp(output.fingerprint));
   assert.doesNotMatch(output.planner, /CREATE TABLE/);
   assert.doesNotMatch(output.sql, /CREATE TABLE/);
-  assert.equal(output.original, true);
-  assert.equal(output.bound_contract, output.fingerprint);
-  assert.equal(output.errors.length, 2);
   assert.equal(output.dry_run_bytes, 100);
   assert.equal(output.execution_bytes, 100);
   assert.equal(output.max_results, 11);

@@ -281,29 +281,14 @@ AIが表を選んだ場合は、取得値を変更せずに検索、安定ソー
 中立色で示します。
 表内スパークラインは区分・日付・値のlong形式を検査し、区分ごとの最新値とEChartsによる推移を表示します。
 
-GA4とBitcoinは、相談、ダッシュボード計画、仕様確定、SQL生成、実行前検査、BigQuery実行、描画まで
-同じパイプラインを通ります。データソースごとの差は`data_source_profiles.py`から解決するスキーマ文脈、
-許可dataset、期間条件、SQL規則、意味を変えないSQL正規化だけです。プロファイルにはパネル候補、例題、
-固定SQL、可視化の選択を置かず、AIが利用者の目的とスキーマから分析仕様を考察します。確定した計画には
-profileを含め、別のデータソースへ切り替えた状態でのbuildはBigQuery送信前に拒否します。
+共通の相談、ダッシュボード計画、SQL生成、実行前検査、BigQuery実行、描画経路は、認可済みscopeから
+自動生成した同じcanonical analysis contractを直接受け取ります。分析対象を選ぶprofile registry、対象別の
+dataset・期間parser・SQL補正・固定schemaへのfallbackは使いません。確定した計画はcontract fingerprintを
+保持し、build時の契約と一致しなければBigQuery送信前に拒否します。
 
-Bitcoinの実テーブル列`hash`はGoogleSQLの予約語です。生成SQLがCTEでこの列を裸の識別子として
-再参照した場合だけ、文字列・コメント・修飾済み／引用済み識別子を保ったまま`` `hash` ``へ補正します。
-画面には補正後の実際にBigQueryへ送るSQLを表示し、同じ補正を繰り返してもSQLは変化しません。
-
-単一グラフとダッシュボードの分析対象では、GA4に加えてIssue #188の最初の非GA4プロファイルとして
-`bigquery-public-data.crypto_bitcoin.transactions`を選択できます。許可datasetはプロファイルIDからサーバー側で決め、ブラウザから任意の
-project/dataset/table名を渡しません。`block_timestamp_month`が指定月の月初、または明示した月範囲の両端と一致しない生成SQL、
-別dataset、`SELECT *`、DDL/DML、複数statement、100行超の結果はfail closedにします。
-Bitcoinの`YYYY年M月からM月まで`と`YYYY年M月からYYYY年M月まで`は、最初と最後の月初を
-`BETWEEN`で固定し、単月指定は従来どおり等価条件で固定します。
-
-2026-08-02に基準SQLをBigQuery dry runし、処理見積りは3,115,504,440 bytes（約2.91GiB）でした。
-dry runはデータ取得を実行せず、クエリ料金も発生しません。ライブ送信時は生成SQLの差を考慮して
-20GiBをhard limitに保ち、画面で通常約¥4・最大約¥20を再確認します。独立レビューも生成結果との
-実値照合も未実施です。したがってこの追加は「公開された非GA4 nested/repeated schema 1種類で、
-単一グラフとダッシュボードの共通経路を通せる」という縦切りに限り、
-未知・非公開相当2種類の反復評価を求めるIssue #188は閉じません。
+旧ライブデモ用に残る対象別profile moduleと固定metric資産は共通runtimeから未参照であり、段階的に物理削除します。
+未知schemaでの実値照合・独立レビュー・反復評価は未完了なので、共通経路化だけで任意schema対応を実証済みとは
+扱いません。
 
 ダッシュボード生成は、まずVertex AIの分析plannerが1つの月次ECサイト分析目的を意思決定、仮説、
 確認事項、KPI・グラフ候補へ分解します。最大3件の確認にはAIの推奨回答が採用済みで表示されるため、
