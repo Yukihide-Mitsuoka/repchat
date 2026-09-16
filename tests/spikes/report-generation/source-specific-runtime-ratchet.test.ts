@@ -72,31 +72,20 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
     'bigquery_execution.py': 1,
     'evidence_components.py': 1,
-    'metrics.json': 2,
-    'sql_prompt_context.py': 3,
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {},
   fixedSchemaKnowledge: {
-    'metrics.json': 18,
-    'run_report.py': 1,
-    'sql_prompt_context.py': 22,
     'tenant_serve.py': 5,
     'visualization_contracts.py': 9,
     'visualization_sections.py': 5,
   },
-  fixedMetricAsset: {
-    'sql_prompt_context.py': 1,
-  },
+  fixedMetricAsset: {},
   sourceSpecificSqlRepair: {
     'sql_generation.py': 1,
-    'sql_prompt_context.py': 1,
   },
   fixedDemoPeriod: {},
-  fixedBusinessVocabulary: {
-    'metrics.json': 17,
-    'sql_prompt_context.py': 6,
-  },
+  fixedBusinessVocabulary: {},
   fixedDatasetConstant: {
     'bigquery_execution.py': 1,
     'tenant_serve.py': 1,
@@ -105,21 +94,15 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'analysis_consultation.py': 1,
     'analysis_dashboard_plan.py': 1,
     'evidence_components.py': 1,
-    'metrics.json': 4,
     'sql_display.py': 1,
     'tenant_serve.py': 3,
   },
-  embeddedSchema: {
-    'sql_prompt_context.py': 1,
-  },
+  embeddedSchema: {},
   qualifiedTableLiteral: {
-    'sql_prompt_context.py': 1,
     'tenant_serve.py': 1,
   },
   sourceSpecificModuleName: {},
-  runtimeConfigAsset: {
-    'metrics.json': 1,
-  },
+  runtimeConfigAsset: {},
 };
 
 function runtimeFiles(directory: string): string[] {
