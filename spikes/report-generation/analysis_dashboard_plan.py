@@ -39,7 +39,7 @@ INITIAL_PANEL_COUNT, MAX_PANEL_COUNT = planner_panel_counts()
 def _normalize_plan_header(
     raw: dict,
     objective: str,
-    period: dict[str, str],
+    period: dict[str, str] | None,
     answers: dict[str, str] | None,
 ) -> dict:
     return _normalize_plan_header_impl(
@@ -50,7 +50,7 @@ def _normalize_plan_header(
 def normalize_dashboard_plan(
     raw: dict,
     objective: str,
-    period: dict[str, str],
+    period: dict[str, str] | None,
     answers: dict[str, str] | None = None,
     *,
     allow_layout_gaps: bool = False,

@@ -25,15 +25,18 @@ usage={"input_tokens":1000,"output_tokens":1000}
 workflows.planner.propose_consultation=lambda *_args,**_kwargs:({},usage)
 workflows.planner.propose_dashboard=lambda *_args,**_kwargs:({},usage)
 workflows.meeting.generate=lambda *_args,**_kwargs:({},usage)
+workflows.analysis_contract_context.planner_context=lambda _contract:"context"
+workflows.analysis_contract_context.planning_period=lambda _contract:{}
+workflows.analysis_contract_context.bind_specification=lambda plan,_contract:plan
+contract=object()
 events=[]
 workflows.consult(
- object(),workflows.report.DEFAULT_MODEL,"metrics","question",[],"ga4",events.append,
- context_for_profile=lambda *_args:"context",check_cancelled=lambda:None,
+ object(),workflows.report.DEFAULT_MODEL,"question",[],events.append,
+ contract=contract,check_cancelled=lambda:None,
 )
 workflows.plan_dashboard(
- object(),workflows.report.DEFAULT_MODEL,"metrics","question",{},events.append,
- analysis_plan=None,revision_instruction=None,period_for_question=lambda _question:{},
- context_for_profile=lambda *_args:"context",check_cancelled=lambda:None,
+ object(),workflows.report.DEFAULT_MODEL,"question",{},events.append,
+ contract=contract,analysis_plan=None,revision_instruction=None,check_cancelled=lambda:None,
 )
 workflows.generate_meeting_report(
  object(),workflows.report.DEFAULT_MODEL,{"build_revision":"build-1"},"build-1",events.append,

@@ -18,6 +18,7 @@ test('planner and SQL roles receive the same canonical contract', () => {
       `
 planner=c.planner_context(contract)
 sql=c.sql_rules(contract)
+period=c.planning_period(contract)
 assert encoded in planner and encoded in sql
 assert contract.fingerprint in planner and contract.fingerprint in sql
 assert "未信頼" in planner and "未信頼" in sql
@@ -25,6 +26,7 @@ assert "固定の分析候補" in planner
 assert "SELECT *" in sql
 assert "一意なASCII alias" in sql and "modeがREPEATEDのfieldだけをUNNEST" in sql
 assert "_TABLE_SUFFIX BETWEEN" in sql
+assert period=={"from":"2026-01-01","to":"2026-01-31","label":"2026-01-01〜2026-01-31"}
 print("ok")
 `,
   );
@@ -36,17 +38,17 @@ test('binding creates an independent revision tied to the contract', () => {
   const result = python(
     setup +
       `
-source={"revision":"plan-123456789abc","objective":"比較","profile":"legacy-source"}
+source={"revision":"plan-123456789abc","objective":"比較"}
 bound=c.bind_specification(source,contract)
-assert source=={"revision":"plan-123456789abc","objective":"比較","profile":"legacy-source"}
+assert source=={"revision":"plan-123456789abc","objective":"比較"}
 assert bound["analysis_contract_fingerprint"]==contract.fingerprint
-assert "profile" not in bound
 assert bound["revision"].startswith("plan-") and bound["revision"]!=source["revision"]
 assert c.bind_specification(bound,contract)==bound
 c.require_specification_contract(bound,contract)
 raw={"objective_summary":"比較する","audience":"責任者","comparison":"区分間","hypotheses":["差がある"],"clarifications":[],"panels":[{"title":"集計","kpi":"合計","chart":"scorecard","decision":"判断する","reason":"必要","execution_prompt":"合計を出す","dimensions":[],"measures":["合計"],"layout_row":1,"layout_weight":1}]}
 normalized=planner.normalize_dashboard_plan(raw,"比較する",{"from":"20260101","to":"20260131","label":"2026年1月"},{"audience":"責任者"})
 assert "profile" not in normalized
+assert planner.normalize_dashboard_plan(raw,"比較する",None,{"audience":"責任者"})["period"] is None
 confirmed=planner.confirm_dashboard_plan(c.bind_specification(normalized,contract))
 assert confirmed["analysis_contract_fingerprint"]==contract.fingerprint
 assert "profile" not in confirmed
@@ -77,6 +79,10 @@ time_free={**content,"period":None}
 time_free_json=json.dumps(time_free,ensure_ascii=False,sort_keys=True,separators=(",",":"))
 time_free_contract=AnalysisContract(time_free_json,fingerprint_contract_content(time_free))
 planner=c.planner_context(time_free_contract);sql=c.sql_rules(time_free_contract)
+assert c.planning_period(time_free_contract) is None
+import analysis_planner as dashboard
+request=dashboard.dashboard_planning_request("全体を把握する",None,planner,{})
+assert "対象期間: なし" in request and "期間、日付列、比較期間を推測して追加しない" in request
 assert "適用可能な場合の期間" in planner
 assert "periodはnull" in sql and "期間、timezone、partition疑似列を推測して追加しない" in sql
 assert "periodのbusiness_timeで対象期間を絞り" not in sql

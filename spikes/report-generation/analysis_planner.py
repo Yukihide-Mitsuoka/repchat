@@ -125,7 +125,7 @@ def _dashboard_response_schema(
 
 def dashboard_planning_request(
     objective: str,
-    period: dict[str, str],
+    period: dict[str, str] | None,
     metrics: str,
     answers: dict[str, str],
     *,
@@ -153,7 +153,7 @@ def propose_dashboard(
     client,
     model: str,
     objective: str,
-    period: dict,
+    period: dict | None,
     metrics: str,
     answers: dict,
     *,

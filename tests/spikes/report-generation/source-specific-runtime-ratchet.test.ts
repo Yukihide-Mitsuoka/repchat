@@ -70,7 +70,6 @@ type Inventory = Record<RuleName, Record<string, number>>;
 
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
-    'analysis_workflows.py': 1,
     'bigquery_execution.py': 1,
     'bitcoin_profile.py': 10,
     'data_source_profiles.py': 6,
@@ -82,7 +81,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {
-    'analysis_workflows.py': 13,
     'dashboard_build.py': 2,
     'data_source_profiles.py': 10,
     'section_execution.py': 3,
@@ -101,7 +99,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'sql_prompt_context.py': 1,
   },
   sourceSpecificSqlRepair: {
-    'analysis_workflows.py': 4,
     'bitcoin_profile.py': 3,
     'dashboard_build.py': 2,
     'data_source_profiles.py': 11,
