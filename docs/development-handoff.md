@@ -90,7 +90,9 @@ GA4固有の契約factoryは、オーナー指示と
 [PR #715](https://github.com/Yukihide-Mitsuoka/repchat/pull/715)で削除しました。
 `analysis_dashboard_plan.py`に残る旧profileの保存・既定値・照合経路は
 [PR #716](https://github.com/Yukihide-Mitsuoka/repchat/pull/716)で削除しました。
-`analysis_workflows.py`のprofile registry・既定対象選択も後続の独立PRで共通契約必須入力へ置換します。
+`analysis_workflows.py`のprofile registry・既定対象選択は
+[PR #717](https://github.com/Yukihide-Mitsuoka/repchat/pull/717)で共通契約必須入力へ置換しています。merge後は、
+`section_execution.py`の`DataSourceProfile`入力を共通契約由来の実行policy・SQL規則へ置換します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
