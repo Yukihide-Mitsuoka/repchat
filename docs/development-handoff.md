@@ -98,8 +98,9 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 [PR #718](https://github.com/Yukihide-Mitsuoka/repchat/pull/718)はmerge済みです。
 続く[PR #720](https://github.com/Yukihide-Mitsuoka/repchat/pull/720)では、runtimeから未参照で
 対象別profileと手動metric定義を保存する`dashboard_build.py`を共通契約へ移植せず物理削除し、merge済みです。
-現在の`codex/188-remove-data-source-registry`では、testだけが参照していた`data_source_profiles.py`と
-旧registry自体のテストを削除し、共通contractがplanner・SQL・実行policyへ直結する検査を維持します。
+[PR #721](https://github.com/Yukihide-Mitsuoka/repchat/pull/721)では、testだけが参照していた
+`data_source_profiles.py`と旧registry自体のテストを削除し、共通contractがplanner・SQL・実行policyへ
+直結する検査を維持します。
 この変更の次は、未参照になった`ga4_profile.py`と`bitcoin_profile.py`を物理削除します。
 2026-09-16に変更前後の`make test-unit`、変更後の`make format`、`make lint`、`make test`が成功しました。
 
