@@ -45,7 +45,6 @@ from sql_display_structure import (
     normalize_sql_indentation,
     sql_parenthesis_delta,
 )
-from sql_prompt_context import SCHEMA_DDL, metrics_block, prompt_rules
 
 HERE = Path(__file__).parent
 DEFAULT_MODEL = "gemini-3.6-flash"

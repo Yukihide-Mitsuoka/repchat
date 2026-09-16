@@ -126,7 +126,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 ## 次の接続点
 
 [ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、共通runtimeから未参照になった
-対象別profile module、特殊補正、metrics fileを物理削除します。対象固有のfactory、profile、設定は追加しません。
+対象別profile moduleと手動metric資産は削除済みです。残る特殊補正は共通契約経路で使用されていないことを
+確認してから除去します。対象固有のfactory、profile、設定は追加しません。
 未知schema評価も同じ共通契約経路を使い、評価用知識をruntimeへ渡しません。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

@@ -188,8 +188,7 @@ request = module["repair_request"](
     "SELECT broken AS source FROM \`bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*\`",
     "Correlated subqueries that reference other tables are not supported",
 )
-rules = module["prompt_rules"]("")
-print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
+print(json.dumps({"request": request}, ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
@@ -198,9 +197,6 @@ print(json.dumps({"request": request, "rules": rules}, ensure_ascii=False))
   assert.match(output.request, /source、target、metric_value/);
   assert.match(output.request, /ORDER BY metric_value DESC LIMIT 100/);
   assert.match(output.request, /未確認の期間・派生指標が含まれる場合は、推測で列を追加せず/);
-  assert.match(output.rules, /後続CTEやJOINから外側のテーブルを参照する相関サブクエリを作らない/);
-  assert.match(output.rules, /NET\.PARSE_URL/);
-  assert.match(output.rules, /REGEXP_EXTRACT/);
 });
 
 test('only BigQuery compiler BadRequest diagnostics are repairable', () => {
