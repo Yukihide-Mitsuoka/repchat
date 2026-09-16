@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.25.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v1.25.0) (2026-09-16)
+
+
+### Features
+
+* **analysis:** section executionを共通契約に限定 ([#718](https://github.com/Yukihide-Mitsuoka/repchat/issues/718)) ([1f6257b](https://github.com/Yukihide-Mitsuoka/repchat/commit/1f6257b62d8696b374dfd5cfef98c5e14feaf7c7))
+
 ## [1.24.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.24.0) (2026-09-14)
 
 
