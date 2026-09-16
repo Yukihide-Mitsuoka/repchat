@@ -84,22 +84,20 @@ timeまたはrange partitionを併用するshardは両方のfilterを表現で�
 分析候補を含めず、後者にはBigQuery、参照範囲、期間、自動生成された意味候補の共通制約だけを付与します。
 確定仕様のrevisionへcontract fingerprintを含め、build時に現在契約との一致を要求できます。
 
-`DataSourceProfile.with_contract(...)`は既存profileを変更せず、検証済みcontractを束縛したsourceを返します。
-contract内の全tableがprofileの許可datasetと完全一致しない場合は束縛しません。束縛後は既存の
-`analysis_workflows.plan_dashboard`と`section_execution.run_section`が、手書きschema文字列ではなく
-同じcanonical contractをplannerとSQL担当へ渡します。
+`analysis_workflows.plan_dashboard`と`section_execution.run_section`は検証済みcanonical contractを
+必須入力として直接受け取り、同じcontractをplannerとSQL担当へ渡します。分析対象を表すprofile registryや
+手書きschema文字列を経由しません。
 
 plannerのdashboard計画と分析相談は、Vertex AIへのrequestとresponse schema seedへprofile IDを渡しません。
 認可済みscopeから生成したcanonical contract文脈、利用者の目的、履歴、確認済み条件だけを生成入力にします。
-canonical contract付きの保存planはprofile IDを除去し、contract fingerprintを含むrevisionへ変換します。変更提案時は
-現在のcontract fingerprintとの一致を生成前に要求します。legacy planとlive runtimeにはprofile識別子が残るため、
-分析対象非依存の実行を完了した状態ではありません。
+canonical contract付きの保存planはprofile IDを持たず、contract fingerprintを含むrevisionへ変換します。変更提案時は
+現在のcontract fingerprintとの一致を生成前に要求します。
 
 `analysis_contract_context.execution_policy(...)`はcanonical contractから、SQLで参照できる完全修飾table、
-date shardをdry runで照合する物理table、query bytes上限、結果行上限を導出します。契約付きsourceの
+date shardをdry runで照合する物理table、query bytes上限、結果行上限を導出します。契約を受け取った
 `section_execution.run_section`は描画仕様の有無にかかわらずBigQuery dry runを必須とし、SQL本文と
 dry-run job metadataの両方をexact table scopeへ照合した後だけ、同じbytes上限で実行します。
-同一dataset内でも契約にないtableは許可しません。legacy profileの固定上限は契約付き経路へ混入しません。
+同一dataset内でも契約にないtableは許可しません。対象別profileの固定上限は実行経路へ混入しません。
 
 `analysis_schema_policy.py`は同じcontract metadataから各tableの完全field path、標準型、mode、親から継承した
 repeated・policy tag状態を決定論的に導出します。date shardとingestion-time partitionの疑似fieldも同じ
@@ -127,8 +125,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 
 ## 次の接続点
 
-[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、次はSQL生成のlegacy profile入力・
-特殊補正を除去します。対象固有のfactory、profile、metrics fileは追加しません。
-生成経路への供給とbuild時のschema再検証も同じ共通契約へ接続します。
+[ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、共通runtimeから未参照になった
+対象別profile module、特殊補正、metrics fileを物理削除します。対象固有のfactory、profile、設定は追加しません。
+未知schema評価も同じ共通契約経路を使い、評価用知識をruntimeへ渡しません。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。

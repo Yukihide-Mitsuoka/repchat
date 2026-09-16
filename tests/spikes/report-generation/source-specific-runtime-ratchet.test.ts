@@ -72,16 +72,13 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
     'bigquery_execution.py': 1,
     'bitcoin_profile.py': 10,
-    'data_source_profiles.py': 6,
     'evidence_components.py': 1,
     'ga4_profile.py': 5,
     'metrics.json': 2,
     'sql_prompt_context.py': 3,
     'tenant_serve.py': 1,
   },
-  sourceProfileApi: {
-    'data_source_profiles.py': 10,
-  },
+  sourceProfileApi: {},
   fixedSchemaKnowledge: {
     'bitcoin_profile.py': 14,
     'ga4_profile.py': 2,
@@ -97,7 +94,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   },
   sourceSpecificSqlRepair: {
     'bitcoin_profile.py': 3,
-    'data_source_profiles.py': 11,
     'ga4_profile.py': 2,
     'sql_generation.py': 1,
     'sql_prompt_context.py': 1,
@@ -107,7 +103,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'ga4_profile.py': 3,
   },
   fixedBusinessVocabulary: {
-    'data_source_profiles.py': 2,
     'metrics.json': 17,
     'sql_prompt_context.py': 6,
   },
@@ -134,7 +129,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   },
   sourceSpecificModuleName: {
     'bitcoin_profile.py': 1,
-    'data_source_profiles.py': 1,
     'ga4_profile.py': 1,
   },
   runtimeConfigAsset: {
