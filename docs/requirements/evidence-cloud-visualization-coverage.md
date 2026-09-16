@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -94,10 +94,9 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 [`visualization_results.py`](../../spikes/report-generation/visualization_results.py)、1パネルの生成から実行までの順序は
 [`section_execution.py`](../../spikes/report-generation/section_execution.py)を根拠とする。確定パネルから根拠bundleを
 組み立てる旧実装は対象別profileと手動metric定義へ依存していたため削除済みで、対象非依存のbundle組立経路は未実装である。実描画は
-[`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)、Evidenceのpage組み立ては
-[`evidence_page.py`](../../spikes/report-generation/evidence_page.py)、成果物の安全なファイル出力は
-[`evidence_output.py`](../../spikes/report-generation/evidence_output.py)、componentへの変換は
-[`evidence_components.py`](../../spikes/report-generation/evidence_components.py)を根拠とする。
+[`chart_renderer_dispatch.js`](../../spikes/report-generation/chart_renderer_dispatch.js)を根拠とする。
+固定の分析対象・月次page・Evidence sourceを持つ旧成果物出力経路は未参照のため削除済みで、
+対象非依存の成果物組立・配送経路は未実装である。
 旧ライブデモ入口、UI payload、`live_engine.py`、HTTP入口・dispatch・response・validationはPR #709以降の
 削除PRで除去済みです。
 

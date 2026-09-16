@@ -71,7 +71,6 @@ type Inventory = Record<RuleName, Record<string, number>>;
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {
     'bigquery_execution.py': 1,
-    'evidence_components.py': 1,
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {},
@@ -93,7 +92,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   embeddedQuery: {
     'analysis_consultation.py': 1,
     'analysis_dashboard_plan.py': 1,
-    'evidence_components.py': 1,
     'sql_display.py': 1,
     'tenant_serve.py': 3,
   },
