@@ -80,7 +80,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'tenant_serve.py': 1,
   },
   sourceProfileApi: {
-    'dashboard_build.py': 2,
     'data_source_profiles.py': 10,
   },
   fixedSchemaKnowledge: {
@@ -98,7 +97,6 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   },
   sourceSpecificSqlRepair: {
     'bitcoin_profile.py': 3,
-    'dashboard_build.py': 2,
     'data_source_profiles.py': 11,
     'ga4_profile.py': 2,
     'sql_generation.py': 1,
