@@ -159,7 +159,6 @@ def propose_dashboard(
     *,
     current_plan: dict | None = None,
     instruction: str | None = None,
-    profile: str | None = "ga4",
 ):
     """Ask Vertex AI to author bounded dashboard panel specifications."""
     from google.genai import types
@@ -196,7 +195,6 @@ def propose_dashboard(
         period,
         answers,
         allowed_metrics=metric_names,
-        profile=profile,
     ), token_counts(response.usage_metadata)
 
 
