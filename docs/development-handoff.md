@@ -103,7 +103,7 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 直結する検査を維持し、merge済みです。
 [PR #722](https://github.com/Yukihide-Mitsuoka/repchat/pull/722)では、実行経路から未参照の
 `ga4_profile.py`と`bitcoin_profile.py`を物理削除し、merge済みです。
-現在の`codex/188-remove-legacy-sql-context`では、旧export経由でテストだけが呼んでいた固定schema・指標promptの
+現在の[PR #723](https://github.com/Yukihide-Mitsuoka/repchat/pull/723)では、旧export経由でテストだけが呼んでいた固定schema・指標promptの
 `sql_prompt_context.py`と、実行経路から未参照の`metrics.json`を削除します。共通契約から導出する
 planner・SQL規則は維持します。次は`run_report.py`の旧exportと、SQL検査・実行層に残る対象別知識を確認します。
 2026-09-16に変更前後の`make test-unit`、変更後の`make format`、`make lint`、`make test`が成功しました。
