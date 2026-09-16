@@ -96,8 +96,9 @@ GA4固有の契約factoryは、オーナー指示と
 対象別dataset、期間callback、SQL正規化callbackを削除し、共通契約から実行policy、SQL規則、期間を導出します。
 SQL生成requestの期間表現も特定partition形式を前提にせず、契約の期間または時間境界なしだけを伝えます。
 [PR #718](https://github.com/Yukihide-Mitsuoka/repchat/pull/718)はmerge済みです。
-続く`codex/188-remove-dashboard-build`では、runtimeから未参照で対象別profileと手動metric定義を保存する
-`dashboard_build.py`を共通契約へ移植せず物理削除します。この変更の次は、testだけが参照する対象別profile
+続く[PR #720](https://github.com/Yukihide-Mitsuoka/repchat/pull/720)では、runtimeから未参照で
+対象別profileと手動metric定義を保存する`dashboard_build.py`を共通契約へ移植せず物理削除します。
+この変更の次は、testだけが参照する対象別profile
 registryとprofile moduleを削除します。2026-09-16時点で`make test-unit`は303件、`make test`、
 `make format`、`make lint`は成功しています。
 
