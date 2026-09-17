@@ -54,6 +54,69 @@ print(json.dumps({key:section[key] for key in ('semantic_dimensions','semantic_m
   });
 });
 
+test('time-series sections use a source-independent temporal output role', () => {
+  const result = python(`
+from visualization_sections import build_planned_analysis_section
+from visualization_contracts import CHART_RESULT_ROLE_CONTRACTS
+cases={
+ 'line':['Observed at'],
+ 'multi_line':['Observed at'],
+ 'area':['Observed at'],
+ 'stacked_area':['Observed at'],
+ 'percent_stacked_area':['Observed at'],
+ 'calendar_heatmap':['Recorded on'],
+ 'sparkline_table':['Group','Observed at'],
+ 'annotated_line':['Observed at','Annotation'],
+ 'sparkline':['Observed at'],
+}
+observed={}
+for chart,dimensions in cases.items():
+ section=build_planned_analysis_section({
+  'id':'P1','title':'集計','execution_prompt':'時系列で集計する','decision':'判断する',
+  'chart':chart,'dimensions':dimensions,'measures':['Total','Count'] if chart in {'multi_line','stacked_area','percent_stacked_area'} else ['Total'],
+ })
+ observed[chart]={
+  'source_columns':section['source_columns'],
+  'result_roles':CHART_RESULT_ROLE_CONTRACTS[chart],
+  'ordering':section['generation_requirements'][-1],
+ }
+print(json.dumps(observed,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  for (const chart of Object.keys(output)) {
+    assert.ok(output[chart].source_columns.includes('time_value'), chart);
+    assert.ok(output[chart].result_roles.includes('time_value'), chart);
+    if (chart !== 'sparkline_table') {
+      assert.match(output[chart].ordering, /time_valueの昇順/);
+    }
+    assert.doesNotMatch(JSON.stringify(output[chart]), /event_date/);
+  }
+});
+
+test('time-series result validation accepts the neutral alias and rejects the old alias', () => {
+  const result = python(`
+from visualization_sections import build_planned_analysis_section
+from contract_result_validation import contract_result_diagnostic
+from analysis_contract_context import AnalysisExecutionPolicy,AnalysisResultPolicy
+section=build_planned_analysis_section({
+ 'id':'P1','title':'集計','execution_prompt':'時系列で集計する','decision':'判断する',
+ 'chart':'line','dimensions':['Observed at'],'measures':['Total'],
+})
+policy=AnalysisExecutionPolicy(
+ frozenset(),frozenset(),100,10,
+ result=AnalysisResultPolicy(frozenset({'Observed at'}),frozenset({'Total'})),
+)
+accepted=contract_result_diagnostic(section,[('time_value','DATE'),('metric_value','INT64')],policy)
+rejected=contract_result_diagnostic(section,[('event_date','DATE'),('metric_value','INT64')],policy)
+print(json.dumps({'accepted':accepted,'rejected':rejected},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.accepted, '');
+  assert.match(output.rejected, /共通分析契約の結果形状/);
+});
+
 test('dry-run and execution result drift stop before an invalid result is emitted', () => {
   const result = python(`
 import section_execution as execution

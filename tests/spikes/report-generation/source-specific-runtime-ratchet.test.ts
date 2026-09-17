@@ -71,10 +71,7 @@ type Inventory = Record<RuleName, Record<string, number>>;
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
   knownSourceIdentity: {},
   sourceProfileApi: {},
-  fixedSchemaKnowledge: {
-    'visualization_contracts.py': 9,
-    'visualization_sections.py': 5,
-  },
+  fixedSchemaKnowledge: {},
   fixedMetricAsset: {},
   sourceSpecificSqlRepair: {},
   fixedDemoPeriod: {},
