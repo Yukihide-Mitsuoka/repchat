@@ -79,9 +79,7 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
     'visualization_sections.py': 5,
   },
   fixedMetricAsset: {},
-  sourceSpecificSqlRepair: {
-    'sql_generation.py': 1,
-  },
+  sourceSpecificSqlRepair: {},
   fixedDemoPeriod: {},
   fixedBusinessVocabulary: {},
   fixedDatasetConstant: {
