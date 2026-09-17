@@ -97,7 +97,8 @@ canonical contract付きの保存planはprofile IDを持たず、contract finger
 date shardをdry runで照合する物理table、query bytes上限、結果行上限を導出します。契約を受け取った
 `section_execution.run_section`は描画仕様の有無にかかわらずBigQuery dry runを必須とし、SQL本文と
 dry-run job metadataの両方をexact table scopeへ照合した後だけ、同じbytes上限で実行します。
-同一dataset内でも契約にないtableは許可しません。対象別profileの固定上限は実行経路へ混入しません。
+`bigquery_execution.py`はpolicyが欠けたSQL検査・dry run・実行をBigQuery呼出し前に拒否します。
+同一dataset内でも契約にないtableは許可せず、dataset名やbytes上限を固定値から補いません。
 
 `analysis_schema_policy.py`は同じcontract metadataから各tableの完全field path、標準型、mode、親から継承した
 repeated・policy tag状態を決定論的に導出します。date shardとingestion-time partitionの疑似fieldも同じ
