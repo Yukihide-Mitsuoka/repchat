@@ -66,11 +66,11 @@ def build_planned_analysis_section(
         ]
     elif chart in {"line", "area", "calendar_heatmap", "sparkline"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
-        section["source_columns"] = ["event_date", "metric_value"]
+        section["source_columns"] = ["time_value", "metric_value"]
     elif chart in {"multi_line", "stacked_area", "percent_stacked_area"}:
         section["shape"] = {"rows": "日付ごとに1行", "columns": dimensions + measures}
         section["source_columns"] = [
-            "event_date",
+            "time_value",
             *[f"metric_{index}" for index in range(1, len(measures) + 1)],
         ]
     elif chart == "histogram":
@@ -150,7 +150,7 @@ def build_planned_analysis_section(
             "rows": "区分と日付の組み合わせごとに1行",
             "columns": dimensions + measures,
         }
-        section["source_columns"] = ["category", "event_date", "metric_value"]
+        section["source_columns"] = ["category", "time_value", "metric_value"]
     elif chart in {"sankey", "sankey_vertical"}:
         display_dimensions = dimensions
         if len({"".join(value.lower().split()) for value in dimensions}) == 1:
@@ -196,7 +196,7 @@ def build_planned_analysis_section(
             "rows": "日付ごとに1行。注釈がない日はannotation_labelをNULLにする",
             "columns": dimensions + measures,
         }
-        section["source_columns"] = ["event_date", "annotation_label", "metric_value"]
+        section["source_columns"] = ["time_value", "annotation_label", "metric_value"]
     elif chart == "delta":
         measure = measures[0]
         section["shape"] = {
@@ -372,8 +372,9 @@ def _append_generation_requirements(section: dict) -> None:
         if chart in {
             "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
             "calendar_heatmap", "annotated_line", "sparkline",
+            "sparkline_table",
         }:
-            ordering = "event_dateの昇順"
+            ordering = "time_valueの昇順"
         elif chart == "histogram":
             ordering = "bin_startの昇順"
         elif chart in {"sankey", "sankey_vertical", "flow_sankey", "flow_sankey_vertical"}:

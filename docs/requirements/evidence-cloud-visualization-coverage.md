@@ -2,7 +2,7 @@
 id: evidence-cloud-visualization-coverage
 title: Evidence Cloud可視化カバレッジ
 status: draft
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # Evidence Cloud可視化カバレッジ
@@ -39,6 +39,10 @@ Evidence projectを扱うが、公式の可視化component一覧はEvidence Docs
 
 AI plannerの選択肢に文字列を追加しただけでは「対応」にしない。実データで結果形状を検査し、描画できることを
 必須とする。
+
+時系列chartがSQLへ要求する`time_value`は描画結果の列役割であり、分析対象の元tableに同名の列を
+要求しない。選択した区分軸が共通分析契約の時間fieldに対応することの照合は未実装であり、
+出力列名の中立化だけでは未知schemaでの時系列分析を検証済みとしない。
 
 分析テーマ、KPI、比較軸、chart type、panel数を業種別の固定候補から決めない。AIは利用者の目的、対話履歴、
 利用可能schema・metricと、この文書で`対応`になった可視化能力から都度提案する。コードが持ってよい固定値は、

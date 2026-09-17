@@ -60,15 +60,20 @@ from visualization_sections import build_planned_analysis_section
 from visualization_contracts import CHART_RESULT_ROLE_CONTRACTS
 cases={
  'line':['Observed at'],
+ 'multi_line':['Observed at'],
+ 'area':['Observed at'],
+ 'stacked_area':['Observed at'],
+ 'percent_stacked_area':['Observed at'],
  'calendar_heatmap':['Recorded on'],
  'sparkline_table':['Group','Observed at'],
  'annotated_line':['Observed at','Annotation'],
+ 'sparkline':['Observed at'],
 }
 observed={}
 for chart,dimensions in cases.items():
  section=build_planned_analysis_section({
   'id':'P1','title':'集計','execution_prompt':'時系列で集計する','decision':'判断する',
-  'chart':chart,'dimensions':dimensions,'measures':['Total'],
+  'chart':chart,'dimensions':dimensions,'measures':['Total','Count'] if chart in {'multi_line','stacked_area','percent_stacked_area'} else ['Total'],
  })
  observed[chart]={
   'source_columns':section['source_columns'],
@@ -79,7 +84,7 @@ print(json.dumps(observed,ensure_ascii=False))
 `);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  for (const chart of ['line', 'calendar_heatmap', 'sparkline_table', 'annotated_line']) {
+  for (const chart of Object.keys(output)) {
     assert.ok(output[chart].source_columns.includes('time_value'), chart);
     assert.ok(output[chart].result_roles.includes('time_value'), chart);
     assert.match(output[chart].ordering, /time_valueの昇順/);
