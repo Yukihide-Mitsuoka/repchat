@@ -199,6 +199,22 @@ print(json.dumps({"request": request}, ensure_ascii=False))
   assert.match(output.request, /未確認の期間・派生指標が含まれる場合は、推測で列を追加せず/);
 });
 
+test('SQL repair adds no function-specific guidance beyond the supplied diagnostic', () => {
+  const result = loadRunReport(`
+request = module["repair_request"](
+    "認可済み契約の列を集計する",
+    "SELECT unsupported_function(value) AS metric_value FROM authorized_table",
+    "Unknown function: NET.PARSE_URL",
+)
+print(json.dumps({"request": request}, ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const request = JSON.parse(result.stdout).request as string;
+  assert.match(request, /選択されたデータソースのSQL方言・実行環境/);
+  assert.equal(request.split('NET.PARSE_URL').length - 1, 1);
+  assert.doesNotMatch(request, /REGEXP_EXTRACT/);
+});
+
 test('only BigQuery compiler BadRequest diagnostics are repairable', () => {
   const result = loadRunReport(`
 predicate = module["repairable_dry_run_error"]
