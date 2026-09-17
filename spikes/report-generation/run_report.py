@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared Vertex pricing, SQL generation, BigQuery validation, and rendering helpers.
+"""Shared Vertex pricing, SQL generation, BigQuery validation, and display helpers.
 
 The executable fixed-report runner was removed. Product analysis starts in the
 live consultation flow and requires an AI-authored specification before SQL.
@@ -13,19 +13,6 @@ from bigquery_execution import (
     inspect_bq_schema,
     validate_sql,
 )
-from evidence_components import (
-    EVIDENCE_COMPONENT,
-    SOURCE,
-    evidence_component,
-    evidence_identifier,
-    evidence_query,
-)
-from evidence_page import (
-    GENERATED_SQL_STYLE,
-    evidence_page as _evidence_page_impl,
-    generated_sql_block as _generated_sql_block_impl,
-)
-from evidence_output import write_outputs as _write_outputs_impl
 from sql_generation import (
     SHAPE_HINT,
     SQLGenerationError,
@@ -62,28 +49,6 @@ def vertex_cost_jpy(model: str, usage: dict) -> float:
         usage["input_tokens"] * input_price
         + usage["output_tokens"] * output_price
     ) / 1e6 * USD_JPY
-
-def generated_sql_block(sql: str) -> list[str]:
-    """Keep the established report API while delegating SQL block rendering."""
-    return _generated_sql_block_impl(sql, format_sql=format_sql_for_display)
-
-
-def evidence_page(spec: dict, results: list) -> str:
-    """Keep the established report API while delegating page assembly."""
-    return _evidence_page_impl(spec, results, format_sql=format_sql_for_display)
-
-
-def write_outputs(out_dir: Path, spec: dict, results: list, project: str) -> Path:
-    """Keep the established report API while delegating safe publication."""
-    return _write_outputs_impl(
-        out_dir,
-        spec,
-        results,
-        project,
-        source=SOURCE,
-        render_page=evidence_page,
-    )
-
 
 if __name__ == "__main__":
     print(

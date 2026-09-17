@@ -1,7 +1,7 @@
 ---
 id: spike-report-generation
 title: レポート1枚を、実データから生成する
-updated: 2026-09-11
+updated: 2026-09-17
 ---
 
 # Spike: レポート生成
@@ -447,6 +447,9 @@ Evidence標準`CodeBlock`でsyntax highlight、コピー、横スクロールを
 整形対象は表示文字列だけで、BigQueryへ送るSQLは変更しません。
 
 ## Evidence で実際に描画した（2026-07-28）
+
+以下は当時の検証記録です。固定の分析対象・月次page・sourceを生成した旧出力経路は、
+現在の実行経路から未参照となり削除済みです。現在はこの手順で成果物を再生成できません。
 
 positioning §5 が「**次は設計ではなくデモ**」と書いていたのに、生成した markdown を
 **Evidence でビルドして見た人がいませんでした**。通しました。
