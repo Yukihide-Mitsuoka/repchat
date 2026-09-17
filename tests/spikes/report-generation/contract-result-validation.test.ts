@@ -87,9 +87,34 @@ print(json.dumps(observed,ensure_ascii=False))
   for (const chart of Object.keys(output)) {
     assert.ok(output[chart].source_columns.includes('time_value'), chart);
     assert.ok(output[chart].result_roles.includes('time_value'), chart);
-    assert.match(output[chart].ordering, /time_valueの昇順/);
+    if (chart !== 'sparkline_table') {
+      assert.match(output[chart].ordering, /time_valueの昇順/);
+    }
     assert.doesNotMatch(JSON.stringify(output[chart]), /event_date/);
   }
+});
+
+test('time-series result validation accepts the neutral alias and rejects the old alias', () => {
+  const result = python(`
+from visualization_sections import build_planned_analysis_section
+from contract_result_validation import contract_result_diagnostic
+from analysis_contract_context import AnalysisExecutionPolicy,AnalysisResultPolicy
+section=build_planned_analysis_section({
+ 'id':'P1','title':'集計','execution_prompt':'時系列で集計する','decision':'判断する',
+ 'chart':'line','dimensions':['Observed at'],'measures':['Total'],
+})
+policy=AnalysisExecutionPolicy(
+ frozenset(),frozenset(),100,10,
+ result=AnalysisResultPolicy(frozenset({'Observed at'}),frozenset({'Total'})),
+)
+accepted=contract_result_diagnostic(section,[('time_value','DATE'),('metric_value','INT64')],policy)
+rejected=contract_result_diagnostic(section,[('event_date','DATE'),('metric_value','INT64')],policy)
+print(json.dumps({'accepted':accepted,'rejected':rejected},ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.accepted, '');
+  assert.match(output.rejected, /共通分析契約の結果形状/);
 });
 
 test('dry-run and execution result drift stop before an invalid result is emitted', () => {

@@ -372,7 +372,6 @@ def _append_generation_requirements(section: dict) -> None:
         if chart in {
             "line", "multi_line", "area", "stacked_area", "percent_stacked_area",
             "calendar_heatmap", "annotated_line", "sparkline",
-            "sparkline_table",
         }:
             ordering = "time_valueの昇順"
         elif chart == "histogram":
