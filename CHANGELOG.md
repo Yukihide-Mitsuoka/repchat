@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.25.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v1.25.0) (2026-09-17)
+
+
+### Features
+
+* **analysis:** section executionを共通契約に限定 ([#718](https://github.com/Yukihide-Mitsuoka/repchat/issues/718)) ([1f6257b](https://github.com/Yukihide-Mitsuoka/repchat/commit/1f6257b62d8696b374dfd5cfef98c5e14feaf7c7))
+
+
+### Bug Fixes
+
+* **analysis:** SQL実行に共通契約を必須化する ([#727](https://github.com/Yukihide-Mitsuoka/repchat/issues/727)) ([351a673](https://github.com/Yukihide-Mitsuoka/repchat/commit/351a67396c9a33241006d65df5423350c6ae469c))
+
 ## [1.24.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.24.0) (2026-09-14)
 
 
