@@ -69,12 +69,9 @@ type RuleName = keyof typeof RULES;
 type Inventory = Record<RuleName, Record<string, number>>;
 
 const EXPECTED_LEGACY_INVENTORY: Inventory = {
-  knownSourceIdentity: {
-    'tenant_serve.py': 1,
-  },
+  knownSourceIdentity: {},
   sourceProfileApi: {},
   fixedSchemaKnowledge: {
-    'tenant_serve.py': 5,
     'visualization_contracts.py': 9,
     'visualization_sections.py': 5,
   },
@@ -82,19 +79,14 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   sourceSpecificSqlRepair: {},
   fixedDemoPeriod: {},
   fixedBusinessVocabulary: {},
-  fixedDatasetConstant: {
-    'tenant_serve.py': 1,
-  },
+  fixedDatasetConstant: {},
   embeddedQuery: {
     'analysis_consultation.py': 1,
     'analysis_dashboard_plan.py': 1,
     'sql_display.py': 1,
-    'tenant_serve.py': 3,
   },
   embeddedSchema: {},
-  qualifiedTableLiteral: {
-    'tenant_serve.py': 1,
-  },
+  qualifiedTableLiteral: {},
   sourceSpecificModuleName: {},
   runtimeConfigAsset: {},
 };

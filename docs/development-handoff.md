@@ -110,10 +110,13 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 [PR #727](https://github.com/Yukihide-Mitsuoka/repchat/pull/727)で、`bigquery_execution.py`の固定dataset・20GiB上限へのfallbackを
 削除し、SQL検査・dry run・実行に共通分析契約から導出したpolicyを必須にしました。契約欠落時は
 BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけから決めます。CI checksは成功し、merge済みです。
-現在の[PR #728](https://github.com/Yukihide-Mitsuoka/repchat/pull/728)では、`sql_generation.py`のURL関数を名指しした修正指示を削除し、
-診断文と対象非依存のSQL方言条件だけを残します。変更前に回帰testが意図どおり失敗し、
-変更後の`make test-unit`・`make format`・`make lint`・`make test`は成功しました。CI結果はPRのchecksを参照し、mergeは未完了です。
-次は`tenant_serve.py`等の対象別知識を監査します。
+[PR #728](https://github.com/Yukihide-Mitsuoka/repchat/pull/728)はmerge済みです。`sql_generation.py`の
+URL関数を名指しした修正指示を削除し、診断文と対象非依存のSQL方言条件だけを残しました。
+[PR #730](https://github.com/Yukihide-Mitsuoka/repchat/pull/730)では未参照の旧配信実験
+`tenant_serve.py`を削除し、runtime ratchetと実験記録を更新しています。ローカルの
+`make test-unit`・`make format`・`make lint`・`make test`は成功しました。CI結果はPRのchecksを参照し、
+mergeは未完了です。
+次は`visualization_contracts.py`と`visualization_sections.py`の対象別知識を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -134,8 +137,8 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 | 分類 | 検出箇所 | 判定・扱い |
 |---|---|---|
 | 対象registryと既定値 | `data_source_profiles.py` | PR #721で物理削除済み。未参照の`dashboard_build.py`もPR #720で削除済み |
-| 手書きschema・意味・期間・SQL補正 | `sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別profile moduleはPR #722、固定schema・指標promptと手動metric資産はPR #723、固定Evidence出力はPR #725、SQL実行の固定datasetと20GiB fallbackはPR #727で削除済み。現在の変更でURL関数の特殊補正を撤去する |
-| UIと補助実行経路 | `tenant_serve.py` | 固定の対象選択肢・文言を持つ。旧ライブデモ入口とUI補助module、未参照の固定Evidence成果物出力は削除済み。残るUI補助moduleも共通runtimeへ移行せず、固有知識を持つものは削除する |
+| 手書きschema・意味・期間・SQL補正 | `sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別profile moduleはPR #722、固定schema・指標promptと手動metric資産はPR #723、固定Evidence出力はPR #725、SQL実行の固定datasetと20GiB fallbackはPR #727、URL関数の特殊補正はPR #728で削除済み |
+| UIと補助実行経路 | `tenant_serve.py` | 旧ライブデモ入口とUI補助module、未参照の固定Evidence成果物出力は削除済み。固定対象選択・SQLを持つ未参照の旧配信実験はPR #730で削除予定 |
 | 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`という特定aliasとWeb導線前提のSankey要件が共通経路へ漏れている。時間roleと選択済み意味契約に基づく中立表現へ置換する |
 | 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
 
@@ -168,9 +171,9 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 0 | 再混入防止ratchet（PR #677、merge済み） | `tests/spikes/report-generation/source-specific-runtime-ratchet.test.ts` | 13分類のarchitecture testで対象名、既知dataset、profile API、固定schema・metric file、埋め込みSQL／DDL、対象別module・設定資産をファイル別件数として固定した。既存負債の削除時はbaselineも縮小し、新規追加、移動、件数増加をCIで拒否する |
 | 1 | 認可scopeからの自動catalog・profile取得（PR #678、merge済み） | `bigquery_schema_snapshot.py`、`bigquery_scope_discovery.py` | server-sideの認可済みproject／dataset／table scopeだけを入力に、table、全field path、型、mode、partition、clustering、date-shard候補を自動取得する。null率、概算distinct、min／max、低cardinality文字列・boolean sampleを型・mode・policy tagで分類し、送信制御、dry-run、参照table照合、query・bytes・row・field上限を共通policyで制限する。対象名や業種名を入力に持たない |
 | 2 | 共通分析契約の自動生成（PR #679〜#685 merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py`、`analysis_contract_generation.py`、`analysis_contract_orchestration.py`、`bigquery_scope_discovery.py` | validator、生成入力、token限定normalizer、構造化response schema、対象非依存prompt、単一Vertex生成I/O、日次shardの検査済みwildcard統合と二段階生成はmerge済み。PR #685では利用可能な時間境界がない選択schemaだけ`period=null`でcompileし、ingestion-time partitionには標準疑似fieldを合成した。表現不能な必須partition filterは拒否する。手動意味定義、対象別period parser、識別子補正を使わない |
-| 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698、#716〜#718、#727 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | planner、workflow、保存plan、section executorは共通契約からscope・上限・期間・field・SQL規則・結果形状検査を導出する。section executorから対象別dataset、期間callback、SQL正規化callback、SQL検査・実行から契約欠落fallbackを削除済み。現在の変更でURL関数の特殊補正を撤去する |
+| 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698、#716〜#718、#727、#728 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | planner、workflow、保存plan、section executorは共通契約からscope・上限・期間・field・SQL規則・結果形状検査を導出する。section executorから対象別dataset、期間callback、SQL正規化callback、SQL検査・実行から契約欠落fallback、URL関数の特殊補正を削除済み |
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
-| 5 | UI・成果物を中立化 | `tenant_serve.py`、`visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力は削除済み。残る固定のmetric語彙、source名、問い合わせを除去する。`event_date`を中立なtemporal roleへ置換し、可視化は契約が対応する意味roleを持つ場合だけ選択する |
+| 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力は削除済み。`tenant_serve.py`はPR #730で削除予定。残る`event_date`を中立なtemporal roleへ置換し、可視化は契約が対応する意味roleを持つ場合だけ選択する |
 | 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。残る対象別処理を順次除去し、互換目的のadapter、feature flag、隠し設定を残さずruntime inventoryのallowlistを空にする |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 

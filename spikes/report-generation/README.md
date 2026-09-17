@@ -538,14 +538,9 @@ build/api/prerendered_queries/<hash>.arrow   # 初期表示が読む実データ
 
 ### 実際に2テナントへ配った（2026-07-28、LOG-0076）
 
-上の「まだやっていないこと」を潰しました。`tenant_serve.py` が、**1度だけビルドしたシェル**に
-テナント別の `.arrow` を被せて2ポートで配ります。
-
-```bash
-GOOGLE_CLOUD_PROJECT=<project> <venv>/bin/python spikes/report-generation/tenant_serve.py \
-  --build <evidence-build-dir>
-# → http://localhost:8801 (desktop) / http://localhost:8802 (mobile)
-```
+当時の`tenant_serve.py`は、**1度だけビルドしたシェル**にテナント別の`.arrow`を被せて
+2ポートで配りました。この実験用コマンドには公開サンプルの固定SQLと対象選択が含まれていたため、
+現在は削除済みで再実行できません。以下は2026-07-28の記録です。
 
 | | セッション数 | ページビュー数 |
 |---|---|---|
