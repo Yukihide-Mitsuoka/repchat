@@ -9,8 +9,14 @@ from dataclasses import dataclass
 from datetime import date
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from analysis_contract import AnalysisContract, fingerprint_contract_content
+from analysis_contract import (
+    TIME_TYPES,
+    AnalysisContract,
+    expression_for_field,
+    fingerprint_contract_content,
+)
 from analysis_schema_policy import AnalysisFieldPolicy, SchemaPolicyError, derive_schema_policy
+from visualization_contracts import TEMPORAL_CHART_DIMENSION_INDEX
 
 
 class AnalysisContextError(ValueError):
@@ -43,6 +49,7 @@ class AnalysisResultPolicy:
 
     dimensions: frozenset[str]
     measures: frozenset[str]
+    temporal_dimensions: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -58,7 +65,9 @@ class AnalysisExecutionPolicy:
     result: AnalysisResultPolicy | None = None
 
 
-def _result_semantics(content: dict) -> AnalysisResultPolicy:
+def _result_semantics(
+    content: dict, schema_fields: tuple[AnalysisFieldPolicy, ...]
+) -> AnalysisResultPolicy:
     """Derive result-role names without using source or industry knowledge."""
     semantics = content.get("semantics")
     if not isinstance(semantics, dict):
@@ -83,7 +92,44 @@ def _result_semantics(content: dict) -> AnalysisResultPolicy:
     measures = names(("measures", "metrics"))
     if dimensions & measures:
         raise AnalysisContextError("analysis contract result semantics are ambiguous")
-    return AnalysisResultPolicy(dimensions, measures)
+    field_policy = {(field.table, field.path): field for field in schema_fields}
+    tables = {
+        table["table"]: table
+        for table in content["schema"]["metadata"]["tables"]
+    }
+    temporal_dimensions = set()
+    for category in ("grain", "identifiers", "dimensions"):
+        for name, definition in semantics.get(category, {}).items():
+            reference = definition.get("field")
+            if reference is None:
+                continue
+            field_key = _reference(reference, tables)
+            if definition.get("expr") != expression_for_field(reference) or "filter" in definition:
+                raise AnalysisContextError("analysis contract result semantic field is invalid")
+            field = field_policy.get(field_key)
+            if field is None:
+                raise AnalysisContextError("analysis contract result semantic field is invalid")
+            if field.field_type in TIME_TYPES and not field.repeated and not field.restricted:
+                temporal_dimensions.add(name)
+    return AnalysisResultPolicy(dimensions, measures, frozenset(temporal_dimensions))
+
+
+def temporal_chart_diagnostic(
+    chart: object, dimensions: object, result: AnalysisResultPolicy | None
+) -> str:
+    """Reject an unproven temporal axis without guessing from its display name."""
+    index = TEMPORAL_CHART_DIMENSION_INDEX.get(chart) if isinstance(chart, str) else None
+    if index is None:
+        return ""
+    if (
+        result is None
+        or not isinstance(dimensions, list)
+        or len(dimensions) <= index
+        or not isinstance(dimensions[index], str)
+        or dimensions[index] not in result.temporal_dimensions
+    ):
+        return "時系列chartの時間軸が共通分析契約の利用可能な時間型fieldと一致しません。"
+    return ""
 
 
 def _contract(contract: AnalysisContract) -> tuple[str, dict]:
@@ -432,7 +478,7 @@ def execution_policy(contract: AnalysisContract) -> AnalysisExecutionPolicy:
         maximum_result_rows=limits["maximum_result_rows"],
         period=_period_policy(content, tables),
         schema_fields=schema_fields,
-        result=_result_semantics(content),
+        result=_result_semantics(content, schema_fields),
     )
 
 

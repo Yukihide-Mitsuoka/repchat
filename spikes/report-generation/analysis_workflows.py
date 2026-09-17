@@ -96,6 +96,18 @@ def plan_dashboard(
             current_plan=current_plan,
             instruction=revision_instruction,
         )
+        panels = plan.get("panels", [])
+        result_policy = (
+            analysis_contract_context.execution_policy(contract).result
+            if panels
+            else None
+        )
+        for panel in panels:
+            diagnostic = analysis_contract_context.temporal_chart_diagnostic(
+                panel["chart"], panel["dimensions"], result_policy
+            )
+            if diagnostic:
+                raise planner.PlannerError(f"{diagnostic} 現在案は保持し、自動再実行していません。")
         plan = analysis_contract_context.bind_specification(plan, contract)
         check_cancelled()
         emit(
