@@ -107,11 +107,11 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 指標promptの`sql_prompt_context.py`と、実行経路から未参照の`metrics.json`を削除し、merge済みです。
 [PR #725](https://github.com/Yukihide-Mitsuoka/repchat/pull/725)で、未参照の固定Evidence page・component・file出力経路と
 対応する`run_report.py`の旧exportを削除し、merge済みです。共通契約から導出するplanner・SQL規則は維持しています。
-現在の`codex/188-require-sql-policy`では、`bigquery_execution.py`の固定dataset・20GiB上限へのfallbackを
+現在の[PR #727](https://github.com/Yukihide-Mitsuoka/repchat/pull/727)では、`bigquery_execution.py`の固定dataset・20GiB上限へのfallbackを
 削除し、SQL検査・dry run・実行に共通分析契約から導出したpolicyを必須にします。契約欠落時は
 BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけから決めます。変更前に回帰testが
 意図どおり失敗し、変更後の`make test-unit`・`make format`・`make lint`・`make test`は成功しました。
-PRとCIは未完了です。
+CI結果とmergeは未完了です。
 次は`sql_generation.py`に残るURL関数の特殊補正と、`tenant_serve.py`等の対象別知識を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
