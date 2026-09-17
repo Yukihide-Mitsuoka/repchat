@@ -54,6 +54,39 @@ print(json.dumps({key:section[key] for key in ('semantic_dimensions','semantic_m
   });
 });
 
+test('time-series sections use a source-independent temporal output role', () => {
+  const result = python(`
+from visualization_sections import build_planned_analysis_section
+from visualization_contracts import CHART_RESULT_ROLE_CONTRACTS
+cases={
+ 'line':['Observed at'],
+ 'calendar_heatmap':['Recorded on'],
+ 'sparkline_table':['Group','Observed at'],
+ 'annotated_line':['Observed at','Annotation'],
+}
+observed={}
+for chart,dimensions in cases.items():
+ section=build_planned_analysis_section({
+  'id':'P1','title':'集計','execution_prompt':'時系列で集計する','decision':'判断する',
+  'chart':chart,'dimensions':dimensions,'measures':['Total'],
+ })
+ observed[chart]={
+  'source_columns':section['source_columns'],
+  'result_roles':CHART_RESULT_ROLE_CONTRACTS[chart],
+  'ordering':section['generation_requirements'][-1],
+ }
+print(json.dumps(observed,ensure_ascii=False))
+`);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  for (const chart of ['line', 'calendar_heatmap', 'sparkline_table', 'annotated_line']) {
+    assert.ok(output[chart].source_columns.includes('time_value'), chart);
+    assert.ok(output[chart].result_roles.includes('time_value'), chart);
+    assert.match(output[chart].ordering, /time_valueの昇順/);
+    assert.doesNotMatch(JSON.stringify(output[chart]), /event_date/);
+  }
+});
+
 test('dry-run and execution result drift stop before an invalid result is emitted', () => {
   const result = python(`
 import section_execution as execution
