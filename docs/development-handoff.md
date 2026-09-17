@@ -110,9 +110,9 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 [PR #727](https://github.com/Yukihide-Mitsuoka/repchat/pull/727)で、`bigquery_execution.py`の固定dataset・20GiB上限へのfallbackを
 削除し、SQL検査・dry run・実行に共通分析契約から導出したpolicyを必須にしました。契約欠落時は
 BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけから決めます。CI checksは成功し、merge済みです。
-現在の`codex/188-remove-url-repair`では、`sql_generation.py`のURL関数を名指しした修正指示を削除し、
+現在の[PR #728](https://github.com/Yukihide-Mitsuoka/repchat/pull/728)では、`sql_generation.py`のURL関数を名指しした修正指示を削除し、
 診断文と対象非依存のSQL方言条件だけを残します。変更前に回帰testが意図どおり失敗し、
-変更後の`make test-unit`・`make format`・`make lint`・`make test`は成功しました。PRとCIは未完了です。
+変更後の`make test-unit`・`make format`・`make lint`・`make test`は成功しました。CI結果はPRのchecksを参照し、mergeは未完了です。
 次は`tenant_serve.py`等の対象別知識を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
