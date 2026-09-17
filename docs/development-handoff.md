@@ -111,7 +111,7 @@ SQL生成requestの期間表現も特定partition形式を前提にせず、契�
 削除し、SQL検査・dry run・実行に共通分析契約から導出したpolicyを必須にします。契約欠落時は
 BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけから決めます。変更前に回帰testが
 意図どおり失敗し、変更後の`make test-unit`・`make format`・`make lint`・`make test`は成功しました。
-CI結果とmergeは未完了です。
+PR #727のCI checksは成功しました。mergeは未完了です。
 次は`sql_generation.py`に残るURL関数の特殊補正と、`tenant_serve.py`等の対象別知識を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
