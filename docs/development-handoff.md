@@ -114,9 +114,11 @@ BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけか�
 URL関数を名指しした修正指示を削除し、診断文と対象非依存のSQL方言条件だけを残しました。
 [PR #730](https://github.com/Yukihide-Mitsuoka/repchat/pull/730)はmerge済みです。未参照の旧配信実験
 `tenant_serve.py`を削除し、runtime ratchetと実験記録を更新しました。
-現在は`visualization_contracts.py`と`visualization_sections.py`の`event_date`出力役割を
-中立な`time_value`へ置換しています。次は選択した時間軸と共通分析契約の時間fieldの照合、
-および段階付きSankeyのページ回遊前提を監査します。
+[PR #732](https://github.com/Yukihide-Mitsuoka/repchat/pull/732)では`visualization_contracts.py`と
+`visualization_sections.py`の`event_date`出力役割を中立な`time_value`へ置換しています。
+ローカルの`make format`・`make lint`・`make test`は成功しました。CI結果はPRのchecksを参照し、
+mergeは未完了です。次は選択した時間軸と共通分析契約の時間fieldの照合、および段階付きSankeyの
+ページ回遊前提を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
