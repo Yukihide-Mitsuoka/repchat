@@ -114,7 +114,8 @@ BigQuery呼出し前に拒否し、参照tableとbytes上限は契約だけか�
 URL関数を名指しした修正指示を削除し、診断文と対象非依存のSQL方言条件だけを残しました。
 [PR #730](https://github.com/Yukihide-Mitsuoka/repchat/pull/730)では未参照の旧配信実験
 `tenant_serve.py`を削除し、runtime ratchetと実験記録を更新しています。ローカルの
-`make test-unit`・`make format`・`make lint`・`make test`は成功し、CIとmergeは未完了です。
+`make test-unit`・`make format`・`make lint`・`make test`は成功しました。CI結果はPRのchecksを参照し、
+mergeは未完了です。
 次は`visualization_contracts.py`と`visualization_sections.py`の対象別知識を監査します。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
