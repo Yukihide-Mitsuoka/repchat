@@ -110,3 +110,21 @@ test('contract execution boundary applies schema SQL validation before BigQuery'
     'rejected: schema policyとSQLを照合できません。',
   ]);
 });
+
+test('SQL execution boundary requires an analysis policy before accepting a table', () => {
+  const sql = `SELECT record_id FROM \`${records}\``;
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import json,sys
+sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
+import bigquery_execution
+print(json.dumps(bigquery_execution.validate_sql(${JSON.stringify(sql)})))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [null, 'rejected: analysis contract required']);
+});
