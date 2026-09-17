@@ -61,7 +61,8 @@ gcloud auth application-default login
 
 対象別profileを使う旧ライブデモ入口は削除済みです。対象非依存runtimeが完成するまで代替コマンドはありません。
 
-スキャン量は `_TABLE_SUFFIX` で1か月に限定し、`maximum_bytes_billed` を 20GiB に設定しています。
+旧公開サンプルの検証では`_TABLE_SUFFIX`で1か月に限定し、`maximum_bytes_billed`を20GiBに設定しました。
+現在のSQL検査・dry run・実行は共通分析契約からtable範囲とbytes上限を取得し、契約がなければBigQuery呼出し前に拒否します。
 
 ## 結果（2026-07-27、gemini-3.5-flash、12セクション）
 

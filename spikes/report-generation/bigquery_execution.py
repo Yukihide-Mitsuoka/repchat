@@ -1,4 +1,4 @@
-"""Validate and execute dataset-bounded BigQuery report queries."""
+"""Validate and execute analysis-contract-bounded BigQuery queries."""
 
 import re
 import time
@@ -7,14 +7,9 @@ from analysis_contract_context import AnalysisExecutionPolicy
 from contract_sql_validation import contract_sql_diagnostic
 
 
-DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
-MAX_BYTES_BILLED = 20 * 1024**3  # 20 GiB — the sample month is far under this
-
-
 def _dry_run_metadata_error(
     job,
-    allowed_dataset: str,
-    policy: AnalysisExecutionPolicy | None = None,
+    policy: AnalysisExecutionPolicy,
 ) -> str:
     """Validate the query using BigQuery's parsed job statistics."""
     # Keep the local text check for fast feedback, then trust BigQuery's parsed
@@ -32,47 +27,38 @@ def _dry_run_metadata_error(
         dataset_id = getattr(reference, "dataset_id", None)
         if not project or not dataset_id:
             return "bq dry-run rejected: referenced table identity is incomplete"
-        if policy is not None:
-            table_id = getattr(reference, "table_id", None)
-            if not table_id:
-                return "bq dry-run rejected: referenced table identity is incomplete"
-            if f"{project}.{dataset_id}.{table_id}" not in policy.job_tables:
-                return "bq dry-run rejected: table is outside the analysis contract"
-            continue
-        actual_dataset = f"{project}.{dataset_id}"
-        if actual_dataset != allowed_dataset:
-            return f"bq dry-run rejected: foreign table ref {actual_dataset}"
+        table_id = getattr(reference, "table_id", None)
+        if not table_id:
+            return "bq dry-run rejected: referenced table identity is incomplete"
+        if f"{project}.{dataset_id}.{table_id}" not in policy.job_tables:
+            return "bq dry-run rejected: table is outside the analysis contract"
     return ""
 
 
 def inspect_bq_schema(
     bq,
     sql: str,
-    allowed_dataset: str = DATASET,
     *,
     policy: AnalysisExecutionPolicy | None = None,
 ):
     """Dry-run a validated query and return its output schema without scanning rows."""
-    from google.cloud import bigquery
-
-    s, validation_error = validate_sql(sql, allowed_dataset, policy=policy)
+    s, validation_error = validate_sql(sql, policy=policy)
     if validation_error:
         return None, validation_error
     assert s is not None
+    assert policy is not None
+    from google.cloud import bigquery
+
     try:
         job = bq.query(
             s,
             job_config=bigquery.QueryJobConfig(
                 dry_run=True,
-                maximum_bytes_billed=(
-                    policy.maximum_bytes_billed
-                    if policy is not None
-                    else MAX_BYTES_BILLED
-                ),
+                maximum_bytes_billed=policy.maximum_bytes_billed,
                 use_query_cache=False,
             ),
         )
-        metadata_error = _dry_run_metadata_error(job, allowed_dataset, policy)
+        metadata_error = _dry_run_metadata_error(job, policy)
         if metadata_error:
             return None, metadata_error
         return [
@@ -97,27 +83,23 @@ def exec_bq(
     bq,
     sql: str,
     max_results: int | None = None,
-    allowed_dataset: str = DATASET,
     cancel_event=None,
     *,
     policy: AnalysisExecutionPolicy | None = None,
 ):
     """Read-only execution, guarded the same way the executor guards tenant SQL."""
-    from google.cloud import bigquery
-
-    s, validation_error = validate_sql(sql, allowed_dataset, policy=policy)
+    s, validation_error = validate_sql(sql, policy=policy)
     if validation_error:
         return None, validation_error
     assert s is not None
+    assert policy is not None
+    from google.cloud import bigquery
+
     try:
         job = bq.query(
             s,
             job_config=bigquery.QueryJobConfig(
-                maximum_bytes_billed=(
-                    policy.maximum_bytes_billed
-                    if policy is not None
-                    else MAX_BYTES_BILLED
-                ),
+                maximum_bytes_billed=policy.maximum_bytes_billed,
                 use_query_cache=True,
             ),
         )
@@ -150,11 +132,12 @@ def exec_bq(
 
 def validate_sql(
     sql: str,
-    allowed_dataset: str = DATASET,
     *,
     policy: AnalysisExecutionPolicy | None = None,
 ) -> tuple[str | None, str | None]:
-    """Return a normalized dataset-bounded SELECT or a refusal reason."""
+    """Return a normalized contract-bounded SELECT or a refusal reason."""
+    if policy is None:
+        return None, "rejected: analysis contract required"
     s = sql.strip()
     if s.endswith(";"):
         s = s[:-1].rstrip()
@@ -184,15 +167,11 @@ def validate_sql(
         reference = m.group(0).strip("`")
         if m.end() < len(without_literals) and without_literals[m.end()] in "$@":
             return None, "rejected: table decorator is outside the analysis contract"
-        if policy is not None and reference not in policy.query_tables:
+        if reference not in policy.query_tables:
             return None, "rejected: table is outside the analysis contract"
-        if policy is None and f"{m.group(1)}.{m.group(2)}" != allowed_dataset:
-            return None, f"rejected: foreign table ref {m.group(0)}"
         found_table = True
     if not found_table:
-        if policy is not None:
-            return None, "rejected: query must reference an analysis contract table"
-        return None, f"rejected: query must reference dataset {allowed_dataset}"
+        return None, "rejected: query must reference an analysis contract table"
     contract_error = contract_sql_diagnostic(s, policy)
     if contract_error:
         return None, f"rejected: {contract_error}"

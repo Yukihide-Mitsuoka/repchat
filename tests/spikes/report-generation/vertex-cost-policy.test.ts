@@ -64,7 +64,7 @@ execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
 execution.analysis_contract_context.planning_period=lambda _contract:None
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":sql,"reason":"集計","undefined_terms":[]},usage)
 execution.report.generation_request=lambda *_args,**_kwargs:"analysis request"
-execution.report.validate_sql=lambda value,_dataset,**_kwargs:(value,None)
+execution.report.validate_sql=lambda value,**_kwargs:(value,None)
 execution.sql_contracts.validate_generated_dashboard_sql=lambda *_args,**_kwargs:None
 execution.report.inspect_bq_schema=lambda *_args,**_kwargs:([("metric_value","INT64")],None)
 execution.sql_contracts.validate_dashboard_dry_run_schema=lambda *_args,**_kwargs:None
@@ -98,7 +98,7 @@ execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
 execution.analysis_contract_context.planning_period=lambda _contract:None
 execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reason":"初回","undefined_terms":[]},initial_usage)
 execution.report.generation_request=lambda *_args:"analysis request"
-execution.report.validate_sql=lambda value,_dataset,**_kwargs:(value,None)
+execution.report.validate_sql=lambda value,**_kwargs:(value,None)
 checks=[]
 def validate(_section,_sql):
  checks.append(_sql)

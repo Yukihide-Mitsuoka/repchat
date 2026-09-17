@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-09-12
+updated: 2026-09-17
 ---
 
 # 実装状況サマリー
@@ -141,7 +141,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 |---|---|
 | デプロイ | Cloud Run（asia-southeast1）＋ Cloudflare Workers（`gate.aeworks.workers.dev`）で**稼働中**。維持費はほぼゼロ（ゼロスケール＋$5/月） |
 | 破棄 | `make destroy` は `ALLOW_DESTROY` が要る（ADR-0012 T7）。**破棄系のコマンドを出すときは、確認コマンドを破棄コマンドより先に提示すること**（オーナー指示） |
-| スパイクの費用 | レポート生成1回で**実Vertex 約¥2＋実BigQuery**。スキャンは `_TABLE_SUFFIX` で1か月・`maximum_bytes_billed` 20GiB に制限済み |
+| スパイクの費用 | 旧公開サンプル検証ではレポート生成1回で**実Vertex 約¥2＋実BigQuery**、scanは`_TABLE_SUFFIX`で1か月・`maximum_bytes_billed` 20GiBだった。現在のSQL実行境界は分析契約のtable範囲・bytes上限を必須とし、旧入口は削除済み |
 | 認証 | `gcloud auth application-default login` が要る（Evidence も `authenticator: gcloud-cli` でADCを使う。**鍵ファイルは不要**） |
 | Python | 旧ライブデモ入口は削除済み。対象非依存runtime用の実行入口は未実装 |
 

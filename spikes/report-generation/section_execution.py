@@ -47,9 +47,7 @@ def _dashboard_sql_diagnostic(
         sql_contracts.validate_generated_dashboard_sql(section, sql)
     except sql_contracts.SQLContractError as validation_error:
         return str(validation_error)
-    dry_schema, dry_error = report.inspect_bq_schema(
-        bq, sql, allowed_dataset="", policy=policy
-    )
+    dry_schema, dry_error = report.inspect_bq_schema(bq, sql, policy=policy)
     if dry_error:
         if not report.repairable_dry_run_error(dry_error):
             raise SectionExecutionError(f"BigQuery dry runに失敗しました: {dry_error}")
@@ -83,7 +81,6 @@ def _execute_section_result(
         bq,
         sql,
         max_results=max_result_rows + 1,
-        allowed_dataset="",
         policy=policy,
     )
     if error:
@@ -174,7 +171,7 @@ def run_section(
         return cost
     if not sql:
         raise SectionExecutionError("SQLが返りませんでした。指標定義または質問を確認してください。")
-    normalized, error = report.validate_sql(sql, "", policy=policy)
+    normalized, error = report.validate_sql(sql, policy=policy)
     if error:
         raise SectionExecutionError(f"生成SQLを安全検査で拒否しました: {error}")
     assert normalized is not None
@@ -257,7 +254,7 @@ def run_section(
                     + detail
                 )
             normalized, validation_error = report.validate_sql(
-                repaired_sql, "", policy=policy
+                repaired_sql, policy=policy
             )
             if validation_error:
                 raise SectionExecutionError(

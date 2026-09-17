@@ -41,7 +41,7 @@ fields=(
 )
 policy=AnalysisExecutionPolicy(frozenset({records,accounts,${JSON.stringify(events)}}),frozenset({records,accounts,${JSON.stringify(events)}}),100,20,None,fields)
 if payload["execution"]:
- output=[bigquery_execution.validate_sql(sql,"ignored",policy=policy)[1] for sql in payload["sqls"]]
+ output=[bigquery_execution.validate_sql(sql,policy=policy)[1] for sql in payload["sqls"]]
 else:
  output=[validation.contract_sql_diagnostic(sql,policy) for sql in payload["sqls"]]
 print(json.dumps(output,ensure_ascii=False))`,
@@ -127,4 +127,81 @@ print(json.dumps(bigquery_execution.validate_sql(${JSON.stringify(sql)})))`,
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [null, 'rejected: analysis contract required']);
+});
+
+test('dry run and query execution refuse a missing policy before contacting BigQuery', () => {
+  const sql = `SELECT record_id FROM \`${records}\``;
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import json,sys
+sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
+import bigquery_execution
+class Client:
+ def query(self,*_args,**_kwargs):raise AssertionError("BigQuery was contacted")
+client=Client()
+sql=${JSON.stringify(sql)}
+print(json.dumps({"dry_run":bigquery_execution.inspect_bq_schema(client,sql),"execution":bigquery_execution.exec_bq(client,sql)}))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    dry_run: [null, 'rejected: analysis contract required'],
+    execution: [null, 'rejected: analysis contract required'],
+  });
+});
+
+test('dry run and execution use the policy bytes limit and exact job table scope', () => {
+  const sql = `SELECT record_id FROM \`${records}\``;
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import json,sys,types
+sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
+from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_schema_policy import AnalysisFieldPolicy
+import bigquery_execution
+bigquery=types.ModuleType("google.cloud.bigquery")
+bigquery.QueryJobConfig=lambda **kwargs:types.SimpleNamespace(**kwargs)
+cloud=types.ModuleType("google.cloud")
+cloud.bigquery=bigquery
+google=types.ModuleType("google")
+google.cloud=cloud
+sys.modules.update({"google":google,"google.cloud":cloud,"google.cloud.bigquery":bigquery})
+table=${JSON.stringify(records)}
+policy=AnalysisExecutionPolicy(frozenset({table}),frozenset({table}),1234,20,None,(AnalysisFieldPolicy(table,("record_id",),"STRING","REQUIRED",False,False),))
+class Rows(list):
+ schema=[types.SimpleNamespace(name="record_id")]
+class Job:
+ statement_type="SELECT"
+ referenced_tables=[types.SimpleNamespace(project="alpha",dataset_id="dataset",table_id="records")]
+ schema=[types.SimpleNamespace(name="record_id",field_type="STRING",mode="REQUIRED")]
+ def result(self,**_kwargs):return Rows([{"record_id":"value"}])
+class Client:
+ def __init__(self):self.configs=[]
+ def query(self,_sql,job_config):
+  self.configs.append(job_config)
+  return Job()
+client=Client()
+sql=${JSON.stringify(sql)}
+dry_run=bigquery_execution.inspect_bq_schema(client,sql,policy=policy)
+execution=bigquery_execution.exec_bq(client,sql,policy=policy)
+Job.referenced_tables=[types.SimpleNamespace(project="alpha",dataset_id="dataset",table_id="other")]
+outside_scope=bigquery_execution.inspect_bq_schema(client,sql,policy=policy)
+print(json.dumps({"dry_run":dry_run,"execution":execution,"outside_scope":outside_scope,"limits":[config.maximum_bytes_billed for config in client.configs]}))`,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    dry_run: [[['record_id', 'STRING', 'REQUIRED']], null],
+    execution: [[[['value']], ['record_id']], null],
+    outside_scope: [null, 'bq dry-run rejected: table is outside the analysis contract'],
+    limits: [1234, 1234, 1234],
+  });
 });
