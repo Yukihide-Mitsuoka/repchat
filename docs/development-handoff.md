@@ -119,9 +119,13 @@ URL関数を名指しした修正指示を削除し、診断文と対象非依�
 置換しました。[PR #733](https://github.com/Yukihide-Mitsuoka/repchat/pull/733)では、
 時系列chartで選んだ区分軸を共通契約の非repeated・非restrictedな
 DATE／DATETIME／TIMESTAMP fieldへ照合し、計画提示前とSQL生成前に不一致を拒否します。
-2026-09-18のローカル`make format`・`make lint`・`make test`は成功し、CI・mergeは未完了です。
+PR #733は2026-09-18にmerge済みです。
+続く段階付きSankeyの中立化では、計画・SQL生成要件と描画からWebページ回遊・URL正規化の
+決め打ちを削除し、契約で経路識別と順序を確認するようAIへ要求する共通表現へ改めています。
+この選択条件は機械的には未検査です。結果検査は番号付き隣接段階・数値・重複・上限までであり、
+経路の完全性やSQLの意味上の来歴を証明済みとは扱いません。
 出力`time_value`のSQL式が選択したfieldに由来することの来歴検査、契約に区分軸として宣言されない
-date-shard疑似fieldの利用、段階付きSankeyのページ回遊前提は未完了です。
+date-shard疑似fieldの利用、段階付きSankeyの選択条件・経路完全性・SQL来歴検査は未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -144,7 +148,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 | 対象registryと既定値 | `data_source_profiles.py` | PR #721で物理削除済み。未参照の`dashboard_build.py`もPR #720で削除済み |
 | 手書きschema・意味・期間・SQL補正 | `sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別profile moduleはPR #722、固定schema・指標promptと手動metric資産はPR #723、固定Evidence出力はPR #725、SQL実行の固定datasetと20GiB fallbackはPR #727、URL関数の特殊補正はPR #728で削除済み |
 | UIと補助実行経路 | `tenant_serve.py` | 旧ライブデモ入口とUI補助module、未参照の固定Evidence成果物出力、固定対象選択・SQLを持つ旧配信実験はPR #730までに削除済み |
-| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py` | `event_date`はPR #732で中立な描画役割へ置換済み。PR #733で時系列chartの選択区分軸の型を共通契約へ照合する。出力SQL式の来歴検査とWeb導線前提のSankey要件は未完了 |
+| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py`、`chart_renderer_composition.js` | `event_date`はPR #732で中立な描画役割へ置換済み。PR #733で時系列chartの選択区分軸の型を共通契約へ照合済み。段階付きSankeyのWeb導線前提は中立化中。出力SQL式の来歴と経路完全性の検査は未完了 |
 | 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
 
 ### 固有処理を削除する実装計画

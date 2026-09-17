@@ -56,7 +56,7 @@ from visualization_contracts import (
     MAX_CALENDAR_YEARS,
     MAX_FLOW_SANKEY_EDGES,
     MAX_SANKEY_EDGE_ROWS,
-    MAX_SANKEY_PAGES,
+    MAX_SANKEY_STAGES,
     MAX_SANKEY_PATHS,
     SANKEY_CHARTS,
     STAGED_SANKEY_CHARTS,
@@ -144,7 +144,7 @@ def dashboard_planning_request(
         max_panel_count=MAX_PANEL_COUNT,
         dynamic_panel_fields=DYNAMIC_PANEL_FIELDS,
         max_sankey_paths=MAX_SANKEY_PATHS,
-        max_sankey_pages=MAX_SANKEY_PAGES,
+        max_sankey_stages=MAX_SANKEY_STAGES,
         has_governed_metrics=bool(_defined_metric_names(metrics)),
     )
 

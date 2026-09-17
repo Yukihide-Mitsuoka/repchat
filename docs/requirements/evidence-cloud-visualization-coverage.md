@@ -67,7 +67,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `pivot_table` | Data Table Pivoting | 対応 | 行区分、列区分、1〜4指標のlong形式を検査し、欠損組合せを空欄に保ってwide表示する |
 | `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分と比較対象の定義済み指標1件を受け取る。比較条件は実行仕様へ明記し、SQLは同じ指標の現在値、比較値、差分を返す。差分の算術整合性を検査して増減方向を中立色で表示する |
 | `sparkline_table` | Data Table Sparkline | 対応 | 区分、日付、値のlong形式を検査し、区分ごとの最新値とECharts sparklineを表示する |
-| `sankey` / `sankey_vertical` | Sankey Diagram | 対応 | 上位10経路、最大4ページの段階付きサイト回遊を縦向き／横向きで描く |
+| `sankey` / `sankey_vertical` | Sankey Diagram | 部分対応 | 上位10経路・最大4段階の隣接edgeを縦向き／横向きで描く。経路識別・順序の選択条件、経路の完全性、生成SQLの意味上の来歴は未検査 |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
 | `annotated_line` | Annotations | 部分対応 | 日付、任意の注釈ラベル、1指標を返し、根拠のある時点だけをpin表示する |
@@ -119,7 +119,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
 | Funnel Chart | default、side aligned | 対応 | 任意の順序付きstageを縦向き／横向きで描画する |
-| Sankey Diagram | horizontal、vertical | 対応 | 段階付き回遊と一般的な非循環flowを縦向き／横向きで描画する |
+| Sankey Diagram | horizontal、vertical | 部分対応 | 段階付き経路と一般的な非循環flowを縦向き／横向きで描画する。段階付き経路の完全性・SQL来歴は未検査 |
 
 標準chart componentはこの11種類に、§4のAnnotations、Sparkline、Mixed-Type Chartsと、§6のCustom
 EChartsを加えた15種類である。
