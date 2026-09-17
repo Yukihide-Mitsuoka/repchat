@@ -133,6 +133,11 @@ def run_section(
     """Generate, validate, execute, and optionally verify one panel."""
     extra = context or {}
     policy = analysis_contract_context.execution_policy(contract)
+    temporal_diagnostic = analysis_contract_context.temporal_chart_diagnostic(
+        section.get("planned_visualization"), section.get("semantic_dimensions"), policy.result
+    )
+    if temporal_diagnostic:
+        raise SectionExecutionError(temporal_diagnostic)
     result_row_limit = min(max_result_rows, policy.maximum_result_rows)
     sql_rules = analysis_contract_context.sql_rules(contract)
     period = analysis_contract_context.planning_period(contract)

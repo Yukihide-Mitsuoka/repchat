@@ -23,6 +23,17 @@ MAX_CALENDAR_ROWS = MAX_CALENDAR_YEARS * 366
 STAGED_SANKEY_CHARTS = frozenset({"sankey", "sankey_vertical"})
 FLOW_SANKEY_CHARTS = frozenset({"flow_sankey", "flow_sankey_vertical"})
 SANKEY_CHARTS = STAGED_SANKEY_CHARTS | FLOW_SANKEY_CHARTS
+TEMPORAL_CHART_DIMENSION_INDEX = {
+    "line": 0,
+    "multi_line": 0,
+    "area": 0,
+    "stacked_area": 0,
+    "percent_stacked_area": 0,
+    "calendar_heatmap": 0,
+    "sparkline_table": 1,
+    "annotated_line": 0,
+    "sparkline": 0,
+}
 
 
 VISUALIZATION_CONTRACTS = (

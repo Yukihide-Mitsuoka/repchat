@@ -15,13 +15,13 @@ function sectionExecution(body: string) {
       `import json,sys
 sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
 import section_execution as execution
-from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_contract_context import AnalysisExecutionPolicy,AnalysisResultPolicy
 from analysis_schema_policy import AnalysisFieldPolicy
 usage={"input_tokens":1000,"output_tokens":1000}
 table_name="alpha.dataset.records"
 table=chr(96)+table_name+chr(96)
 sql="SELECT COUNT(*) AS metric_value FROM "+table
-policy=AnalysisExecutionPolicy(frozenset({table_name}),frozenset({table_name}),100,10,schema_fields=(AnalysisFieldPolicy(table_name,("record_id",),"STRING","REQUIRED",False,False),))
+policy=AnalysisExecutionPolicy(frozenset({table_name}),frozenset({table_name}),100,10,schema_fields=(AnalysisFieldPolicy(table_name,("record_id",),"STRING","REQUIRED",False,False),),result=AnalysisResultPolicy(frozenset({'Observed at'}),frozenset(),frozenset({'Observed at'})))
 contract=object()
 execution.analysis_contract_context.execution_policy=lambda _contract:policy
 execution.analysis_contract_context.sql_rules=lambda _contract:"rules"
@@ -129,7 +129,7 @@ def execute(_bq,_sql,**kwargs):
 execution.report.exec_bq=execute
 events=[]
 cost=execution.run_section(
- {"shape":{"columns":["日付","値"]},"navigation_depth":4,"title":"時系列","planned_visualization":"line"}, events.append,
+ {"shape":{"columns":["日付","値"]},"navigation_depth":4,"title":"時系列","planned_visualization":"line","semantic_dimensions":["Observed at"]}, events.append,
  client=object(),bq=object(),model=execution.report.DEFAULT_MODEL,
  contract=contract,max_result_rows=10,
 )
