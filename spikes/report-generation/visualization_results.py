@@ -8,9 +8,6 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from visualization_flows import (
-    MAX_SANKEY_EDGE_ROWS,
-    MAX_SANKEY_PAGES,
-    MAX_SANKEY_PATHS,
     valid_flow_sankey_result,
     valid_sankey_result,
 )

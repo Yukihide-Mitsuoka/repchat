@@ -21,8 +21,8 @@ function standardChartOption(result) {
     case 'heatmap': return standardHeatmapOption(result);
     case 'sankey': return standardSankeyOption(result);
     case 'sankey_vertical': return standardSankeyOption(result, true);
-    case 'flow_sankey': return standardSankeyOption(result, false, false);
-    case 'flow_sankey_vertical': return standardSankeyOption(result, true, false);
+    case 'flow_sankey': return standardSankeyOption(result);
+    case 'flow_sankey_vertical': return standardSankeyOption(result, true);
     case 'annotated_line': return standardAnnotatedLineOption(result);
     case 'sparkline': return standardSparklineOption(result);
     case 'mixed_bar_line': return standardMixedOption(result);

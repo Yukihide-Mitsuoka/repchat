@@ -121,7 +121,7 @@ def normalize_dashboard_plan(
                 if not re.search(r"(?:上位|トップ)\s*\d+", suggestion):
                     suggestion += "。経路は上位10件に絞って"
                 suggestion += (
-                    f"。3ページ分は遷移元・遷移先の隣接edgeとして表し、"
+                    f"。順序付き段階は遷移元・遷移先の隣接edgeとして表し、"
                     f"区分軸2件と{measures[0]}1指標で返して"
                 )
             raise PlannerError(

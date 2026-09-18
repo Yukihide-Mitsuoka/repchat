@@ -6,11 +6,13 @@ import math
 import re
 from decimal import Decimal
 
-import analysis_planner as planner
+from visualization_contracts import (
+    MAX_FLOW_SANKEY_EDGES,
+    MAX_SANKEY_EDGE_ROWS,
+    MAX_SANKEY_PATHS,
+    MAX_SANKEY_STAGES,
+)
 
-MAX_SANKEY_PAGES = planner.MAX_SANKEY_PAGES
-MAX_SANKEY_PATHS = planner.MAX_SANKEY_PATHS
-MAX_SANKEY_EDGE_ROWS = planner.MAX_SANKEY_EDGE_ROWS
 
 
 def valid_sankey_result(rows: list[tuple]) -> bool:
@@ -32,7 +34,7 @@ def valid_sankey_result(rows: list[tuple]) -> bool:
         and row[2] >= 0
         and stage(row[0]) is not None
         and stage(row[1]) == stage(row[0]) + 1
-        and stage(row[1]) <= MAX_SANKEY_PAGES
+        and stage(row[1]) <= MAX_SANKEY_STAGES
         for row in rows
     )
     if not valid_rows:
@@ -50,7 +52,7 @@ def valid_sankey_result(rows: list[tuple]) -> bool:
 def valid_flow_sankey_result(rows: list[tuple]) -> bool:
     """Validate a bounded acyclic directed flow without page-navigation semantics."""
     numeric = (int, float, Decimal)
-    if not rows or len(rows) > planner.MAX_FLOW_SANKEY_EDGES:
+    if not rows or len(rows) > MAX_FLOW_SANKEY_EDGES:
         return False
     if not all(
         len(row) == 3
