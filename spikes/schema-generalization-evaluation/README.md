@@ -27,8 +27,8 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixtureとversion 2のruntime実行後のrun記録を
-schema ID・case IDだけで結合します。
+`assemble.py`は、version 2の独立review済み参照fixture、version 2のruntime実行後のrun記録、version 1の
+scope snapshot artifactを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
 capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
@@ -39,6 +39,13 @@ assemblerはfixtureの正確なfile bytesを再計算し、fingerprintが異な�
 取り違えと、実行結果確認後の参照SQL・期待結果・閾値・capability変更を検出します。このfingerprintはreviewerの本人性や
 review時刻を単独では証明しないため、独立review記録は引き続き別途必要です。fingerprintをruntime inputへ渡してはいけません。
 
+scope snapshot artifactは、fixtureに含まれる全schemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
+`DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
+canonical JSON表現であること、そのSHA-256がfixtureと全runの`scope_snapshot_fingerprint`に一致することを検証します。
+未知・重複・欠落schemaは拒否します。snapshot内容と取得時刻は結合後のevidenceへ複製せず、fingerprintだけを残します。
+このartifactはschema metadataとbounded value profileを含む可能性があるため、fixtureやrunと同じ認可済みローカル領域で
+管理し、CI logまたはrepositoryへ保存してはいけません。
+
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
 CI logやrepositoryへ保存しません。
@@ -47,7 +54,8 @@ CI logやrepositoryへ保存しません。
 
 ```console
 python3 spikes/schema-generalization-evaluation/assemble.py \
-  /path/to/reviewed-fixture.json /path/to/recorded-runs.json /secure/path/evidence.json
+  /path/to/reviewed-fixture.json /path/to/recorded-runs.json \
+  /path/to/scope-snapshots.json /secure/path/evidence.json
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
 ```
 
