@@ -5,6 +5,10 @@ from __future__ import annotations
 import re
 from typing import Callable
 
+import contract_sql_validation as schema_contracts
+from analysis_contract_context import AnalysisExecutionPolicy
+from visualization_contracts import TEMPORAL_CHART_DIMENSION_INDEX
+
 
 class SQLContractError(ValueError):
     """Raised when generated SQL cannot satisfy its confirmed execution contract."""
@@ -37,8 +41,10 @@ def sql_period_diagnostic(
     return ""
 
 
-def top_level_select_expressions(sql: str) -> tuple[list[str], str]:
-    """Return the final SELECT expressions and its top-level suffix."""
+def _top_level_select_expression_spans(
+    sql: str,
+) -> tuple[list[tuple[str, int, int]], str]:
+    """Return final SELECT expressions with source spans and its top-level suffix."""
     structure = re.sub(
         r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|--[^\n]*|/\*[\s\S]*?\*/",
         lambda match: " " * len(match.group(0)),
@@ -66,17 +72,30 @@ def top_level_select_expressions(sql: str) -> tuple[list[str], str]:
         (token for token in following if token[0] in {"FROM", "UNION"}),
         ("END", len(sql), len(sql)),
     )
-    clause = sql[select[2] : boundary[1]]
-    expressions, start, nested = [], 0, 0
+    clause_start, clause_end = select[2], boundary[1]
+    clause = sql[clause_start:clause_end]
+    ranges, start, nested = [], 0, 0
     for index, char in enumerate(structure[select[2] : boundary[1]]):
         if char == "(":
             nested += 1
         elif char == ")":
             nested = max(0, nested - 1)
         elif char == "," and nested == 0:
-            expressions.append(clause[start:index].strip())
+            ranges.append((start, index))
             start = index + 1
-    expressions.append(clause[start:].strip())
+    ranges.append((start, len(clause)))
+    expressions = []
+    for relative_start, relative_end in ranges:
+        while relative_start < relative_end and clause[relative_start].isspace():
+            relative_start += 1
+        while relative_end > relative_start and clause[relative_end - 1].isspace():
+            relative_end -= 1
+        if relative_start < relative_end:
+            absolute_start, absolute_end = (
+                clause_start + relative_start,
+                clause_start + relative_end,
+            )
+            expressions.append((sql[absolute_start:absolute_end], absolute_start, absolute_end))
     suffix_chars, nested = [], 0
     for char in structure[boundary[1] :]:
         if char == "(":
@@ -87,20 +106,87 @@ def top_level_select_expressions(sql: str) -> tuple[list[str], str]:
             suffix_chars.append(" ")
         else:
             suffix_chars.append(char if nested == 0 else " ")
-    return [expression for expression in expressions if expression], "".join(suffix_chars)
+    return expressions, "".join(suffix_chars)
 
 
-def validate_generated_dashboard_sql(section: dict, sql: str) -> None:
+def top_level_select_expressions(sql: str) -> tuple[list[str], str]:
+    """Return the final SELECT expressions and its top-level suffix."""
+    expressions, suffix = _top_level_select_expression_spans(sql)
+    return [expression for expression, _start, _end in expressions], suffix
+
+
+def validate_generated_dashboard_sql(
+    section: dict,
+    sql: str,
+    policy: AnalysisExecutionPolicy | None = None,
+) -> None:
     """Reject SQL that cannot satisfy the confirmed renderer before BigQuery runs."""
     planned = section.get("planned_visualization")
     expected = section.get("source_columns")
     if not planned or not expected:
         return
-    expressions, suffix = top_level_select_expressions(sql)
+    expression_spans, suffix = _top_level_select_expression_spans(sql)
+    expressions = [expression for expression, _start, _end in expression_spans]
     _validate_output_aliases(section, expressions)
+    _validate_temporal_lineage(section, sql, expression_spans, policy)
     _validate_nonnull_metrics(section, expressions)
     _validate_result_row_limit(section, suffix)
     _validate_single_aggregate(section, expressions, suffix)
+
+
+def _validate_temporal_lineage(
+    section: dict,
+    sql: str,
+    expressions: list[tuple[str, int, int]],
+    policy: AnalysisExecutionPolicy | None,
+) -> None:
+    """Require direct physical-field proof for a selected temporal dimension."""
+    chart = section.get("planned_visualization")
+    dimension_index = TEMPORAL_CHART_DIMENSION_INDEX.get(chart)
+    if dimension_index is None:
+        return
+    if policy is None:
+        raise SQLContractError(
+            f"{section['title']}の時間軸SQL来歴を共通分析契約へ照合できないため"
+            "BigQueryへ送信しません。"
+        )
+    dimensions = section.get("semantic_dimensions")
+    source_columns = section.get("source_columns")
+    result = policy.result
+    if (
+        result is None
+        or not isinstance(dimensions, list)
+        or len(dimensions) <= dimension_index
+        or not isinstance(source_columns, list)
+        or "time_value" not in source_columns
+    ):
+        raise SQLContractError(
+            f"{section['title']}の時間軸SQL来歴を共通分析契約へ照合できないため"
+            "BigQueryへ送信しません。"
+        )
+    semantic_name = dimensions[dimension_index]
+    field = next(
+        (item for item in result.temporal_fields if item.name == semantic_name),
+        None,
+    )
+    output_index = source_columns.index("time_value")
+    if (
+        field is None
+        or output_index >= len(expressions)
+        or not schema_contracts.expression_has_direct_field_lineage(
+            sql,
+            expressions[output_index][1],
+            expressions[output_index][2],
+            policy,
+            field.table,
+            field.path,
+        )
+    ):
+        raise SQLContractError(
+            f"{section['title']}の時間軸列time_valueのSQL来歴が選択したdimension「{semantic_name}」の"
+            "契約fieldへ直接追跡できないためBigQueryへ送信しません。最終SELECTで契約fieldから"
+            "直接導出してください。"
+        )
 
 
 def _validate_output_aliases(section: dict, expressions: list[str]) -> None:

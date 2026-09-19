@@ -115,7 +115,10 @@ policyへ含めます。不正型、case-insensitiveな同名field、重複path�
 完全nested pathをfield policyへ照合します。restricted field、UNNESTせず参照したrepeated親配下のscalar、
 scalar fieldへのUNNESTを拒否します。schema fieldを指す単純なUNNEST operandは、そのfield自身のmodeが
 REPEATEDであり、各階層のaliasが一意な場合だけ受理します。parenthesisとUNION分岐のalias scopeは分離します。
-計算式で作る配列とCTE出力のlineageはこの検査で推測せず、BigQuery dry runの型検査を維持します。
+時系列chartでは最終SELECTの`time_value`式のsource spanを同じalias解決器へ渡し、選択したsemantic dimensionの
+完全table・field pathだけが直接参照されることをdry run前に証明します。別fieldの混在と未解決identifierは拒否します。
+計算式で作る配列とCTE出力のlineageはこの検査で推測せず、CTE経由の時間軸も直接参照へ修正されるまでfail closedに
+します。その他の出力にはBigQuery dry runの型検査を維持します。
 `bigquery_execution.validate_sql(...)`は契約付きdry run・実行の前にこの検査を必須とします。
 
 `analysis_contract_context.execution_policy(...)`はcanonical semanticsのgrain・identifier・dimensionと

@@ -100,7 +100,7 @@ execution.report.generate_request=lambda *_args,**_kwargs:({"sql":initial,"reaso
 execution.report.generation_request=lambda *_args:"analysis request"
 execution.report.validate_sql=lambda value,**_kwargs:(value,None)
 checks=[]
-def validate(_section,_sql):
+def validate(_section,_sql,*_args):
  checks.append(_sql)
  if len(checks)==1:raise execution.sql_contracts.SQLContractError("shape mismatch")
 execution.sql_contracts.validate_generated_dashboard_sql=validate

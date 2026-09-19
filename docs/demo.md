@@ -163,6 +163,8 @@ AIが指定した`layout_row`と`layout_weight`でカードを配置します。
 
 SQLはGitHub Light相当の控えめな配色で予約語などを色分けし、改行とスペースインデントを保持します。
 KPI・ファネル・時系列・Sankeyは、宣言済みの列数と型に一致する場合だけ描画し、不一致なら停止します。
+時系列の時間軸は、選択した契約dimensionの物理fieldから最終SELECTで直接導出されたことも検査し、別fieldや
+解決不能なCTE出力aliasへ差し替わったSQLは実行しません。
 
 ##### 段階付きSankeyの検査
 

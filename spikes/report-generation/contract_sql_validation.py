@@ -33,6 +33,8 @@ class _TokenValue:
     value: str
     quoted: bool
     scope: tuple[tuple[int, int], ...]
+    start: int
+    end: int
 
 
 @dataclass(frozen=True)
@@ -52,10 +54,18 @@ def _tokens(sql: str) -> list[_TokenValue]:
         if raw == ")":
             if len(scope) > 1:
                 scope.pop()
-            result.append(_TokenValue(raw, False, tuple(scope)))
+            result.append(_TokenValue(raw, False, tuple(scope), match.start(), match.end()))
             continue
         value = raw[1:-1].replace("``", "`") if raw.startswith("`") else raw
-        result.append(_TokenValue(value, raw.startswith("`"), tuple(scope)))
+        result.append(
+            _TokenValue(
+                value,
+                raw.startswith("`"),
+                tuple(scope),
+                match.start(),
+                match.end(),
+            )
+        )
         if raw == "(":
             group += 1
             scope.append((group, 0))
@@ -257,3 +267,86 @@ def contract_sql_diagnostic(sql: str, execution: AnalysisExecutionPolicy | None)
     except (KeyError, TypeError, ValueError):
         return DIAGNOSTIC
     return ""
+
+
+_EXPRESSION_WORDS = _KEYWORDS | frozenset(
+    "ASC AT BOOL BOOLEAN BYTES DATE DATETIME DAY DAYOFWEEK DAYOFYEAR DESC FALSE FLOAT64 "
+    "HOUR IGNORE INT64 INTERVAL ISOYEAR ISOWEEK MICROSECOND MILLISECOND MINUTE MONTH "
+    "NANOSECOND NULLS NUMERIC QUARTER RESPECT SECOND STRING TIME TIMESTAMP TRUE WEEK YEAR "
+    "ZONE".split()
+)
+
+
+def expression_has_direct_field_lineage(
+    sql: str,
+    start: int,
+    end: int,
+    execution: AnalysisExecutionPolicy,
+    expected_table: str,
+    expected_path: tuple[str, ...],
+) -> bool:
+    """Prove that one final expression uses only one exact physical schema field.
+
+    Derived CTE columns are intentionally not guessed. Without a complete SQL AST and
+    lineage graph, an unresolved identifier makes the proof fail closed.
+    """
+    try:
+        tokens = _tokens(sql)
+        fields = _field_index(execution)
+        bindings = _physical_bindings(tokens, execution)
+        _unnest(tokens, bindings, fields)
+        indexes = [
+            index
+            for index, token in enumerate(tokens)
+            if start <= token.start and token.end <= end
+        ]
+        if not indexes:
+            raise _PolicyMismatch
+        selected = set(indexes)
+        consumed: set[int] = set()
+        observed = set()
+        for index in indexes:
+            if index in consumed or index + 2 not in selected or tokens[index + 1].value != ".":
+                continue
+            stop = index
+            while (
+                stop + 1 in selected
+                and stop + 2 in selected
+                and tokens[stop + 1].value == "."
+            ):
+                stop += 2
+            segments = _path(tokens, index, stop + 1)
+            if segments is None:
+                raise _PolicyMismatch
+            resolved = _resolve(segments, tokens[index].scope, bindings, fields)
+            if resolved is None:
+                raise _PolicyMismatch
+            field, _prefix = resolved
+            observed.add((field.table, field.path))
+            consumed.update(range(index, stop + 1))
+        for index in indexes:
+            if index in consumed:
+                continue
+            token = tokens[index]
+            if token.value in {"(", ")", ",", "."}:
+                continue
+            before = tokens[index - 1].value.upper() if index else ""
+            after = tokens[index + 1].value if index + 1 < len(tokens) else ""
+            if (
+                not token.quoted
+                and (
+                    not _IDENTIFIER.fullmatch(token.value)
+                    or token.value.upper() in _EXPRESSION_WORDS
+                    or after == "("
+                    or before == "AS"
+                )
+            ):
+                continue
+            resolved = _resolve([token.value], token.scope, bindings, fields)
+            if resolved is None:
+                raise _PolicyMismatch
+            field, _prefix = resolved
+            observed.add((field.table, field.path))
+        return observed == {(expected_table, expected_path)}
+    except (KeyError, TypeError, ValueError):
+        return False

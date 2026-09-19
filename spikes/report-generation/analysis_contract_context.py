@@ -45,12 +45,22 @@ class AnalysisPeriodPolicy:
 
 
 @dataclass(frozen=True)
+class AnalysisResultFieldPolicy:
+    """One semantic result name bound to an exact inspected field."""
+
+    name: str
+    table: str
+    path: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class AnalysisResultPolicy:
     """Semantic names permitted in one contract-bound result."""
 
     dimensions: frozenset[str]
     measures: frozenset[str]
     temporal_dimensions: frozenset[str] = frozenset()
+    temporal_fields: tuple[AnalysisResultFieldPolicy, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -99,6 +109,7 @@ def _result_semantics(
         for table in content["schema"]["metadata"]["tables"]
     }
     temporal_dimensions = set()
+    temporal_fields = []
     for category in ("grain", "identifiers", "dimensions"):
         for name, definition in semantics.get(category, {}).items():
             reference = definition.get("field")
@@ -123,7 +134,15 @@ def _result_semantics(
                 date_shard or field.field_type in TIME_TYPES
             ) and not field.repeated and not field.restricted:
                 temporal_dimensions.add(name)
-    return AnalysisResultPolicy(dimensions, measures, frozenset(temporal_dimensions))
+                temporal_fields.append(
+                    AnalysisResultFieldPolicy(name, field.table, field.path)
+                )
+    return AnalysisResultPolicy(
+        dimensions,
+        measures,
+        frozenset(temporal_dimensions),
+        tuple(sorted(temporal_fields, key=lambda item: item.name)),
+    )
 
 
 def temporal_chart_diagnostic(

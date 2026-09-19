@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-18
+updated: 2026-09-19
 ---
 
 # 開発引き継ぎ
@@ -126,13 +126,17 @@ PR #733は2026-09-18にmerge済みです。
 この選択条件は機械的には未検査です。結果検査は番号付き隣接段階・数値・重複・上限までであり、
 経路の完全性やSQLの意味上の来歴を証明済みとは扱いません。PR #734はローカル検証と
 必須CI checksが成功し、2026-09-19にmerge済みです。
-出力`time_value`のSQL式が選択したfieldに由来することの来歴検査、契約に区分軸として宣言されない
-date-shard疑似fieldの利用、段階付きSankeyの選択条件・経路完全性・SQL来歴検査が残りました。
 [PR #735](https://github.com/Yukihide-Mitsuoka/repchat/pull/735)では、検査済みdate shardと
 ingestion-time partitionの疑似日時をdimensionだけに限定して公開し、
 `_TABLE_SUFFIX`は固定`PARSE_DATE`式でDATEへ変換して時系列の共通型検査へ接続します。指標・識別子・joinへの
 流用はresponse schemaとnormalizerの両方で拒否し、偽造された変換式もexecution policy生成前に拒否します。
-ローカル検証と必須CI checksは成功し、mergeは未完了です。
+ローカル検証と必須CI checksは成功し、2026-09-19にmerge済みです。
+[PR #736](https://github.com/Yukihide-Mitsuoka/repchat/pull/736)では、時系列chartの最終`time_value`式を、選択した
+semantic dimensionの完全table・field pathへ既存SQL alias scope resolverで照合します。別fieldの混在、コメントの
+見せかけ、policy欠落、解決不能なCTE出力aliasはBigQuery dry run前にfail closedで拒否します。完全なAST来歴graphを
+持たない現段階ではCTE経由を推測せず、物理fieldから直接導出するSQLだけを受理します。`make format`、`make lint`、
+`make test`と必須CI checksは成功し、mergeは未完了です。残る可視化の意味検査は、段階付きSankeyの選択条件・経路完全性・
+SQL来歴です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -155,7 +159,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 | 対象registryと既定値 | `data_source_profiles.py` | PR #721で物理削除済み。未参照の`dashboard_build.py`もPR #720で削除済み |
 | 手書きschema・意味・期間・SQL補正 | `sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別profile moduleはPR #722、固定schema・指標promptと手動metric資産はPR #723、固定Evidence出力はPR #725、SQL実行の固定datasetと20GiB fallbackはPR #727、URL関数の特殊補正はPR #728で削除済み |
 | UIと補助実行経路 | `tenant_serve.py` | 旧ライブデモ入口とUI補助module、未参照の固定Evidence成果物出力、固定対象選択・SQLを持つ旧配信実験はPR #730までに削除済み |
-| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py`、`chart_renderer_composition.js` | `event_date`はPR #732で中立な描画役割へ置換済み。PR #733で時系列chartの選択区分軸の型を共通契約へ照合済み。段階付きSankeyのWeb導線前提はPR #734で中立化中。出力SQL式の来歴と経路完全性の検査は未完了 |
+| 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py`、`chart_renderer_composition.js` | `event_date`はPR #732で中立な描画役割へ置換済み。PR #733で時系列chartの選択区分軸の型、PR #736で最終SQL式の直接field来歴を共通契約へ照合した。段階付きSankeyのWeb導線前提はPR #734で中立化済み。Sankeyの選択条件・経路完全性・SQL来歴検査は未完了 |
 | 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
 
 ### 固有処理を削除する実装計画
@@ -189,7 +193,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 2 | 共通分析契約の自動生成（PR #679〜#685 merge済み） | `analysis_contract.py`、`analysis_contract_compiler.py`、`analysis_contract_response.py`、`analysis_contract_generation.py`、`analysis_contract_orchestration.py`、`bigquery_scope_discovery.py` | validator、生成入力、token限定normalizer、構造化response schema、対象非依存prompt、単一Vertex生成I/O、日次shardの検査済みwildcard統合と二段階生成はmerge済み。PR #685では利用可能な時間境界がない選択schemaだけ`period=null`でcompileし、ingestion-time partitionには標準疑似fieldを合成した。表現不能な必須partition filterは拒否する。手動意味定義、対象別period parser、識別子補正を使わない |
 | 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698、#716〜#718、#727、#728 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | planner、workflow、保存plan、section executorは共通契約からscope・上限・期間・field・SQL規則・結果形状検査を導出する。section executorから対象別dataset、期間callback、SQL正規化callback、SQL検査・実行から契約欠落fallback、URL関数の特殊補正を削除済み |
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
-| 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型を共通契約へ照合した。PR #734で段階付きSankeyのWeb導線前提を削除済み。PR #735でdate-shard疑似日時のdimension接続を実装中。生成SQLの出力式来歴とSankeyの選択条件・経路完全性・SQL来歴検査は残る |
+| 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型を共通契約へ照合した。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #736で時系列SQLの直接field来歴を検査中。Sankeyの選択条件・経路完全性・SQL来歴検査は残る |
 | 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。残る対象別処理を順次除去し、互換目的のadapter、feature flag、隠し設定を残さずruntime inventoryのallowlistを空にする |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 

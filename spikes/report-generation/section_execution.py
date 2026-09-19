@@ -44,7 +44,7 @@ def _dashboard_sql_diagnostic(
     if period_diagnostic:
         return period_diagnostic
     try:
-        sql_contracts.validate_generated_dashboard_sql(section, sql)
+        sql_contracts.validate_generated_dashboard_sql(section, sql, policy)
     except sql_contracts.SQLContractError as validation_error:
         return str(validation_error)
     dry_schema, dry_error = report.inspect_bq_schema(bq, sql, policy=policy)
