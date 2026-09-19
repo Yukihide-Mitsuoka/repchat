@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
 FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
 RECORDINGS_KEYS = {"version", "reviewed_fixture_sha256", "runs"}
 RECORDED_RUN_KEYS = {"schema_id", "case_id", "run"}
+SCOPE_SNAPSHOTS_KEYS = {"version", "snapshots"}
+SCOPE_SNAPSHOT_KEYS = {"schema_id", "content_json", "retrieved_at"}
 REQUIRED_CAPABILITIES = frozenset({
     "nested_unnest",
     "multi_level_nesting",
@@ -117,9 +120,82 @@ def _attach_recordings(
         raise EvaluationEvidenceError("each fixture case must have recorded runs")
 
 
+def _validate_scope_snapshots(
+    scope_snapshots: dict[str, Any], bundle: dict[str, Any]
+) -> None:
+    _require_fields(
+        scope_snapshots,
+        SCOPE_SNAPSHOTS_KEYS,
+        "scope snapshots must contain only version and snapshots",
+    )
+    if type(scope_snapshots["version"]) is not int or scope_snapshots["version"] != 1:
+        raise EvaluationEvidenceError("scope snapshots version must be 1")
+    snapshots = scope_snapshots["snapshots"]
+    if not isinstance(snapshots, list):
+        raise EvaluationEvidenceError("scope snapshots must be a list")
+
+    expected = {
+        schema["schema_id"]: schema["scope_snapshot_fingerprint"]
+        for schema in bundle["schemas"]
+    }
+    observed: dict[Any, str] = {}
+    for snapshot in snapshots:
+        snapshot = _require_fields(
+            snapshot,
+            SCOPE_SNAPSHOT_KEYS,
+            "scope snapshot entries may contain only schema ID, content, and retrieval time",
+        )
+        schema_id = snapshot["schema_id"]
+        if schema_id in observed:
+            raise EvaluationEvidenceError(
+                "scope snapshots must match fixture schema IDs exactly"
+            )
+        content_json = snapshot["content_json"]
+        if not isinstance(content_json, str) or not content_json:
+            raise EvaluationEvidenceError("scope snapshot content must be canonical JSON")
+        try:
+            content = json.loads(content_json)
+        except (TypeError, json.JSONDecodeError):
+            raise EvaluationEvidenceError(
+                "scope snapshot content must be canonical JSON"
+            ) from None
+        canonical = json.dumps(
+            content,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        if content_json != canonical:
+            raise EvaluationEvidenceError(
+                "scope snapshot content must be canonical JSON"
+            )
+        retrieved_at = snapshot["retrieved_at"]
+        try:
+            retrieved = datetime.fromisoformat(retrieved_at)
+        except (TypeError, ValueError):
+            raise EvaluationEvidenceError(
+                "scope snapshot retrieval time must include a timezone"
+            ) from None
+        if retrieved.tzinfo is None:
+            raise EvaluationEvidenceError(
+                "scope snapshot retrieval time must include a timezone"
+            )
+        observed[schema_id] = hashlib.sha256(content_json.encode("utf-8")).hexdigest()
+
+    if set(observed) != set(expected) or len(observed) != len(bundle["schemas"]):
+        raise EvaluationEvidenceError(
+            "scope snapshots must match fixture schema IDs exactly"
+        )
+    if observed != expected:
+        raise EvaluationEvidenceError(
+            "scope snapshot content must match its fixture fingerprint"
+        )
+
+
 def assemble_bundle(
     fixture: dict[str, Any],
     recordings: dict[str, Any],
+    scope_snapshots: dict[str, Any],
     reviewed_fixture_sha256: str,
 ) -> dict[str, Any]:
     """Join run records to reviewed cases without exposing references to runtime input."""
@@ -156,15 +232,17 @@ def assemble_bundle(
         raise EvaluationEvidenceError(
             "recordings must bind to the exact reviewed fixture"
         )
+    _validate_scope_snapshots(scope_snapshots, bundle)
     _attach_recordings(recordings, cases)
     evaluate_bundle(bundle)
     return bundle
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 4:
+    if len(argv) != 5:
         print(
-            "usage: assemble.py <reviewed-fixture.json> <recorded-runs.json> <evidence-output.json>",
+            "usage: assemble.py <reviewed-fixture.json> <recorded-runs.json> "
+            "<scope-snapshots.json> <evidence-output.json>",
             file=sys.stderr,
         )
         return 2
@@ -172,13 +250,19 @@ def main(argv: list[str]) -> int:
         fixture_bytes = Path(argv[1]).read_bytes()
         fixture = json.loads(fixture_bytes.decode("utf-8"))
         recordings = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
+        scope_snapshots = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
         bundle = assemble_bundle(
             fixture,
             recordings,
+            scope_snapshots,
             hashlib.sha256(fixture_bytes).hexdigest(),
         )
-        output = Path(argv[3])
-        if output.resolve() in {Path(argv[1]).resolve(), Path(argv[2]).resolve()}:
+        output = Path(argv[4])
+        if output.resolve() in {
+            Path(argv[1]).resolve(),
+            Path(argv[2]).resolve(),
+            Path(argv[3]).resolve(),
+        }:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")
         descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as target:
