@@ -140,7 +140,11 @@ semantic dimensionの完全table・field pathへ既存SQL alias scope resolver�
 証明する共通契約がないことから、structured response schema、dashboard、相談、SQL sectionの全入口をfail closedに
 します。一般的な非循環`flow_sankey`は維持し、42種類のrenderer fixture履歴のうちAIへ公開する許可enumを
 end-to-endで検証できる40種類に限定します。`make format`、`make lint`、`make test`と必須CI checksは成功し、
-mergeは未完了です。
+2026-09-19にmerge済みです。
+[PR #739](https://github.com/Yukihide-Mitsuoka/repchat/pull/739)では、runtime固有処理ratchetに残っていた
+固定SQL 3件のallowlistが、SQL拒否用正規表現2件と説明コメント1件の誤検出だったことをfail-firstで固定しました。
+コメント専用行を除外し、同一行で実際の`SELECT … FROM <table>`形を持つ内容だけを検出するよう厳密化して、
+全13分類のlegacy inventoryを空にします。`make format`、`make lint`、`make test`は成功し、CIとmergeは未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -198,7 +202,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698、#716〜#718、#727、#728 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | planner、workflow、保存plan、section executorは共通契約からscope・上限・期間・field・SQL規則・結果形状検査を導出する。section executorから対象別dataset、期間callback、SQL正規化callback、SQL検査・実行から契約欠落fallback、URL関数の特殊補正を削除済み |
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
-| 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。残る対象別処理を順次除去し、互換目的のadapter、feature flag、隠し設定を残さずruntime inventoryのallowlistを空にする |
+| 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にする。互換目的のadapter、feature flag、隠し設定を追加しない |
 | 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
