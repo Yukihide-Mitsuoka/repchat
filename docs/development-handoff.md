@@ -149,8 +149,11 @@ end-to-endで検証できる40種類に限定します。`make format`、`make l
 [PR #743](https://github.com/Yukihide-Mitsuoka/repchat/pull/743)では、参照SQL・期待結果をruntimeへ渡さず、実行後だけ
 照合する評価scorerを追加します。全runのruntime・prompt・設定fingerprint一致と許可runtime入力を検証し、schema別の
 結果・安全違反・費用・描画を集計します。`make format`、`make lint`、`make test`と必須CI checksは成功し、
-mergeは未完了です。
-固定閾値、厳密な入力型、重複schema拒否、contract再現性の差分は次の独立PR用branchへ保全済みです。
+2026-09-19にmerge済みです。
+続く独立PRでは、異なるschema ID・scope fingerprintを最低2件、各caseを最低3回、schema別結果一致率90%以上とする
+固定の受入下限を追加します。同一caseのcontract fingerprint再現、厳密なrun型、未知version・field・行順序の拒否、
+意味誤り・未認可参照・危険SQL・scan上限超過のfail-closedを検証します。公式fixture、独立reviewと実値照合、
+同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
@@ -209,7 +212,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
 | 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にする。互換目的のadapter、feature flag、隠し設定を追加しない |
-| 7 | 同一runtimeの反復評価 | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。同一binary・prompt・設定で各schemaを反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+| 7 | 同一runtimeの反復評価（PR #743で証拠境界をmerge、受入検証を独立PRで進行中） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果だけとし、期待知識をruntimeへ渡さない。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
 contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の

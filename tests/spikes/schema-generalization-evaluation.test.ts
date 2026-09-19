@@ -152,7 +152,9 @@ test('reference answers cannot appear in the recorded runtime input', () => {
 
 test('repeated runs of one case must reproduce one analysis contract', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[0].cases[0].runs[1].runtime_input.analysis_contract_fingerprint = 'f'.repeat(64);
+  bundle.schemas[0]!.cases[0]!.runs[1]!.runtime_input.analysis_contract_fingerprint = 'f'.repeat(
+    64,
+  );
 
   const result = evaluate(bundle);
 
@@ -175,7 +177,7 @@ test('evaluation thresholds cannot be relaxed by the evidence bundle', () => {
 
 test('unknown result ordering semantics are rejected instead of guessed', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[0].cases[0].reference.row_order = 'implicit';
+  bundle.schemas[0]!.cases[0]!.reference.row_order = 'implicit';
 
   const result = evaluate(bundle);
 
@@ -186,7 +188,7 @@ test('unknown result ordering semantics are rejected instead of guessed', () => 
 
 test('unsafe or mismatched runs remain visible in a failing report', () => {
   const bundle = evidenceBundle();
-  const failedRun = bundle.schemas[0].cases[0].runs[0];
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.actual_rows = [{ category: 'wrong', metric_value: 999 }];
   failedRun.dangerous_sql = true;
 
@@ -209,7 +211,7 @@ test('unsafe or mismatched runs remain visible in a failing report', () => {
 
 test('a semantic error fails evaluation even when result rows match', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[0].cases[0].runs[0].semantic_error = true;
+  bundle.schemas[0]!.cases[0]!.runs[0]!.semantic_error = true;
 
   const result = evaluate(bundle);
 
@@ -234,7 +236,7 @@ test('unsupported evidence versions are rejected before evaluation', () => {
 
 test('safety outcomes must be JSON booleans rather than truthy strings', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[0].cases[0].runs[0].dangerous_sql = 'false' as unknown as boolean;
+  bundle.schemas[0]!.cases[0]!.runs[0]!.dangerous_sql = 'false' as unknown as boolean;
 
   const result = evaluate(bundle);
 
@@ -245,10 +247,10 @@ test('safety outcomes must be JSON booleans rather than truthy strings', () => {
 
 test('duplicated schema evidence cannot satisfy the two-schema requirement', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[1].schema_id = bundle.schemas[0].schema_id;
-  bundle.schemas[1].scope_snapshot_fingerprint = bundle.schemas[0].scope_snapshot_fingerprint;
-  for (const run of bundle.schemas[1].cases[0].runs) {
-    run.runtime_input.scope_snapshot_fingerprint = bundle.schemas[0].scope_snapshot_fingerprint;
+  bundle.schemas[1]!.schema_id = bundle.schemas[0]!.schema_id;
+  bundle.schemas[1]!.scope_snapshot_fingerprint = bundle.schemas[0]!.scope_snapshot_fingerprint;
+  for (const run of bundle.schemas[1]!.cases[0]!.runs) {
+    run.runtime_input.scope_snapshot_fingerprint = bundle.schemas[0]!.scope_snapshot_fingerprint;
   }
 
   const result = evaluate(bundle);
