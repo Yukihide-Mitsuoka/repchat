@@ -1,5 +1,34 @@
 # Changelog
 
+## [2.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v2.0.0) (2026-09-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **analysis:** 評価fixtureの必須範囲を固定する ([#747](https://github.com/Yukihide-Mitsuoka/repchat/issues/747))
+
+### Features
+
+* **analysis:** section executionを共通契約に限定 ([#718](https://github.com/Yukihide-Mitsuoka/repchat/issues/718)) ([1f6257b](https://github.com/Yukihide-Mitsuoka/repchat/commit/1f6257b62d8696b374dfd5cfef98c5e14feaf7c7))
+* **analysis:** 未知schema評価の証拠境界を追加する ([#743](https://github.com/Yukihide-Mitsuoka/repchat/issues/743)) ([a8bd106](https://github.com/Yukihide-Mitsuoka/repchat/commit/a8bd1067caf8136f36407e7b09f9e014c1b54b9d))
+* **analysis:** 評価fixtureとrun記録を分離する ([#746](https://github.com/Yukihide-Mitsuoka/repchat/issues/746)) ([45a9301](https://github.com/Yukihide-Mitsuoka/repchat/commit/45a93019caee3d35dffbb1083522a662e4dffa24))
+* **analysis:** 評価fixtureの必須範囲を固定する ([#747](https://github.com/Yukihide-Mitsuoka/repchat/issues/747)) ([0b97023](https://github.com/Yukihide-Mitsuoka/repchat/commit/0b970234dae4f510e9e9de4c1f45505366cbaf2a))
+* **analysis:** 評価受入ポリシーを強制する ([#744](https://github.com/Yukihide-Mitsuoka/repchat/issues/744)) ([af76cb7](https://github.com/Yukihide-Mitsuoka/repchat/commit/af76cb746143a51ef3d1b6ac78ac4071a2faaa45))
+
+
+### Bug Fixes
+
+* **analysis:** runtime固有処理ratchetのallowlistを空にする ([#739](https://github.com/Yukihide-Mitsuoka/repchat/issues/739)) ([f6f9922](https://github.com/Yukihide-Mitsuoka/repchat/commit/f6f9922cb3d43762b3077baab9db12d536f0a3d0))
+* **analysis:** SQL修正から固定URL関数の指示を除く ([#728](https://github.com/Yukihide-Mitsuoka/repchat/issues/728)) ([16b571a](https://github.com/Yukihide-Mitsuoka/repchat/commit/16b571adb94e158ef8025b892ab79097fdb55f74))
+* **analysis:** SQL実行に共通契約を必須化する ([#727](https://github.com/Yukihide-Mitsuoka/repchat/issues/727)) ([351a673](https://github.com/Yukihide-Mitsuoka/repchat/commit/351a67396c9a33241006d65df5423350c6ae469c))
+* **analysis:** 対象固有の旧テナント配信実験を削除 ([#730](https://github.com/Yukihide-Mitsuoka/repchat/issues/730)) ([6102211](https://github.com/Yukihide-Mitsuoka/repchat/commit/610221128c3a1232ddc84c52c1f7d1d67f1ff6be))
+* **analysis:** 時系列chartの出力役割を中立化する ([#732](https://github.com/Yukihide-Mitsuoka/repchat/issues/732)) ([0fbdf34](https://github.com/Yukihide-Mitsuoka/repchat/commit/0fbdf346c89f47345896622e4e13aee8bd306f2b))
+* **analysis:** 時間軸SQLを選択fieldへ照合する ([#736](https://github.com/Yukihide-Mitsuoka/repchat/issues/736)) ([cd8bf1d](https://github.com/Yukihide-Mitsuoka/repchat/commit/cd8bf1da0de21a336e8589b70f4c6fdc15d0d5f6))
+* **analysis:** 未検証の段階付きSankeyを閉じる ([#738](https://github.com/Yukihide-Mitsuoka/repchat/issues/738)) ([2a724c3](https://github.com/Yukihide-Mitsuoka/repchat/commit/2a724c336000d7fbfd985a4a99a27c978b58697c))
+* **contract:** 疑似日時を時間dimensionへ接続 ([#735](https://github.com/Yukihide-Mitsuoka/repchat/issues/735)) ([4bd4beb](https://github.com/Yukihide-Mitsuoka/repchat/commit/4bd4beb35f639412e09fe5bedf02b772808e0143))
+* **visualization:** 共通契約で時系列chartの時間軸を検査する ([#733](https://github.com/Yukihide-Mitsuoka/repchat/issues/733)) ([791f026](https://github.com/Yukihide-Mitsuoka/repchat/commit/791f0265f0f2d9e5aeed2646404847fd07381f25))
+* **visualization:** 段階付きSankeyのページ固有処理を削除 ([#734](https://github.com/Yukihide-Mitsuoka/repchat/issues/734)) ([c017f73](https://github.com/Yukihide-Mitsuoka/repchat/commit/c017f73c3c94ff848720a4cf54323bf19ff915bb))
+
 ## [1.24.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.24.0) (2026-09-14)
 
 
