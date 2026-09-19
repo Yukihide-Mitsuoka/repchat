@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -104,6 +111,7 @@ function assemble(fixture: object, recordings: object) {
     return {
       result,
       bundle: existsSync(bundlePath) ? JSON.parse(readFileSync(bundlePath, 'utf8')) : undefined,
+      mode: existsSync(bundlePath) ? statSync(bundlePath).mode & 0o777 : undefined,
     };
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -113,11 +121,12 @@ function assemble(fixture: object, recordings: object) {
 test('reviewed fixture and separately recorded runs assemble deterministically', () => {
   const { bundle, fixture, recordings } = separatedEvidence();
 
-  const { result, bundle: assembled } = assemble(fixture, recordings);
+  const { result, bundle: assembled, mode } = assemble(fixture, recordings);
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
   assert.deepEqual(assembled, bundle);
+  assert.equal(mode, 0o600);
 });
 
 test('reference fixture cannot contain runtime runs', () => {
