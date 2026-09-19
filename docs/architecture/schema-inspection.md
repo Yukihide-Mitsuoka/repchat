@@ -139,5 +139,8 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 対象別profile moduleと手動metric資産は削除済みです。残る特殊補正は共通契約経路で使用されていないことを
 確認してから除去します。対象固有のfactory、profile、設定は追加しません。
 未知schema評価も同じ共通契約経路を使い、評価用知識をruntimeへ渡しません。
+[未知schema反復評価harness](../../spikes/schema-generalization-evaluation/README.md)は、runtime実行後の
+evidence bundleだけを読み、参照SQL・期待結果との一致、安全違反、費用、描画、反復fingerprintを集計します。
+参照SQLと期待結果はpost-run scorerの入力に限定し、分析契約生成、planner、SQL生成の入力には含めません。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
