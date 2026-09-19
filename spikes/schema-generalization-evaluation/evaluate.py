@@ -12,6 +12,11 @@ from typing import Any
 
 FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
+RUNTIME_INPUT_KEYS = {
+    "scope_snapshot_fingerprint",
+    "analysis_contract_fingerprint",
+    "question",
+}
 
 
 class EvaluationEvidenceError(ValueError):
@@ -53,6 +58,40 @@ def _validate_fingerprints(bundle: dict[str, Any]) -> None:
         raise EvaluationEvidenceError(
             "all runs must use one runtime, prompt, and configuration fingerprint"
         )
+
+
+def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
+    for schema in bundle["schemas"]:
+        scope_fingerprint = schema["scope_snapshot_fingerprint"]
+        if not (
+            isinstance(scope_fingerprint, str)
+            and FINGERPRINT_PATTERN.fullmatch(scope_fingerprint)
+        ):
+            raise EvaluationEvidenceError(
+                "scope snapshot fingerprints must be lowercase SHA-256 values"
+            )
+        for case in schema["cases"]:
+            for run in case["runs"]:
+                runtime_input = run["runtime_input"]
+                if set(runtime_input) != RUNTIME_INPUT_KEYS:
+                    raise EvaluationEvidenceError(
+                        "runtime_input may contain only scope, contract, and question"
+                    )
+                if (
+                    runtime_input["scope_snapshot_fingerprint"] != scope_fingerprint
+                    or runtime_input["question"] != case["question"]
+                ):
+                    raise EvaluationEvidenceError(
+                        "runtime_input must match its schema scope and case question"
+                    )
+                contract_fingerprint = runtime_input["analysis_contract_fingerprint"]
+                if not (
+                    isinstance(contract_fingerprint, str)
+                    and FINGERPRINT_PATTERN.fullmatch(contract_fingerprint)
+                ):
+                    raise EvaluationEvidenceError(
+                        "analysis contract fingerprints must be lowercase SHA-256 values"
+                    )
 
 
 def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
@@ -110,6 +149,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
+    _validate_runtime_inputs(bundle)
     _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
     schemas = [_summarize_schema(schema, thresholds) for schema in bundle["schemas"]]
