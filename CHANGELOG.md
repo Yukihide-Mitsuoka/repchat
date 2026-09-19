@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.25.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v1.25.0) (2026-09-19)
+
+
+### Features
+
+* **analysis:** section executionを共通契約に限定 ([#718](https://github.com/Yukihide-Mitsuoka/repchat/issues/718)) ([1f6257b](https://github.com/Yukihide-Mitsuoka/repchat/commit/1f6257b62d8696b374dfd5cfef98c5e14feaf7c7))
+
+
+### Bug Fixes
+
+* **analysis:** SQL修正から固定URL関数の指示を除く ([#728](https://github.com/Yukihide-Mitsuoka/repchat/issues/728)) ([16b571a](https://github.com/Yukihide-Mitsuoka/repchat/commit/16b571adb94e158ef8025b892ab79097fdb55f74))
+* **analysis:** SQL実行に共通契約を必須化する ([#727](https://github.com/Yukihide-Mitsuoka/repchat/issues/727)) ([351a673](https://github.com/Yukihide-Mitsuoka/repchat/commit/351a67396c9a33241006d65df5423350c6ae469c))
+* **analysis:** 対象固有の旧テナント配信実験を削除 ([#730](https://github.com/Yukihide-Mitsuoka/repchat/issues/730)) ([6102211](https://github.com/Yukihide-Mitsuoka/repchat/commit/610221128c3a1232ddc84c52c1f7d1d67f1ff6be))
+* **analysis:** 時系列chartの出力役割を中立化する ([#732](https://github.com/Yukihide-Mitsuoka/repchat/issues/732)) ([0fbdf34](https://github.com/Yukihide-Mitsuoka/repchat/commit/0fbdf346c89f47345896622e4e13aee8bd306f2b))
+* **contract:** 疑似日時を時間dimensionへ接続 ([#735](https://github.com/Yukihide-Mitsuoka/repchat/issues/735)) ([4bd4beb](https://github.com/Yukihide-Mitsuoka/repchat/commit/4bd4beb35f639412e09fe5bedf02b772808e0143))
+* **visualization:** 共通契約で時系列chartの時間軸を検査する ([#733](https://github.com/Yukihide-Mitsuoka/repchat/issues/733)) ([791f026](https://github.com/Yukihide-Mitsuoka/repchat/commit/791f0265f0f2d9e5aeed2646404847fd07381f25))
+* **visualization:** 段階付きSankeyのページ固有処理を削除 ([#734](https://github.com/Yukihide-Mitsuoka/repchat/issues/734)) ([c017f73](https://github.com/Yukihide-Mitsuoka/repchat/commit/c017f73c3c94ff848720a4cf54323bf19ff915bb))
+
 ## [1.24.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.23.0...v1.24.0) (2026-09-14)
 
 
