@@ -183,3 +183,26 @@ test('unknown result ordering semantics are rejected instead of guessed', () => 
   assert.match(result.stderr, /reference row_order must be ordered or unordered/);
   assert.equal(result.stdout, '');
 });
+
+test('unsafe or mismatched runs remain visible in a failing report', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0].cases[0].runs[0];
+  failedRun.actual_rows = [{ category: 'wrong', metric_value: 999 }];
+  failedRun.dangerous_sql = true;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.passed, false);
+  assert.equal(report.result_match_rate, 0.833333);
+  assert.deepEqual(
+    {
+      result_match_rate: report.schemas[0].result_match_rate,
+      dangerous_sql_count: report.schemas[0].dangerous_sql_count,
+      passed: report.schemas[0].passed,
+    },
+    { result_match_rate: 0.666667, dangerous_sql_count: 1, passed: false },
+  );
+  assert.equal(report.schemas[1].passed, true);
+});
