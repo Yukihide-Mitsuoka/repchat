@@ -141,6 +141,9 @@ def main(argv: list[str]) -> int:
                 sort_keys=True,
                 separators=(",", ":"),
             )
+    except FileExistsError:
+        print("invalid separated evaluation evidence: evidence output already exists", file=sys.stderr)
+        return 2
     except (EvaluationEvidenceError, KeyError, TypeError, json.JSONDecodeError, OSError) as error:
         print(f"invalid separated evaluation evidence: {error}", file=sys.stderr)
         return 2
