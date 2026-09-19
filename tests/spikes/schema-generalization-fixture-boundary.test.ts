@@ -89,13 +89,14 @@ function separatedEvidence() {
   return { bundle, fixture, recordings };
 }
 
-function assemble(fixture: object, recordings: object) {
+function assemble(fixture: object, recordings: object, preexistingOutput = false) {
   const directory = mkdtempSync(path.join(tmpdir(), 'schema-fixture-'));
   const fixturePath = path.join(directory, 'fixture.json');
   const recordingsPath = path.join(directory, 'recordings.json');
   const bundlePath = path.join(directory, 'evidence.json');
   writeFileSync(fixturePath, JSON.stringify(fixture));
   writeFileSync(recordingsPath, JSON.stringify(recordings));
+  if (preexistingOutput) writeFileSync(bundlePath, JSON.stringify({ preserved: true }));
   try {
     const result = spawnSync('python3', [ASSEMBLER, fixturePath, recordingsPath, bundlePath], {
       cwd: ROOT,
@@ -186,4 +187,14 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /recordings version must be 1/);
   assert.equal(result.stdout, '');
+});
+
+test('assembler refuses to overwrite an existing evidence artifact', () => {
+  const { fixture, recordings } = separatedEvidence();
+
+  const { result, bundle } = assemble(fixture, recordings, true);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evidence output already exists/);
+  assert.deepEqual(bundle, { preserved: true });
 });
