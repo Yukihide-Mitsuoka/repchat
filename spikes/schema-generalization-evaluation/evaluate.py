@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -26,6 +27,29 @@ REFERENCE_KEYS = {
     "author_id",
     "reviewer_id",
     "reviewed_at",
+}
+RUN_KEYS = {
+    "run_id",
+    *FINGERPRINT_KEYS,
+    "runtime_input",
+    "generated_sql",
+    "sql_execution_succeeded",
+    "actual_rows",
+    "unauthorized_reference",
+    "dangerous_sql",
+    "scan_limit_exceeded",
+    "semantic_error",
+    "render_succeeded",
+    "bytes_processed",
+    "cost_jpy",
+}
+RUN_BOOLEAN_KEYS = {
+    "sql_execution_succeeded",
+    "unauthorized_reference",
+    "dangerous_sql",
+    "scan_limit_exceeded",
+    "semantic_error",
+    "render_succeeded",
 }
 
 
@@ -51,6 +75,8 @@ def _rate(count: int, total: int) -> float:
 
 
 def _validate_version(bundle: dict[str, Any]) -> None:
+    if not isinstance(bundle, dict):
+        raise EvaluationEvidenceError("evidence root must be an object")
     if bundle.get("version") != 1:
         raise EvaluationEvidenceError("evidence version must be 1")
 
@@ -89,6 +115,41 @@ def _validate_references(bundle: dict[str, Any]) -> None:
             for key in ("sql", "author_id", "reviewer_id", "reviewed_at"):
                 if not isinstance(reference[key], str) or not reference[key].strip():
                     raise EvaluationEvidenceError(f"reference {key} must be a non-empty string")
+
+
+def _validate_runs(bundle: dict[str, Any]) -> None:
+    for schema in bundle["schemas"]:
+        for case in schema["cases"]:
+            run_ids: set[str] = set()
+            for run in case["runs"]:
+                if set(run) != RUN_KEYS:
+                    raise EvaluationEvidenceError("run contains unsupported or missing fields")
+                run_id = run["run_id"]
+                if not isinstance(run_id, str) or not run_id.strip() or run_id in run_ids:
+                    raise EvaluationEvidenceError("run IDs must be non-empty and unique per case")
+                run_ids.add(run_id)
+                if not all(type(run[key]) is bool for key in RUN_BOOLEAN_KEYS):
+                    raise EvaluationEvidenceError(
+                        "run safety and outcome fields must be booleans"
+                    )
+                if not isinstance(run["generated_sql"], str) or not isinstance(
+                    run["actual_rows"], list
+                ):
+                    raise EvaluationEvidenceError(
+                        "generated_sql must be a string and actual_rows must be a list"
+                    )
+                if type(run["bytes_processed"]) is not int or run["bytes_processed"] < 0:
+                    raise EvaluationEvidenceError(
+                        "bytes_processed must be a non-negative integer"
+                    )
+                cost = run["cost_jpy"]
+                if (
+                    not isinstance(cost, (int, float))
+                    or isinstance(cost, bool)
+                    or not math.isfinite(cost)
+                    or cost < 0
+                ):
+                    raise EvaluationEvidenceError("cost_jpy must be finite and non-negative")
 
 
 def _validate_fingerprints(bundle: dict[str, Any]) -> None:
@@ -210,6 +271,7 @@ def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     _validate_version(bundle)
     _validate_thresholds(bundle)
     _validate_references(bundle)
+    _validate_runs(bundle)
     _validate_runtime_inputs(bundle)
     _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
