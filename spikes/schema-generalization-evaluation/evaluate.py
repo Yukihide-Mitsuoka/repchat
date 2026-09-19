@@ -178,6 +178,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         and has_enough_runs
         and independently_reviewed
         and result_match_rate >= thresholds["minimum_result_match_rate"]
+        and semantic_errors == 0
         and unauthorized_references == 0
         and dangerous_sql == 0
         and scan_limit_exceeded == 0
