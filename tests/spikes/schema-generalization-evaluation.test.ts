@@ -220,3 +220,14 @@ test('a semantic error fails evaluation even when result rows match', () => {
   assert.equal(report.schemas[0].passed, false);
   assert.equal(report.passed, false);
 });
+
+test('unsupported evidence versions are rejected before evaluation', () => {
+  const bundle = evidenceBundle();
+  bundle.version = 2;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evidence version must be 1/);
+  assert.equal(result.stdout, '');
+});
