@@ -144,7 +144,8 @@ end-to-endで検証できる40種類に限定します。`make format`、`make l
 [PR #739](https://github.com/Yukihide-Mitsuoka/repchat/pull/739)では、runtime固有処理ratchetに残っていた
 固定SQL 3件のallowlistが、SQL拒否用正規表現2件と説明コメント1件の誤検出だったことをfail-firstで固定しました。
 コメント専用行を除外し、同一行で実際の`SELECT … FROM <table>`形を持つ内容だけを検出するよう厳密化して、
-全13分類のlegacy inventoryを空にします。`make format`、`make lint`、`make test`は成功し、CIとmergeは未完了です。
+全13分類のlegacy inventoryを空にします。`make format`、`make lint`、`make test`と必須CI checksは成功し、
+mergeは未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
