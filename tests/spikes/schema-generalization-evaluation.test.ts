@@ -242,3 +242,18 @@ test('safety outcomes must be JSON booleans rather than truthy strings', () => {
   assert.match(result.stderr, /run safety and outcome fields must be booleans/);
   assert.equal(result.stdout, '');
 });
+
+test('duplicated schema evidence cannot satisfy the two-schema requirement', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[1].schema_id = bundle.schemas[0].schema_id;
+  bundle.schemas[1].scope_snapshot_fingerprint = bundle.schemas[0].scope_snapshot_fingerprint;
+  for (const run of bundle.schemas[1].cases[0].runs) {
+    run.runtime_input.scope_snapshot_fingerprint = bundle.schemas[0].scope_snapshot_fingerprint;
+  }
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /at least two distinct schemas are required/);
+  assert.equal(result.stdout, '');
+});
