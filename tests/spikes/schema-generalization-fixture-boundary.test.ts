@@ -7,6 +7,14 @@ import test from 'node:test';
 import { ROOT } from './report-generation/live-demo-test-helpers.ts';
 
 const ASSEMBLER = path.join(ROOT, 'spikes/schema-generalization-evaluation/assemble.py');
+const REQUIRED_CAPABILITIES = [
+  'nested_unnest',
+  'multi_level_nesting',
+  'join',
+  'period_comparison',
+  'window_function',
+  'ordered_behavior',
+];
 
 function evidenceBundle() {
   const fingerprints = {
@@ -66,12 +74,15 @@ function evidenceBundle() {
 function separatedEvidence() {
   const bundle = evidenceBundle();
   const fixture = {
-    version: bundle.version,
+    version: 2,
     thresholds: bundle.thresholds,
     schemas: bundle.schemas.map((schema) => ({
       schema_id: schema.schema_id,
       scope_snapshot_fingerprint: schema.scope_snapshot_fingerprint,
-      cases: schema.cases.map(({ runs: _runs, ...referenceCase }) => referenceCase),
+      cases: schema.cases.map(({ runs: _runs, ...referenceCase }) => ({
+        ...referenceCase,
+        capabilities: REQUIRED_CAPABILITIES,
+      })),
     })),
   };
   const recordings = {
@@ -174,7 +185,7 @@ test('fixture version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 1/);
+  assert.match(result.stderr, /fixture version must be 2/);
   assert.equal(result.stdout, '');
 });
 
@@ -197,4 +208,26 @@ test('assembler refuses to overwrite an existing evidence artifact', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /evidence output already exists/);
   assert.deepEqual(bundle, { preserved: true });
+});
+
+test('every schema fixture must cover every required analysis capability', () => {
+  const { fixture, recordings } = separatedEvidence();
+  fixture.schemas[0]!.cases[0]!.capabilities = REQUIRED_CAPABILITIES.slice(0, -1);
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /each fixture schema must cover every required capability/);
+  assert.equal(result.stdout, '');
+});
+
+test('fixture capabilities reject unknown or duplicated labels', () => {
+  const { fixture, recordings } = separatedEvidence();
+  fixture.schemas[0]!.cases[0]!.capabilities = [...REQUIRED_CAPABILITIES, 'unknown'];
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /fixture case capabilities are invalid/);
+  assert.equal(result.stdout, '');
 });
