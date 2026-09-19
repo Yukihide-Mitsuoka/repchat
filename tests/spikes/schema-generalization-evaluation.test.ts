@@ -160,3 +160,15 @@ test('repeated runs of one case must reproduce one analysis contract', () => {
   assert.match(result.stderr, /each case must reproduce one analysis contract fingerprint/);
   assert.equal(result.stdout, '');
 });
+
+test('evaluation thresholds cannot be relaxed by the evidence bundle', () => {
+  const bundle = evidenceBundle();
+  bundle.thresholds.minimum_runs_per_case = 1;
+  bundle.thresholds.minimum_result_match_rate = 0;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /thresholds cannot be lower than the fixed acceptance policy/);
+  assert.equal(result.stdout, '');
+});
