@@ -12,9 +12,8 @@ updated: 2026-09-19
 
 ## 評価契約
 
-- 2種類以上のschemaを同じ評価に含め、各caseをbundle指定回数以上反復する。
+- 2件以上のschema evidenceを同じ評価に含め、各caseをbundle指定回数以上反復する。
 - 全runでruntime、prompt、設定のSHA-256 fingerprintを一致させる。
-- 同じscope snapshotと質問から同じanalysis contract fingerprintを再現する。
 - runtime inputはscope snapshot fingerprint、analysis contract fingerprint、質問だけに限定する。
 - 参照SQLと期待結果はpost-run scorerだけが読み、生成runtimeへ渡さない。
 - 参照結果は作成者と異なるreviewerが承認する。
@@ -35,5 +34,5 @@ exit code `0`は合格、`1`は検証可能な未合格、`2`はbundle契約違�
 ## 現在の制限
 
 公式の未知schema fixtureと実サービス結果はまだありません。テスト値はscorerの回帰確認用であり、製品能力の
-証拠ではありません。固定の3回・90%下限と入力型の厳密化、独立review済みfixture、実値照合は未完了です。
-有料評価は対象と費用についてオーナー承認を得た後だけ実行します。
+証拠ではありません。schemaの重複拒否、contract再現性、固定の3回・90%下限、入力型の厳密化、独立review済み
+fixture、実値照合は未完了です。有料評価は対象と費用についてオーナー承認を得た後だけ実行します。
