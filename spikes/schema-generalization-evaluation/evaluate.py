@@ -71,6 +71,7 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
                 "scope snapshot fingerprints must be lowercase SHA-256 values"
             )
         for case in schema["cases"]:
+            contract_fingerprints: set[str] = set()
             for run in case["runs"]:
                 runtime_input = run["runtime_input"]
                 if set(runtime_input) != RUNTIME_INPUT_KEYS:
@@ -92,6 +93,11 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
                     raise EvaluationEvidenceError(
                         "analysis contract fingerprints must be lowercase SHA-256 values"
                     )
+                contract_fingerprints.add(contract_fingerprint)
+            if len(contract_fingerprints) != 1:
+                raise EvaluationEvidenceError(
+                    "each case must reproduce one analysis contract fingerprint"
+                )
 
 
 def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
