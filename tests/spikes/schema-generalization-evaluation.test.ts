@@ -172,3 +172,14 @@ test('evaluation thresholds cannot be relaxed by the evidence bundle', () => {
   assert.match(result.stderr, /thresholds cannot be lower than the fixed acceptance policy/);
   assert.equal(result.stdout, '');
 });
+
+test('unknown result ordering semantics are rejected instead of guessed', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[0].cases[0].reference.row_order = 'implicit';
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /reference row_order must be ordered or unordered/);
+  assert.equal(result.stdout, '');
+});
