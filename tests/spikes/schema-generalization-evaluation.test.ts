@@ -149,3 +149,14 @@ test('reference answers cannot appear in the recorded runtime input', () => {
   assert.match(result.stderr, /runtime_input may contain only scope, contract, and question/);
   assert.equal(result.stdout, '');
 });
+
+test('repeated runs of one case must reproduce one analysis contract', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[0].cases[0].runs[1].runtime_input.analysis_contract_fingerprint = 'f'.repeat(64);
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /each case must reproduce one analysis contract fingerprint/);
+  assert.equal(result.stdout, '');
+});
