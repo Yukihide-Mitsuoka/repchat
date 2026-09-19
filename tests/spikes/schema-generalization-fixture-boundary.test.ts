@@ -165,3 +165,25 @@ test('every fixture case must have at least one separately recorded run', () => 
   assert.match(result.stderr, /each fixture case must have recorded runs/);
   assert.equal(result.stdout, '');
 });
+
+test('fixture version must be an integer rather than a JSON boolean', () => {
+  const { fixture, recordings } = separatedEvidence();
+  fixture.version = true as unknown as number;
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evidence version must be 1/);
+  assert.equal(result.stdout, '');
+});
+
+test('recordings version must be an integer rather than a JSON boolean', () => {
+  const { fixture, recordings } = separatedEvidence();
+  recordings.version = true as unknown as number;
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /recordings version must be 1/);
+  assert.equal(result.stdout, '');
+});
