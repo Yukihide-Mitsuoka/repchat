@@ -19,6 +19,14 @@ RUNTIME_INPUT_KEYS = {
     "analysis_contract_fingerprint",
     "question",
 }
+REFERENCE_KEYS = {
+    "sql",
+    "expected_rows",
+    "row_order",
+    "author_id",
+    "reviewer_id",
+    "reviewed_at",
+}
 
 
 class EvaluationEvidenceError(ValueError):
@@ -57,6 +65,25 @@ def _validate_thresholds(bundle: dict[str, Any]) -> None:
         raise EvaluationEvidenceError(
             "thresholds cannot be lower than the fixed acceptance policy"
         )
+
+
+def _validate_references(bundle: dict[str, Any]) -> None:
+    for schema in bundle["schemas"]:
+        for case in schema["cases"]:
+            reference = case["reference"]
+            if set(reference) != REFERENCE_KEYS:
+                raise EvaluationEvidenceError(
+                    "reference must contain SQL, expected rows, ordering, and review evidence"
+                )
+            if reference["row_order"] not in {"ordered", "unordered"}:
+                raise EvaluationEvidenceError(
+                    "reference row_order must be ordered or unordered"
+                )
+            if not isinstance(reference["expected_rows"], list):
+                raise EvaluationEvidenceError("reference expected_rows must be a list")
+            for key in ("sql", "author_id", "reviewer_id", "reviewed_at"):
+                if not isinstance(reference[key], str) or not reference[key].strip():
+                    raise EvaluationEvidenceError(f"reference {key} must be a non-empty string")
 
 
 def _validate_fingerprints(bundle: dict[str, Any]) -> None:
@@ -175,6 +202,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
     _validate_thresholds(bundle)
+    _validate_references(bundle)
     _validate_runtime_inputs(bundle)
     _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
