@@ -135,7 +135,7 @@ ingestion-time partitionの疑似日時をdimensionだけに限定して公開�
 semantic dimensionの完全table・field pathへ既存SQL alias scope resolverで照合します。別fieldの混在、コメントの
 見せかけ、policy欠落、解決不能なCTE出力aliasはBigQuery dry run前にfail closedで拒否します。完全なAST来歴graphを
 持たない現段階ではCTE経由を推測せず、物理fieldから直接導出するSQLだけを受理します。`make format`、`make lint`、
-`make test`は成功し、CIとmergeは未完了です。残る可視化の意味検査は、段階付きSankeyの選択条件・経路完全性・
+`make test`と必須CI checksは成功し、mergeは未完了です。残る可視化の意味検査は、段階付きSankeyの選択条件・経路完全性・
 SQL来歴です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
