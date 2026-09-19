@@ -170,7 +170,7 @@ assemblerで拒否します。fingerprintはruntime inputへ渡さず、reviewer
 [PR #750](https://github.com/Yukihide-Mitsuoka/repchat/pull/750)では、runtimeが生成したcanonical scope snapshot
 artifactをschema IDごとに受け取り、その内容のSHA-256をfixtureと全runのscope snapshot fingerprintへ一対一で照合します。
 生のschema metadata、bounded value profile、取得時刻はevidenceへ複製しません。`make format`、`make lint`、
-`make test`、`make coverage`は成功し、mergeと必須CI checksは未完了です。
+`make test`、`make coverage`と必須CI checks 13件は成功し、mergeは未完了です。
 公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
