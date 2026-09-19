@@ -132,7 +132,7 @@ date-shard疑似fieldの利用、段階付きSankeyの選択条件・経路完�
 ingestion-time partitionの疑似日時をdimensionだけに限定して公開し、
 `_TABLE_SUFFIX`は固定`PARSE_DATE`式でDATEへ変換して時系列の共通型検査へ接続します。指標・識別子・joinへの
 流用はresponse schemaとnormalizerの両方で拒否し、偽造された変換式もexecution policy生成前に拒否します。
-ローカル検証は成功し、CI・mergeは未完了です。
+ローカル検証と必須CI checksは成功し、mergeは未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
