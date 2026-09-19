@@ -77,7 +77,7 @@ def _rate(count: int, total: int) -> float:
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if bundle.get("version") != 1:
+    if type(bundle.get("version")) is not int or bundle["version"] != 1:
         raise EvaluationEvidenceError("evidence version must be 1")
 
 

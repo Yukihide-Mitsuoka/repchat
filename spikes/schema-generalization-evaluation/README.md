@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-19
+updated: 2026-09-20
 ---
 
 # 未知schema反復評価の証拠harness
@@ -25,13 +25,26 @@ bundleには`version`、`thresholds`、2件以上の`schemas`を記録します�
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
 runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用を記録します。
 
+## 参照fixtureとrun記録の分離
+
+`assemble.py`は、独立review済みの参照fixtureとruntime実行後のrun記録をschema ID・case IDだけで結合します。
+fixture caseにはID、質問、参照記録だけを許可し、runを含めません。run記録にはschema ID、case ID、既存の厳密な
+run契約だけを許可し、参照SQLや期待結果の混入、未知のschema／case、記録のないfixture caseを拒否します。
+
+結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
+読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
+CI logやrepositoryへ保存しません。
+
 ## 実行
 
 ```console
+python3 spikes/schema-generalization-evaluation/assemble.py \
+  /path/to/reviewed-fixture.json /path/to/recorded-runs.json /secure/path/evidence.json
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
 ```
 
-exit code `0`は合格、`1`は検証可能な未合格、`2`はbundle契約違反です。未合格reportも標準出力へ残します。
+assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な
+未合格、`2`はbundle契約違反です。scorerは生の期待行・実行行を含めず、集計reportだけを標準出力へ残します。
 
 ## 現在の制限
 
