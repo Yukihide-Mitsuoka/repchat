@@ -44,7 +44,8 @@ function evidenceBundle() {
                 analysis_contract_fingerprint: contractFingerprint,
                 question: '区分別の値を集計して',
               },
-              generated_sql: 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
+              generated_sql:
+                'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
               unauthorized_reference: false,
@@ -124,19 +125,22 @@ test('two schemas with three matching runs produce passing evidence', () => {
 
 test('a fingerprint change between schema runs is rejected before scoring', () => {
   const bundle = evidenceBundle();
-  bundle.schemas[1].cases[0].runs[0].runtime = '9'.repeat(64);
+  bundle.schemas[1]!.cases[0]!.runs[0]!.runtime = '9'.repeat(64);
 
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /all runs must use one runtime, prompt, and configuration fingerprint/);
+  assert.match(
+    result.stderr,
+    /all runs must use one runtime, prompt, and configuration fingerprint/,
+  );
   assert.equal(result.stdout, '');
 });
 
 test('reference answers cannot appear in the recorded runtime input', () => {
   const bundle = evidenceBundle();
-  Object.assign(bundle.schemas[0].cases[0].runs[0].runtime_input, {
-    expected_rows: bundle.schemas[0].cases[0].reference.expected_rows,
+  Object.assign(bundle.schemas[0]!.cases[0]!.runs[0]!.runtime_input, {
+    expected_rows: bundle.schemas[0]!.cases[0]!.reference.expected_rows,
   });
 
   const result = evaluate(bundle);
