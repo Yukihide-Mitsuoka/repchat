@@ -132,3 +132,16 @@ test('a fingerprint change between schema runs is rejected before scoring', () =
   assert.match(result.stderr, /all runs must use one runtime, prompt, and configuration fingerprint/);
   assert.equal(result.stdout, '');
 });
+
+test('reference answers cannot appear in the recorded runtime input', () => {
+  const bundle = evidenceBundle();
+  Object.assign(bundle.schemas[0].cases[0].runs[0].runtime_input, {
+    expected_rows: bundle.schemas[0].cases[0].reference.expected_rows,
+  });
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /runtime_input may contain only scope, contract, and question/);
+  assert.equal(result.stdout, '');
+});
