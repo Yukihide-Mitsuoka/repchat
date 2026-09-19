@@ -139,7 +139,8 @@ semantic dimensionの完全table・field pathへ既存SQL alias scope resolver�
 [PR #738](https://github.com/Yukihide-Mitsuoka/repchat/pull/738)では、段階付きSankeyの同一経路ID、段階順序、完全経路を
 証明する共通契約がないことから、structured response schema、dashboard、相談、SQL sectionの全入口をfail closedに
 します。一般的な非循環`flow_sankey`は維持し、42種類のrenderer fixture履歴のうちAIへ公開する許可enumを
-end-to-endで検証できる40種類に限定します。`make format`、`make lint`、`make test`は成功し、CIとmergeは未完了です。
+end-to-endで検証できる40種類に限定します。`make format`、`make lint`、`make test`と必須CI checksは成功し、
+mergeは未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
