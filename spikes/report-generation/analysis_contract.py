@@ -184,6 +184,14 @@ def expression_for_field(reference: dict, aggregation: str | None = None) -> str
     return f"{function}({distinct}{quoted})"
 
 
+def expression_for_date_shard(reference: dict) -> str:
+    """Render the governed DATE expression for a BigQuery date-shard suffix."""
+    _table, _segments, canonical = _reference_parts(reference, "date-shard field")
+    if canonical.get("field") != "_TABLE_SUFFIX":
+        raise AnalysisContractError("date-shard field must reference _TABLE_SUFFIX")
+    return f"PARSE_DATE('%Y%m%d', {expression_for_field(canonical)})"
+
+
 def _contains_business_time(fields: list, *, repeated: bool = False) -> bool:
     for field in fields:
         if not isinstance(field, dict):
@@ -326,9 +334,28 @@ def _definition(
     reference = definition.get("field")
     aggregation = definition.get("aggregation")
     if reference is not None:
-        _table, _segments, field, canonical, repeated = _field(
-            tables, reference, f"semantics.{category}.{name}.field"
+        table, _segments, canonical = _reference_parts(
+            reference, f"semantics.{category}.{name}.field"
         )
+        date_shard = (
+            category == "dimensions"
+            and canonical.get("field") == "_TABLE_SUFFIX"
+            and table in tables
+            and "dateShards" in tables[table]
+        )
+        ingestion_time = (
+            _ingestion_time_field(tables[table], canonical)
+            if category == "dimensions" and table in tables
+            else None
+        )
+        if date_shard:
+            field, repeated = {"type": "DATE", "mode": "REQUIRED"}, False
+        elif ingestion_time is not None:
+            field, repeated = ingestion_time, False
+        else:
+            _table, _segments, field, canonical, repeated = _field(
+                tables, reference, f"semantics.{category}.{name}.field"
+            )
         if repeated or field["type"] not in SCALAR_TYPES:
             raise AnalysisContractError("semantic definitions require a non-repeated scalar field")
         if category in ("grain", "identifiers", "dimensions") and aggregation is not None:
@@ -344,7 +371,12 @@ def _definition(
                 raise AnalysisContractError("min and max metrics require numeric or temporal fields")
         elif aggregation is not None:
             raise AnalysisContractError(f"semantics.{category} cannot aggregate a field")
-        if item["expr"] != expression_for_field(canonical, aggregation):
+        expected_expression = (
+            expression_for_date_shard(canonical)
+            if date_shard
+            else expression_for_field(canonical, aggregation)
+        )
+        if item["expr"] != expected_expression:
             raise AnalysisContractError("semantic expression differs from its structured field")
         if "filter" in definition:
             raise AnalysisContractError("structured semantic definitions cannot contain SQL filters")

@@ -12,6 +12,7 @@ from analysis_contract import (
     AnalysisContract,
     AnalysisContractError,
     compile_contract,
+    expression_for_date_shard,
     expression_for_field,
 )
 from analysis_contract_compiler import CompilerInput, ContractCompilerError
@@ -79,10 +80,20 @@ def _role_definitions(
         name = _text(value["name"], key, 80)
         field_token = _token(value["field"], prepared.fields, key)
         field = prepared.fields[field_token]
-        if not field["role_selectable"] or field["table_token"] not in selected:
+        selectable = (
+            field["dimension_selectable"]
+            if key == "dimensions"
+            else field["role_selectable"]
+        )
+        if not selectable or field["table_token"] not in selected:
             raise ContractCompilerError(f"generated {key} field is not selectable")
         reference = field["reference"]
-        definition = {"field": reference, "expr": expression_for_field(reference)}
+        expression = (
+            expression_for_date_shard(reference)
+            if reference.get("field") == "_TABLE_SUFFIX"
+            else expression_for_field(reference)
+        )
+        definition = {"field": reference, "expr": expression}
         aliases = _aliases(value["aliases"], key)
         if aliases:
             definition["aliases"] = aliases

@@ -46,7 +46,9 @@ def _enum(values: list[str]) -> dict:
     return {"type": "string", "format": "enum", "enum": values}
 
 
-def _available_tokens(prepared: CompilerInput) -> tuple[list[str], list[str], list[str]]:
+def _available_tokens(
+    prepared: CompilerInput,
+) -> tuple[list[str], list[str], list[str], list[str]]:
     try:
         catalog = json.loads(prepared.catalog_json)
         shard_tokens = {
@@ -62,6 +64,11 @@ def _available_tokens(prepared: CompilerInput) -> tuple[list[str], list[str], li
         for token, field in prepared.fields.items()
         if field["role_selectable"] and field["table_token"] in tables
     )
+    dimensions = sorted(
+        token
+        for token, field in prepared.fields.items()
+        if field["dimension_selectable"] and field["table_token"] in tables
+    )
     temporal = sorted(
         token
         for token, field in prepared.fields.items()
@@ -73,7 +80,7 @@ def _available_tokens(prepared: CompilerInput) -> tuple[list[str], list[str], li
         raise ContractCompilerError("no consolidated table is available for generation")
     if not fields:
         raise ContractCompilerError("no selectable field is available for generation")
-    return tables, fields, temporal
+    return tables, fields, dimensions, temporal
 
 
 def _named_field_schema(fields: list[str]) -> dict:
@@ -95,7 +102,7 @@ def _named_field_schema(fields: list[str]) -> dict:
 def _contract_response_schema(
     prepared: CompilerInput, *, fixed_period: dict | None = None
 ) -> dict:
-    tables, fields, temporal = _available_tokens(prepared)
+    tables, fields, dimensions, temporal = _available_tokens(prepared)
     if fixed_period is not None and not temporal:
         raise ContractCompilerError("fixed period requires a temporal field")
     named_field = _named_field_schema(fields)
@@ -134,8 +141,14 @@ def _contract_response_schema(
         **{
             key: {
                 "type": "array",
-                "maxItems": min(MAX_ROLE_ITEMS, len(fields)),
-                "items": named_field,
+                "maxItems": min(
+                    MAX_ROLE_ITEMS, len(dimensions if key == "dimensions" else fields)
+                ),
+                "items": (
+                    _named_field_schema(dimensions)
+                    if key == "dimensions"
+                    else named_field
+                ),
             }
             for key in ROLE_KEYS
         },
@@ -220,7 +233,8 @@ def _generation_request(
         "規則:\n"
         "- tableとfieldは必ず提示済みtokenだけで返し、実名、SQL、式は返さない。\n"
         "- selectable=falseのfieldとdateShardCandidate付きtableは選ばない。\n"
-        "- role_selectable=falseのfieldはbusiness_timeとtime_candidates以外に使わない。\n"
+        "- role_selectable=falseのfieldはbusiness_timeとtime_candidates以外に使わない。"
+        "ただしdimension_selectable=trueならdimensionsにも使用できる。\n"
         "- 選択tableにtemporal fieldがあればtime_enabled=trueとし、business_timeを"
         "time_candidatesにも含める。\n"
         "- 選択tableにtemporal fieldがなければtime_enabled=false、business_timeは空文字、"
