@@ -231,3 +231,14 @@ test('unsupported evidence versions are rejected before evaluation', () => {
   assert.match(result.stderr, /evidence version must be 1/);
   assert.equal(result.stdout, '');
 });
+
+test('safety outcomes must be JSON booleans rather than truthy strings', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[0].cases[0].runs[0].dangerous_sql = 'false' as unknown as boolean;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /run safety and outcome fields must be booleans/);
+  assert.equal(result.stdout, '');
+});
