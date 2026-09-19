@@ -121,3 +121,14 @@ test('two schemas with three matching runs produce passing evidence', () => {
     ],
   );
 });
+
+test('a fingerprint change between schema runs is rejected before scoring', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[1].cases[0].runs[0].runtime = '9'.repeat(64);
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /all runs must use one runtime, prompt, and configuration fingerprint/);
+  assert.equal(result.stdout, '');
+});
