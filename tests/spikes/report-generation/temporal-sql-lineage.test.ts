@@ -46,6 +46,12 @@ def check(sql):
   return ''
  except sql_contracts.SQLContractError as error:
   return str(error)
+def check_without_policy(sql):
+ try:
+  sql_contracts.validate_generated_dashboard_sql(section,sql)
+  return ''
+ except sql_contracts.SQLContractError as error:
+  return str(error)
 `;
 
 test('temporal SQL output is traced to the selected contract field without guessing aliases', () => {
@@ -61,19 +67,29 @@ FROM {source} AS t {suffix}''',
 FROM {source} AS t {suffix}''',
  'comment_decoy':f'''SELECT DATE(t.secondary_time) /* t.primary_time */ AS time_value, COUNT(*) AS metric_value
 FROM {source} AS t {suffix}''',
+ 'mixed_fields':f'''SELECT COALESCE(DATE(t.primary_time), DATE(t.secondary_time)) AS time_value, COUNT(*) AS metric_value
+FROM {source} AS t {suffix}''',
  'cte_alias':f'''WITH source AS (
  SELECT t.primary_time AS time_key FROM {source} AS t
 )
 SELECT s.time_key AS time_value, COUNT(*) AS metric_value
 FROM source AS s {suffix}''',
 }
-print(json.dumps({name:check(sql) for name,sql in queries.items()},ensure_ascii=False))
+observed={name:check(sql) for name,sql in queries.items()}
+observed['missing_policy']=check_without_policy(queries['selected'])
+print(json.dumps(observed,ensure_ascii=False))
 `,
   );
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout) as Record<string, string>;
   assert.equal(output.selected, '');
-  for (const key of ['other_time', 'comment_decoy', 'cte_alias']) {
+  for (const key of [
+    'other_time',
+    'comment_decoy',
+    'mixed_fields',
+    'cte_alias',
+    'missing_policy',
+  ]) {
     assert.match(output[key] ?? '', /来歴/, key);
   }
 });

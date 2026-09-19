@@ -42,8 +42,10 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 
 時系列chartがSQLへ要求する`time_value`は描画結果の列役割であり、分析対象の元tableに同名の列を
 要求しない。選択した区分軸は共通分析契約の非repeated・非restrictedなDATE／DATETIME／TIMESTAMP fieldと
-照合し、不一致なら計画提示前またはSQL生成前に拒否する。ただし`time_value`のSQL式が選択したfieldに
-由来することの来歴検査は未実装であり、未知schemaでの時系列分析を検証済みとはしない。
+照合し、不一致なら計画提示前またはSQL生成前に拒否する。`time_value`の最終SELECT式は、選択したdimensionが
+束縛された完全table・field pathだけから直接導出されることも検査する。別のfieldとの混在、コメントによる見せかけ、
+契約policy欠落、解決不能なCTE出力aliasはBigQuery dry run前にfail closedで拒否する。完全なAST来歴graphを持たない
+現段階ではCTE経由の正当な式も推測して通さず、最終SELECTで物理fieldから直接導出する。
 
 分析テーマ、KPI、比較軸、chart type、panel数を業種別の固定候補から決めない。AIは利用者の目的、対話履歴、
 利用可能schema・metricと、この文書で`対応`になった可視化能力から都度提案する。コードが持ってよい固定値は、
