@@ -15,14 +15,14 @@ from analysis_planner_validation import (
     validate_chart_shape as _validate_chart_shape,
 )
 from visualization_contracts import (
+    CONTRACT_VERIFIED_DASHBOARD_CHARTS,
     DASHBOARD_ROW_LIMITS,
     SANKEY_CHARTS,
     STAGED_SANKEY_CHARTS,
-    SUPPORTED_DASHBOARD_CHARTS,
 )
 
 CLARIFICATION_FIELDS = ("audience", "comparison", "business_goal")
-DASHBOARD_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+DASHBOARD_CHARTS = CONTRACT_VERIFIED_DASHBOARD_CHARTS
 DYNAMIC_PANEL_TEXT_FIELDS = (
     "title", "kpi", "chart", "decision", "reason", "execution_prompt"
 )
@@ -74,6 +74,11 @@ def normalize_dashboard_plan(
             )
             for field in DYNAMIC_PANEL_TEXT_FIELDS
         }
+        if panel["chart"] in STAGED_SANKEY_CHARTS:
+            raise PlannerError(
+                "段階付きSankeyは完全な順序付き経路を証明する共通契約がないため"
+                "選択できません。"
+            )
         if panel["chart"] not in DASHBOARD_CHARTS:
             raise PlannerError("分析計画の可視化種別が未対応です。")
         panel["dimensions"] = _panel_terms(
@@ -117,13 +122,6 @@ def normalize_dashboard_plan(
             _validate_chart_shape(panel["chart"], dimensions, measures)
         except PlannerError as error:
             suggestion = panel["execution_prompt"].rstrip("。")
-            if panel["chart"] in STAGED_SANKEY_CHARTS and measures:
-                if not re.search(r"(?:上位|トップ)\s*\d+", suggestion):
-                    suggestion += "。経路は上位10件に絞って"
-                suggestion += (
-                    f"。順序付き段階は遷移元・遷移先の隣接edgeとして表し、"
-                    f"区分軸2件と{measures[0]}1指標で返して"
-                )
             raise PlannerError(
                 f"{error} 現在案は保持しています。",
                 suggested_instruction=suggestion,

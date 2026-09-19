@@ -89,7 +89,7 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 panels=p._dashboard_response_schema({})["properties"]["panels"]
-print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"sankey_limit":f"最大{p.MAX_SANKEY_STAGES}段階" in request and f"上位{p.MAX_SANKEY_PATHS}経路" in request},ensure_ascii=False))`,
+print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"flow_rule":"flow_sankey" in request and "循環しない" in request,"no_staged_rule":"段階付きsankey" not in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
@@ -102,7 +102,8 @@ print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標�
     profile_not_in_request: true,
     count: [6, 6],
     questions: true,
-    sankey_limit: true,
+    flow_rule: true,
+    no_staged_rule: true,
   });
 });
 
@@ -127,7 +128,7 @@ print(json.dumps({"comparison_rule":"比較や派生指標が意思決定に有�
   });
 });
 
-test('program constraints allow every renderer without exposing a chart catalog in prompts', () => {
+test('program constraints allow every contract-verified renderer without exposing a chart catalog in prompts', () => {
   const result = spawnSync(
     'python3',
     [
@@ -147,7 +148,6 @@ shapes={
  "funnel":(["段階"], ["指標A"]),
  "funnel_horizontal":(["段階"], ["指標A"]),
  "heatmap":(["区分A","区分B"], ["指標A"]),
- "sankey_vertical":(["遷移元","遷移先"], ["指標A"]),
  "flow_sankey":(["遷移元","遷移先"], ["指標A"]),
  "flow_sankey_vertical":(["遷移元","遷移先"], ["指標A"]),
 }
@@ -190,11 +190,10 @@ print(json.dumps({"accepted":accepted,"charts":list(p.DASHBOARD_CHARTS),"schema_
     'funnel',
     'funnel_horizontal',
     'heatmap',
-    'sankey_vertical',
     'flow_sankey',
     'flow_sankey_vertical',
   ]);
-  assert.equal(output.charts.length, 42);
+  assert.equal(output.charts.length, 40);
   assert.deepEqual(new Set(output.schema_charts), new Set(output.charts));
   assert.deepEqual(new Set(output.consultation_charts), new Set(output.charts));
   assert.deepEqual(output.bar_shape, {
