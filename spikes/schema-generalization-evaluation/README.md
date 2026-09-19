@@ -27,11 +27,17 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixtureとruntime実行後のrun記録をschema ID・case IDだけで結合します。
+`assemble.py`は、version 2の独立review済み参照fixtureとversion 2のruntime実行後のrun記録を
+schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
 capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
 既存の厳密なrun契約だけを許可し、参照SQLや期待結果の混入、未知のschema／case、記録のないfixture caseを拒否します。
+
+run記録の`reviewed_fixture_sha256`には、独立review完了後かつ最初のrun前に確定したfixture fileのSHA-256を記録します。
+assemblerはfixtureの正確なfile bytesを再計算し、fingerprintが異なる場合は結合を拒否します。これにより、別fixtureのrunとの
+取り違えと、実行結果確認後の参照SQL・期待結果・閾値・capability変更を検出します。このfingerprintはreviewerの本人性や
+review時刻を単独では証明しないため、独立review記録は引き続き別途必要です。fingerprintをruntime inputへ渡してはいけません。
 
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
@@ -43,6 +49,12 @@ CI logやrepositoryへ保存しません。
 python3 spikes/schema-generalization-evaluation/assemble.py \
   /path/to/reviewed-fixture.json /path/to/recorded-runs.json /secure/path/evidence.json
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
+```
+
+run記録は次のtop-level契約を使います。`reviewed_fixture_sha256`はfile bytesの小文字SHA-256です。
+
+```json
+{"version":2,"reviewed_fixture_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な

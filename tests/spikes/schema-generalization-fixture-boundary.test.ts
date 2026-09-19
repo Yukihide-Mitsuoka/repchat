@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -86,7 +87,8 @@ function separatedEvidence() {
     })),
   };
   const recordings = {
-    version: 1,
+    version: 2,
+    reviewed_fixture_sha256: createHash('sha256').update(JSON.stringify(fixture)).digest('hex'),
     runs: bundle.schemas.flatMap((schema) =>
       schema.cases.flatMap((evaluationCase) =>
         evaluationCase.runs.map((run) => ({
@@ -196,7 +198,31 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings version must be 1/);
+  assert.match(result.stderr, /recordings version must be 2/);
+  assert.equal(result.stdout, '');
+});
+
+test('recorded runs cannot be assembled against a changed reviewed fixture', () => {
+  const { fixture, recordings } = separatedEvidence();
+  fixture.schemas[0]!.cases[0]!.reference.expected_rows = [
+    { category: 'changed-after-review', metric_value: 999 },
+  ];
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /recordings must bind to the exact reviewed fixture/);
+  assert.equal(result.stdout, '');
+});
+
+test('reviewed fixture fingerprint must be a lowercase SHA-256 value', () => {
+  const { fixture, recordings } = separatedEvidence();
+  recordings.reviewed_fixture_sha256 = 'A'.repeat(64);
+
+  const { result } = assemble(fixture, recordings);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /reviewed fixture fingerprint must be a lowercase SHA-256 value/);
   assert.equal(result.stdout, '');
 });
 
