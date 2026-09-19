@@ -157,7 +157,7 @@ fail-closedを検証します。`make format`、`make lint`、`make test`と必�
 2026-09-19にmerge済みです。
 続く独立PRでは、独立review対象の参照fixtureとruntimeが記録したrunを別fileに分け、実行後にschema ID・case IDだけで
 結合します。参照情報のrunへの混入、未知ID、記録のないcaseを拒否し、生の期待行・実行行は標準出力へ出さず、
-既存fileを上書きしないローカルartifactに限定します。
+`0600`で新規作成して既存fileを上書きしないローカルartifactに限定します。
 公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を

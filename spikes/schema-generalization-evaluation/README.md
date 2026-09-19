@@ -31,8 +31,9 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 fixture caseにはID、質問、参照記録だけを許可し、runを含めません。run記録にはschema ID、case ID、既存の厳密な
 run契約だけを許可し、参照SQLや期待結果の混入、未知のschema／case、記録のないfixture caseを拒否します。
 
-結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileだけへ書き、既存fileや
-入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、CI logやrepositoryへ保存しません。
+結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
+読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
+CI logやrepositoryへ保存しません。
 
 ## 実行
 

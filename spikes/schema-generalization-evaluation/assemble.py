@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -131,7 +132,8 @@ def main(argv: list[str]) -> int:
         output = Path(argv[3])
         if output.resolve() in {Path(argv[1]).resolve(), Path(argv[2]).resolve()}:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")
-        with output.open("x", encoding="utf-8") as target:
+        descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as target:
             json.dump(
                 bundle,
                 target,
