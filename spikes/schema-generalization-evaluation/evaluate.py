@@ -4,9 +4,18 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
+
+
+FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
+FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
+
+
+class EvaluationEvidenceError(ValueError):
+    """The evaluation evidence cannot be scored safely."""
 
 
 def _canonical_json(value: Any) -> str:
@@ -24,6 +33,26 @@ def _rows_match(reference: dict[str, Any], actual_rows: list[Any]) -> bool:
 
 def _rate(count: int, total: int) -> float:
     return round(count / total, 6) if total else 0.0
+
+
+def _validate_fingerprints(bundle: dict[str, Any]) -> None:
+    observed: set[tuple[str, ...]] = set()
+    for schema in bundle["schemas"]:
+        for case in schema["cases"]:
+            for run in case["runs"]:
+                fingerprints = tuple(run[key] for key in FINGERPRINT_KEYS)
+                if not all(
+                    isinstance(value, str) and FINGERPRINT_PATTERN.fullmatch(value)
+                    for value in fingerprints
+                ):
+                    raise EvaluationEvidenceError(
+                        "run fingerprints must be lowercase SHA-256 values"
+                    )
+                observed.add(fingerprints)
+    if len(observed) != 1:
+        raise EvaluationEvidenceError(
+            "all runs must use one runtime, prompt, and configuration fingerprint"
+        )
 
 
 def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
@@ -81,6 +110,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
+    _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
     schemas = [_summarize_schema(schema, thresholds) for schema in bundle["schemas"]]
     run_count = sum(schema["run_count"] for schema in schemas)
@@ -102,8 +132,12 @@ def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: evaluate.py <evidence-bundle.json>", file=sys.stderr)
         return 2
-    bundle = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
-    report = evaluate_bundle(bundle)
+    try:
+        bundle = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
+        report = evaluate_bundle(bundle)
+    except (EvaluationEvidenceError, KeyError, TypeError, json.JSONDecodeError, OSError) as error:
+        print(f"invalid evaluation evidence: {error}", file=sys.stderr)
+        return 2
     print(_canonical_json(report))
     return 0 if report["passed"] else 1
 
