@@ -81,6 +81,45 @@ def _validate_version(bundle: dict[str, Any]) -> None:
         raise EvaluationEvidenceError("evidence version must be 1")
 
 
+def _validate_structure(bundle: dict[str, Any]) -> None:
+    schemas = bundle["schemas"]
+    if not isinstance(schemas, list) or len(schemas) < 2:
+        raise EvaluationEvidenceError("at least two distinct schemas are required")
+    schema_ids: set[str] = set()
+    scope_fingerprints: set[str] = set()
+    for schema in schemas:
+        schema_id = schema["schema_id"]
+        scope_fingerprint = schema["scope_snapshot_fingerprint"]
+        cases = schema["cases"]
+        if not isinstance(schema_id, str) or not schema_id.strip():
+            raise EvaluationEvidenceError("schema IDs must be non-empty strings")
+        if not isinstance(scope_fingerprint, str):
+            raise EvaluationEvidenceError("scope snapshot fingerprints must be strings")
+        if not isinstance(cases, list) or not cases:
+            raise EvaluationEvidenceError("each schema must contain at least one case")
+        schema_ids.add(schema_id)
+        scope_fingerprints.add(scope_fingerprint)
+        case_ids: set[str] = set()
+        for case in cases:
+            case_id = case["case_id"]
+            question = case["question"]
+            if (
+                not isinstance(case_id, str)
+                or not case_id.strip()
+                or case_id in case_ids
+            ):
+                raise EvaluationEvidenceError(
+                    "case IDs must be non-empty and unique per schema"
+                )
+            if not isinstance(question, str) or not question.strip():
+                raise EvaluationEvidenceError("case questions must be non-empty strings")
+            if not isinstance(case["runs"], list):
+                raise EvaluationEvidenceError("case runs must be a list")
+            case_ids.add(case_id)
+    if len(schema_ids) != len(schemas) or len(scope_fingerprints) != len(schemas):
+        raise EvaluationEvidenceError("at least two distinct schemas are required")
+
+
 def _validate_thresholds(bundle: dict[str, Any]) -> None:
     thresholds = bundle["thresholds"]
     minimum_runs = thresholds["minimum_runs_per_case"]
@@ -269,6 +308,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
     _validate_version(bundle)
+    _validate_structure(bundle)
     _validate_thresholds(bundle)
     _validate_references(bundle)
     _validate_runs(bundle)
