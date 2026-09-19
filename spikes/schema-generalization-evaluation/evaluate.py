@@ -50,6 +50,11 @@ def _rate(count: int, total: int) -> float:
     return round(count / total, 6) if total else 0.0
 
 
+def _validate_version(bundle: dict[str, Any]) -> None:
+    if bundle.get("version") != 1:
+        raise EvaluationEvidenceError("evidence version must be 1")
+
+
 def _validate_thresholds(bundle: dict[str, Any]) -> None:
     thresholds = bundle["thresholds"]
     minimum_runs = thresholds["minimum_runs_per_case"]
@@ -202,6 +207,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
+    _validate_version(bundle)
     _validate_thresholds(bundle)
     _validate_references(bundle)
     _validate_runtime_inputs(bundle)
