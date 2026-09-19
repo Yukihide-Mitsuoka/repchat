@@ -45,7 +45,7 @@ const RULES = {
   },
   embeddedQuery: {
     target: 'content',
-    pattern: /\bSELECT\b[^;\n]{0,400}\bFROM\b/giu,
+    pattern: /\bSELECT\s+(?:(?!\bFROM\b)[^;\n]){1,400}\bFROM\s+(?:`|[A-Za-z_])/giu,
   },
   embeddedSchema: {
     target: 'content',
@@ -102,6 +102,14 @@ function countMatches(source: string, pattern: RegExp): number {
   return [...source.matchAll(new RegExp(pattern.source, pattern.flags))].length;
 }
 
+function executableSource(rule: RuleName, source: string): string {
+  if (rule !== 'embeddedQuery') return source;
+  return source
+    .split('\n')
+    .filter((line) => !/^\s*(?:#|\/\/)/u.test(line))
+    .join('\n');
+}
+
 function inventoryEntries(entries: { relative: string; source: string }[]): Inventory {
   const observed = Object.fromEntries(Object.keys(RULES).map((rule) => [rule, {}])) as Inventory;
 
@@ -110,7 +118,7 @@ function inventoryEntries(entries: { relative: string; source: string }[]): Inve
       RuleName,
       (typeof RULES)[RuleName],
     ][]) {
-      const inspected = definition.target === 'path' ? relative : source;
+      const inspected = definition.target === 'path' ? relative : executableSource(rule, source);
       const matches = countMatches(inspected, definition.pattern);
       if (matches > 0) observed[rule][relative] = matches;
     }
@@ -156,4 +164,18 @@ test('ratchet detects source-specific behavior in a new runtime file', () => {
   for (const matches of Object.values(observed)) {
     assert.ok(Object.keys(matches).length > 0);
   }
+});
+
+test('embedded SQL detection ignores rejection patterns and comment-only prose', () => {
+  const observed = inventoryEntries([
+    {
+      relative: 'sql_guard.py',
+      source: [
+        'SQL_TOKEN_PATTERN = r"(?:SELECT|WITH|FROM|GROUP\\s+BY)"',
+        '# A SELECT expression is kept separate FROM the remaining clauses.',
+      ].join('\n'),
+    },
+  ]);
+
+  assert.deepEqual(observed.embeddedQuery, {});
 });
