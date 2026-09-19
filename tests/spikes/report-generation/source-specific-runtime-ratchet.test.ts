@@ -77,11 +77,7 @@ const EXPECTED_LEGACY_INVENTORY: Inventory = {
   fixedDemoPeriod: {},
   fixedBusinessVocabulary: {},
   fixedDatasetConstant: {},
-  embeddedQuery: {
-    'analysis_consultation.py': 1,
-    'analysis_dashboard_plan.py': 1,
-    'sql_display.py': 1,
-  },
+  embeddedQuery: {},
   embeddedSchema: {},
   qualifiedTableLiteral: {},
   sourceSpecificModuleName: {},
