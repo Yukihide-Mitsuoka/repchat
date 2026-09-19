@@ -162,6 +162,7 @@ runを別fileに分け、実行後にschema ID・case IDだけで結合します
 [PR #747](https://github.com/Yukihide-Mitsuoka/repchat/pull/747)では、各schemaの参照fixtureがUNNEST、複数階層、join、
 期間比較、window、順序付き行動分析をcase全体で網羅することを検証します。capability labelはreview範囲の確認だけに
 使用し、runtime inputとevidenceへ渡しません。
+`make format`、`make lint`、`make test`と必須CI checksは成功し、mergeは未完了です。
 公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
