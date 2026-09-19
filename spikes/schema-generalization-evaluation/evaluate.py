@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -12,10 +13,43 @@ from typing import Any
 
 FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
+MINIMUM_RUNS_PER_CASE = 3
+MINIMUM_RESULT_MATCH_RATE = 0.9
 RUNTIME_INPUT_KEYS = {
     "scope_snapshot_fingerprint",
     "analysis_contract_fingerprint",
     "question",
+}
+REFERENCE_KEYS = {
+    "sql",
+    "expected_rows",
+    "row_order",
+    "author_id",
+    "reviewer_id",
+    "reviewed_at",
+}
+RUN_KEYS = {
+    "run_id",
+    *FINGERPRINT_KEYS,
+    "runtime_input",
+    "generated_sql",
+    "sql_execution_succeeded",
+    "actual_rows",
+    "unauthorized_reference",
+    "dangerous_sql",
+    "scan_limit_exceeded",
+    "semantic_error",
+    "render_succeeded",
+    "bytes_processed",
+    "cost_jpy",
+}
+RUN_BOOLEAN_KEYS = {
+    "sql_execution_succeeded",
+    "unauthorized_reference",
+    "dangerous_sql",
+    "scan_limit_exceeded",
+    "semantic_error",
+    "render_succeeded",
 }
 
 
@@ -38,6 +72,123 @@ def _rows_match(reference: dict[str, Any], actual_rows: list[Any]) -> bool:
 
 def _rate(count: int, total: int) -> float:
     return round(count / total, 6) if total else 0.0
+
+
+def _validate_version(bundle: dict[str, Any]) -> None:
+    if not isinstance(bundle, dict):
+        raise EvaluationEvidenceError("evidence root must be an object")
+    if bundle.get("version") != 1:
+        raise EvaluationEvidenceError("evidence version must be 1")
+
+
+def _validate_structure(bundle: dict[str, Any]) -> None:
+    schemas = bundle["schemas"]
+    if not isinstance(schemas, list) or len(schemas) < 2:
+        raise EvaluationEvidenceError("at least two distinct schemas are required")
+    schema_ids: set[str] = set()
+    scope_fingerprints: set[str] = set()
+    for schema in schemas:
+        schema_id = schema["schema_id"]
+        scope_fingerprint = schema["scope_snapshot_fingerprint"]
+        cases = schema["cases"]
+        if not isinstance(schema_id, str) or not schema_id.strip():
+            raise EvaluationEvidenceError("schema IDs must be non-empty strings")
+        if not isinstance(scope_fingerprint, str):
+            raise EvaluationEvidenceError("scope snapshot fingerprints must be strings")
+        if not isinstance(cases, list) or not cases:
+            raise EvaluationEvidenceError("each schema must contain at least one case")
+        schema_ids.add(schema_id)
+        scope_fingerprints.add(scope_fingerprint)
+        case_ids: set[str] = set()
+        for case in cases:
+            case_id = case["case_id"]
+            question = case["question"]
+            if (
+                not isinstance(case_id, str)
+                or not case_id.strip()
+                or case_id in case_ids
+            ):
+                raise EvaluationEvidenceError(
+                    "case IDs must be non-empty and unique per schema"
+                )
+            if not isinstance(question, str) or not question.strip():
+                raise EvaluationEvidenceError("case questions must be non-empty strings")
+            if not isinstance(case["runs"], list):
+                raise EvaluationEvidenceError("case runs must be a list")
+            case_ids.add(case_id)
+    if len(schema_ids) != len(schemas) or len(scope_fingerprints) != len(schemas):
+        raise EvaluationEvidenceError("at least two distinct schemas are required")
+
+
+def _validate_thresholds(bundle: dict[str, Any]) -> None:
+    thresholds = bundle["thresholds"]
+    minimum_runs = thresholds["minimum_runs_per_case"]
+    minimum_match_rate = thresholds["minimum_result_match_rate"]
+    if (
+        type(minimum_runs) is not int
+        or minimum_runs < MINIMUM_RUNS_PER_CASE
+        or not isinstance(minimum_match_rate, (int, float))
+        or isinstance(minimum_match_rate, bool)
+        or minimum_match_rate < MINIMUM_RESULT_MATCH_RATE
+        or minimum_match_rate > 1
+    ):
+        raise EvaluationEvidenceError(
+            "thresholds cannot be lower than the fixed acceptance policy"
+        )
+
+
+def _validate_references(bundle: dict[str, Any]) -> None:
+    for schema in bundle["schemas"]:
+        for case in schema["cases"]:
+            reference = case["reference"]
+            if set(reference) != REFERENCE_KEYS:
+                raise EvaluationEvidenceError(
+                    "reference must contain SQL, expected rows, ordering, and review evidence"
+                )
+            if reference["row_order"] not in {"ordered", "unordered"}:
+                raise EvaluationEvidenceError(
+                    "reference row_order must be ordered or unordered"
+                )
+            if not isinstance(reference["expected_rows"], list):
+                raise EvaluationEvidenceError("reference expected_rows must be a list")
+            for key in ("sql", "author_id", "reviewer_id", "reviewed_at"):
+                if not isinstance(reference[key], str) or not reference[key].strip():
+                    raise EvaluationEvidenceError(f"reference {key} must be a non-empty string")
+
+
+def _validate_runs(bundle: dict[str, Any]) -> None:
+    for schema in bundle["schemas"]:
+        for case in schema["cases"]:
+            run_ids: set[str] = set()
+            for run in case["runs"]:
+                if set(run) != RUN_KEYS:
+                    raise EvaluationEvidenceError("run contains unsupported or missing fields")
+                run_id = run["run_id"]
+                if not isinstance(run_id, str) or not run_id.strip() or run_id in run_ids:
+                    raise EvaluationEvidenceError("run IDs must be non-empty and unique per case")
+                run_ids.add(run_id)
+                if not all(type(run[key]) is bool for key in RUN_BOOLEAN_KEYS):
+                    raise EvaluationEvidenceError(
+                        "run safety and outcome fields must be booleans"
+                    )
+                if not isinstance(run["generated_sql"], str) or not isinstance(
+                    run["actual_rows"], list
+                ):
+                    raise EvaluationEvidenceError(
+                        "generated_sql must be a string and actual_rows must be a list"
+                    )
+                if type(run["bytes_processed"]) is not int or run["bytes_processed"] < 0:
+                    raise EvaluationEvidenceError(
+                        "bytes_processed must be a non-negative integer"
+                    )
+                cost = run["cost_jpy"]
+                if (
+                    not isinstance(cost, (int, float))
+                    or isinstance(cost, bool)
+                    or not math.isfinite(cost)
+                    or cost < 0
+                ):
+                    raise EvaluationEvidenceError("cost_jpy must be finite and non-negative")
 
 
 def _validate_fingerprints(bundle: dict[str, Any]) -> None:
@@ -71,6 +222,7 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
                 "scope snapshot fingerprints must be lowercase SHA-256 values"
             )
         for case in schema["cases"]:
+            contract_fingerprints: set[str] = set()
             for run in case["runs"]:
                 runtime_input = run["runtime_input"]
                 if set(runtime_input) != RUNTIME_INPUT_KEYS:
@@ -92,6 +244,11 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
                     raise EvaluationEvidenceError(
                         "analysis contract fingerprints must be lowercase SHA-256 values"
                     )
+                contract_fingerprints.add(contract_fingerprint)
+            if len(contract_fingerprints) != 1:
+                raise EvaluationEvidenceError(
+                    "each case must reproduce one analysis contract fingerprint"
+                )
 
 
 def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
@@ -126,6 +283,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         and has_enough_runs
         and independently_reviewed
         and result_match_rate >= thresholds["minimum_result_match_rate"]
+        and semantic_errors == 0
         and unauthorized_references == 0
         and dangerous_sql == 0
         and scan_limit_exceeded == 0
@@ -149,6 +307,11 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
+    _validate_version(bundle)
+    _validate_structure(bundle)
+    _validate_thresholds(bundle)
+    _validate_references(bundle)
+    _validate_runs(bundle)
     _validate_runtime_inputs(bundle)
     _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
