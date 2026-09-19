@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -93,13 +93,18 @@ function assemble(fixture: object, recordings: object) {
   const directory = mkdtempSync(path.join(tmpdir(), 'schema-fixture-'));
   const fixturePath = path.join(directory, 'fixture.json');
   const recordingsPath = path.join(directory, 'recordings.json');
+  const bundlePath = path.join(directory, 'evidence.json');
   writeFileSync(fixturePath, JSON.stringify(fixture));
   writeFileSync(recordingsPath, JSON.stringify(recordings));
   try {
-    return spawnSync('python3', [ASSEMBLER, fixturePath, recordingsPath], {
+    const result = spawnSync('python3', [ASSEMBLER, fixturePath, recordingsPath, bundlePath], {
       cwd: ROOT,
       encoding: 'utf8',
     });
+    return {
+      result,
+      bundle: existsSync(bundlePath) ? JSON.parse(readFileSync(bundlePath, 'utf8')) : undefined,
+    };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -108,17 +113,18 @@ function assemble(fixture: object, recordings: object) {
 test('reviewed fixture and separately recorded runs assemble deterministically', () => {
   const { bundle, fixture, recordings } = separatedEvidence();
 
-  const result = assemble(fixture, recordings);
+  const { result, bundle: assembled } = assemble(fixture, recordings);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), bundle);
+  assert.equal(result.stdout, '');
+  assert.deepEqual(assembled, bundle);
 });
 
 test('reference fixture cannot contain runtime runs', () => {
   const { fixture, recordings } = separatedEvidence();
   Object.assign(fixture.schemas[0]!.cases[0]!, { runs: [] });
 
-  const result = assemble(fixture, recordings);
+  const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /fixture cases may contain only ID, question, and reference/);
@@ -129,7 +135,7 @@ test('recorded runs cannot contain reference answers', () => {
   const { fixture, recordings } = separatedEvidence();
   Object.assign(recordings.runs[0]!.run, { reference: { expected_rows: [] } });
 
-  const result = assemble(fixture, recordings);
+  const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /run contains unsupported or missing fields/);
@@ -140,7 +146,7 @@ test('recorded runs must name one fixture schema and case', () => {
   const { fixture, recordings } = separatedEvidence();
   recordings.runs[0]!.case_id = 'unknown-case';
 
-  const result = assemble(fixture, recordings);
+  const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /recorded run does not match a fixture schema and case/);
@@ -151,7 +157,7 @@ test('every fixture case must have at least one separately recorded run', () => 
   const { fixture, recordings } = separatedEvidence();
   recordings.runs = recordings.runs.filter((record) => record.schema_id !== 'scope-a');
 
-  const result = assemble(fixture, recordings);
+  const { result } = assemble(fixture, recordings);
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /each fixture case must have recorded runs/);
