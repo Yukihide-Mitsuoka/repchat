@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import sys
@@ -16,7 +17,7 @@ from evaluate import EvaluationEvidenceError, evaluate_bundle
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
 FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
 FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
-RECORDINGS_KEYS = {"version", "runs"}
+RECORDINGS_KEYS = {"version", "reviewed_fixture_sha256", "runs"}
 RECORDED_RUN_KEYS = {"schema_id", "case_id", "run"}
 REQUIRED_CAPABILITIES = frozenset({
     "nested_unnest",
@@ -117,7 +118,9 @@ def _attach_recordings(
 
 
 def assemble_bundle(
-    fixture: dict[str, Any], recordings: dict[str, Any]
+    fixture: dict[str, Any],
+    recordings: dict[str, Any],
+    reviewed_fixture_sha256: str,
 ) -> dict[str, Any]:
     """Join run records to reviewed cases without exposing references to runtime input."""
     _require_fields(
@@ -128,18 +131,31 @@ def assemble_bundle(
     _require_fields(
         recordings,
         RECORDINGS_KEYS,
-        "recordings must contain only version and runs",
+        "recordings must contain only version, reviewed fixture fingerprint, and runs",
     )
     if type(fixture["version"]) is not int or fixture["version"] != 2:
         raise EvaluationEvidenceError("fixture version must be 2")
-    if type(recordings["version"]) is not int or recordings["version"] != 1:
-        raise EvaluationEvidenceError("recordings version must be 1")
+    if type(recordings["version"]) is not int or recordings["version"] != 2:
+        raise EvaluationEvidenceError("recordings version must be 2")
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
     if not isinstance(recordings["runs"], list):
         raise EvaluationEvidenceError("recordings runs must be a list")
 
     bundle, cases = _assemble_fixture(fixture)
+    recorded_fixture_sha256 = recordings["reviewed_fixture_sha256"]
+    if not (
+        isinstance(recorded_fixture_sha256, str)
+        and len(recorded_fixture_sha256) == 64
+        and all(character in "0123456789abcdef" for character in recorded_fixture_sha256)
+    ):
+        raise EvaluationEvidenceError(
+            "reviewed fixture fingerprint must be a lowercase SHA-256 value"
+        )
+    if recorded_fixture_sha256 != reviewed_fixture_sha256:
+        raise EvaluationEvidenceError(
+            "recordings must bind to the exact reviewed fixture"
+        )
     _attach_recordings(recordings, cases)
     evaluate_bundle(bundle)
     return bundle
@@ -153,9 +169,14 @@ def main(argv: list[str]) -> int:
         )
         return 2
     try:
-        fixture = json.loads(Path(argv[1]).read_text(encoding="utf-8"))
+        fixture_bytes = Path(argv[1]).read_bytes()
+        fixture = json.loads(fixture_bytes.decode("utf-8"))
         recordings = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
-        bundle = assemble_bundle(fixture, recordings)
+        bundle = assemble_bundle(
+            fixture,
+            recordings,
+            hashlib.sha256(fixture_bytes).hexdigest(),
+        )
         output = Path(argv[3])
         if output.resolve() in {Path(argv[1]).resolve(), Path(argv[2]).resolve()}:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")
@@ -171,7 +192,14 @@ def main(argv: list[str]) -> int:
     except FileExistsError:
         print("invalid separated evaluation evidence: evidence output already exists", file=sys.stderr)
         return 2
-    except (EvaluationEvidenceError, KeyError, TypeError, json.JSONDecodeError, OSError) as error:
+    except (
+        EvaluationEvidenceError,
+        KeyError,
+        TypeError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        OSError,
+    ) as error:
         print(f"invalid separated evaluation evidence: {error}", file=sys.stderr)
         return 2
     return 0
