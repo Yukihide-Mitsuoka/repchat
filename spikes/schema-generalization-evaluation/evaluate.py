@@ -12,6 +12,8 @@ from typing import Any
 
 FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
+MINIMUM_RUNS_PER_CASE = 3
+MINIMUM_RESULT_MATCH_RATE = 0.9
 RUNTIME_INPUT_KEYS = {
     "scope_snapshot_fingerprint",
     "analysis_contract_fingerprint",
@@ -38,6 +40,23 @@ def _rows_match(reference: dict[str, Any], actual_rows: list[Any]) -> bool:
 
 def _rate(count: int, total: int) -> float:
     return round(count / total, 6) if total else 0.0
+
+
+def _validate_thresholds(bundle: dict[str, Any]) -> None:
+    thresholds = bundle["thresholds"]
+    minimum_runs = thresholds["minimum_runs_per_case"]
+    minimum_match_rate = thresholds["minimum_result_match_rate"]
+    if (
+        type(minimum_runs) is not int
+        or minimum_runs < MINIMUM_RUNS_PER_CASE
+        or not isinstance(minimum_match_rate, (int, float))
+        or isinstance(minimum_match_rate, bool)
+        or minimum_match_rate < MINIMUM_RESULT_MATCH_RATE
+        or minimum_match_rate > 1
+    ):
+        raise EvaluationEvidenceError(
+            "thresholds cannot be lower than the fixed acceptance policy"
+        )
 
 
 def _validate_fingerprints(bundle: dict[str, Any]) -> None:
@@ -155,6 +174,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
 
 def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     """Return deterministic aggregate evidence without calling the analysis runtime."""
+    _validate_thresholds(bundle)
     _validate_runtime_inputs(bundle)
     _validate_fingerprints(bundle)
     thresholds = bundle["thresholds"]
