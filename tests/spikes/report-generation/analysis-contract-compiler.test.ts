@@ -71,12 +71,13 @@ assert r.normalize_contract_response(other,prepared).fingerprint==contract.finge
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('consolidated shards expose a temporal token only for governed time filtering', () => {
+test('consolidated shards expose their governed date as a temporal dimension only', () => {
   const result = python(
     setup +
       String.raw`
 import analysis_contract_response as r
 import analysis_contract_generation as g
+import analysis_contract_context as context
 pattern="alpha.dataset.records_*";members=["alpha.dataset.records_20260801","alpha.dataset.records_20260802"]
 date_shards={"suffixFormat":"YYYYMMDD","startSuffix":"20260801","endSuffix":"20260802","members":members}
 metadata["tables"][0]["table"]=pattern;metadata["tables"][0].pop("timePartitioning");metadata["tables"][0]["requirePartitionFilter"]=False;metadata["tables"][0]["dateShards"]=date_shards
@@ -84,18 +85,21 @@ content["tables"][0]["table"]=pattern;content["tables"][0].pop("timePartitioning
 schema["fingerprint"]=hashlib.sha256(json.dumps(metadata,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode()).hexdigest()
 prepared=c.prepare_compiler_input(snapshot(content),"2日間の合計",as_of=date(2026,9,13));catalog=json.loads(prepared.catalog_json)
 suffix=next(token for token,field in prepared.fields.items() if field["reference"].get("field")=="_TABLE_SUFFIX")
-assert next(field for field in catalog["fields"] if field["token"]==suffix)["role_selectable"] is False
+suffix_field=next(field for field in catalog["fields"] if field["token"]==suffix)
+assert suffix_field["role_selectable"] is False and suffix_field["dimension_selectable"] is True
 response_schema=g._contract_response_schema(prepared)
 assert suffix in response_schema["properties"]["business_time"]["enum"]
+assert suffix in response_schema["properties"]["dimensions"]["items"]["properties"]["field"]["enum"]
 assert suffix not in response_schema["properties"]["metrics"]["items"]["properties"]["field"]["enum"]
-raw={"tables":["t000"],"time_enabled":True,"business_time":suffix,"time_candidates":[{"field":suffix,"confidence":"high"}],"grain":[],"identifiers":[],"dimensions":[],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"2026-08-01","end":"2026-08-02","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
-contract=r.normalize_contract_response(raw,prepared).content()
+raw={"tables":["t000"],"time_enabled":True,"business_time":suffix,"time_candidates":[{"field":suffix,"confidence":"high"}],"grain":[],"identifiers":[],"dimensions":[{"name":"Date","field":suffix,"aliases":[]}],"measures":[{"name":"amount","field":"f0001","aliases":[]}],"metrics":[{"name":"total","field":"f0001","aliases":[],"aggregation":"sum","unit":""}],"relationships":[],"period":{"start":"2026-08-01","end":"2026-08-02","comparison_enabled":False,"comparison_start":"","comparison_end":""}}
+compiled=r.normalize_contract_response(raw,prepared);contract=compiled.content()
 assert contract["period"]["business_time"]=={"table":pattern,"field":"_TABLE_SUFFIX"}
 assert contract["period"]["partitions"]==[{"table":pattern,"field":"_TABLE_SUFFIX"}]
-unsafe=copy.deepcopy(raw);unsafe["dimensions"]=[{"name":"day","field":suffix,"aliases":[]}]
-try:r.normalize_contract_response(unsafe,prepared)
-except c.ContractCompilerError:pass
-else:raise AssertionError("synthetic suffix accepted as a semantic role")
+assert contract["semantics"]["dimensions"]["Date"]["field"]=={"table":pattern,"field":"_TABLE_SUFFIX"}
+assert "PARSE_DATE" in contract["semantics"]["dimensions"]["Date"]["expr"]
+policy=context.execution_policy(compiled)
+assert policy.result.temporal_dimensions==frozenset({"Date"})
+assert "PARSE_DATE('%Y%m%d'" in context.sql_rules(compiled)
 `,
   );
   assert.equal(result.status, 0, result.stderr);
