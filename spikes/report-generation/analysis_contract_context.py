@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from analysis_contract import (
     TIME_TYPES,
     AnalysisContract,
+    expression_for_date_shard,
     expression_for_field,
     fingerprint_contract_content,
 )
@@ -104,12 +105,23 @@ def _result_semantics(
             if reference is None:
                 continue
             field_key = _reference(reference, tables)
-            if definition.get("expr") != expression_for_field(reference) or "filter" in definition:
+            date_shard = (
+                field_key[1] == ("_TABLE_SUFFIX",)
+                and bool(tables[field_key[0]].get("dateShards"))
+            )
+            expected_expression = (
+                expression_for_date_shard(reference)
+                if date_shard
+                else expression_for_field(reference)
+            )
+            if definition.get("expr") != expected_expression or "filter" in definition:
                 raise AnalysisContextError("analysis contract result semantic field is invalid")
             field = field_policy.get(field_key)
             if field is None:
                 raise AnalysisContextError("analysis contract result semantic field is invalid")
-            if field.field_type in TIME_TYPES and not field.repeated and not field.restricted:
+            if (
+                date_shard or field.field_type in TIME_TYPES
+            ) and not field.repeated and not field.restricted:
                 temporal_dimensions.add(name)
     return AnalysisResultPolicy(dimensions, measures, frozenset(temporal_dimensions))
 
@@ -182,6 +194,7 @@ def sql_rules(contract: AnalysisContract) -> str:
     period_rules = (
         """- periodのbusiness_timeで対象期間を絞り、partitionsの各列でも同じ対象範囲を必ず絞る。
 - dateShardsを持つtableは、metadataのstartSuffixとendSuffixを定数にした_TABLE_SUFFIX BETWEENで絞る。
+- dateShardsの_TABLE_SUFFIXを時間軸へ出力する場合は、semanticsのPARSE_DATE('%Y%m%d', ...)定義でDATEへ変換し、生のSTRINGをtime_valueへ返さない。
 - comparisonがある場合だけ比較期間を使用する。別の期間や暗黙のtimezoneを追加しない。"""
         if content["period"] is not None
         else "- periodはnullである。期間、timezone、partition疑似列を推測して追加しない。"

@@ -68,6 +68,10 @@ ingestion-time partitionでは`_PARTITIONDATE`または`_PARTITIONTIME`を明示
 `dateShards`を持つtableは`_TABLE_SUFFIX`を必須制約とし、snapshotの開始・終了日が対象期間と比較期間を
 包含する最小のscan範囲に一致する場合だけcompileします。日次memberの欠落・並び替え・追加metadataを拒否し、
 timeまたはrange partitionを併用するshardは両方のfilterを表現できる契約を追加するまで受理しません。
+検査済み`dateShards`の`_TABLE_SUFFIX`とingestion-time partition疑似fieldは、時間候補に加えて
+dimensionとしてだけ選択できます。grain、identifier、measure、metric、relationshipには使えません。
+`_TABLE_SUFFIX`を時間軸へ出力するsemantic式は`YYYYMMDD`からDATEへの`PARSE_DATE`変換に固定し、
+生のSTRINGを時間軸として認証しません。疑似fieldの種別は標準metadataだけから決定します。
 
 意味候補はgrain、metrics、dimensions、relationshipsを区別します。定義式と任意のunit・aliases等を保持し、
 同じ名前・aliasの重複を拒否します。relationshipは両table、結合条件、多重度を明示し、snapshot外を参照できません。
@@ -104,6 +108,8 @@ dry-run job metadataの両方をexact table scopeへ照合した後だけ、同�
 repeated・policy tag状態を決定論的に導出します。date shardとingestion-time partitionの疑似fieldも同じ
 policyへ含めます。不正型、case-insensitiveな同名field、重複path、空のstructured fieldはfail closedです。
 期間SQL検査は各期間fieldの完全path・型がこのpolicyと一致し、repeated・policy tag継承下でないことも要求します。
+結果policyは検査済みdate shard dimensionの固定`PARSE_DATE`式を再検証し、時系列chartの時間dimensionとして
+認証します。式が欠落・変更された契約は、fingerprintが再計算されていても拒否します。
 
 `contract_sql_validation.py`は契約付きSQLのphysical table aliasをquery scopeごとに解決し、aliasから参照した
 完全nested pathをfield policyへ照合します。restricted field、UNNESTせず参照したrepeated親配下のscalar、

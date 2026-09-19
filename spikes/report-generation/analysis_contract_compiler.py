@@ -268,6 +268,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                 "value_class": field["valueClass"],
                 "selectable": selectable,
                 "role_selectable": selectable,
+                "dimension_selectable": selectable,
             }
             prompt_field = {
                 "token": token,
@@ -276,6 +277,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                 "type": field["type"],
                 "mode": field["mode"],
                 "selectable": selectable,
+                "dimension_selectable": selectable,
             }
             description = schema_field.get("description")
             if description is not None:
@@ -309,6 +311,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                 "value_class": "temporal",
                 "selectable": True,
                 "role_selectable": False,
+                "dimension_selectable": True,
             }
             prompt_fields.append(
                 {
@@ -319,6 +322,7 @@ def _field_index(content: dict) -> tuple[dict[str, dict], dict[str, str], list[d
                     "mode": "REQUIRED",
                     "selectable": True,
                     "role_selectable": False,
+                    "dimension_selectable": True,
                 }
             )
     expected = {
