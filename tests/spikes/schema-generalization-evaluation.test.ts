@@ -206,3 +206,17 @@ test('unsafe or mismatched runs remain visible in a failing report', () => {
   );
   assert.equal(report.schemas[1].passed, true);
 });
+
+test('a semantic error fails evaluation even when result rows match', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[0].cases[0].runs[0].semantic_error = true;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.schemas[0].result_match_rate, 1);
+  assert.equal(report.schemas[0].semantic_error_rate, 0.333333);
+  assert.equal(report.schemas[0].passed, false);
+  assert.equal(report.passed, false);
+});
