@@ -166,7 +166,7 @@ runを別fileに分け、実行後にschema ID・case IDだけで結合します
 [PR #749](https://github.com/Yukihide-Mitsuoka/repchat/pull/749)では、run記録を独立review完了後に固定した
 fixture fileのSHA-256へbindし、別fixtureとの取り違えや実行結果確認後の参照SQL・期待結果・閾値・capability変更を
 assemblerで拒否します。fingerprintはruntime inputへ渡さず、reviewer本人性の証明とは扱いません。`make format`、
-`make lint`、`make test`、`make coverage`は成功し、mergeと必須CI checksは未完了です。
+`make lint`、`make test`、`make coverage`と必須CI checks 13件は成功し、mergeは未完了です。
 公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
