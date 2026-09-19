@@ -142,5 +142,6 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 [未知schema反復評価harness](../../spikes/schema-generalization-evaluation/README.md)は、runtime実行後の
 evidence bundleだけを読み、参照SQL・期待結果との一致、安全違反、費用、描画、反復fingerprintを集計します。
 参照SQLと期待結果はpost-run scorerの入力に限定し、分析契約生成、planner、SQL生成の入力には含めません。
+参照fixtureとrun記録も別fileで管理し、runtime実行後にIDだけで結合してからscorerへ渡します。
 
 現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
