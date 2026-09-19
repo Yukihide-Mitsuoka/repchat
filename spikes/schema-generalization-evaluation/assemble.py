@@ -105,7 +105,7 @@ def assemble_bundle(
         RECORDINGS_KEYS,
         "recordings must contain only version and runs",
     )
-    if recordings["version"] != 1:
+    if type(recordings["version"]) is not int or recordings["version"] != 1:
         raise EvaluationEvidenceError("recordings version must be 1")
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
