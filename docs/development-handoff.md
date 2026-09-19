@@ -146,6 +146,10 @@ end-to-endで検証できる40種類に限定します。`make format`、`make l
 コメント専用行を除外し、同一行で実際の`SELECT … FROM <table>`形を持つ内容だけを検出するよう厳密化して、
 全13分類のlegacy inventoryを空にします。`make format`、`make lint`、`make test`と必須CI checksは成功し、
 2026-09-19にmerge済みです。
+[PR #743](https://github.com/Yukihide-Mitsuoka/repchat/pull/743)では、参照SQL・期待結果をruntimeへ渡さず、実行後だけ
+照合する評価scorerを追加します。全runのruntime・prompt・設定fingerprint一致と許可runtime入力を検証し、schema別の
+結果・安全違反・費用・描画を集計します。`make format`、`make lint`、`make test`は成功し、CIとmergeは未完了です。
+固定閾値、厳密な入力型、重複schema拒否、contract再現性の差分は次の独立PR用branchへ保全済みです。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
