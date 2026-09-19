@@ -153,7 +153,8 @@ end-to-endで検証できる40種類に限定します。`make format`、`make l
 続く[PR #744](https://github.com/Yukihide-Mitsuoka/repchat/pull/744)では、異なるschema ID・scope fingerprintを
 最低2件、各caseを最低3回、schema別結果一致率90%以上とする固定の受入下限を追加します。同一caseのcontract
 fingerprint再現、厳密なrun型、未知version・field・行順序の拒否、意味誤り・未認可参照・危険SQL・scan上限超過の
-fail-closedを検証します。公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
+fail-closedを検証します。`make format`、`make lint`、`make test`と必須CI checksは成功し、mergeは未完了です。
+公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
 次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
