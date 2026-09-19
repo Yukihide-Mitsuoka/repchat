@@ -15,9 +15,17 @@ from evaluate import EvaluationEvidenceError, evaluate_bundle
 
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
 FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
-FIXTURE_CASE_KEYS = {"case_id", "question", "reference"}
+FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
 RECORDINGS_KEYS = {"version", "runs"}
 RECORDED_RUN_KEYS = {"schema_id", "case_id", "run"}
+REQUIRED_CAPABILITIES = frozenset({
+    "nested_unnest",
+    "multi_level_nesting",
+    "join",
+    "period_comparison",
+    "window_function",
+    "ordered_behavior",
+})
 
 
 def _require_fields(value: Any, expected: set[str], message: str) -> dict[str, Any]:
@@ -30,7 +38,7 @@ def _assemble_fixture(
     fixture: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[tuple[Any, Any], dict[str, Any]]]:
     bundle = {
-        "version": fixture["version"],
+        "version": 1,
         "thresholds": copy.deepcopy(fixture["thresholds"]),
         "schemas": [],
     }
@@ -49,12 +57,25 @@ def _assemble_fixture(
             "cases": [],
         }
         bundle["schemas"].append(assembled_schema)
+        covered_capabilities: set[str] = set()
         for fixture_case in schema["cases"]:
             fixture_case = _require_fields(
                 fixture_case,
                 FIXTURE_CASE_KEYS,
-                "fixture cases may contain only ID, question, and reference",
+                "fixture cases may contain only ID, question, and reference; capabilities are required",
             )
+            capabilities = fixture_case["capabilities"]
+            if (
+                not isinstance(capabilities, list)
+                or not capabilities
+                or any(
+                    not isinstance(value, str) or value not in REQUIRED_CAPABILITIES
+                    for value in capabilities
+                )
+                or len(capabilities) != len(set(capabilities))
+            ):
+                raise EvaluationEvidenceError("fixture case capabilities are invalid")
+            covered_capabilities.update(capabilities)
             key = (schema["schema_id"], fixture_case["case_id"])
             if key in cases:
                 raise EvaluationEvidenceError(
@@ -68,6 +89,10 @@ def _assemble_fixture(
             }
             assembled_schema["cases"].append(assembled_case)
             cases[key] = assembled_case
+        if covered_capabilities != REQUIRED_CAPABILITIES:
+            raise EvaluationEvidenceError(
+                "each fixture schema must cover every required capability"
+            )
     return bundle, cases
 
 
@@ -105,6 +130,8 @@ def assemble_bundle(
         RECORDINGS_KEYS,
         "recordings must contain only version and runs",
     )
+    if type(fixture["version"]) is not int or fixture["version"] != 2:
+        raise EvaluationEvidenceError("fixture version must be 2")
     if type(recordings["version"]) is not int or recordings["version"] != 1:
         raise EvaluationEvidenceError("recordings version must be 1")
     if not isinstance(fixture["schemas"], list):
