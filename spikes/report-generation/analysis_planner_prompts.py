@@ -19,8 +19,6 @@ def build_dashboard_planning_request(
     initial_panel_count: int,
     max_panel_count: int,
     dynamic_panel_fields: tuple[str, ...],
-    max_sankey_paths: int,
-    max_sankey_stages: int,
     has_governed_metrics: bool,
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
@@ -88,7 +86,7 @@ def build_dashboard_planning_request(
   仕様へ明示する。
 - 各可視化の結果は最大行数以内で判断できる集計粒度にする。高カーディナリティの区分軸は上位件数と並び順をexecution_promptへ明記する。
 - {" ".join(CHART_PLANNING_RULES)}
-- 段階付きsankeyは、選択した契約から同一経路の識別と順序付き段階を確認できる場合だけ選ぶ。確認できない場合は選ばない。上位{max_sankey_paths}経路・最大{max_sankey_stages}段階とし、指定した最終段階へ到達した完全な経路を先に集計する。上位経路を選んだ後、dimensionsを遷移元・遷移先の2件とする隣接edgeへ変換する手順をexecution_promptへ明記する。段階や経路の意味を補わない。
+- flow_sankeyは、契約の2区分をsourceとtargetにする有向flowを表現できる場合だけ選ぶ。段階や経路の意味を補わず、循環しない集計にする。
 - KPI・グラフの選択理由をパネルごとに日本語で説明する。
 - 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。

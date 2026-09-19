@@ -8,7 +8,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const PLANNER = path.join(ROOT, 'spikes/report-generation/analysis_planner.py');
 const PYTHON_ENV = { ...process.env, PYTHONPATH: path.dirname(PLANNER) };
 
-test('invalid Sankey output explains expected counts and returns an AI-authored correction', () => {
+test('staged Sankey is rejected before shape correction without a complete-path contract', () => {
   const result = spawnSync(
     'python3',
     [
@@ -17,15 +17,15 @@ test('invalid Sankey output explains expected counts and returns an AI-authored 
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 raw={
- "objective_summary":"サイト回遊を改善する","audience":"責任者","comparison":"経路間比較",
+ "objective_summary":"経路を判断する","audience":"責任者","comparison":"経路間比較",
  "hypotheses":["主要経路に偏りがある"],"clarifications":[],"panels":[{
-  "title":"3ページ回遊","kpi":"セッション数","chart":"sankey","decision":"導線を改善する",
+  "title":"段階経路","kpi":"件数","chart":"sankey","decision":"経路を判断する",
   "reason":"流量を比較するため",
-  "execution_prompt":"2021年1月の1ページ目・2ページ目・3ページ目ごとのセッション数を集計する",
-  "dimensions":["1ページ目","2ページ目","3ページ目"],"measures":["セッション数"],"layout_row":1,"layout_weight":1
+  "execution_prompt":"3つの順序付き段階ごとの件数を集計する",
+  "dimensions":["段階1","段階2","段階3"],"measures":["件数"],"layout_row":1,"layout_weight":1
  }]}
-answers={"audience":"責任者","comparison":"経路間比較","business_goal":"回遊改善"}
-try:p.normalize_dashboard_plan(raw,"3ページのサイト回遊も作成して",{"from":"20210101","to":"20210131","label":"2021年1月"},answers)
+answers={"audience":"責任者","comparison":"経路間比較","business_goal":"flow改善"}
+try:p.normalize_dashboard_plan(raw,"段階経路を作成して",None,answers)
 except p.PlannerError as error:
  print(json.dumps({"message":str(error),"suggestion":error.suggested_instruction},ensure_ascii=False))`,
     ],
@@ -33,16 +33,11 @@ except p.PlannerError as error:
   );
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.match(output.message, /必要なのは区分軸2件・指標1件/);
-  assert.match(output.message, /AI出力は区分軸3件・指標1件/);
-  assert.match(output.message, /現在案は保持/);
-  assert.match(output.suggestion, /2021年1月/);
-  assert.match(output.suggestion, /上位10件/);
-  assert.match(output.suggestion, /遷移元・遷移先の隣接edge/);
-  assert.match(output.suggestion, /区分軸2件とセッション数1指標/);
+  assert.match(output.message, /完全.*経路.*契約/);
+  assert.equal(output.suggestion, null);
 });
 
-test('add-only dashboard revisions preserve accepted panels and append a requested Sankey', () => {
+test('add-only dashboard revisions preserve accepted panels when staged Sankey is refused', () => {
   const result = spawnSync(
     'python3',
     [
@@ -61,30 +56,32 @@ def panel(index):return {"title":f"分析{index}","kpi":f"指標{index}","chart"
 header={"objective_summary":"成果を判断する","audience":"責任者","comparison":"区分比較","hypotheses":["差がある"],"clarifications":[]}
 answers={"audience":"責任者","comparison":"区分比較","business_goal":"成果改善"}
 current=p.normalize_dashboard_plan({**header,"panels":[panel(i) for i in range(1,7)]},"ダッシュボードを作って",period,answers)
-sankey={"title":"サイト内3ページ回遊","kpi":"セッション数","chart":"sankey","decision":"主要な3ページ回遊を判断する","reason":"ページ間の流量を確認するため","execution_prompt":"2021年1月の遷移元ページから遷移先ページまで3ページのセッション数を多い順に集計する","dimensions":["遷移元ページ","遷移先ページ"],"measures":["セッション数"],"layout_row":4,"layout_weight":1}
+sankey={"title":"段階経路","kpi":"件数","chart":"sankey","decision":"主要経路を判断する","reason":"流量を確認するため","execution_prompt":"順序付き段階の件数を集計する","dimensions":["Source","Target"],"measures":["件数"],"layout_row":4,"layout_weight":1}
 addition={**header,"panels":[panel(i) for i in range(1,7)]+[sankey]}
 observed_schema={}
 class Models:
  def generate_content(self,**kwargs):
   observed_schema.update(kwargs["config"].response_schema["properties"]["clarifications"])
   return types.SimpleNamespace(text=json.dumps(addition,ensure_ascii=False),usage_metadata=object())
-plan,_usage=p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model",current["objective"],period,"指標定義",answers,current_plan=current,instruction="サイト回遊3ページのサンキーダイアグラムも描いて")
+try:p.propose_dashboard(types.SimpleNamespace(models=Models()),"test-model",current["objective"],period,"指標定義",answers,current_plan=current,instruction="段階付きSankeyも描いて")
+except p.PlannerError as error:diagnostic=str(error)
+else:raise AssertionError('staged Sankey revision accepted')
 panel_schema=p._dashboard_response_schema(answers,revising=True)["properties"]["panels"]
-print(json.dumps({"count":len(plan["panels"]),"titles":[item["title"] for item in plan["panels"]],"last_chart":plan["panels"][-1]["chart"],"clarification_zero_bound":observed_schema.get("maxItems")==0,"panel_bounds":[panel_schema.get("minItems"),panel_schema.get("maxItems")]},ensure_ascii=False))`,
+print(json.dumps({"count":len(current["panels"]),"titles":[item["title"] for item in current["panels"]],"diagnostic":diagnostic,"clarification_zero_bound":observed_schema.get("maxItems")==0,"panel_bounds":[panel_schema.get("minItems"),panel_schema.get("maxItems")]},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    count: 7,
-    titles: ['分析1', '分析2', '分析3', '分析4', '分析5', '分析6', 'サイト内3ページ回遊'],
-    last_chart: 'sankey',
+    count: 6,
+    titles: ['分析1', '分析2', '分析3', '分析4', '分析5', '分析6'],
+    diagnostic: '段階付きSankeyは完全な順序付き経路を証明する共通契約がないため選択できません。',
     clarification_zero_bound: false,
     panel_bounds: [null, null],
   });
 });
 
-test('Sankey permits one page attribute in source and target roles without weakening other charts', () => {
+test('flow Sankey permits one attribute in source and target roles without weakening other charts', () => {
   const result = spawnSync(
     'python3',
     [
@@ -94,15 +91,15 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 period={"from":"20210101","to":"20210131","label":"2021年1月"}
 def raw(chart):return {
- "objective_summary":"サイト内行動を判断する","audience":"責任者","comparison":"回遊比較",
- "hypotheses":["回遊経路に偏りがある"],"clarifications":[],"panels":[{
-  "title":"3ページ回遊","kpi":"セッション数","chart":chart,"decision":"主要経路を判断する",
-  "reason":"回遊を確認するため","execution_prompt":"2021年1月のページからページへの3段階のセッション数を集計する",
-  "dimensions":["ページ","ページ"],"measures":["セッション数"],"layout_row":1,"layout_weight":1,
+ "objective_summary":"flowを判断する","audience":"責任者","comparison":"経路比較",
+ "hypotheses":["flowに偏りがある"],"clarifications":[],"panels":[{
+  "title":"有向flow","kpi":"件数","chart":chart,"decision":"主要経路を判断する",
+  "reason":"flowを確認するため","execution_prompt":"属性間の有向flow件数を集計する",
+  "dimensions":["状態","状態"],"measures":["件数"],"layout_row":1,"layout_weight":1,
  }]}
-answers={"audience":"責任者","comparison":"回遊比較","business_goal":"エンゲージメント改善"}
-accepted=p.normalize_dashboard_plan(raw("sankey"),"2021年1月のサイト内行動を分析する",period,answers)
-try:p.normalize_dashboard_plan(raw("heatmap"),"2021年1月のサイト内行動を分析する",period,answers)
+answers={"audience":"責任者","comparison":"経路比較","business_goal":"flow改善"}
+accepted=p.normalize_dashboard_plan(raw("flow_sankey"),"flowを分析する",period,answers)
+try:p.normalize_dashboard_plan(raw("heatmap"),"flowを分析する",period,answers)
 except p.PlannerError as error:other_error=str(error)
 print(json.dumps({"dimensions":accepted["panels"][0]["dimensions"],"other_error":other_error},ensure_ascii=False))`,
     ],
@@ -110,7 +107,7 @@ print(json.dumps({"dimensions":accepted["panels"][0]["dimensions"],"other_error"
   );
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
-    dimensions: ['ページ', 'ページ'],
+    dimensions: ['状態', '状態'],
     other_error: '分析計画の区分軸に重複があります。',
   });
 });

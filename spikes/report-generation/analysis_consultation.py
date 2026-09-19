@@ -14,11 +14,15 @@ from analysis_planner_validation import (
     flatten_visualization,
     validate_chart_shape,
 )
-from visualization_contracts import SANKEY_CHARTS, SUPPORTED_DASHBOARD_CHARTS
+from visualization_contracts import (
+    CONTRACT_VERIFIED_DASHBOARD_CHARTS,
+    SANKEY_CHARTS,
+    STAGED_SANKEY_CHARTS,
+)
 from vertex_generation import generate_content
 
 CONSULTATION_MAX_OUTPUT_TOKENS = 8192
-CONSULTATION_CHARTS = SUPPORTED_DASHBOARD_CHARTS
+CONSULTATION_CHARTS = CONTRACT_VERIFIED_DASHBOARD_CHARTS
 CONSULTATION_TEXT_FIELDS = (
     "title",
     "objective",
@@ -61,6 +65,11 @@ def confirm_analysis_specification(raw: dict) -> dict:
         for field in CONSULTATION_TEXT_FIELDS
     }
     chart = recommendation["chart"]
+    if chart in STAGED_SANKEY_CHARTS:
+        raise PlannerError(
+            "段階付きSankeyは完全な順序付き経路を証明する共通契約がないため"
+            "選択できません。"
+        )
     if chart not in CONSULTATION_CHARTS:
         raise PlannerError("分析相談の可視化種別が未対応です。")
     recommendation["dimensions"] = consultation_terms(

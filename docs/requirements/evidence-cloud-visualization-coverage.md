@@ -52,7 +52,7 @@ AI plannerの選択肢に文字列を追加しただけでは「対応」にし�
 SQL安全規則、結果形状契約、対応済みchart typeの許可集合、管理者が変更できる費用・件数ポリシーに限る。
 旧デモの固定分析は再現fixtureと回帰試験から通常plannerへ逆流させない。
 
-### 2.1 現在AI plannerが選べる42種類
+### 2.1 現在AI plannerが選べる40種類
 
 | RepChatの指定値 | Evidence上の対応 | 判定 | 制約 |
 |---|---|---|---|
@@ -69,7 +69,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | `pivot_table` | Data Table Pivoting | 対応 | 行区分、列区分、1〜4指標のlong形式を検査し、欠損組合せを空欄に保ってwide表示する |
 | `comparison_table` | Data Table Comparison / Delta | 対応 | 1〜4区分と比較対象の定義済み指標1件を受け取る。比較条件は実行仕様へ明記し、SQLは同じ指標の現在値、比較値、差分を返す。差分の算術整合性を検査して増減方向を中立色で表示する |
 | `sparkline_table` | Data Table Sparkline | 対応 | 区分、日付、値のlong形式を検査し、区分ごとの最新値とECharts sparklineを表示する |
-| `sankey` / `sankey_vertical` | Sankey Diagram | 部分対応 | 上位10経路・最大4段階の隣接edgeを縦向き／横向きで描く。経路識別・順序の選択条件、経路の完全性、生成SQLの意味上の来歴は未検査 |
+| `sankey` / `sankey_vertical` | Sankey Diagram | 未対応 | rendererと結果形状validatorは残るが、同一経路ID・段階順序・完全経路を証明する共通契約がない。planner、相談、SQL sectionの全入口で拒否する |
 | `flow_sankey` / `flow_sankey_vertical` | Sankey Diagram | 対応 | 最大50edgeの非循環flowを縦向き／横向きで描く |
 | `donut` | Custom ECharts Donut例 | 部分対応 | 12区分までの非負値。安全な宣言的rendererだけを使う |
 | `annotated_line` | Annotations | 部分対応 | 日付、任意の注釈ラベル、1指標を返し、根拠のある時点だけをpin表示する |
@@ -121,7 +121,7 @@ SQL安全規則、結果形状契約、対応済みchart typeの許可集合、�
 | Calendar Heatmap | single year、multi-year | 対応 | date、valueを最大5年まで受け取り、年ごとのcalendarへ分離する |
 | Heatmap | basic、customized | 対応 | x category、y category、valueの基本形に対応 |
 | Funnel Chart | default、side aligned | 対応 | 任意の順序付きstageを縦向き／横向きで描画する |
-| Sankey Diagram | horizontal、vertical | 部分対応 | 段階付き経路と一般的な非循環flowを縦向き／横向きで描画する。段階付き経路の完全性・SQL来歴は未検査 |
+| Sankey Diagram | horizontal、vertical | 部分対応 | 一般的な非循環flowを縦向き／横向きで描画する。段階付き経路はrenderer検証だけを保持し、共通契約で完全性と来歴を証明できるまで製品経路へ公開しない |
 
 標準chart componentはこの11種類に、§4のAnnotations、Sparkline、Mixed-Type Chartsと、§6のCustom
 EChartsを加えた15種類である。
@@ -178,7 +178,9 @@ RepChatのlocal demoは42個の指定値にrendererと結果形状契約を持�
 同じ440pxへ揃えた。任意Custom EChartsだけは、AI生成JavaScriptを実行する安全性・再現性・accessibilityを
 保証できないため、意図的に許可していない。
 
-AIには、各chartの結果形状とrendererを実装しend-to-end契約を試験した42種類だけを許可enumとして渡す。
+AIには、rendererだけでなく現在の共通契約で入力から出力まで検証できる40種類だけを許可enumとして渡す。
+`sankey`と`sankey_vertical`は描画fixtureの履歴を保持するが、同一経路ID・段階順序・完全経路を機械検査できないため
+許可enumから除外する。prompt上の条件依頼や対象別推測で代用しない。
 許可enumと指標定義は依頼ごとに中立な順序へ変換し、列挙順を提案順位として使わせない。
 初回提案数と上限は管理者ポリシーとして設定でき、デモ既定値はそれぞれ6件と20件である。例えば上限を15件へ
 変更できる。この件数境界は費用と画面密度を制御するものであり、AIが何を分析するかは固定しない。

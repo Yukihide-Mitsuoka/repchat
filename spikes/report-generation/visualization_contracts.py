@@ -86,6 +86,9 @@ VISUALIZATION_CONTRACTS = (
 SUPPORTED_DASHBOARD_CHARTS = tuple(
     contract.chart for contract in VISUALIZATION_CONTRACTS
 )
+CONTRACT_VERIFIED_DASHBOARD_CHARTS = tuple(
+    chart for chart in SUPPORTED_DASHBOARD_CHARTS if chart not in STAGED_SANKEY_CHARTS
+)
 CHART_SOURCE_SHAPE_CONTRACTS = {
     contract.chart: contract.source_shape for contract in VISUALIZATION_CONTRACTS
 }

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from visualization_contracts import (
     CHART_RESULT_ROLE_CONTRACTS,
+    CONTRACT_VERIFIED_DASHBOARD_CHARTS,
     DASHBOARD_ROW_LIMITS,
-    MAX_SANKEY_STAGES,
-    MAX_SANKEY_PATHS,
-    SUPPORTED_DASHBOARD_CHARTS,
+    STAGED_SANKEY_CHARTS,
 )
 
 
@@ -16,7 +15,7 @@ class UnsupportedVisualizationError(ValueError):
 
 
 COMPONENT_BY_CHART = {
-    chart: chart for chart in SUPPORTED_DASHBOARD_CHARTS
+    chart: chart for chart in CONTRACT_VERIFIED_DASHBOARD_CHARTS
 } | {"scorecard": "table", "bar": "table"}
 
 
@@ -25,6 +24,11 @@ def build_planned_analysis_section(
 ) -> dict:
     """Translate one confirmed AI specification into a guarded render contract."""
     chart = panel.get("chart")
+    if chart in STAGED_SANKEY_CHARTS:
+        raise UnsupportedVisualizationError(
+            "段階付きSankeyは完全な順序付き経路を証明する共通契約がないため"
+            "SQLを生成しません。"
+        )
     if chart not in COMPONENT_BY_CHART:
         raise UnsupportedVisualizationError(
             "確定した分析仕様の可視化種別が未対応です。"
@@ -151,33 +155,6 @@ def build_planned_analysis_section(
             "columns": dimensions + measures,
         }
         section["source_columns"] = ["category", "time_value", "metric_value"]
-    elif chart in {"sankey", "sankey_vertical"}:
-        display_dimensions = dimensions
-        if len({"".join(value.lower().split()) for value in dimensions}) == 1:
-            display_dimensions = [f"遷移元{dimensions[0]}", f"遷移先{dimensions[1]}"]
-        section["shape"] = {
-            "rows": "隣接する段階間の遷移ごとに1行",
-            "columns": display_dimensions + measures,
-        }
-        section["source_columns"] = ["source", "target", "metric_value"]
-        section["max_stages"] = MAX_SANKEY_STAGES
-        section["max_paths"] = MAX_SANKEY_PATHS
-        section["generation_requirements"] = [
-            "最終列のASCII別名はsource、target、metric_valueにする",
-            "契約から同一経路の識別と段階順序を確認できない場合はSQLを生成しない",
-            f"sourceとtargetには1.〜{MAX_SANKEY_STAGES}.の段階が判別できる"
-            "番号接頭辞を付ける",
-            "指定した最終段階へ到達した完全な経路を集計し、全段階の列を"
-            f"安定した順序条件へ含めてmetric_valueの上位{MAX_SANKEY_PATHS}経路を"
-            "先に選ぶ",
-            "上位経路を選んだ後で、各経路をsourceとtargetの隣接edgeへ"
-            "変換する",
-            f"最初の{MAX_SANKEY_STAGES}段階までとし、"
-            f"{MAX_SANKEY_STAGES}段階目より後のnodeやedgeは返さない",
-            f"2〜{MAX_SANKEY_STAGES}段階の経路もsourceとtargetの隣接edgeとして"
-            "縦持ちで返す",
-            "同一sourceとtargetの組はSUMして1行に集約する",
-        ]
     elif chart in {"flow_sankey", "flow_sankey_vertical"}:
         section["shape"] = {
             "rows": "有向flowの接続ごとに1行",

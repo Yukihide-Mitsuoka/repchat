@@ -249,7 +249,7 @@ print(json.dumps({"has_max":"maxItems" in clarifications,"has_min":"minItems" in
   assert.deepEqual(JSON.parse(result.stdout), { has_max: false, has_min: false });
 });
 
-test('dashboard response schema keeps every chart without nested anyOf complexity', () => {
+test('dashboard response schema keeps every contract-verified chart without nested anyOf complexity', () => {
   const result = python(`
 question="2021年1月のECサイトで購入成果を改善するダッシュボードを作って"
 schema=p._dashboard_response_schema({},seed=question)
@@ -258,7 +258,7 @@ encoded=json.dumps(schema,ensure_ascii=False,separators=(",",":"))
 print(json.dumps({
  "has_any_of":"anyOf" in visualization,
  "charts":visualization["properties"]["chart"]["enum"],
- "supported":p.SUPPORTED_DASHBOARD_CHARTS,
+ "supported":p.DASHBOARD_CHARTS,
  "description":visualization["description"],
  "schema_bytes":len(encoded.encode()),
 },ensure_ascii=False))
