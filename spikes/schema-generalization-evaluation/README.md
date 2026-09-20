@@ -68,6 +68,14 @@ pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実
 不正形式、費用形式不正をraw detailなしの固定`sql_generation`／`sql_generation_failed`へ変換します。
 このstageはSQL検証、dry run、BigQuery実行を行いません。
 
+`manifest_sql_validation.py`はSQL生成までの順序とidentityを維持し、成功attemptだけを既存の共通
+`validate_sql`、`contract_period_diagnostic`、`validate_generated_dashboard_sql`へ順に渡します。
+SELECT-only、単一statement、認可table・field、nested／repeated path、期間・partition、出力alias・行上限・集計形状を
+対象非依存の同じpolicyで検証します。契約外table・fieldを`unauthorized_reference`、非SELECT・複文・禁止操作等を
+`dangerous_sql`、期間・可視化出力契約の不一致を`semantic_error`として記録します。診断文は保存せず、失敗を固定
+`sql_validation`／`sql_validation_failed`へ変換します。生成SQLはreview用に保持し、失敗時の処理bytesは0に限定します。
+このstageはdry runまたはBigQuery実行を行いません。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -91,7 +99,7 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのSQL生成まで反復します。SQL検証・dry run・実行・結果検証・描画はまだ実行しません。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのlocal SQL検証まで反復します。dry run・実行・結果検証・描画はまだ実行しません。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。

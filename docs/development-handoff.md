@@ -206,17 +206,22 @@ planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`
 `initial_panel_count=1`を共通plannerへ渡します。通常のdashboardは管理者が設定した従来件数を維持します。
 評価plannerが確認質問、0件または複数パネルを返した場合は、恣意的な回答やパネル選択を行わず
 `planning`／`planning_failed`へ閉じ、2026-09-20にmerge済みです。
-現在は[PR #768](https://github.com/Yukihide-Mitsuoka/repchat/pull/768)の`manifest_sql_generation.py`で、
+続く[PR #768](https://github.com/Yukihide-Mitsuoka/repchat/pull/768)の`manifest_sql_generation.py`で、
 成功した単一panelを既存の`build_planned_analysis_section`と
 `sql_generation.generate`へ渡します。SQL generatorには同じ分析契約から導出した期間とSQL規則だけを渡し、
 生成拒否、SQLと未定義語の同時返却、不正形式、例外はraw detailを残さず固定
 `sql_generation`／`sql_generation_failed`へ変換します。前段失敗は元のstage／codeを保持し、このstageでは
-SQL検証、dry run、BigQuery実行を行いません。
+SQL検証、dry run、BigQuery実行を行わず、2026-09-20にmerge済みです。
+現在は`manifest_sql_validation.py`で、成功した生成SQLを既存の`validate_sql`、
+`contract_period_diagnostic`、`validate_generated_dashboard_sql`へ順に渡します。契約外table・fieldは
+`unauthorized_reference`、非SELECT・複文・禁止操作等は`dangerous_sql`、期間・可視化出力契約の不一致は
+`semantic_error`として記録し、診断文は保存せず固定`sql_validation`／`sql_validation_failed`へ閉じます。
+検証失敗時も生成SQLは独立review用evidenceへ残し、処理bytesは0に限定します。BigQueryはまだ呼びません。
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
-この境界の次の最優先作業は、生成SQLを共通SQL検証へ渡し、検証失敗も安全なstage／codeで全attemptの
-分母へ残すことです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
+この境界の次の最優先作業は、検証済みSQLを共通BigQuery dry runへ渡し、parsed job metadata、scan上限、
+出力schemaの失敗も安全なstage／codeで全attemptの分母へ残すことです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。
