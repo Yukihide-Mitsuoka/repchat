@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from analysis_contract_artifact import validate_analysis_contracts
 from evaluate import EvaluationEvidenceError, evaluate_bundle
 
 
@@ -36,6 +37,16 @@ def _require_fields(value: Any, expected: set[str], message: str) -> dict[str, A
     if not isinstance(value, dict) or set(value) != expected:
         raise EvaluationEvidenceError(message)
     return value
+
+
+def _fingerprint_json(value: Any) -> str:
+    canonical = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _assemble_fixture(
@@ -101,7 +112,9 @@ def _assemble_fixture(
 
 
 def _attach_recordings(
-    recordings: dict[str, Any], cases: dict[tuple[Any, Any], dict[str, Any]]
+    recordings: dict[str, Any],
+    cases: dict[tuple[Any, Any], dict[str, Any]],
+    contract_fingerprints: dict[tuple[Any, Any], str],
 ) -> None:
     for recorded in recordings["runs"]:
         recorded = _require_fields(
@@ -114,7 +127,17 @@ def _attach_recordings(
             raise EvaluationEvidenceError(
                 "recorded run does not match a fixture schema and case"
             )
-        cases[key]["runs"].append(copy.deepcopy(recorded["run"]))
+        run = recorded["run"]
+        runtime_input = run.get("runtime_input") if isinstance(run, dict) else None
+        if (
+            not isinstance(runtime_input, dict)
+            or runtime_input.get("analysis_contract_fingerprint")
+            != contract_fingerprints[key]
+        ):
+            raise EvaluationEvidenceError(
+                "analysis contract content must match recorded run fingerprint"
+            )
+        cases[key]["runs"].append(copy.deepcopy(run))
 
     if any(not assembled_case["runs"] for assembled_case in cases.values()):
         raise EvaluationEvidenceError("each fixture case must have recorded runs")
@@ -122,7 +145,7 @@ def _attach_recordings(
 
 def _validate_scope_snapshots(
     scope_snapshots: dict[str, Any], bundle: dict[str, Any]
-) -> None:
+) -> dict[Any, dict[str, str]]:
     _require_fields(
         scope_snapshots,
         SCOPE_SNAPSHOTS_KEYS,
@@ -138,7 +161,7 @@ def _validate_scope_snapshots(
         schema["schema_id"]: schema["scope_snapshot_fingerprint"]
         for schema in bundle["schemas"]
     }
-    observed: dict[Any, str] = {}
+    observed: dict[Any, dict[str, str]] = {}
     for snapshot in snapshots:
         snapshot = _require_fields(
             snapshot,
@@ -180,22 +203,49 @@ def _validate_scope_snapshots(
             raise EvaluationEvidenceError(
                 "scope snapshot retrieval time must include a timezone"
             )
-        observed[schema_id] = hashlib.sha256(content_json.encode("utf-8")).hexdigest()
+        fingerprint = hashlib.sha256(content_json.encode("utf-8")).hexdigest()
+        if schema_id not in expected:
+            raise EvaluationEvidenceError(
+                "scope snapshots must match fixture schema IDs exactly"
+            )
+        if fingerprint != expected[schema_id]:
+            raise EvaluationEvidenceError(
+                "scope snapshot content must match its fixture fingerprint"
+            )
+        schema = content.get("schema") if isinstance(content, dict) else None
+        schema_fingerprint = schema.get("fingerprint") if isinstance(schema, dict) else None
+        schema_metadata = schema.get("metadata") if isinstance(schema, dict) else None
+        if (
+            not isinstance(schema_fingerprint, str)
+            or not isinstance(schema_metadata, dict)
+            or schema_fingerprint != _fingerprint_json(schema_metadata)
+        ):
+            raise EvaluationEvidenceError("scope snapshot schema observation is invalid")
+        observed[schema_id] = {
+            "fingerprint": fingerprint,
+            "schema_fingerprint": schema_fingerprint,
+            "retrieved_at": retrieved_at,
+        }
 
     if set(observed) != set(expected) or len(observed) != len(bundle["schemas"]):
         raise EvaluationEvidenceError(
             "scope snapshots must match fixture schema IDs exactly"
         )
-    if observed != expected:
+    if {
+        schema_id: observation["fingerprint"]
+        for schema_id, observation in observed.items()
+    } != expected:
         raise EvaluationEvidenceError(
             "scope snapshot content must match its fixture fingerprint"
         )
+    return observed
 
 
 def assemble_bundle(
     fixture: dict[str, Any],
     recordings: dict[str, Any],
     scope_snapshots: dict[str, Any],
+    analysis_contracts: dict[str, Any],
     reviewed_fixture_sha256: str,
 ) -> dict[str, Any]:
     """Join run records to reviewed cases without exposing references to runtime input."""
@@ -232,17 +282,22 @@ def assemble_bundle(
         raise EvaluationEvidenceError(
             "recordings must bind to the exact reviewed fixture"
         )
-    _validate_scope_snapshots(scope_snapshots, bundle)
-    _attach_recordings(recordings, cases)
+    scope_observations = _validate_scope_snapshots(scope_snapshots, bundle)
+    contract_fingerprints = validate_analysis_contracts(
+        analysis_contracts,
+        set(cases),
+        scope_observations,
+    )
+    _attach_recordings(recordings, cases, contract_fingerprints)
     evaluate_bundle(bundle)
     return bundle
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 5:
+    if len(argv) != 6:
         print(
             "usage: assemble.py <reviewed-fixture.json> <recorded-runs.json> "
-            "<scope-snapshots.json> <evidence-output.json>",
+            "<scope-snapshots.json> <analysis-contracts.json> <evidence-output.json>",
             file=sys.stderr,
         )
         return 2
@@ -251,17 +306,20 @@ def main(argv: list[str]) -> int:
         fixture = json.loads(fixture_bytes.decode("utf-8"))
         recordings = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
         scope_snapshots = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
+        analysis_contracts = json.loads(Path(argv[4]).read_text(encoding="utf-8"))
         bundle = assemble_bundle(
             fixture,
             recordings,
             scope_snapshots,
+            analysis_contracts,
             hashlib.sha256(fixture_bytes).hexdigest(),
         )
-        output = Path(argv[4])
+        output = Path(argv[5])
         if output.resolve() in {
             Path(argv[1]).resolve(),
             Path(argv[2]).resolve(),
             Path(argv[3]).resolve(),
+            Path(argv[4]).resolve(),
         }:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")
         descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
