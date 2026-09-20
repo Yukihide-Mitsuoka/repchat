@@ -14,8 +14,9 @@ RepChatは、日本の小規模な代理店・ソフトウェアベンダー向�
 テナント別キャッシュは実環境で検証済みです。対象別profileを使った旧レポート生成経路は削除し、
 現在は認可済みscopeから同じ共通pipelineで分析契約を生成する対象非依存runtimeを検証しています。
 実scope discoveryと契約生成を呼ぶ評価preflightは完成し、参照SQL・期待結果をruntimeへ渡さない
-execution manifestを実装中です。公式fixtureの独立review、実値照合、同一runtimeでの反復評価は未完了であり、
-任意schema対応を製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
+execution manifestも完成しました。現在はmanifestだけから全計画attemptを共通preflightへ渡す境界を
+実装しています。公式fixtureの独立review、実値照合、同一runtimeでの反復評価は未完了であり、任意schema対応を
+製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 
 ## ドキュメント
 
