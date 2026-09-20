@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
+
+
+### Features
+
+* **analysis:** manifestから評価preflightを反復する ([#761](https://github.com/Yukihide-Mitsuoka/repchat/issues/761)) ([d4e5845](https://github.com/Yukihide-Mitsuoka/repchat/commit/d4e584506565b730ca62bc4f15a64b9fd1e0296e))
+* **analysis:** 評価runtime入力を参照fixtureから分離する ([#759](https://github.com/Yukihide-Mitsuoka/repchat/issues/759)) ([b356d88](https://github.com/Yukihide-Mitsuoka/repchat/commit/b356d886b8e24d400f4d201878f5deb2b88064b8))
+
 ## [2.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v2.0.0) (2026-09-20)
 
 
