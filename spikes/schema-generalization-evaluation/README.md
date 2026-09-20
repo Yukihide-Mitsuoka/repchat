@@ -43,6 +43,10 @@ capabilityは評価範囲のreview用であり、runtime inputと結合後のevi
 結果確認後の参照内容変更、pipeline差し替え、成功runだけの選別、未記録runを検出します。計画とfingerprintはruntime inputへ
 渡しません。fileだけでは作成時刻や作成者を証明しないため、独立review記録と実行前の保全手続きは引き続き別途必要です。
 
+`execution_manifest.py`はreview済みfixture、評価計画、認可scopeを照合し、runtime専用manifestを`0600`で新規作成します。
+manifestはschema／case ID、質問、run ID、pipeline fingerprint、dataset／tableの認可scopeだけを持ち、参照SQL、期待結果、
+capability、対象別profileや設定を拒否します。runtimeはreview fixtureではなく、このmanifestを入力にします。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -88,6 +92,9 @@ CI logやrepositoryへ保存しません。
 ## 実行
 
 ```console
+python3 spikes/schema-generalization-evaluation/execution_manifest.py \
+  /path/to/reviewed-fixture.json /path/to/evaluation-plan.json \
+  /path/to/authorization.json /secure/path/execution-manifest.json
 python3 spikes/schema-generalization-evaluation/assemble.py \
   /path/to/reviewed-fixture.json /path/to/evaluation-plan.json \
   /path/to/recorded-runs.json \
