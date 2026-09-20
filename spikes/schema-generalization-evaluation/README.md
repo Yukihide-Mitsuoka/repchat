@@ -47,6 +47,11 @@ capabilityは評価範囲のreview用であり、runtime inputと結合後のevi
 manifestはschema／case ID、質問、run ID、pipeline fingerprint、dataset／tableの認可scopeだけを持ち、参照SQL、期待結果、
 capability、対象別profileや設定を拒否します。runtimeはreview fixtureではなく、このmanifestを入力にします。
 
+`manifest_preflight.py`はmanifest全体のversion、field、fingerprint、scope、schema／case／run identityを
+runtime呼出し前に検証し、記載順どおり全計画attemptを共通`run_preflight`へ渡します。各attemptはmanifestの
+pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実測したbytes・費用を渡してrun記録を作れます。
+成功attemptはplanning以降へ渡すため保持し、この境界で成功runを捏造しません。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -70,7 +75,7 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-このpreflight境界はartifactをrepositoryへ保存せず、成功後のplanning・SQL生成・実行・描画もまだ実行しません。
+このpreflight境界はartifactをrepositoryへ保存せず、manifest駆動で反復しても成功後のplanning・SQL生成・実行・描画はまだ実行しません。
 したがって、単独では反復評価runnerの完成や未知schema品質の実証を意味しません。
 
 runtime・prompt・configuration artifactは、最初のrun前に固定した非空の通常fileを渡します。runtimeが複数fileから
