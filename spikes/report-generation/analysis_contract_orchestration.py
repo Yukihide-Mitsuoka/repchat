@@ -36,6 +36,15 @@ class ShardPlanInput:
     as_of: date
 
 
+@dataclass(frozen=True)
+class DiscoveredContractArtifacts:
+    """The final discovery snapshot and contract produced from that exact snapshot."""
+
+    discovery: DiscoverySnapshot
+    contract: AnalysisContract
+    usage: dict[str, int]
+
+
 def _canonical_json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -170,7 +179,7 @@ def _sum_usage(*values: dict[str, int]) -> dict[str, int]:
     }
 
 
-def generate_discovered_contract(
+def generate_discovered_contract_artifacts(
     bq,
     vertex,
     model: str,
@@ -178,11 +187,14 @@ def generate_discovered_contract(
     question: str,
     *,
     as_of: date,
-) -> tuple[AnalysisContract, dict[str, int]]:
-    """Resolve selected shard metadata, then generate one canonical contract."""
+) -> DiscoveredContractArtifacts:
+    """Return the exact final snapshot and its generated canonical contract."""
     shard_input = prepare_shard_plan(discovery, question, as_of=as_of)
     if shard_input is None:
-        return generate_contract(vertex, model, discovery, question, as_of=as_of)
+        contract, usage = generate_contract(
+            vertex, model, discovery, question, as_of=as_of
+        )
+        return DiscoveredContractArtifacts(discovery, contract, usage)
     selected, period, plan_usage = _generate_shard_plan(vertex, model, shard_input)
     if selected:
         scan_range = _scan_range(period)
@@ -199,4 +211,29 @@ def generate_discovered_contract(
         as_of=as_of,
         fixed_period=period,
     )
-    return contract, _sum_usage(plan_usage, contract_usage)
+    return DiscoveredContractArtifacts(
+        discovery,
+        contract,
+        _sum_usage(plan_usage, contract_usage),
+    )
+
+
+def generate_discovered_contract(
+    bq,
+    vertex,
+    model: str,
+    discovery: DiscoverySnapshot,
+    question: str,
+    *,
+    as_of: date,
+) -> tuple[AnalysisContract, dict[str, int]]:
+    """Resolve selected shard metadata, then generate one canonical contract."""
+    artifacts = generate_discovered_contract_artifacts(
+        bq,
+        vertex,
+        model,
+        discovery,
+        question,
+        as_of=as_of,
+    )
+    return artifacts.contract, artifacts.usage

@@ -58,6 +58,17 @@ snapshot observationと一致しなければなりません。不要・重複・
 全runがscope discoveryまたはcontract生成で停止したcaseにはcontract artifactを要求せず、未取得fingerprintを`null`のまま保持します。
 contract本文は結合後のevidenceへ複製せず、fingerprintだけを残します。このartifactも認可済みローカル領域だけで管理します。
 
+`preflight.py`は、実際の共通`discover_scope`と`generate_discovered_contract_artifacts`を順に呼び、
+planning前のruntime境界を評価artifactへ接続します。成功時は、日次shard統合があれば統合後の
+`DiscoverySnapshot`と、その正確なsnapshotから生成した`AnalysisContract`を同じ結果として返します。
+scope discoveryまたはcontract生成で停止した場合は、raw例外文を保持せず、固定stageと安全なmachine code、
+その時点までに実在するartifactだけを返します。失敗runへ記録する処理bytesと費用はこの境界で推測せず、
+実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
+取得済みと証明できないため`null`とし、ゼロを捏造しません。
+
+このpreflight境界はartifactをrepositoryへ保存せず、成功後のplanning・SQL生成・実行・描画もまだ実行しません。
+したがって、単独では反復評価runnerの完成や未知schema品質の実証を意味しません。
+
 runtime・prompt・configuration artifactは、最初のrun前に固定した非空の通常fileを渡します。runtimeが複数fileから
 成る場合は、file path・mode・内容を決定論的に固定したbundleを1つのartifactにします。assemblerは各fileの正確なbytesから
 SHA-256を再計算し、全runの対応するfingerprintへ照合します。artifact本文とpathは結合後のevidenceへ複製しません。
