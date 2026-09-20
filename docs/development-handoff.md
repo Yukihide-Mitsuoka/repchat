@@ -223,7 +223,8 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 `maximum_bytes_billed`を検査します。dry runは結果行を取得せず、実行成功や課金済みbytesとして記録しません。
 失敗時はraw provider診断を保存せず、固定`dry_run`／`dry_run_failed`と
 `unauthorized_reference`、`dangerous_sql`、`scan_limit_exceeded`、`semantic_error`へ閉じます。
-2026-09-21にmerge済みです。現在の変更の`manifest_execution.py`はdry run成功attemptだけを既存の
+2026-09-21にmerge済みです。[PR #772](https://github.com/Yukihide-Mitsuoka/repchat/pull/772)の
+`manifest_execution.py`はdry run成功attemptだけを既存の
 共通BigQuery executorへ渡し、契約由来の`maximum_bytes_billed`と行上限＋1件のsentinelを維持します。
 成功時は行・列と実`total_bytes_processed`を保持し、provider失敗、scan上限、処理量metadata欠落はraw診断を
 保存せず固定`execution`／`execution_failed`へ閉じます。結果契約の照合と描画はこのstageでは行いません。
@@ -288,7 +289,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
 | 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にする。互換目的のadapter、feature flag、隠し設定を追加しない |
-| 7 | 同一runtimeの反復評価（PR #743・#744・#746・#747・#749・#750・#751・#752・#754・#755・#756・#757・#759・#761・#763・#765・#767・#768・#769・#770をmerge、BigQuery実行接続まで実装） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+| 7 | 同一runtimeの反復評価（PR #743・#744・#746・#747・#749・#750・#751・#752・#754・#755・#756・#757・#759・#761・#763・#765・#767・#768・#769・#770をmerge、PR #772でBigQuery実行接続を実装） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
 contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の

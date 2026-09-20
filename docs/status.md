@@ -52,8 +52,9 @@ SELECT・scope・field・period・partition・可視化出力契約validatorへ�
 `sql_validation`／`sql_validation_failed`と安全性booleanへ変換するstageを実装し、merge済みである。
 続く[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)では、検証済みSQLだけを共通BigQuery dry runへ渡し、parsed statement type、参照table、
 出力schema、推定処理bytesと契約上限を照合するstageを実装し、merge済みである。
-現在の変更では、dry run成功attemptだけを共通BigQuery実行へ渡し、契約のbytes上限と行上限を維持して、
-行・列・実`total_bytes_processed`を保持する。失敗は固定`execution`／`execution_failed`へ閉じる。
+[PR #772](https://github.com/Yukihide-Mitsuoka/repchat/pull/772)では、dry run成功attemptだけを
+共通BigQuery実行へ渡し、契約のbytes上限と行上限を維持して、行・列・実`total_bytes_processed`を保持する。
+失敗は固定`execution`／`execution_failed`へ閉じる。
 通常のdashboardの設定件数は変更しない。
 結果検証、描画、公式fixture、独立review、実値照合、全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
 今回の更新ではfake clientによるテストだけを行い、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は

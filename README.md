@@ -27,7 +27,8 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 無断参照、危険SQL、期間・出力契約不一致を分類して実行前に停止するstageを実装し、merge済みです。
 続く[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)では、検証済みSQLだけを共通BigQuery dry runへ渡し、BigQueryが解析した文種・参照table・
 出力schema・推定処理bytesを契約と照合するstageを実装し、merge済みです。
-現在の変更では、dry run成功attemptだけを共通BigQuery実行へ渡し、行・列と実処理bytesを保持します。
+[PR #772](https://github.com/Yukihide-Mitsuoka/repchat/pull/772)では、dry run成功attemptだけを
+共通BigQuery実行へ渡し、行・列と実処理bytesを保持します。
 通常のdashboardは従来の設定件数を維持します。結果検証、描画、公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
