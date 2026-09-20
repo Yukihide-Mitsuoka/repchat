@@ -14,6 +14,7 @@ from typing import Any
 
 from analysis_contract_artifact import validate_analysis_contracts
 from evaluate import EvaluationEvidenceError, evaluate_bundle
+from pipeline_artifacts import fingerprint_pipeline_artifacts
 
 
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
@@ -115,6 +116,7 @@ def _attach_recordings(
     recordings: dict[str, Any],
     cases: dict[tuple[Any, Any], dict[str, Any]],
     contract_fingerprints: dict[tuple[Any, Any], str],
+    pipeline_fingerprints: dict[str, str],
 ) -> None:
     for recorded in recordings["runs"]:
         recorded = _require_fields(
@@ -128,6 +130,13 @@ def _attach_recordings(
                 "recorded run does not match a fixture schema and case"
             )
         run = recorded["run"]
+        if not isinstance(run, dict) or any(
+            run.get(name) != fingerprint
+            for name, fingerprint in pipeline_fingerprints.items()
+        ):
+            raise EvaluationEvidenceError(
+                "recorded runs must bind to the exact runtime, prompt, and configuration artifacts"
+            )
         runtime_input = run.get("runtime_input") if isinstance(run, dict) else None
         if (
             not isinstance(runtime_input, dict)
@@ -247,6 +256,7 @@ def assemble_bundle(
     scope_snapshots: dict[str, Any],
     analysis_contracts: dict[str, Any],
     reviewed_fixture_sha256: str,
+    pipeline_fingerprints: dict[str, str],
 ) -> dict[str, Any]:
     """Join run records to reviewed cases without exposing references to runtime input."""
     _require_fields(
@@ -288,16 +298,23 @@ def assemble_bundle(
         set(cases),
         scope_observations,
     )
-    _attach_recordings(recordings, cases, contract_fingerprints)
+    _attach_recordings(
+        recordings,
+        cases,
+        contract_fingerprints,
+        pipeline_fingerprints,
+    )
     evaluate_bundle(bundle)
     return bundle
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 6:
+    if len(argv) != 9:
         print(
             "usage: assemble.py <reviewed-fixture.json> <recorded-runs.json> "
-            "<scope-snapshots.json> <analysis-contracts.json> <evidence-output.json>",
+            "<scope-snapshots.json> <analysis-contracts.json> "
+            "<runtime-artifact> <prompt-artifact> <configuration-artifact> "
+            "<evidence-output.json>",
             file=sys.stderr,
         )
         return 2
@@ -307,19 +324,26 @@ def main(argv: list[str]) -> int:
         recordings = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
         scope_snapshots = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
         analysis_contracts = json.loads(Path(argv[4]).read_text(encoding="utf-8"))
+        pipeline_paths = {
+            "runtime": Path(argv[5]),
+            "prompt": Path(argv[6]),
+            "configuration": Path(argv[7]),
+        }
         bundle = assemble_bundle(
             fixture,
             recordings,
             scope_snapshots,
             analysis_contracts,
             hashlib.sha256(fixture_bytes).hexdigest(),
+            fingerprint_pipeline_artifacts(pipeline_paths),
         )
-        output = Path(argv[5])
+        output = Path(argv[8])
         if output.resolve() in {
             Path(argv[1]).resolve(),
             Path(argv[2]).resolve(),
             Path(argv[3]).resolve(),
             Path(argv[4]).resolve(),
+            *(path.resolve() for path in pipeline_paths.values()),
         }:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")
         descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
