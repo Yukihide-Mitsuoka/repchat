@@ -22,8 +22,9 @@ execution manifestも完成しました。現在はmanifestだけから全計画
 [PR #767](https://github.com/Yukihide-Mitsuoka/repchat/pull/767)では、1件の参照SQL・期待結果を持つ各評価caseに対して
 共通plannerへ1パネルを要求し、確認質問または複数パネルを自動解釈せずplanning失敗へ閉じる境界を整備し、merge済みです。
 [PR #768](https://github.com/Yukihide-Mitsuoka/repchat/pull/768)では、成功した単一パネルを既存の共通section変換と
-SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として残す評価stageを実装し、merge済みです。現在は生成SQLを
-既存の共通local validatorへ渡し、無断参照、危険SQL、期間・出力契約不一致を分類して実行前に停止するstageを実装しています。
+SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として残す評価stageを実装し、merge済みです。現在は
+[PR #769](https://github.com/Yukihide-Mitsuoka/repchat/pull/769)で、生成SQLを既存の共通local validatorへ渡し、
+無断参照、危険SQL、期間・出力契約不一致を分類して実行前に停止するstageを実装しています。
 通常のdashboardは従来の設定件数を維持します。dry run、実行、公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。

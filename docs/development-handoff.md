@@ -212,7 +212,8 @@ planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`
 生成拒否、SQLと未定義語の同時返却、不正形式、例外はraw detailを残さず固定
 `sql_generation`／`sql_generation_failed`へ変換します。前段失敗は元のstage／codeを保持し、このstageでは
 SQL検証、dry run、BigQuery実行を行わず、2026-09-20にmerge済みです。
-現在は`manifest_sql_validation.py`で、成功した生成SQLを既存の`validate_sql`、
+現在は[PR #769](https://github.com/Yukihide-Mitsuoka/repchat/pull/769)の`manifest_sql_validation.py`で、
+成功した生成SQLを既存の`validate_sql`、
 `contract_period_diagnostic`、`validate_generated_dashboard_sql`へ順に渡します。契約外table・fieldは
 `unauthorized_reference`、非SELECT・複文・禁止操作等は`dangerous_sql`、期間・可視化出力契約の不一致は
 `semantic_error`として記録し、診断文は保存せず固定`sql_validation`／`sql_validation_failed`へ閉じます。
