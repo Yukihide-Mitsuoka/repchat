@@ -36,8 +36,9 @@ updated: 2026-09-20
 評価preflightへ接続し、失敗attemptも固定stage／codeで分母へ残す境界を実装した。
 [PR #759](https://github.com/Yukihide-Mitsuoka/repchat/pull/759)では、独立review用fixtureから参照SQL・期待結果・
 capabilityを除外し、認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装し、merge済みである。
-現在はmanifestを完全検証してから全計画attemptを共通preflightへ渡し、失敗時はmanifest内のpipeline fingerprintへ
-固定したrun記録を作る境界を実装している。
+現在は[PR #761](https://github.com/Yukihide-Mitsuoka/repchat/pull/761)で、manifestを完全検証してから
+全計画attemptを共通preflightへ渡し、失敗時はmanifest内のpipeline fingerprintへ固定したrun記録を作る境界を
+実装している。
 公式fixture、独立review、実値照合、全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
 今回の更新では実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
