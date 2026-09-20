@@ -201,7 +201,8 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 続く[PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)では、成功したmanifest preflightだけを
 既存の共通dashboard plannerへ接続し、契約にbindされた計画と費用をattemptへ保持します。preflight失敗時はplannerを呼ばず、
 planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`で記録し、2026-09-20にmerge済みです。
-現在は、1件の参照SQL・期待結果を持つ評価caseとplanner出力を一意に対応させるため、評価呼出しだけ
+現在は[PR #767](https://github.com/Yukihide-Mitsuoka/repchat/pull/767)で、1件の参照SQL・期待結果を持つ
+評価caseとplanner出力を一意に対応させるため、評価呼出しだけ
 `initial_panel_count=1`を共通plannerへ渡します。通常のdashboardは管理者が設定した従来件数を維持します。
 評価plannerが確認質問、0件または複数パネルを返した場合は、恣意的な回答やパネル選択を行わず
 `planning`／`planning_failed`へ閉じます。

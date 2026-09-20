@@ -18,7 +18,8 @@ execution manifestも完成しました。現在はmanifestだけから全計画
 実装済みです。[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)では、十分な共通分析契約から
 不要な利用者確認なしで初回仕様を生成できるplanner契約を整備し、merge済みです。
 [PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)では、成功したpreflightだけを同じ共通plannerへ接続し、
-計画失敗も評価attemptへ残す境界を実装し、merge済みです。現在は、1件の参照SQL・期待結果を持つ各評価caseに対して
+計画失敗も評価attemptへ残す境界を実装し、merge済みです。現在は
+[PR #767](https://github.com/Yukihide-Mitsuoka/repchat/pull/767)で、1件の参照SQL・期待結果を持つ各評価caseに対して
 共通plannerへ1パネルを要求し、確認質問または複数パネルを自動解釈せずplanning失敗へ閉じる境界を整備しています。
 通常のdashboardは従来の設定件数を維持します。公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
