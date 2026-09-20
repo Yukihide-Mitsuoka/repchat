@@ -61,6 +61,13 @@ pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実
 複数パネルが返った場合は自動回答や恣意的なパネル選択を行わずplanning失敗へ閉じます。planning失敗はBigQuery処理bytesを
 0に限定してrun記録へ残します。
 
+`manifest_sql_generation.py`はplanningまでの順序とidentityを維持し、成功した単一panelだけを既存の
+`build_planned_analysis_section`と共通`sql_generation.generate`へ渡します。期間とSQL system instructionは同じ
+共通分析契約から導出し、対象名やfixture参照情報を追加しません。成功時はtrim済み生成SQL、共通section、SQL生成費用を
+保持します。前段失敗時はSQL generatorを呼ばず、生成例外、空SQL、未定義語による拒否、SQLと未定義語の同時返却、
+不正形式、費用形式不正をraw detailなしの固定`sql_generation`／`sql_generation_failed`へ変換します。
+このstageはSQL検証、dry run、BigQuery実行を行いません。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -84,7 +91,7 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのplanningまで反復します。SQL生成・検証・dry run・実行・結果検証・描画はまだ実行しません。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのSQL生成まで反復します。SQL検証・dry run・実行・結果検証・描画はまだ実行しません。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。
