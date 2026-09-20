@@ -213,8 +213,6 @@ def build_clarification_response_schema(
     # normalizer below reject any repeated or unsupported clarification.
     if unanswered:
         clarifications["maxItems"] = len(unanswered)
-    if len(unanswered) == len(clarification_fields):
-        clarifications["minItems"] = 1
     if unanswered:
         field_schema = clarifications["items"]["properties"]["field"]
         field_schema["format"] = "enum"

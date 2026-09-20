@@ -88,7 +88,7 @@ def build_dashboard_planning_request(
 - {" ".join(CHART_PLANNING_RULES)}
 - flow_sankeyは、契約の2区分をsourceとtargetにする有向flowを表現できる場合だけ選ぶ。段階や経路の意味を補わず、循環しない集計にする。
 - KPI・グラフの選択理由をパネルごとに日本語で説明する。
-- 初回は audience / comparison / business_goal から重要な確認を1〜3件だけ質問する。
+- audience / comparison / business_goal の確認が分析仕様に不可欠な場合だけ、重要な確認を最大3件質問する。
 - 読者回答にあるfieldは再質問しない。十分ならclarificationsを空にする。
 - 利用できない指標や因果関係を捏造しない。
 - {metric_rule}

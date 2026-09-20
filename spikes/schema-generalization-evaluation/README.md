@@ -76,6 +76,8 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
 このpreflight境界はartifactをrepositoryへ保存せず、manifest駆動で反復しても成功後のplanning・SQL生成・実行・描画はまだ実行しません。
+planningでは、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
+利用者確認をschema理解や対象固有の意味定義の代替にはしません。
 したがって、単独では反復評価runnerの完成や未知schema品質の実証を意味しません。
 
 runtime・prompt・configuration artifactは、最初のrun前に固定した非空の通常fileを渡します。runtimeが複数fileから

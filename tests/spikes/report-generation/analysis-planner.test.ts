@@ -172,7 +172,7 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
     schemas: [
       {
         enum: ['audience', 'comparison', 'business_goal'],
-        min_items: 1,
+        min_items: null,
         max_items: 3,
         has_temperature: false,
       },
