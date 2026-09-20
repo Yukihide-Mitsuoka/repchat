@@ -236,7 +236,8 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
-現在の変更では、旧UI削除後に呼出し口を失っていた共通renderer断片を通常のES moduleとしてpackageしています。
+[PR #776](https://github.com/Yukihide-Mitsuoka/repchat/pull/776)では、旧UI削除後に呼出し口を失っていた
+共通renderer断片を通常のES moduleとしてpackageしています。
 旧UIに暗黙依存していた値表示・単位・KPI helperを対象名やmetric定義を推測しない共通実装へ置換し、全rendererが
 描画成功をbooleanで返します。sparkline tableを含むECharts経路はchart libraryを明示的に受け取ります。
 
