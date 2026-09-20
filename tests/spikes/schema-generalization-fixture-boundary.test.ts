@@ -23,6 +23,18 @@ const PIPELINE_ARTIFACTS = {
   configuration: 'generic-configuration-bundle-v1\n',
 };
 
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function pipelineFingerprints(): Record<keyof typeof PIPELINE_ARTIFACTS, string> {
+  return {
+    runtime: sha256(PIPELINE_ARTIFACTS.runtime),
+    prompt: sha256(PIPELINE_ARTIFACTS.prompt),
+    configuration: sha256(PIPELINE_ARTIFACTS.configuration),
+  };
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value !== null && typeof value === 'object') {
@@ -74,12 +86,7 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 }
 
 function evidenceBundle() {
-  const fingerprints = Object.fromEntries(
-    Object.entries(PIPELINE_ARTIFACTS).map(([name, content]) => [
-      name,
-      createHash('sha256').update(content).digest('hex'),
-    ]),
-  );
+  const fingerprints = pipelineFingerprints();
   return {
     version: 1,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
@@ -144,9 +151,24 @@ function separatedEvidence() {
       })),
     })),
   };
+  const plannedRuns = bundle.schemas.flatMap((schema) =>
+    schema.cases.flatMap((evaluationCase) =>
+      evaluationCase.runs.map((run) => ({
+        schema_id: schema.schema_id,
+        case_id: evaluationCase.case_id,
+        run_id: run.run_id,
+      })),
+    ),
+  );
+  const evaluationPlan = {
+    version: 1,
+    reviewed_fixture_sha256: sha256(JSON.stringify(fixture)),
+    pipeline: pipelineFingerprints(),
+    runs: plannedRuns,
+  };
   const recordings = {
-    version: 2,
-    reviewed_fixture_sha256: createHash('sha256').update(JSON.stringify(fixture)).digest('hex'),
+    version: 3,
+    evaluation_plan_sha256: sha256(JSON.stringify(evaluationPlan)),
     runs: bundle.schemas.flatMap((schema) =>
       schema.cases.flatMap((evaluationCase) =>
         evaluationCase.runs.map((run) => ({
@@ -175,7 +197,7 @@ function separatedEvidence() {
       })),
     ),
   };
-  return { bundle, fixture, recordings, scopeSnapshots, analysisContracts };
+  return { bundle, fixture, evaluationPlan, recordings, scopeSnapshots, analysisContracts };
 }
 
 function assemble(
@@ -185,9 +207,11 @@ function assemble(
   preexistingOutput = false,
   analysisContracts: object = separatedEvidence().analysisContracts,
   pipelineArtifacts: Record<keyof typeof PIPELINE_ARTIFACTS, string> = PIPELINE_ARTIFACTS,
+  evaluationPlan: object = separatedEvidence().evaluationPlan,
 ) {
   const directory = mkdtempSync(path.join(tmpdir(), 'schema-fixture-'));
   const fixturePath = path.join(directory, 'fixture.json');
+  const evaluationPlanPath = path.join(directory, 'evaluation-plan.json');
   const recordingsPath = path.join(directory, 'recordings.json');
   const scopeSnapshotsPath = path.join(directory, 'scope-snapshots.json');
   const analysisContractsPath = path.join(directory, 'analysis-contracts.json');
@@ -196,6 +220,7 @@ function assemble(
   const configurationArtifactPath = path.join(directory, 'configuration.artifact');
   const bundlePath = path.join(directory, 'evidence.json');
   writeFileSync(fixturePath, JSON.stringify(fixture));
+  writeFileSync(evaluationPlanPath, JSON.stringify(evaluationPlan));
   writeFileSync(recordingsPath, JSON.stringify(recordings));
   writeFileSync(scopeSnapshotsPath, JSON.stringify(scopeSnapshots));
   writeFileSync(analysisContractsPath, JSON.stringify(analysisContracts));
@@ -209,6 +234,7 @@ function assemble(
       [
         ASSEMBLER,
         fixturePath,
+        evaluationPlanPath,
         recordingsPath,
         scopeSnapshotsPath,
         analysisContractsPath,
@@ -230,6 +256,15 @@ function assemble(
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function assembleWithEvaluationPlan(
+  fixture: object,
+  evaluationPlan: object,
+  recordings: object,
+  scopeSnapshots: object,
+) {
+  return assemble(fixture, recordings, scopeSnapshots, false, undefined, undefined, evaluationPlan);
 }
 
 test('reviewed fixture and separately recorded runs assemble deterministically', () => {
@@ -305,7 +340,7 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings, scopeSnapshots);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings version must be 2/);
+  assert.match(result.stderr, /recordings version must be 3/);
   assert.equal(result.stdout, '');
 });
 
@@ -318,15 +353,21 @@ test('recorded runs cannot be assembled against a changed reviewed fixture', () 
   const { result } = assemble(fixture, recordings, scopeSnapshots);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings must bind to the exact reviewed fixture/);
+  assert.match(result.stderr, /evaluation plan must bind to the exact reviewed fixture/);
   assert.equal(result.stdout, '');
 });
 
 test('reviewed fixture fingerprint must be a lowercase SHA-256 value', () => {
-  const { fixture, recordings, scopeSnapshots } = separatedEvidence();
-  recordings.reviewed_fixture_sha256 = 'A'.repeat(64);
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.reviewed_fixture_sha256 = 'A'.repeat(64);
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
 
-  const { result } = assemble(fixture, recordings, scopeSnapshots);
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /reviewed fixture fingerprint must be a lowercase SHA-256 value/);
@@ -410,7 +451,7 @@ test('scope snapshot retrieval time must include a timezone', () => {
 });
 
 test('scope snapshot schema metadata must match its declared fingerprint', () => {
-  const { fixture, recordings, scopeSnapshots } = separatedEvidence();
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
   const content = JSON.parse(scopeSnapshots.snapshots[0]!.content_json);
   content.schema.metadata.tables = [];
   scopeSnapshots.snapshots[0]!.content_json = canonicalJson(content);
@@ -421,11 +462,15 @@ test('scope snapshot schema metadata must match its declared fingerprint', () =>
   for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
     recorded.run.runtime_input.scope_snapshot_fingerprint = scopeFingerprint;
   }
-  recordings.reviewed_fixture_sha256 = createHash('sha256')
-    .update(JSON.stringify(fixture))
-    .digest('hex');
+  evaluationPlan.reviewed_fixture_sha256 = sha256(JSON.stringify(fixture));
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
 
-  const { result } = assemble(fixture, recordings, scopeSnapshots);
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /scope snapshot schema observation is invalid/);
@@ -505,7 +550,7 @@ test('analysis contract schema metadata must match its declared fingerprint', ()
   assert.equal(result.stdout, '');
 });
 
-test('recorded run fingerprints must bind to the exact local pipeline artifacts', () => {
+test('evaluation plan must bind to the exact local pipeline artifacts', () => {
   const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
 
   for (const artifactName of Object.keys(PIPELINE_ARTIFACTS) as Array<
@@ -524,12 +569,23 @@ test('recorded run fingerprints must bind to the exact local pipeline artifacts'
     );
 
     assert.equal(result.status, 2, `${artifactName}: ${result.stderr}`);
-    assert.match(
-      result.stderr,
-      /recorded runs must bind to the exact runtime, prompt, and configuration artifacts/,
-    );
+    assert.match(result.stderr, /evaluation plan must bind to the exact pipeline artifacts/);
     assert.equal(result.stdout, '');
   }
+});
+
+test('recorded run fingerprints must bind to the planned pipeline artifacts', () => {
+  const { fixture, recordings, scopeSnapshots } = separatedEvidence();
+  recordings.runs[0]!.run.runtime = '0'.repeat(64);
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots);
+
+  assert.equal(result.status, 2);
+  assert.match(
+    result.stderr,
+    /recorded runs must bind to the exact runtime, prompt, and configuration artifacts/,
+  );
+  assert.equal(result.stdout, '');
 });
 
 test('pipeline artifacts must be non-empty regular files', () => {
@@ -542,5 +598,116 @@ test('pipeline artifacts must be non-empty regular files', () => {
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /runtime artifact must be a non-empty regular file/);
+  assert.equal(result.stdout, '');
+});
+
+test('recordings must bind to the exact pre-run evaluation plan', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.runs[0]!.run_id = 'changed-after-run';
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /recordings must bind to the exact evaluation plan/);
+  assert.equal(result.stdout, '');
+});
+
+test('evaluation plan version must be an integer', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.version = true as unknown as number;
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evaluation plan version must be 1/);
+  assert.equal(result.stdout, '');
+});
+
+test('evaluation plan fingerprint must be a lowercase SHA-256 value', () => {
+  const { fixture, recordings, scopeSnapshots } = separatedEvidence();
+  recordings.evaluation_plan_sha256 = 'A'.repeat(64);
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evaluation plan fingerprint must be a lowercase SHA-256 value/);
+  assert.equal(result.stdout, '');
+});
+
+test('evaluation plan must cover every fixture case', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.runs = evaluationPlan.runs.filter((run) => run.schema_id !== 'scope-a');
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evaluation plan must cover every fixture case/);
+  assert.equal(result.stdout, '');
+});
+
+test('evaluation plan rejects duplicate run identities', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.runs.push(structuredClone(evaluationPlan.runs[0]!));
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /evaluation plan must cover fixture cases with unique run IDs/);
+  assert.equal(result.stdout, '');
+});
+
+test('evaluation plan run IDs must be non-empty strings', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  evaluationPlan.runs[0]!.run_id = '   ';
+  recordings.evaluation_plan_sha256 = sha256(JSON.stringify(evaluationPlan));
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /planned run IDs must be non-empty strings/);
+  assert.equal(result.stdout, '');
+});
+
+test('recorded runs must match planned run IDs exactly', () => {
+  const { fixture, evaluationPlan, recordings, scopeSnapshots } = separatedEvidence();
+  recordings.runs.pop();
+
+  const { result } = assembleWithEvaluationPlan(
+    fixture,
+    evaluationPlan,
+    recordings,
+    scopeSnapshots,
+  );
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /recorded runs must match planned runs exactly/);
   assert.equal(result.stdout, '');
 });
