@@ -28,7 +28,8 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 ## 参照fixtureとrun記録の分離
 
 `assemble.py`は、version 2の独立review済み参照fixture、version 2のruntime実行後のrun記録、version 1の
-scope snapshot artifact、version 1のanalysis contract artifactを検証し、schema ID・case IDだけで結合します。
+scope snapshot artifact、version 1のanalysis contract artifact、実行に使用したruntime・prompt・configurationの
+3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
 capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
@@ -52,6 +53,12 @@ analysis contract artifactは、fixtureの全schema／caseと一対一で対応�
 snapshot observationと一致しなければなりません。未知・重複・欠落case、非canonical JSON、内容改変は拒否します。
 contract本文は結合後のevidenceへ複製せず、fingerprintだけを残します。このartifactも認可済みローカル領域だけで管理します。
 
+runtime・prompt・configuration artifactは、最初のrun前に固定した非空の通常fileを渡します。runtimeが複数fileから
+成る場合は、file path・mode・内容を決定論的に固定したbundleを1つのartifactにします。assemblerは各fileの正確なbytesから
+SHA-256を再計算し、全runの対応するfingerprintへ照合します。artifact本文とpathは結合後のevidenceへ複製しません。
+この照合は実行後のartifact差し替えや自己申告fingerprintの不一致を検出しますが、artifactの作成主体、署名、実際にその
+artifactを起動したことまでは単独で証明しません。
+
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
 CI logやrepositoryへ保存しません。
@@ -62,6 +69,8 @@ CI logやrepositoryへ保存しません。
 python3 spikes/schema-generalization-evaluation/assemble.py \
   /path/to/reviewed-fixture.json /path/to/recorded-runs.json \
   /path/to/scope-snapshots.json /path/to/analysis-contracts.json \
+  /path/to/runtime.artifact /path/to/prompt.artifact \
+  /path/to/configuration.artifact \
   /secure/path/evidence.json
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
 ```
@@ -78,5 +87,6 @@ assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scor
 ## 現在の制限
 
 公式の未知schema fixtureと実サービス結果はまだありません。テスト値はscorerの回帰確認用であり、製品能力の
-証拠ではありません。独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。有料評価は
-対象と費用についてオーナー承認を得た後だけ実行します。
+証拠ではありません。artifact照合は実行主体の本人性、署名、process-level attestationを証明しません。
+独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。有料評価は対象と費用について
+オーナー承認を得た後だけ実行します。

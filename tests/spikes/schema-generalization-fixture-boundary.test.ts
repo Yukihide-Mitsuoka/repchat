@@ -17,6 +17,11 @@ const REQUIRED_CAPABILITIES = [
   'ordered_behavior',
 ];
 const RETRIEVED_AT = '2026-09-20T00:00:00+00:00';
+const PIPELINE_ARTIFACTS = {
+  runtime: 'generic-runtime-bundle-v1\n',
+  prompt: 'generic-prompt-bundle-v1\n',
+  configuration: 'generic-configuration-bundle-v1\n',
+};
 
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -69,11 +74,12 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 }
 
 function evidenceBundle() {
-  const fingerprints = {
-    runtime: '1'.repeat(64),
-    prompt: '2'.repeat(64),
-    configuration: '3'.repeat(64),
-  };
+  const fingerprints = Object.fromEntries(
+    Object.entries(PIPELINE_ARTIFACTS).map(([name, content]) => [
+      name,
+      createHash('sha256').update(content).digest('hex'),
+    ]),
+  );
   return {
     version: 1,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
@@ -178,17 +184,24 @@ function assemble(
   scopeSnapshots: object,
   preexistingOutput = false,
   analysisContracts: object = separatedEvidence().analysisContracts,
+  pipelineArtifacts: Record<keyof typeof PIPELINE_ARTIFACTS, string> = PIPELINE_ARTIFACTS,
 ) {
   const directory = mkdtempSync(path.join(tmpdir(), 'schema-fixture-'));
   const fixturePath = path.join(directory, 'fixture.json');
   const recordingsPath = path.join(directory, 'recordings.json');
   const scopeSnapshotsPath = path.join(directory, 'scope-snapshots.json');
   const analysisContractsPath = path.join(directory, 'analysis-contracts.json');
+  const runtimeArtifactPath = path.join(directory, 'runtime.artifact');
+  const promptArtifactPath = path.join(directory, 'prompt.artifact');
+  const configurationArtifactPath = path.join(directory, 'configuration.artifact');
   const bundlePath = path.join(directory, 'evidence.json');
   writeFileSync(fixturePath, JSON.stringify(fixture));
   writeFileSync(recordingsPath, JSON.stringify(recordings));
   writeFileSync(scopeSnapshotsPath, JSON.stringify(scopeSnapshots));
   writeFileSync(analysisContractsPath, JSON.stringify(analysisContracts));
+  writeFileSync(runtimeArtifactPath, pipelineArtifacts.runtime);
+  writeFileSync(promptArtifactPath, pipelineArtifacts.prompt);
+  writeFileSync(configurationArtifactPath, pipelineArtifacts.configuration);
   if (preexistingOutput) writeFileSync(bundlePath, JSON.stringify({ preserved: true }));
   try {
     const result = spawnSync(
@@ -199,6 +212,9 @@ function assemble(
         recordingsPath,
         scopeSnapshotsPath,
         analysisContractsPath,
+        runtimeArtifactPath,
+        promptArtifactPath,
+        configurationArtifactPath,
         bundlePath,
       ],
       {
@@ -486,5 +502,45 @@ test('analysis contract schema metadata must match its declared fingerprint', ()
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /analysis contract must match its scope snapshot observation/);
+  assert.equal(result.stdout, '');
+});
+
+test('recorded run fingerprints must bind to the exact local pipeline artifacts', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+
+  for (const artifactName of Object.keys(PIPELINE_ARTIFACTS) as Array<
+    keyof typeof PIPELINE_ARTIFACTS
+  >) {
+    const pipelineArtifacts = { ...PIPELINE_ARTIFACTS };
+    pipelineArtifacts[artifactName] += 'changed-after-run\n';
+
+    const { result } = assemble(
+      fixture,
+      recordings,
+      scopeSnapshots,
+      false,
+      analysisContracts,
+      pipelineArtifacts,
+    );
+
+    assert.equal(result.status, 2, `${artifactName}: ${result.stderr}`);
+    assert.match(
+      result.stderr,
+      /recorded runs must bind to the exact runtime, prompt, and configuration artifacts/,
+    );
+    assert.equal(result.stdout, '');
+  }
+});
+
+test('pipeline artifacts must be non-empty regular files', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts, {
+    ...PIPELINE_ARTIFACTS,
+    runtime: '',
+  });
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /runtime artifact must be a non-empty regular file/);
   assert.equal(result.stdout, '');
 });
