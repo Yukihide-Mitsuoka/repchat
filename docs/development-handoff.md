@@ -185,7 +185,7 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 [PR #755](https://github.com/Yukihide-Mitsuoka/repchat/pull/755)では、計画済みrunのSQL生成・検証・dry run・実行・結果検証・描画の停止stageを
 安全なmachine codeとともに記録し、失敗runも成功率と結果一致率の分母へ残す境界を実装しました。raw provider messageは
 記録しません。ローカル検証と必須CI checksは成功し、2026-09-20にmerge済みです。
-現在は`feat/188-record-preflight-failures`で、scope discoveryまたはanalysis contract生成で停止した計画済みattemptも、
+現在は[PR #756](https://github.com/Yukihide-Mitsuoka/repchat/pull/756)で、scope discoveryまたはanalysis contract生成で停止した計画済みattemptも、
 未取得fingerprintを捏造せず分母へ残す境界を実装中です。stageを完了したrunがあるschema／caseにだけ対応artifactを要求します。
 公式fixture、独立reviewと実値照合、同一runtimeでの実反復評価は引き続き未完了です。
 
@@ -246,7 +246,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
 | 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にする。互換目的のadapter、feature flag、隠し設定を追加しない |
-| 7 | 同一runtimeの反復評価（PR #743・#744・#746・#747・#749・#750・#751・#752・#754・#755をmerge、preflight失敗記録を実装中） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+| 7 | 同一runtimeの反復評価（PR #743・#744・#746・#747・#749・#750・#751・#752・#754・#755をmerge、PR #756でpreflight失敗記録を実装） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
 contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の
