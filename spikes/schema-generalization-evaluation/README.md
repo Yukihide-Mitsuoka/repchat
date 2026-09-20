@@ -16,6 +16,7 @@ updated: 2026-09-20
 - 全runでruntime、prompt、設定のSHA-256 fingerprintを一致させる。
 - runtime inputはscope snapshot fingerprint、analysis contract fingerprint、質問だけに限定する。
 - 同じcaseの反復runは、同一のanalysis contract fingerprintを再現する。
+- 計画済みrunが途中停止しても記録から除外せず、固定failure stageと安全なmachine codeで成功率・一致率の分母へ残す。
 - 参照SQLと期待結果はpost-run scorerだけが読み、生成runtimeへ渡さない。
 - 参照結果は作成者と異なるreviewerが承認する。
 - schemaごとに90%以上の結果一致を要求し、意味上の誤り、未認可参照、危険なSQL、scan上限超過を1件でも検出したら不合格にする。
@@ -23,11 +24,12 @@ updated: 2026-09-20
 
 bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
-runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用を記録します。
+runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stageを記録します。
+evidence bundleはversion 2です。
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 3のruntime実行後の
+`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 4のruntime実行後の
 run記録、version 1のscope snapshot artifact、version 1のanalysis contract artifact、実行に使用した
 runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
@@ -60,6 +62,12 @@ SHA-256を再計算し、全runの対応するfingerprintへ照合します。ar
 この照合は実行後のartifact差し替えや自己申告fingerprintの不一致を検出しますが、artifactの作成主体、署名、実際にその
 artifactを起動したことまでは単独で証明しません。
 
+各runの`failure_stage`は`none`、`planning`、`sql_generation`、`sql_validation`、`dry_run`、`execution`、
+`result_validation`、`rendering`のいずれかです。正常終了は`none`と空の`failure_code`、途中停止は対応stageと
+小文字英数字・underscoreだけの64文字以下のmachine codeを記録します。providerの例外文、SQL、table名、値を
+`failure_code`へ保存してはいけません。stageごとに生成SQLの有無、実行成否、結果行、描画成否、処理bytesの整合を検証し、
+矛盾するrunを拒否します。失敗runも削除せず、schema別の`failure_count`と`failure_stage_counts`へ集計します。
+
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
 CI logやrepositoryへ保存しません。
@@ -80,7 +88,7 @@ python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.js
 run記録は次のtop-level契約を使います。`evaluation_plan_sha256`は実行前評価計画file bytesの小文字SHA-256です。
 
 ```json
-{"version":3,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
+{"version":4,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な
@@ -90,5 +98,6 @@ assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scor
 
 公式の未知schema fixtureと実サービス結果はまだありません。テスト値はscorerの回帰確認用であり、製品能力の
 証拠ではありません。評価計画とartifact照合は作成時刻、実行主体の本人性、署名、process-level attestationを証明しません。
-独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。有料評価は対象と費用について
+独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。scope discoveryまたはanalysis contract生成前に
+停止したattemptは、現行run契約では詳細stageとして記録できず欠落としてfail closedになります。有料評価は対象と費用について
 オーナー承認を得た後だけ実行します。

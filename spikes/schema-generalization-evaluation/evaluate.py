@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from run_outcome import FAILURE_STAGES, NO_FAILURE, RunOutcomeError, validate_run_outcome
+
 
 FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
@@ -33,6 +35,8 @@ RUN_KEYS = {
     *FINGERPRINT_KEYS,
     "runtime_input",
     "generated_sql",
+    "failure_stage",
+    "failure_code",
     "sql_execution_succeeded",
     "actual_rows",
     "unauthorized_reference",
@@ -77,8 +81,8 @@ def _rate(count: int, total: int) -> float:
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if type(bundle.get("version")) is not int or bundle["version"] != 1:
-        raise EvaluationEvidenceError("evidence version must be 1")
+    if type(bundle.get("version")) is not int or bundle["version"] != 2:
+        raise EvaluationEvidenceError("evidence version must be 2")
 
 
 def _validate_structure(bundle: dict[str, Any]) -> None:
@@ -189,6 +193,10 @@ def _validate_runs(bundle: dict[str, Any]) -> None:
                     or cost < 0
                 ):
                     raise EvaluationEvidenceError("cost_jpy must be finite and non-negative")
+                try:
+                    validate_run_outcome(run)
+                except RunOutcomeError as error:
+                    raise EvaluationEvidenceError(str(error)) from None
 
 
 def _validate_fingerprints(bundle: dict[str, Any]) -> None:
@@ -262,10 +270,17 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
     execution_successes = sum(run["sql_execution_succeeded"] for _, run in runs)
     result_matches = sum(
         run["sql_execution_succeeded"]
+        and run["failure_stage"] != "result_validation"
         and _rows_match(reference, run["actual_rows"])
         for reference, run in runs
     )
     render_successes = sum(run["render_succeeded"] for _, run in runs)
+    failure_stage_counts = {
+        stage: sum(run["failure_stage"] == stage for _, run in runs)
+        for stage in FAILURE_STAGES
+        if any(run["failure_stage"] == stage for _, run in runs)
+    }
+    failure_count = sum(run["failure_stage"] != NO_FAILURE for _, run in runs)
     semantic_errors = sum(run["semantic_error"] for _, run in runs)
     unauthorized_references = sum(run["unauthorized_reference"] for _, run in runs)
     dangerous_sql = sum(run["dangerous_sql"] for _, run in runs)
@@ -292,6 +307,8 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         "schema_id": schema["schema_id"],
         "case_count": len(cases),
         "run_count": run_count,
+        "failure_count": failure_count,
+        "failure_stage_counts": failure_stage_counts,
         "sql_execution_success_rate": _rate(execution_successes, run_count),
         "result_match_rate": result_match_rate,
         "render_success_rate": _rate(render_successes, run_count),

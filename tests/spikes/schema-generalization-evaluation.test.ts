@@ -15,7 +15,7 @@ const FINGERPRINTS = {
 
 function evidenceBundle() {
   return {
-    version: 1,
+    version: 2,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const scopeFingerprint = String(schemaIndex + 4).repeat(64);
@@ -46,6 +46,8 @@ function evidenceBundle() {
               },
               generated_sql:
                 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
+              failure_stage: 'none',
+              failure_code: '',
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
               unauthorized_reference: false,
@@ -93,6 +95,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
         schema_id: 'scope-a',
         case_count: 1,
         run_count: 3,
+        failure_count: 0,
+        failure_stage_counts: {},
         sql_execution_success_rate: 1,
         result_match_rate: 1,
         render_success_rate: 1,
@@ -108,6 +112,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
         schema_id: 'scope-b',
         case_count: 1,
         run_count: 3,
+        failure_count: 0,
+        failure_stage_counts: {},
         sql_execution_success_rate: 1,
         result_match_rate: 1,
         render_success_rate: 1,
@@ -209,6 +215,113 @@ test('unsafe or mismatched runs remain visible in a failing report', () => {
   assert.equal(report.schemas[1].passed, true);
 });
 
+test('a recorded SQL generation failure remains in rates and stage counts', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'sql_generation';
+  failedRun.failure_code = 'structured_response_invalid';
+  failedRun.generated_sql = '';
+  failedRun.sql_execution_succeeded = false;
+  failedRun.actual_rows = [];
+  failedRun.render_succeeded = false;
+  failedRun.bytes_processed = 0;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.run_count, 6);
+  assert.equal(report.result_match_rate, 0.833333);
+  assert.deepEqual(
+    {
+      failure_count: report.schemas[0].failure_count,
+      failure_stage_counts: report.schemas[0].failure_stage_counts,
+      sql_execution_success_rate: report.schemas[0].sql_execution_success_rate,
+      render_success_rate: report.schemas[0].render_success_rate,
+      passed: report.schemas[0].passed,
+    },
+    {
+      failure_count: 1,
+      failure_stage_counts: { sql_generation: 1 },
+      sql_execution_success_rate: 0.666667,
+      render_success_rate: 0.666667,
+      passed: false,
+    },
+  );
+});
+
+test('failure codes reject raw provider messages', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'sql_generation';
+  failedRun.failure_code = 'Provider said: secret table missing';
+  failedRun.generated_sql = '';
+  failedRun.sql_execution_succeeded = false;
+  failedRun.actual_rows = [];
+  failedRun.render_succeeded = false;
+  failedRun.bytes_processed = 0;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /failure code must be an empty value or a safe machine code/);
+  assert.equal(result.stdout, '');
+});
+
+test('run outcome fields must agree with their failure stage', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'sql_generation';
+  failedRun.failure_code = 'structured_response_invalid';
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /run outcome conflicts with its failure stage/);
+  assert.equal(result.stdout, '');
+});
+
+test('a successful outcome requires generated SQL', () => {
+  const bundle = evidenceBundle();
+  bundle.schemas[0]!.cases[0]!.runs[0]!.generated_sql = '';
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /run outcome conflicts with its failure stage/);
+  assert.equal(result.stdout, '');
+});
+
+test('unsupported failure stages are rejected', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'provider_specific';
+  failedRun.failure_code = 'provider_error';
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /failure stage is unsupported/);
+  assert.equal(result.stdout, '');
+});
+
+test('a result validation failure cannot count as a matching result', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'result_validation';
+  failedRun.failure_code = 'result_contract_mismatch';
+  failedRun.render_succeeded = false;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.result_match_rate, 0.833333);
+  assert.equal(report.schemas[0].result_match_rate, 0.666667);
+  assert.deepEqual(report.schemas[0].failure_stage_counts, { result_validation: 1 });
+  assert.equal(report.schemas[0].passed, false);
+});
+
 test('a semantic error fails evaluation even when result rows match', () => {
   const bundle = evidenceBundle();
   bundle.schemas[0]!.cases[0]!.runs[0]!.semantic_error = true;
@@ -225,12 +338,12 @@ test('a semantic error fails evaluation even when result rows match', () => {
 
 test('unsupported evidence versions are rejected before evaluation', () => {
   const bundle = evidenceBundle();
-  bundle.version = 2;
+  bundle.version = 1;
 
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 1/);
+  assert.match(result.stderr, /evidence version must be 2/);
   assert.equal(result.stdout, '');
 });
 

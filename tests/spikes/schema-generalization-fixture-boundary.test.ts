@@ -88,7 +88,7 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 function evidenceBundle() {
   const fingerprints = pipelineFingerprints();
   return {
-    version: 1,
+    version: 2,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const encodedScope = canonicalJson(scopeContent(schemaId));
@@ -120,6 +120,8 @@ function evidenceBundle() {
               },
               generated_sql:
                 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
+              failure_stage: 'none',
+              failure_code: '',
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
               unauthorized_reference: false,
@@ -167,7 +169,7 @@ function separatedEvidence() {
     runs: plannedRuns,
   };
   const recordings = {
-    version: 3,
+    version: 4,
     evaluation_plan_sha256: sha256(JSON.stringify(evaluationPlan)),
     runs: bundle.schemas.flatMap((schema) =>
       schema.cases.flatMap((evaluationCase) =>
@@ -340,7 +342,7 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings, scopeSnapshots);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings version must be 3/);
+  assert.match(result.stderr, /recordings version must be 4/);
   assert.equal(result.stdout, '');
 });
 
