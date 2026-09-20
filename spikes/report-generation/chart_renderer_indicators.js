@@ -1,3 +1,9 @@
+import {
+  standardChartBase,
+  standardChartFormat,
+  standardChartNumber,
+} from './chart_renderer_core.js';
+
 function standardDeltaOption(result) {
   const current = standardChartNumber(result.rows[0][0]) ?? 0;
   const comparison = standardChartNumber(result.rows[0][1]) ?? 0;
@@ -16,3 +22,5 @@ function standardDeltaOption(result) {
     ],
   };
 }
+
+export { standardDeltaOption };

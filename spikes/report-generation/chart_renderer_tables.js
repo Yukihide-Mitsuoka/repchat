@@ -1,3 +1,6 @@
+import { chartValue } from './chart_renderer_runtime.js';
+import { standardChartPalette } from './chart_renderer_core.js';
+
 function standardTableRows(rows, query, sortIndex, sortDirection) {
   const normalizedQuery = query.trim().toLocaleLowerCase('ja-JP');
   const filtered = rows
@@ -115,6 +118,7 @@ function renderAdvancedResultTable(result, box, options = {}) {
   shell.append(toolbar, scroll, pager);
   box.appendChild(shell);
   render();
+  return options.succeeded?.() ?? true;
 }
 
 function standardPivotTableResult(result) {
@@ -134,11 +138,11 @@ function standardPivotTableResult(result) {
 }
 
 function renderPivotResultTable(result, box) {
-  renderAdvancedResultTable(standardPivotTableResult(result), box);
+  return renderAdvancedResultTable(standardPivotTableResult(result), box);
 }
 
 function renderComparisonResultTable(result, box) {
-  renderAdvancedResultTable(result, box, { deltaIndex: result.columns.length - 1 });
+  return renderAdvancedResultTable(result, box, { deltaIndex: result.columns.length - 1 });
 }
 
 function standardSparklineTableResult(result) {
@@ -157,10 +161,11 @@ function standardSparklineTableResult(result) {
   return { ...result, visualization: 'table', columns: [result.columns[0], result.columns[2], '推移'], rows };
 }
 
-function renderSparklineResultTable(result, box) {
+function renderSparklineResultTable(result, box, chartLibrary = globalThis.echarts) {
   const transformed = standardSparklineTableResult(result);
   let instances = [];
-  renderAdvancedResultTable(transformed, box, {
+  let succeeded = true;
+  return renderAdvancedResultTable(transformed, box, {
     beforeRender: () => {
       instances.forEach((instance) => instance.dispose());
       instances = [];
@@ -172,6 +177,7 @@ function renderSparklineResultTable(result, box) {
       host.setAttribute('aria-label', `${row[0]}の推移`);
       cell.replaceChildren(host);
       try {
+        if (!chartLibrary) throw new Error('chart library unavailable');
         const instance = chartLibrary.init(host, null, { renderer: 'svg' });
         instance.setOption({
           animation: false,
@@ -183,9 +189,17 @@ function renderSparklineResultTable(result, box) {
         instances.push(instance);
       } catch (_error) {
         host.textContent = '描画失敗';
+        succeeded = false;
       }
       return true;
     },
+    succeeded: () => succeeded,
   });
 }
 
+export {
+  renderAdvancedResultTable,
+  renderComparisonResultTable,
+  renderPivotResultTable,
+  renderSparklineResultTable,
+};

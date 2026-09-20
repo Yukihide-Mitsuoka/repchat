@@ -1,3 +1,5 @@
+import { chartValue, metricAxisTitle } from './chart_renderer_runtime.js';
+
 const standardChartInstances = new WeakMap();
 const standardChartPalette = [
   '#3973c6',
@@ -129,3 +131,20 @@ function standardChartBase({ horizontal = false, legend = false, tooltip = true 
       : undefined,
   };
 }
+
+export {
+  standardChartBase,
+  standardChartCategoryAxis,
+  standardChartCategoryOrientation,
+  standardChartCategoryWidth,
+  standardChartDisplayLabel,
+  standardChartFormat,
+  standardChartGrid,
+  standardChartInstances,
+  standardChartLabel,
+  standardChartNumber,
+  standardChartPalette,
+  standardChartTooltipFormatter,
+  standardChartUnit,
+  standardChartValueAxis,
+};

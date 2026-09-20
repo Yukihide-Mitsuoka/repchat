@@ -1,3 +1,20 @@
+import { metricUnit } from './chart_renderer_runtime.js';
+import {
+  standardChartBase,
+  standardChartCategoryAxis,
+  standardChartCategoryOrientation,
+  standardChartCategoryWidth,
+  standardChartDisplayLabel,
+  standardChartFormat,
+  standardChartGrid,
+  standardChartLabel,
+  standardChartNumber,
+  standardChartPalette,
+  standardChartTooltipFormatter,
+  standardChartUnit,
+  standardChartValueAxis,
+} from './chart_renderer_core.js';
+
 function standardBarOption(result, mode) {
   const metricColumns = result.columns.slice(1);
   const categories = result.rows.map((row) => String(row[0] ?? ''));
@@ -381,3 +398,18 @@ function standardReferenceAreaOption(result) {
   ];
   return option;
 }
+
+export {
+  standardAnnotatedLineOption,
+  standardBarOption,
+  standardBoxPlotOption,
+  standardCalendarOption,
+  standardHeatmapOption,
+  standardHistogramOption,
+  standardLineOption,
+  standardMixedOption,
+  standardReferenceAreaOption,
+  standardReferenceLineOption,
+  standardScatterOption,
+  standardSparklineOption,
+};
