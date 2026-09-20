@@ -381,12 +381,13 @@ def generate(vertex,model,value,question,*,as_of,fixed_period=None):
  return AnalysisContract("{}","contract-fingerprint"),{"input_tokens":7,"output_tokens":2}
 o.consolidate_date_shards=consolidate;o.generate_contract=generate
 bq=object();vertex=types.SimpleNamespace(models=Models())
-contract,usage=o.generate_discovered_contract(bq,vertex,"test-model",discovery,"2日間を前日と比較",as_of=date(2026,9,13))
+result=o.generate_discovered_contract_artifacts(bq,vertex,"test-model",discovery,"2日間を前日と比較",as_of=date(2026,9,13))
 assert len(calls)==1 and calls[0]["config"].response_schema["properties"]["shard_groups"]["items"]["enum"]==["s000"]
 assert "alpha.dataset.records" not in json.dumps(calls[0]["config"].response_schema)
 assert captured["bq"] is bq and captured["ranges"]=={"alpha.dataset.records_*":("20260801","20260802")}
 assert captured["contract"]==(vertex,"test-model","consolidated","2日間を前日と比較",date(2026,9,13),plan["period"])
-assert contract.fingerprint=="contract-fingerprint" and usage=={"input_tokens":12,"output_tokens":6}
+assert result.discovery=="consolidated"
+assert result.contract.fingerprint=="contract-fingerprint" and result.usage=={"input_tokens":12,"output_tokens":6}
 `,
   );
   assert.equal(result.status, 0, result.stderr);
