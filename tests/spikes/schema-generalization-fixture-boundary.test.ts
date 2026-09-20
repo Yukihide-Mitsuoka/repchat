@@ -16,6 +16,57 @@ const REQUIRED_CAPABILITIES = [
   'window_function',
   'ordered_behavior',
 ];
+const RETRIEVED_AT = '2026-09-20T00:00:00+00:00';
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => `${JSON.stringify(key)}:${canonicalJson(nested)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function scopeContent(schemaId: string) {
+  const metadata = { version: 1, tables: [{ table: `project.dataset.${schemaId}`, fields: [] }] };
+  const schemaFingerprint = createHash('sha256').update(canonicalJson(metadata)).digest('hex');
+  return {
+    version: 1,
+    schema: { fingerprint: schemaFingerprint, metadata },
+    tables: [],
+    limits: {},
+  };
+}
+
+function contractContent(schemaId: string) {
+  const scope = scopeContent(schemaId);
+  return {
+    version: 1,
+    schema: {
+      fingerprint: scope.schema.fingerprint,
+      retrieved_at: RETRIEVED_AT,
+      metadata: scope.schema.metadata,
+    },
+    semantics: {
+      grain: {},
+      identifiers: {},
+      dimensions: {},
+      measures: {},
+      metrics: {},
+      relationships: [],
+    },
+    period: null,
+    limits: { maximum_bytes_billed: 100, maximum_result_rows: 10 },
+  };
+}
+
+function contractFingerprint(content: ReturnType<typeof contractContent>) {
+  const identity = structuredClone(content);
+  delete (identity.schema as { retrieved_at?: string }).retrieved_at;
+  return createHash('sha256').update(canonicalJson(identity)).digest('hex');
+}
 
 function evidenceBundle() {
   const fingerprints = {
@@ -27,9 +78,9 @@ function evidenceBundle() {
     version: 1,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
-      const scopeContent = JSON.stringify({ schema_id: schemaId, version: 1 });
-      const scopeFingerprint = createHash('sha256').update(scopeContent).digest('hex');
-      const contractFingerprint = String(schemaIndex + 6).repeat(64);
+      const encodedScope = canonicalJson(scopeContent(schemaId));
+      const scopeFingerprint = createHash('sha256').update(encodedScope).digest('hex');
+      const analysisContractFingerprint = contractFingerprint(contractContent(schemaId));
       const expectedRows = [{ category: `group-${schemaIndex}`, metric_value: schemaIndex + 1 }];
       return {
         schema_id: schemaId,
@@ -51,7 +102,7 @@ function evidenceBundle() {
               ...fingerprints,
               runtime_input: {
                 scope_snapshot_fingerprint: scopeFingerprint,
-                analysis_contract_fingerprint: contractFingerprint,
+                analysis_contract_fingerprint: analysisContractFingerprint,
                 question: '区分別の値を集計して',
               },
               generated_sql:
@@ -104,11 +155,21 @@ function separatedEvidence() {
     version: 1,
     snapshots: bundle.schemas.map((schema) => ({
       schema_id: schema.schema_id,
-      content_json: JSON.stringify({ schema_id: schema.schema_id, version: 1 }),
-      retrieved_at: '2026-09-20T00:00:00+00:00',
+      content_json: canonicalJson(scopeContent(schema.schema_id)),
+      retrieved_at: RETRIEVED_AT,
     })),
   };
-  return { bundle, fixture, recordings, scopeSnapshots };
+  const analysisContracts = {
+    version: 1,
+    contracts: bundle.schemas.flatMap((schema) =>
+      schema.cases.map((evaluationCase) => ({
+        schema_id: schema.schema_id,
+        case_id: evaluationCase.case_id,
+        content_json: canonicalJson(contractContent(schema.schema_id)),
+      })),
+    ),
+  };
+  return { bundle, fixture, recordings, scopeSnapshots, analysisContracts };
 }
 
 function assemble(
@@ -116,20 +177,30 @@ function assemble(
   recordings: object,
   scopeSnapshots: object,
   preexistingOutput = false,
+  analysisContracts: object = separatedEvidence().analysisContracts,
 ) {
   const directory = mkdtempSync(path.join(tmpdir(), 'schema-fixture-'));
   const fixturePath = path.join(directory, 'fixture.json');
   const recordingsPath = path.join(directory, 'recordings.json');
   const scopeSnapshotsPath = path.join(directory, 'scope-snapshots.json');
+  const analysisContractsPath = path.join(directory, 'analysis-contracts.json');
   const bundlePath = path.join(directory, 'evidence.json');
   writeFileSync(fixturePath, JSON.stringify(fixture));
   writeFileSync(recordingsPath, JSON.stringify(recordings));
   writeFileSync(scopeSnapshotsPath, JSON.stringify(scopeSnapshots));
+  writeFileSync(analysisContractsPath, JSON.stringify(analysisContracts));
   if (preexistingOutput) writeFileSync(bundlePath, JSON.stringify({ preserved: true }));
   try {
     const result = spawnSync(
       'python3',
-      [ASSEMBLER, fixturePath, recordingsPath, scopeSnapshotsPath, bundlePath],
+      [
+        ASSEMBLER,
+        fixturePath,
+        recordingsPath,
+        scopeSnapshotsPath,
+        analysisContractsPath,
+        bundlePath,
+      ],
       {
         cwd: ROOT,
         encoding: 'utf8',
@@ -319,5 +390,101 @@ test('scope snapshot retrieval time must include a timezone', () => {
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /scope snapshot retrieval time must include a timezone/);
+  assert.equal(result.stdout, '');
+});
+
+test('scope snapshot schema metadata must match its declared fingerprint', () => {
+  const { fixture, recordings, scopeSnapshots } = separatedEvidence();
+  const content = JSON.parse(scopeSnapshots.snapshots[0]!.content_json);
+  content.schema.metadata.tables = [];
+  scopeSnapshots.snapshots[0]!.content_json = canonicalJson(content);
+  const scopeFingerprint = createHash('sha256')
+    .update(scopeSnapshots.snapshots[0]!.content_json)
+    .digest('hex');
+  fixture.schemas[0]!.scope_snapshot_fingerprint = scopeFingerprint;
+  for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
+    recorded.run.runtime_input.scope_snapshot_fingerprint = scopeFingerprint;
+  }
+  recordings.reviewed_fixture_sha256 = createHash('sha256')
+    .update(JSON.stringify(fixture))
+    .digest('hex');
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /scope snapshot schema observation is invalid/);
+  assert.equal(result.stdout, '');
+});
+
+test('analysis contract content must match every recorded run fingerprint', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  const content = JSON.parse(analysisContracts.contracts[0]!.content_json);
+  content.limits.maximum_result_rows = 11;
+  analysisContracts.contracts[0]!.content_json = canonicalJson(content);
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contract content must match recorded run fingerprint/);
+  assert.equal(result.stdout, '');
+});
+
+test('every fixture case must have exactly one analysis contract artifact', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  analysisContracts.contracts.pop();
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contracts must match fixture cases exactly/);
+  assert.equal(result.stdout, '');
+});
+
+test('analysis contract artifact version must be an integer', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  analysisContracts.version = true as unknown as number;
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contracts version must be 1/);
+  assert.equal(result.stdout, '');
+});
+
+test('analysis contract content must preserve the canonical runtime representation', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  analysisContracts.contracts[0]!.content_json =
+    analysisContracts.contracts[0]!.content_json.replace('"version":1', '"version": 1');
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contract content must be canonical JSON/);
+  assert.equal(result.stdout, '');
+});
+
+test('analysis contract must bind to the same schema observation as its scope snapshot', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  const content = JSON.parse(analysisContracts.contracts[0]!.content_json);
+  content.schema.retrieved_at = '2026-09-20T00:00:01+00:00';
+  analysisContracts.contracts[0]!.content_json = canonicalJson(content);
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contract must match its scope snapshot observation/);
+  assert.equal(result.stdout, '');
+});
+
+test('analysis contract schema metadata must match its declared fingerprint', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  const content = JSON.parse(analysisContracts.contracts[0]!.content_json);
+  content.schema.metadata.tables = [];
+  analysisContracts.contracts[0]!.content_json = canonicalJson(content);
+
+  const { result } = assemble(fixture, recordings, scopeSnapshots, false, analysisContracts);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /analysis contract must match its scope snapshot observation/);
   assert.equal(result.stdout, '');
 });

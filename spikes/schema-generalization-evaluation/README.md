@@ -28,7 +28,7 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 ## 参照fixtureとrun記録の分離
 
 `assemble.py`は、version 2の独立review済み参照fixture、version 2のruntime実行後のrun記録、version 1の
-scope snapshot artifactを検証し、schema ID・case IDだけで結合します。
+scope snapshot artifact、version 1のanalysis contract artifactを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
 capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
@@ -46,6 +46,12 @@ canonical JSON表現であること、そのSHA-256がfixtureと全runの`scope_
 このartifactはschema metadataとbounded value profileを含む可能性があるため、fixtureやrunと同じ認可済みローカル領域で
 管理し、CI logまたはrepositoryへ保存してはいけません。
 
+analysis contract artifactは、fixtureの全schema／caseと一対一で対応する`schema_id`、`case_id`、対象非依存runtimeが
+生成したcanonical `AnalysisContract.content_json`だけを持ちます。assemblerはruntimeと同じ規則でfingerprintを再計算し、
+全runの`analysis_contract_fingerprint`へ照合します。contract内のschema fingerprintと取得時刻は同じschemaのscope
+snapshot observationと一致しなければなりません。未知・重複・欠落case、非canonical JSON、内容改変は拒否します。
+contract本文は結合後のevidenceへ複製せず、fingerprintだけを残します。このartifactも認可済みローカル領域だけで管理します。
+
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
 CI logやrepositoryへ保存しません。
@@ -55,7 +61,8 @@ CI logやrepositoryへ保存しません。
 ```console
 python3 spikes/schema-generalization-evaluation/assemble.py \
   /path/to/reviewed-fixture.json /path/to/recorded-runs.json \
-  /path/to/scope-snapshots.json /secure/path/evidence.json
+  /path/to/scope-snapshots.json /path/to/analysis-contracts.json \
+  /secure/path/evidence.json
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
 ```
 
