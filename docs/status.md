@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-09-17
+updated: 2026-09-20
 ---
 
 # 実装状況サマリー
@@ -30,29 +30,15 @@ updated: 2026-09-17
    それ以前は設計フェーズの記録で、再開には不要
 4. 進行中の仕事に触れるなら、該当する ADR と `spikes/*/README.md`
 
-**現在の作業スレッド**: [Issue #357](https://github.com/Yukihide-Mitsuoka/repchat/issues/357)。
-Issue #352／PR #353で成果物tree、中央下端composer、右Artifact／Inspector paneへ統合し、PR #354で
-選択titleをcompact headerへ限定した。Issue #355／PR #356ではcomposer幅、dashboard row resize、左paneの
-compact spacing、pane境界を改善してmerge済み。現在は「どんな分析をしたらいい？」等の探索的な問いを
-既定SQLへfallbackさせず、profile別の検証済み分析候補を選択・編集してから既存の費用gateへ進める。
-候補選択まではVertex AI・BigQueryを呼ばず、query APIの直接呼出しも同じ相談文を拒否する。
-製品UIへの移植、永続履歴、成果物保存、Git連携、公開workflowは未実装である。
-
-`make doctor`の最終実行では、今回未変更の`setup-github.sh` wrapper testが5秒timeoutした。
-同じ作業中の先行doctorは成功していたが、再実行で成功扱いにせず、[Issue #315](https://github.com/Yukihide-Mitsuoka/repchat/issues/315)へ分離した。
-
-#283のSankey決定性・監査性修正はPR #285としてmerge済み。固定応答ブラウザで段階見出し3件、
-リンク5本、2ページ目終了215セッション、keyboard focus時の詳細更新、console error/warning 0を確認した。
-これは無料の描画確認であり、R17の実Vertex AI・BigQuery値照合は未実施。
-
-PR #269とPR #272はmerge済みで、Release PR #270から`v1.15.1`タグ、GitHub Release、SPDX SBOMが
-公開された。PR #272で連続する同一ページを統合する回遊契約と意味検証を追加したが、修正後の実Vertex AI・
-BigQueryおよび新しいR17参照値は未測定。#283の固定応答テストと無料のローカル描画は、実データ照合の
-代替にはしない。
-
-現在は、分析対象固有のcode・profile・設定・既知知識を除去し、認可済みscopeから同じ共通pipelineが
-分析契約を自動生成する状態への移行を最優先とする。固有処理が残る間は任意schema対応または製品能力と
-表明しない。現在の作業順と設計判断索引は[development-handoff](development-handoff.md)を参照する。
+**現在の作業**: [Issue #188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の対象非依存runtime評価。
+対象別profile・固定schema・固定SQLを持つ旧runtimeは削除済みで、再混入をarchitecture testで拒否する。
+[PR #757](https://github.com/Yukihide-Mitsuoka/repchat/pull/757)までに、実際のscope discoveryと分析契約生成を
+評価preflightへ接続し、失敗attemptも固定stage／codeで分母へ残す境界を実装した。
+[PR #759](https://github.com/Yukihide-Mitsuoka/repchat/pull/759)では、独立review用fixtureから参照SQL・期待結果・
+capabilityを除外し、認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装中である。
+公式fixture、独立review、実値照合、全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
+今回の更新では実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
+[development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /
 [PR #231](https://github.com/Yukihide-Mitsuoka/repchat/pull/231)（2026-08-02 merge済み）で、ライブ画面の
@@ -112,7 +98,7 @@ BigQueryで1/1、参照値118,380との一致、Vertex AI推定¥0.154、Evidenc
 GitHub publisherとmanaged publisherを接続する。build成功後だけcommit SHAと`report_version`を有効化し、
 失敗時は直前の成功版を配信する。詳細はADR-0015。
 
-### 0.1 完了 — 「デモを見せられる形にする」（2026-07-29）
+### 0.1 過去記録 — 「デモを見せられる形にする」（2026-07-29）
 
 **3（`src/` 移植）より先にこれをやる**、というのがオーナーの判断。理由は、移植は大きく後戻りしにくい
 一方で、positioning §5 が残した唯一の未検証仮説「**BIを入れたが使われていない**」は
@@ -172,9 +158,9 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 **本番構成でデプロイ済み・ライブ検証済み**（LOG-0058/0059/0060）。
 `make destroy` からの復旧まで実走で確認している。
 
-**次はデザインパートナー検証。** レポート生成と描画は、ADR-0013を確定し、1コマンドの実データデモまで
-完了した。ただし製品コードへの移植は未着手で、今移植を始めても「BIを入れたが使われていない」痛みと
-非エンジニアの運用可能性は測れない。先に実物を人へ見せる。
+**現在は対象非依存runtimeの反復評価が最優先。** 旧デモは対象別profileと固定知識を含むため削除済みで、
+過去の成功を任意schema対応の証拠にはしない。共通preflightと評価harnessは実装済みだが、公式fixtureを使う
+全runtime段階の反復評価は未完了である。
 
 **事業方針は2026-07-27に大きく動いた。** 競合調査（LOG-0062）で構想の技術要素が
 ほぼ既存製品にあると判明し、差別化を**日本語・国内対応・代理店経由の流通**に置き直した。
@@ -251,14 +237,13 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **未検証**。既存の公開データ向け実装には対象別profile・期間規則・意味定義が残り、任意schema対応ではない | 認可済みscopeからschema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する同一pipelineへ置換し、対象別コード・設定なしに複数の未知schemaを独立review済み参照結果と反復照合する（ADR-0025、Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflight、実行前計画、失敗attempt記録、参照情報を分離したscorerは実装済みで、runtime入力manifestはPR #759で進行中 | 公式fixtureを独立reviewし、認可済みscopeだけを入力に複数の未知schemaを同一binary・prompt・設定で反復実行して、実値・安全性・費用・描画を照合する（ADR-0025、Issue #188） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | #188の対象非依存品質境界、#179、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
 | **デプロイ（GCP側）** | **完了・ライブ稼働中**（LOG-0058）。control-plane / executor が Cloud Run（asia-southeast1）で動作。`/health` 200、トークン無し・誤トークンとも401をライブ実測（5/5）。`make destroy` は**13破棄→13再作成→ライブE2E 10/10 まで実走して確認**（LOG-0060。URL同一・bootstrap所有物は保持） | — ※T4は**組織ポリシーの明示的除外**の上に成立（ADR-0012の前提条件） |
 | **デプロイ（Cloudflare側）** | **完了・ライブ稼働中**（LOG-0059）。KV4本・両URL・共有シークレットを設定し `gate.aeworks.workers.dev` で稼働。**Workers → Cloud Run → Neon → BigQuery を実HTTP・実JWTで貫通するライブE2Eが10/10**（越境ゼロを含む） | — |
 | **顧客向け要素** | 未着手 | オンボーディング手順、セキュリティ説明資料、撤退時データ削除 |
-| **デザインパートナー** | **未着手・最重要** | 人間側の営業活動 |
 
 ### 未確定事項（パートナー待ち）
 
@@ -277,10 +262,8 @@ NL→SQLを一般化できるかは未検証**で、Issue #188を製品化gate�
 「小さく黒字」方針、LOG-0021）。
 
 未知schema benchmarkでは対象別コード、設定、手動意味定義を追加せず、同じruntimeによる自動理解を検証する。
-実顧客でも同じ経路を再検証する。したがって、
-**次の最大レバレッジはデザインパートナー探し**という
-[discovery-log §8.9](discovery-log.md)の結論は現在も有効です。実データで動く縦串が出来たので、
-以前より説明しやすい状態にはなっています。
+次の最大レバレッジは、公式fixtureの独立reviewと、参照情報をruntimeから隔離した反復実行を完了して、
+対象非依存品質の実測値を得ることである。
 
 ---
 

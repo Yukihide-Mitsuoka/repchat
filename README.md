@@ -11,9 +11,11 @@ RepChatは、日本の小規模な代理店・ソフトウェアベンダー向�
 ## 現在地
 
 認可ゲート、SQLへのテナント境界注入、PostgreSQL RLS、BigQuery実行、
-テナント別キャッシュ、自然言語からのレポート生成は検証済みです。現在は
-[デザインパートナー検証](docs/status.md#0-再開手順新しいaiセッション向け)が次の作業で、
-GitHub Appとartifact pipelineの製品実装はその結果を待ちます。
+テナント別キャッシュは実環境で検証済みです。対象別profileを使った旧レポート生成経路は削除し、
+現在は認可済みscopeから同じ共通pipelineで分析契約を生成する対象非依存runtimeを検証しています。
+実scope discoveryと契約生成を呼ぶ評価preflightは完成し、参照SQL・期待結果をruntimeへ渡さない
+execution manifestを実装中です。公式fixtureの独立review、実値照合、同一runtimeでの反復評価は未完了であり、
+任意schema対応を製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 
 ## ドキュメント
 
