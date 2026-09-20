@@ -52,6 +52,12 @@ runtime呼出し前に検証し、記載順どおり全計画attemptを共通`ru
 pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実測したbytes・費用を渡してrun記録を作れます。
 成功attemptはplanning以降へ渡すため保持し、この境界で成功runを捏造しません。
 
+`manifest_planning.py`は全preflightの順序とidentityを維持し、成功attemptだけを既存の共通
+`analysis_workflows.plan_dashboard`へ渡します。plannerへ渡すruntime入力はmanifestの質問とpreflightが生成した
+共通分析契約で、初回回答・現在案・revision指示は空です。成功時は正確な契約fingerprintへbindされた計画とplanner費用を
+保持します。preflight失敗時はplannerを呼ばず、planningの例外、plan event欠落、契約不一致、費用形式不正はraw detailを
+保存せず固定`planning`／`planning_failed`へ変換します。planning失敗はBigQuery処理bytesを0に限定してrun記録へ残します。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -75,7 +81,7 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-このpreflight境界はartifactをrepositoryへ保存せず、manifest駆動で反復しても成功後のplanning・SQL生成・実行・描画はまだ実行しません。
+この境界はartifactをrepositoryへ保存せず、manifest駆動でplanningまで反復します。SQL生成・検証・dry run・実行・結果検証・描画はまだ実行しません。
 planningでは、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。
 したがって、単独では反復評価runnerの完成や未知schema品質の実証を意味しません。

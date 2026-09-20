@@ -15,9 +15,11 @@ RepChatは、日本の小規模な代理店・ソフトウェアベンダー向�
 現在は認可済みscopeから同じ共通pipelineで分析契約を生成する対象非依存runtimeを検証しています。
 実scope discoveryと契約生成を呼ぶ評価preflightは完成し、参照SQL・期待結果をruntimeへ渡さない
 execution manifestも完成しました。現在はmanifestだけから全計画attemptを共通preflightへ渡す境界を
-実装済みです。現在は[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)で、十分な共通分析契約から
-不要な利用者確認なしで初回仕様を生成できるようplanner契約を整備しています。公式fixtureの独立review、
-実値照合、同一runtimeでの反復評価は未完了であり、任意schema対応を
+実装済みです。[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)では、十分な共通分析契約から
+不要な利用者確認なしで初回仕様を生成できるplanner契約を整備し、merge済みです。現在は
+[PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)で、成功したpreflightだけを同じ共通plannerへ接続し、
+計画失敗も評価attemptへ残す境界を実装しています。公式fixtureの独立review、実値照合、
+同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 
 ## ドキュメント
