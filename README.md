@@ -25,7 +25,7 @@ execution manifestも完成しました。現在はmanifestだけから全計画
 SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として残す評価stageを実装し、merge済みです。現在は
 [PR #769](https://github.com/Yukihide-Mitsuoka/repchat/pull/769)で、生成SQLを既存の共通local validatorへ渡し、
 無断参照、危険SQL、期間・出力契約不一致を分類して実行前に停止するstageを実装し、merge済みです。
-続く変更では、検証済みSQLだけを共通BigQuery dry runへ渡し、BigQueryが解析した文種・参照table・
+続く[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)では、検証済みSQLだけを共通BigQuery dry runへ渡し、BigQueryが解析した文種・参照table・
 出力schema・推定処理bytesを契約と照合するstageを実装しました。結果行の取得とSQL実行は行いません。
 通常のdashboardは従来の設定件数を維持します。実行、公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を

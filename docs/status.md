@@ -50,7 +50,7 @@ planning失敗へ閉じる境界を実装し、merge済みである。
 続く[PR #769](https://github.com/Yukihide-Mitsuoka/repchat/pull/769)で、生成SQLを共通の
 SELECT・scope・field・period・partition・可視化出力契約validatorへ渡し、失敗を固定
 `sql_validation`／`sql_validation_failed`と安全性booleanへ変換するstageを実装し、merge済みである。
-現在の変更では、検証済みSQLだけを共通BigQuery dry runへ渡し、parsed statement type、参照table、
+現在の[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)では、検証済みSQLだけを共通BigQuery dry runへ渡し、parsed statement type、参照table、
 出力schema、推定処理bytesと契約上限を照合する。結果行は取得せず、失敗は固定
 `dry_run`／`dry_run_failed`と安全性booleanへ変換する。
 通常のdashboardの設定件数は変更しない。
