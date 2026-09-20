@@ -10,7 +10,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from run_outcome import FAILURE_STAGES, NO_FAILURE, RunOutcomeError, validate_run_outcome
+from run_outcome import (
+    ANALYSIS_CONTRACT_GENERATION_FAILURE,
+    FAILURE_STAGES,
+    NO_FAILURE,
+    PREFLIGHT_FAILURE_STAGES,
+    SCOPE_DISCOVERY_FAILURE,
+    RunOutcomeError,
+    validate_run_outcome,
+)
 
 
 FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
@@ -81,8 +89,8 @@ def _rate(count: int, total: int) -> float:
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if type(bundle.get("version")) is not int or bundle["version"] != 2:
-        raise EvaluationEvidenceError("evidence version must be 2")
+    if type(bundle.get("version")) is not int or bundle["version"] != 3:
+        raise EvaluationEvidenceError("evidence version must be 3")
 
 
 def _validate_structure(bundle: dict[str, Any]) -> None:
@@ -233,27 +241,40 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
             contract_fingerprints: set[str] = set()
             for run in case["runs"]:
                 runtime_input = run["runtime_input"]
-                if set(runtime_input) != RUNTIME_INPUT_KEYS:
+                if (
+                    not isinstance(runtime_input, dict)
+                    or set(runtime_input) != RUNTIME_INPUT_KEYS
+                ):
                     raise EvaluationEvidenceError(
                         "runtime_input may contain only scope, contract, and question"
                     )
-                if (
-                    runtime_input["scope_snapshot_fingerprint"] != scope_fingerprint
-                    or runtime_input["question"] != case["question"]
-                ):
+                failure_stage = run["failure_stage"]
+                observed_scope = runtime_input["scope_snapshot_fingerprint"]
+                contract_fingerprint = runtime_input["analysis_contract_fingerprint"]
+                if runtime_input["question"] != case["question"]:
                     raise EvaluationEvidenceError(
                         "runtime_input must match its schema scope and case question"
                     )
-                contract_fingerprint = runtime_input["analysis_contract_fingerprint"]
-                if not (
-                    isinstance(contract_fingerprint, str)
-                    and FINGERPRINT_PATTERN.fullmatch(contract_fingerprint)
-                ):
-                    raise EvaluationEvidenceError(
-                        "analysis contract fingerprints must be lowercase SHA-256 values"
+                if failure_stage == SCOPE_DISCOVERY_FAILURE:
+                    valid = observed_scope is None and contract_fingerprint is None
+                elif failure_stage == ANALYSIS_CONTRACT_GENERATION_FAILURE:
+                    valid = (
+                        observed_scope == scope_fingerprint
+                        and contract_fingerprint is None
                     )
-                contract_fingerprints.add(contract_fingerprint)
-            if len(contract_fingerprints) != 1:
+                else:
+                    valid = (
+                        observed_scope == scope_fingerprint
+                        and isinstance(contract_fingerprint, str)
+                        and FINGERPRINT_PATTERN.fullmatch(contract_fingerprint) is not None
+                    )
+                if not valid:
+                    raise EvaluationEvidenceError(
+                        "runtime_input must match its failure stage and available fingerprints"
+                    )
+                if failure_stage not in PREFLIGHT_FAILURE_STAGES:
+                    contract_fingerprints.add(contract_fingerprint)
+            if len(contract_fingerprints) > 1:
                 raise EvaluationEvidenceError(
                     "each case must reproduce one analysis contract fingerprint"
                 )

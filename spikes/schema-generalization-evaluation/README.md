@@ -14,8 +14,8 @@ updated: 2026-09-20
 
 - IDとscope snapshot fingerprintが異なる2件以上のschema evidenceを同じ評価に含め、各caseを3回以上反復する。
 - 全runでruntime、prompt、設定のSHA-256 fingerprintを一致させる。
-- runtime inputはscope snapshot fingerprint、analysis contract fingerprint、質問だけに限定する。
-- 同じcaseの反復runは、同一のanalysis contract fingerprintを再現する。
+- runtime inputはscope snapshot fingerprint、analysis contract fingerprint、質問だけに限定する。scope discovery停止時は両fingerprint、analysis contract生成停止時はcontract fingerprintだけを`null`とし、未取得値を捏造しない。
+- contract生成後へ進んだ同じcaseの反復runは、同一のanalysis contract fingerprintを再現する。
 - 計画済みrunが途中停止しても記録から除外せず、固定failure stageと安全なmachine codeで成功率・一致率の分母へ残す。
 - 参照SQLと期待結果はpost-run scorerだけが読み、生成runtimeへ渡さない。
 - 参照結果は作成者と異なるreviewerが承認する。
@@ -25,11 +25,11 @@ updated: 2026-09-20
 bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
 runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stageを記録します。
-evidence bundleはversion 2です。
+evidence bundleはversion 3です。
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 4のruntime実行後の
+`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 5のruntime実行後の
 run記録、version 1のscope snapshot artifact、version 1のanalysis contract artifact、実行に使用した
 runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
@@ -43,17 +43,19 @@ capabilityは評価範囲のreview用であり、runtime inputと結合後のevi
 結果確認後の参照内容変更、pipeline差し替え、成功runだけの選別、未記録runを検出します。計画とfingerprintはruntime inputへ
 渡しません。fileだけでは作成時刻や作成者を証明しないため、独立review記録と実行前の保全手続きは引き続き別途必要です。
 
-scope snapshot artifactは、fixtureに含まれる全schemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
+scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
-canonical JSON表現であること、そのSHA-256がfixtureと全runの`scope_snapshot_fingerprint`に一致することを検証します。
-未知・重複・欠落schemaは拒否します。snapshot内容と取得時刻は結合後のevidenceへ複製せず、fingerprintだけを残します。
+canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
+不要・重複・必要なschemaの欠落は拒否します。全runがscope discoveryで停止したschemaにはsnapshotを要求せず、
+各runの未取得fingerprintを`null`のまま保持します。snapshot内容と取得時刻は結合後のevidenceへ複製せず、fingerprintだけを残します。
 このartifactはschema metadataとbounded value profileを含む可能性があるため、fixtureやrunと同じ認可済みローカル領域で
 管理し、CI logまたはrepositoryへ保存してはいけません。
 
-analysis contract artifactは、fixtureの全schema／caseと一対一で対応する`schema_id`、`case_id`、対象非依存runtimeが
+analysis contract artifactは、contract生成後へ進んだ計画runがあるschema／caseと一対一で対応する`schema_id`、`case_id`、対象非依存runtimeが
 生成したcanonical `AnalysisContract.content_json`だけを持ちます。assemblerはruntimeと同じ規則でfingerprintを再計算し、
-全runの`analysis_contract_fingerprint`へ照合します。contract内のschema fingerprintと取得時刻は同じschemaのscope
-snapshot observationと一致しなければなりません。未知・重複・欠落case、非canonical JSON、内容改変は拒否します。
+contract生成後へ進んだrunのfingerprintへ照合します。contract内のschema fingerprintと取得時刻は同じschemaのscope
+snapshot observationと一致しなければなりません。不要・重複・必要なcaseの欠落、非canonical JSON、内容改変は拒否します。
+全runがscope discoveryまたはcontract生成で停止したcaseにはcontract artifactを要求せず、未取得fingerprintを`null`のまま保持します。
 contract本文は結合後のevidenceへ複製せず、fingerprintだけを残します。このartifactも認可済みローカル領域だけで管理します。
 
 runtime・prompt・configuration artifactは、最初のrun前に固定した非空の通常fileを渡します。runtimeが複数fileから
@@ -62,7 +64,7 @@ SHA-256を再計算し、全runの対応するfingerprintへ照合します。ar
 この照合は実行後のartifact差し替えや自己申告fingerprintの不一致を検出しますが、artifactの作成主体、署名、実際にその
 artifactを起動したことまでは単独で証明しません。
 
-各runの`failure_stage`は`none`、`planning`、`sql_generation`、`sql_validation`、`dry_run`、`execution`、
+各runの`failure_stage`は`none`、`scope_discovery`、`analysis_contract_generation`、`planning`、`sql_generation`、`sql_validation`、`dry_run`、`execution`、
 `result_validation`、`rendering`のいずれかです。正常終了は`none`と空の`failure_code`、途中停止は対応stageと
 小文字英数字・underscoreだけの64文字以下のmachine codeを記録します。providerの例外文、SQL、table名、値を
 `failure_code`へ保存してはいけません。stageごとに生成SQLの有無、実行成否、結果行、描画成否、処理bytesの整合を検証し、
@@ -88,7 +90,7 @@ python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.js
 run記録は次のtop-level契約を使います。`evaluation_plan_sha256`は実行前評価計画file bytesの小文字SHA-256です。
 
 ```json
-{"version":4,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
+{"version":5,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な
@@ -98,6 +100,5 @@ assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scor
 
 公式の未知schema fixtureと実サービス結果はまだありません。テスト値はscorerの回帰確認用であり、製品能力の
 証拠ではありません。評価計画とartifact照合は作成時刻、実行主体の本人性、署名、process-level attestationを証明しません。
-独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。scope discoveryまたはanalysis contract生成前に
-停止したattemptは、現行run契約では詳細stageとして記録できず欠落としてfail closedになります。有料評価は対象と費用について
+独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。有料評価は対象と費用について
 オーナー承認を得た後だけ実行します。
