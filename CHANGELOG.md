@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
+
+
+### Features
+
+* **analysis:** manifestから評価preflightを反復する ([#761](https://github.com/Yukihide-Mitsuoka/repchat/issues/761)) ([d4e5845](https://github.com/Yukihide-Mitsuoka/repchat/commit/d4e584506565b730ca62bc4f15a64b9fd1e0296e))
+* **analysis:** 不要な初回確認をなくす ([#763](https://github.com/Yukihide-Mitsuoka/repchat/issues/763)) ([202688a](https://github.com/Yukihide-Mitsuoka/repchat/commit/202688aaba2f19109cb600acdaa91388508dfa4d))
+* **analysis:** 評価preflightを共通plannerへ接続する ([#765](https://github.com/Yukihide-Mitsuoka/repchat/issues/765)) ([885889f](https://github.com/Yukihide-Mitsuoka/repchat/commit/885889f30065aa3f2c6a5e395199bc9e4fe35b5c))
+* **analysis:** 評価runtime入力を参照fixtureから分離する ([#759](https://github.com/Yukihide-Mitsuoka/repchat/issues/759)) ([b356d88](https://github.com/Yukihide-Mitsuoka/repchat/commit/b356d886b8e24d400f4d201878f5deb2b88064b8))
+* **evaluation:** 単一パネルを共通SQL生成へ接続する ([#768](https://github.com/Yukihide-Mitsuoka/repchat/issues/768)) ([cdafc93](https://github.com/Yukihide-Mitsuoka/repchat/commit/cdafc93fe1066d0ca1ddf47491e58bc143538549))
+* **evaluation:** 生成SQLを共通安全検証へ接続する ([#769](https://github.com/Yukihide-Mitsuoka/repchat/issues/769)) ([a3750f2](https://github.com/Yukihide-Mitsuoka/repchat/commit/a3750f20b248ba284786d2f5a13d14e3a4cb6337))
+* **evaluation:** 評価計画を単一パネルに固定する ([#767](https://github.com/Yukihide-Mitsuoka/repchat/issues/767)) ([4d363b7](https://github.com/Yukihide-Mitsuoka/repchat/commit/4d363b73bdd86f4fa2f205af53ce18af09460bf9))
+
 ## [2.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v1.24.0...v2.0.0) (2026-09-20)
 
 
