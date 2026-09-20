@@ -38,7 +38,8 @@ updated: 2026-09-20
 capabilityを除外し、認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装し、merge済みである。
 続く[PR #761](https://github.com/Yukihide-Mitsuoka/repchat/pull/761)で、manifestを完全検証してから
 全計画attemptを共通preflightへ渡し、失敗時はmanifest内のpipeline fingerprintへ固定したrun記録を作る境界を
-実装し、merge済みである。現在は共通分析契約が十分な場合にplannerが不要な初回確認を要求しないよう契約を修正している。
+実装し、merge済みである。現在は[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)で、
+共通分析契約が十分な場合にplannerが不要な初回確認を要求しないよう契約を修正している。
 公式fixture、独立review、実値照合、全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
 今回の更新では実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。

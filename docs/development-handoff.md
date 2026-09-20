@@ -195,9 +195,9 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装し、2026-09-20にmerge済みです。
 [PR #761](https://github.com/Yukihide-Mitsuoka/repchat/pull/761)ではmanifest全体を実行前に検証して
 全計画attemptを共通preflightへ渡し、失敗runをmanifestのpipeline fingerprintへ固定する境界を実装し、
-2026-09-20にmerge済みです。現在は、十分な共通分析契約がある場合にも初回確認を最低1件要求していたplanner契約を修正し、
-対象固有の補足や手動意味定義なしで初回仕様を生成できるようにしています。確認が不可欠な場合だけ未回答fieldを最大3件返し、
-十分な場合は0件を許可します。
+2026-09-20にmerge済みです。現在は[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)で、
+十分な共通分析契約がある場合にも初回確認を最低1件要求していたplanner契約を修正し、対象固有の補足や手動意味定義なしで
+初回仕様を生成できるようにしています。確認が不可欠な場合だけ未回答fieldを最大3件返し、十分な場合は0件を許可します。
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
