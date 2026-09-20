@@ -8,6 +8,7 @@ from typing import Callable
 import analysis_contract_context
 import contract_period_validation
 import contract_result_validation
+import result_validation as common_result_validation
 import run_report as report
 import sql_contract_validation as sql_contracts
 import visualization_results
@@ -87,31 +88,27 @@ def _execute_section_result(
         raise SectionExecutionError(f"BigQuery実行に失敗しました: {error}")
     assert result is not None
     rows, columns = result
-    if len(rows) > max_result_rows:
-        raise SectionExecutionError(
-            f"結果が{max_result_rows}行を超えたため描画しません。集計条件を追加してください。"
-        )
-    contract_diagnostic = contract_result_validation.contract_result_diagnostic(
-        section, columns, policy
-    )
-    if contract_diagnostic:
-        raise SectionExecutionError(contract_diagnostic)
     verification, label = "unverified", "実行済み・AI分析仕様と形状照合済み"
     try:
-        visualization = visualization_results.dashboard_visualization(
-            section, rows, columns
+        validated = common_result_validation.validate_dashboard_result(
+            section,
+            rows,
+            columns,
+            max_result_rows=max_result_rows,
+            policy=policy,
         )
     except visualization_results.VisualizationResultError as error:
         raise SectionExecutionError(str(error)) from error
+    except common_result_validation.ResultValidationError as error:
+        raise SectionExecutionError(str(error)) from None
     return {
         "type": "result",
-        "columns": section.get("shape", {}).get("columns", columns),
-        "source_columns": columns,
-        "rows": [
-            [visualization_results.json_value(value) for value in row]
-            for row in rows
-        ],
-        "visualization": visualization,
+        "columns": section.get("shape", {}).get(
+            "columns", list(validated.columns)
+        ),
+        "source_columns": list(validated.columns),
+        "rows": [list(row) for row in validated.rows],
+        "visualization": validated.visualization,
         "navigation_depth": section.get("navigation_depth"),
         "verification": verification,
         "verification_label": label,
