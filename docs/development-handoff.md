@@ -198,8 +198,9 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 2026-09-20にmerge済みです。[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)では、
 十分な共通分析契約がある場合にも初回確認を最低1件要求していたplanner契約を修正しました。対象固有の補足や手動意味定義なしで
 初回仕様を生成でき、確認が不可欠な場合だけ未回答fieldを最大3件返し、十分な場合は0件を許可します。2026-09-20にmerge済みです。
-現在は成功したmanifest preflightだけを既存の共通dashboard plannerへ接続し、契約にbindされた計画と費用をattemptへ保持します。
-preflight失敗時はplannerを呼ばず、planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`で記録します。
+現在は[PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)で、成功したmanifest preflightだけを
+既存の共通dashboard plannerへ接続し、契約にbindされた計画と費用をattemptへ保持します。preflight失敗時はplannerを呼ばず、
+planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`で記録します。
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 

@@ -83,9 +83,7 @@ class PlannedAnalysisAttempt:
 
 
 def _failed_attempt(
-    attempt: PlannedPreflightAttempt,
-    stage: str,
-    code: str,
+    attempt: PlannedPreflightAttempt, stage: str, code: str
 ) -> PlannedAnalysisAttempt:
     return PlannedAnalysisAttempt(
         preflight_attempt=attempt,
