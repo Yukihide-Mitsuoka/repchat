@@ -75,6 +75,19 @@ PLAN_SCHEMA, DYNAMIC_PLAN_SCHEMA = build_plan_schemas(
 )
 
 
+def _requested_initial_panel_count(value: int | None) -> int:
+    """Resolve a bounded per-request panel count without changing global policy."""
+    if value is None:
+        return INITIAL_PANEL_COUNT
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise PlannerError("initial_panel_countは1以上の整数にしてください。")
+    if value > MAX_PANEL_COUNT:
+        raise PlannerError(
+            f"initial_panel_countは最大パネル数{MAX_PANEL_COUNT}以下にしてください。"
+        )
+    return value
+
+
 def _load_planner_response(response, label: str):
     try:
         return _load_structured_json(response)
@@ -107,11 +120,18 @@ def _dashboard_response_schema(
     revising: bool = False,
     seed: str = "",
     metric_names: tuple[str, ...] = (),
+    initial_panel_count: int | None = None,
 ) -> dict:
     """Constrain an initial or revised AI-authored dashboard."""
+    requested_count = _requested_initial_panel_count(initial_panel_count)
+    dynamic_plan_schema = DYNAMIC_PLAN_SCHEMA
+    if requested_count != INITIAL_PANEL_COUNT:
+        _, dynamic_plan_schema = build_plan_schemas(
+            requested_count, _visualization_response_schema(DASHBOARD_CHARTS)
+        )
     return build_dashboard_response_schema(
         PLAN_SCHEMA,
-        DYNAMIC_PLAN_SCHEMA,
+        dynamic_plan_schema,
         CLARIFICATION_FIELDS,
         DASHBOARD_CHARTS,
         answers,
@@ -129,8 +149,10 @@ def dashboard_planning_request(
     *,
     current_plan: dict | None = None,
     instruction: str | None = None,
+    initial_panel_count: int | None = None,
 ) -> str:
     """Build an initial or iterative dashboard planning request."""
+    requested_count = _requested_initial_panel_count(initial_panel_count)
     return build_dashboard_planning_request(
         objective,
         period,
@@ -138,7 +160,7 @@ def dashboard_planning_request(
         answers,
         current_plan=current_plan,
         instruction=instruction,
-        initial_panel_count=INITIAL_PANEL_COUNT,
+        initial_panel_count=requested_count,
         max_panel_count=MAX_PANEL_COUNT,
         dynamic_panel_fields=DYNAMIC_PANEL_FIELDS,
         has_governed_metrics=bool(_defined_metric_names(metrics)),
@@ -155,12 +177,14 @@ def propose_dashboard(
     *,
     current_plan: dict | None = None,
     instruction: str | None = None,
+    initial_panel_count: int | None = None,
 ):
     """Ask Vertex AI to author bounded dashboard panel specifications."""
     from google.genai import types
     from vertex_usage import token_counts
 
     metric_names = _defined_metric_names(metrics)
+    requested_count = _requested_initial_panel_count(initial_panel_count)
     response = generate_content(
         client,
         model=model,
@@ -171,6 +195,7 @@ def propose_dashboard(
             answers,
             current_plan=current_plan,
             instruction=instruction,
+            initial_panel_count=requested_count,
         ),
         config=types.GenerateContentConfig(
             system_instruction="あなたは意思決定から分析仕様を設計する日本語BIプランナー。",
@@ -181,6 +206,7 @@ def propose_dashboard(
                 revising=current_plan is not None,
                 seed=f"{objective}\n{instruction or ''}",
                 metric_names=metric_names,
+                initial_panel_count=requested_count,
             ),
         ),
     )

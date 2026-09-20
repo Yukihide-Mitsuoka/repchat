@@ -46,6 +46,7 @@ contract=AnalysisContract(encoded,fingerprint_contract_content(content))
 test('successful manifest preflights use the common dashboard planner with the exact contract', () => {
   assertPython(String.raw`
 from datetime import date
+from types import SimpleNamespace
 import analysis_workflows
 import manifest_planning
 from bigquery_scope_discovery import DiscoverySnapshot
@@ -56,10 +57,11 @@ snapshot=DiscoverySnapshot('{}','a'*64,'2026-09-20T00:00:00+00:00')
 def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
  return PreflightResult(question,snapshot,contract,{'input_tokens':1,'output_tokens':1})
 calls=[]
-def propose(client,model,question,period,context,answers,*,current_plan,instruction):
- calls.append((client,model,question,period,context,answers,current_plan,instruction))
- return ({'revision':'plan-123456789abc','panels':[]},{'input_tokens':1,'output_tokens':1})
+def propose(client,model,question,period,context,answers,*,current_plan,instruction,initial_panel_count):
+ calls.append((client,model,question,period,context,answers,current_plan,instruction,initial_panel_count))
+ return ({'revision':'plan-123456789abc','clarifications':[],'panels':[{'id':'P1','chart':'scorecard','dimensions':[]}]},{'input_tokens':1,'output_tokens':1})
 analysis_workflows.planner.propose_dashboard=propose
+analysis_workflows.analysis_contract_context.execution_policy=lambda _contract:SimpleNamespace(result=None)
 analysis_workflows.report.vertex_cost_jpy=lambda _model,_usage:0.25
 client=object()
 attempts=manifest_planning.run_manifest_planning(
@@ -75,7 +77,7 @@ assert all(item.plan['analysis_contract_fingerprint']==contract.fingerprint for 
 assert [item.planning_cost_jpy for item in attempts]==[0.25,0.25]
 assert all(call[:4]==(client,'model','区分別の値を集計して',None) for call in calls)
 assert all(contract.fingerprint in call[4] for call in calls)
-assert all(call[5:] == ({},None,None) for call in calls)
+assert all(call[5:] == ({},None,None,1) for call in calls)
 try:
  attempts[0].failure_recording(bytes_processed=0,cost_jpy=0.25)
 except ValueError as error:
@@ -168,7 +170,11 @@ def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
 def no_plan(*_args,**_kwargs):return None
 def wrong_contract(_client,_model,_question,_answers,emit,**_kwargs):
  emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':'f'*64},'cost_jpy':0})
-for runner in (no_plan,wrong_contract):
+def needs_answer(_client,_model,_question,_answers,emit,**kwargs):
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[{'field':'audience'}],'panels':[{'id':'P1'}]},'cost_jpy':0})
+def multiple_panels(_client,_model,_question,_answers,emit,**kwargs):
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[{'id':'P1'},{'id':'P2'}]},'cost_jpy':0})
+for runner in (no_plan,wrong_contract,needs_answer,multiple_panels):
  attempts=manifest_planning.run_manifest_planning(
   manifest,object(),object(),'model',as_of=date(2026,9,20),
   preflight_runner=preflight,planning_runner=runner,

@@ -72,6 +72,7 @@ def plan_dashboard(
     analysis_plan: dict | None,
     revision_instruction: str | None,
     check_cancelled: Callable[[], None],
+    initial_panel_count: int | None = None,
 ) -> None:
     """Propose a reviewable dashboard plan without querying BigQuery."""
     try:
@@ -86,6 +87,12 @@ def plan_dashboard(
                 current_plan, contract
             )
         emit({"type": "plan_stage", "message": "分析目的と指標定義を照合中です。"})
+        planning_options = {
+            "current_plan": current_plan,
+            "instruction": revision_instruction,
+        }
+        if initial_panel_count is not None:
+            planning_options["initial_panel_count"] = initial_panel_count
         plan, usage = planner.propose_dashboard(
             client,
             model,
@@ -93,8 +100,7 @@ def plan_dashboard(
             period,
             analysis_contract_context.planner_context(contract),
             answers,
-            current_plan=current_plan,
-            instruction=revision_instruction,
+            **planning_options,
         )
         panels = plan.get("panels", [])
         result_policy = (
