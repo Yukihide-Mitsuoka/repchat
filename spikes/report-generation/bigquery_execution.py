@@ -16,6 +16,15 @@ class DryRunInspection:
     estimated_bytes_processed: int
 
 
+@dataclass(frozen=True)
+class QueryExecution:
+    """Completed BigQuery result and measured processing metadata."""
+
+    rows: tuple[tuple[object, ...], ...]
+    columns: tuple[str, ...]
+    bytes_processed: int
+
+
 def _dry_run_metadata_error(
     job,
     policy: AnalysisExecutionPolicy,
@@ -118,7 +127,7 @@ def inspect_bq_schema(
     return list(inspection.schema), None
 
 
-def exec_bq(
+def execute_bq(
     bq,
     sql: str,
     max_results: int | None = None,
@@ -154,7 +163,18 @@ def exec_bq(
         it = job.result(timeout=180, max_results=max_results)
         # Column names come off this same job. Re-querying just to read the
         # schema would triple the scan cost of every section.
-        return ([tuple(r.values()) for r in it], [f.name for f in it.schema]), None
+        bytes_processed = getattr(job, "total_bytes_processed", None)
+        if (
+            isinstance(bytes_processed, bool)
+            or not isinstance(bytes_processed, int)
+            or bytes_processed < 0
+        ):
+            return None, "bq execution rejected: bytes processed were not returned"
+        return QueryExecution(
+            tuple(tuple(row.values()) for row in it),
+            tuple(field.name for field in it.schema),
+            bytes_processed,
+        ), None
     except Exception as e:  # noqa: BLE001 — the message is the diagnostic
         # Take the reason out of the exception rather than truncating its front:
         # a BadRequest stringifies as a long API URL first, so a head-clipped
@@ -166,7 +186,34 @@ def exec_bq(
             why = errs[0].get("message", "")
         if not why:
             why = getattr(e, "message", "") or str(e)
+        if re.search(
+            r"(?:exceeded limit for bytes billed|maximum.*bytes.*billed|bytes billed.*limit)",
+            why,
+            re.I,
+        ):
+            return None, "bq execution rejected: scan limit exceeded"
         return None, f"bq error: {type(e).__name__}: {why[:220]}"
+
+
+def exec_bq(
+    bq,
+    sql: str,
+    max_results: int | None = None,
+    cancel_event=None,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+):
+    """Execute a query and return the legacy rows-and-columns payload."""
+    execution, error = execute_bq(
+        bq,
+        sql,
+        max_results=max_results,
+        cancel_event=cancel_event,
+        policy=policy,
+    )
+    if error or execution is None:
+        return None, error
+    return (list(execution.rows), list(execution.columns)), None
 
 
 def validate_sql(
