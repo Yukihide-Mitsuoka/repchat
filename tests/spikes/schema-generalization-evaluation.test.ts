@@ -15,7 +15,7 @@ const FINGERPRINTS = {
 
 function evidenceBundle() {
   return {
-    version: 2,
+    version: 3,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const scopeFingerprint = String(schemaIndex + 4).repeat(64);
@@ -250,6 +250,55 @@ test('a recorded SQL generation failure remains in rates and stage counts', () =
   );
 });
 
+test('a scope discovery failure remains in rates without invented runtime fingerprints', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'scope_discovery';
+  failedRun.failure_code = 'metadata_request_failed';
+  failedRun.runtime_input.scope_snapshot_fingerprint = null as unknown as string;
+  failedRun.runtime_input.analysis_contract_fingerprint = null as unknown as string;
+  failedRun.generated_sql = '';
+  failedRun.sql_execution_succeeded = false;
+  failedRun.actual_rows = [];
+  failedRun.render_succeeded = false;
+  failedRun.bytes_processed = 25;
+  failedRun.cost_jpy = 0.2;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.result_match_rate, 0.833333);
+  assert.deepEqual(report.schemas[0].failure_stage_counts, { scope_discovery: 1 });
+
+  failedRun.runtime_input.scope_snapshot_fingerprint =
+    bundle.schemas[0]!.scope_snapshot_fingerprint;
+  const invalid = evaluate(bundle);
+  assert.equal(invalid.status, 2);
+  assert.match(invalid.stderr, /failure stage and available fingerprints/);
+});
+
+test('an analysis contract generation failure keeps only its observed scope fingerprint', () => {
+  const bundle = evidenceBundle();
+  const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  failedRun.failure_stage = 'analysis_contract_generation';
+  failedRun.failure_code = 'contract_response_invalid';
+  failedRun.runtime_input.analysis_contract_fingerprint = null as unknown as string;
+  failedRun.generated_sql = '';
+  failedRun.sql_execution_succeeded = false;
+  failedRun.actual_rows = [];
+  failedRun.render_succeeded = false;
+  failedRun.bytes_processed = 25;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(report.schemas[0].failure_stage_counts, {
+    analysis_contract_generation: 1,
+  });
+});
+
 test('failure codes reject raw provider messages', () => {
   const bundle = evidenceBundle();
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
@@ -338,12 +387,12 @@ test('a semantic error fails evaluation even when result rows match', () => {
 
 test('unsupported evidence versions are rejected before evaluation', () => {
   const bundle = evidenceBundle();
-  bundle.version = 1;
+  bundle.version = 2;
 
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 2/);
+  assert.match(result.stderr, /evidence version must be 3/);
   assert.equal(result.stdout, '');
 });
 

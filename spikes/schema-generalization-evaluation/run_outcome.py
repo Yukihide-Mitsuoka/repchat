@@ -7,7 +7,15 @@ from typing import Any
 
 
 NO_FAILURE = "none"
+SCOPE_DISCOVERY_FAILURE = "scope_discovery"
+ANALYSIS_CONTRACT_GENERATION_FAILURE = "analysis_contract_generation"
+PREFLIGHT_FAILURE_STAGES = frozenset({
+    SCOPE_DISCOVERY_FAILURE,
+    ANALYSIS_CONTRACT_GENERATION_FAILURE,
+})
 FAILURE_STAGES = (
+    SCOPE_DISCOVERY_FAILURE,
+    ANALYSIS_CONTRACT_GENERATION_FAILURE,
     "planning",
     "sql_generation",
     "sql_validation",
@@ -45,6 +53,8 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
         valid = code == "" and bool(sql.strip()) and executed and rendered
     elif not code or rendered:
         valid = False
+    elif stage in PREFLIGHT_FAILURE_STAGES:
+        valid = not sql and not executed and not rows
     elif stage in {"planning", "sql_generation"}:
         valid = not sql and not executed and not rows and bytes_processed == 0
     elif stage in {"sql_validation", "dry_run"}:

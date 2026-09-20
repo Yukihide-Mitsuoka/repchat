@@ -16,13 +16,14 @@ from analysis_contract_artifact import validate_analysis_contracts
 from evaluation_plan import validate_evaluation_plan
 from evaluate import EvaluationEvidenceError, evaluate_bundle
 from pipeline_artifacts import fingerprint_pipeline_artifacts
+from recording_artifact import validate_recordings
+from run_outcome import PREFLIGHT_FAILURE_STAGES
 
 
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
 FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
 FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
 RECORDINGS_KEYS = {"version", "evaluation_plan_sha256", "runs"}
-RECORDED_RUN_KEYS = {"schema_id", "case_id", "run"}
 SCOPE_SNAPSHOTS_KEYS = {"version", "snapshots"}
 SCOPE_SNAPSHOT_KEYS = {"schema_id", "content_json", "retrieved_at"}
 REQUIRED_CAPABILITIES = frozenset({
@@ -55,7 +56,7 @@ def _assemble_fixture(
     fixture: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[tuple[Any, Any], dict[str, Any]]]:
     bundle = {
-        "version": 2,
+        "version": 3,
         "thresholds": copy.deepcopy(fixture["thresholds"]),
         "schemas": [],
     }
@@ -114,58 +115,30 @@ def _assemble_fixture(
 
 
 def _attach_recordings(
-    recordings: dict[str, Any],
+    recorded_runs: list[tuple[tuple[Any, Any], dict[str, Any]]],
     cases: dict[tuple[Any, Any], dict[str, Any]],
     contract_fingerprints: dict[tuple[Any, Any], str],
-    pipeline_fingerprints: dict[str, str],
-    planned_runs: set[tuple[str, str, str]],
 ) -> None:
-    observed_runs: set[tuple[str, str, str]] = set()
-    for recorded in recordings["runs"]:
-        recorded = _require_fields(
-            recorded,
-            RECORDED_RUN_KEYS,
-            "recorded entries may contain only schema ID, case ID, and run",
-        )
-        key = (recorded["schema_id"], recorded["case_id"])
-        if key not in cases:
-            raise EvaluationEvidenceError(
-                "recorded run does not match a fixture schema and case"
-            )
-        run = recorded["run"]
-        run_id = run.get("run_id") if isinstance(run, dict) else None
-        run_identity = (recorded["schema_id"], recorded["case_id"], run_id)
-        if run_identity not in planned_runs or run_identity in observed_runs:
-            raise EvaluationEvidenceError(
-                "recorded runs must match planned runs exactly"
-            )
-        observed_runs.add(run_identity)
-        if not isinstance(run, dict) or any(
-            run.get(name) != fingerprint
-            for name, fingerprint in pipeline_fingerprints.items()
-        ):
-            raise EvaluationEvidenceError(
-                "recorded runs must bind to the exact runtime, prompt, and configuration artifacts"
-            )
-        runtime_input = run.get("runtime_input") if isinstance(run, dict) else None
+    for key, run in recorded_runs:
+        runtime_input = run.get("runtime_input")
         if (
-            not isinstance(runtime_input, dict)
-            or runtime_input.get("analysis_contract_fingerprint")
-            != contract_fingerprints[key]
+            run["failure_stage"] not in PREFLIGHT_FAILURE_STAGES
+            and (
+                not isinstance(runtime_input, dict)
+                or runtime_input.get("analysis_contract_fingerprint")
+                != contract_fingerprints[key]
+            )
         ):
             raise EvaluationEvidenceError(
                 "analysis contract content must match recorded run fingerprint"
             )
         cases[key]["runs"].append(copy.deepcopy(run))
 
-    if any(not assembled_case["runs"] for assembled_case in cases.values()):
-        raise EvaluationEvidenceError("each fixture case must have recorded runs")
-    if observed_runs != planned_runs:
-        raise EvaluationEvidenceError("recorded runs must match planned runs exactly")
-
 
 def _validate_scope_snapshots(
-    scope_snapshots: dict[str, Any], bundle: dict[str, Any]
+    scope_snapshots: dict[str, Any],
+    bundle: dict[str, Any],
+    required_schema_ids: set[Any],
 ) -> dict[Any, dict[str, str]]:
     _require_fields(
         scope_snapshots,
@@ -181,6 +154,7 @@ def _validate_scope_snapshots(
     expected = {
         schema["schema_id"]: schema["scope_snapshot_fingerprint"]
         for schema in bundle["schemas"]
+        if schema["schema_id"] in required_schema_ids
     }
     observed: dict[Any, dict[str, str]] = {}
     for snapshot in snapshots:
@@ -248,7 +222,7 @@ def _validate_scope_snapshots(
             "retrieved_at": retrieved_at,
         }
 
-    if set(observed) != set(expected) or len(observed) != len(bundle["schemas"]):
+    if set(observed) != set(expected):
         raise EvaluationEvidenceError(
             "scope snapshots must match fixture schema IDs exactly"
         )
@@ -285,8 +259,8 @@ def assemble_bundle(
     )
     if type(fixture["version"]) is not int or fixture["version"] != 2:
         raise EvaluationEvidenceError("fixture version must be 2")
-    if type(recordings["version"]) is not int or recordings["version"] != 4:
-        raise EvaluationEvidenceError("recordings version must be 4")
+    if type(recordings["version"]) is not int or recordings["version"] != 5:
+        raise EvaluationEvidenceError("recordings version must be 5")
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
     if not isinstance(recordings["runs"], list):
@@ -310,18 +284,26 @@ def assemble_bundle(
         reviewed_fixture_sha256,
         pipeline_fingerprints,
     )
-    scope_observations = _validate_scope_snapshots(scope_snapshots, bundle)
+    recorded_runs, required_scope_schemas, required_contract_cases = validate_recordings(
+        recordings,
+        set(cases),
+        pipeline_fingerprints,
+        planned_runs,
+    )
+    scope_observations = _validate_scope_snapshots(
+        scope_snapshots,
+        bundle,
+        required_scope_schemas,
+    )
     contract_fingerprints = validate_analysis_contracts(
         analysis_contracts,
-        set(cases),
+        required_contract_cases,
         scope_observations,
     )
     _attach_recordings(
-        recordings,
+        recorded_runs,
         cases,
         contract_fingerprints,
-        pipeline_fingerprints,
-        planned_runs,
     )
     evaluate_bundle(bundle)
     return bundle

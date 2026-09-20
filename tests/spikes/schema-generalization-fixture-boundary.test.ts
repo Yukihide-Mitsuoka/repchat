@@ -88,7 +88,7 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 function evidenceBundle() {
   const fingerprints = pipelineFingerprints();
   return {
-    version: 2,
+    version: 3,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const encodedScope = canonicalJson(scopeContent(schemaId));
@@ -169,7 +169,7 @@ function separatedEvidence() {
     runs: plannedRuns,
   };
   const recordings = {
-    version: 4,
+    version: 5,
     evaluation_plan_sha256: sha256(JSON.stringify(evaluationPlan)),
     runs: bundle.schemas.flatMap((schema) =>
       schema.cases.flatMap((evaluationCase) =>
@@ -342,7 +342,7 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings, scopeSnapshots);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings version must be 4/);
+  assert.match(result.stderr, /recordings version must be 5/);
   assert.equal(result.stdout, '');
 });
 
@@ -428,6 +428,74 @@ test('every fixture schema must have exactly one scope snapshot', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /scope snapshots must match fixture schema IDs exactly/);
   assert.equal(result.stdout, '');
+});
+
+test('planned scope discovery failures assemble without invented snapshot or contract artifacts', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
+    recorded.run.failure_stage = 'scope_discovery';
+    recorded.run.failure_code = 'metadata_request_failed';
+    recorded.run.runtime_input.scope_snapshot_fingerprint = null as unknown as string;
+    recorded.run.runtime_input.analysis_contract_fingerprint = null as unknown as string;
+    recorded.run.generated_sql = '';
+    recorded.run.sql_execution_succeeded = false;
+    recorded.run.actual_rows = [];
+    recorded.run.render_succeeded = false;
+  }
+  scopeSnapshots.snapshots = scopeSnapshots.snapshots.filter(
+    (snapshot) => snapshot.schema_id !== 'scope-a',
+  );
+  analysisContracts.contracts = analysisContracts.contracts.filter(
+    (contract) => contract.schema_id !== 'scope-a',
+  );
+
+  const { result, bundle } = assemble(
+    fixture,
+    recordings,
+    scopeSnapshots,
+    false,
+    analysisContracts,
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(
+    bundle.schemas[0].cases[0].runs.map((run: { failure_stage: string }) => run.failure_stage),
+    ['scope_discovery', 'scope_discovery', 'scope_discovery'],
+  );
+});
+
+test('planned contract generation failures require a snapshot but no contract artifact', () => {
+  const { fixture, recordings, scopeSnapshots, analysisContracts } = separatedEvidence();
+  for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
+    recorded.run.failure_stage = 'analysis_contract_generation';
+    recorded.run.failure_code = 'contract_response_invalid';
+    recorded.run.runtime_input.analysis_contract_fingerprint = null as unknown as string;
+    recorded.run.generated_sql = '';
+    recorded.run.sql_execution_succeeded = false;
+    recorded.run.actual_rows = [];
+    recorded.run.render_succeeded = false;
+  }
+  analysisContracts.contracts = analysisContracts.contracts.filter(
+    (contract) => contract.schema_id !== 'scope-a',
+  );
+
+  const { result, bundle } = assemble(
+    fixture,
+    recordings,
+    scopeSnapshots,
+    false,
+    analysisContracts,
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(
+    bundle.schemas[0].cases[0].runs.map((run: { failure_stage: string }) => run.failure_stage),
+    [
+      'analysis_contract_generation',
+      'analysis_contract_generation',
+      'analysis_contract_generation',
+    ],
+  );
 });
 
 test('scope snapshot content must preserve the canonical runtime representation', () => {
