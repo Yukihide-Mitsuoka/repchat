@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from analysis_contract_artifact import validate_analysis_contracts
+from evaluation_plan import validate_evaluation_plan
 from evaluate import EvaluationEvidenceError, evaluate_bundle
 from pipeline_artifacts import fingerprint_pipeline_artifacts
 
@@ -20,7 +21,7 @@ from pipeline_artifacts import fingerprint_pipeline_artifacts
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
 FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
 FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
-RECORDINGS_KEYS = {"version", "reviewed_fixture_sha256", "runs"}
+RECORDINGS_KEYS = {"version", "evaluation_plan_sha256", "runs"}
 RECORDED_RUN_KEYS = {"schema_id", "case_id", "run"}
 SCOPE_SNAPSHOTS_KEYS = {"version", "snapshots"}
 SCOPE_SNAPSHOT_KEYS = {"schema_id", "content_json", "retrieved_at"}
@@ -117,7 +118,9 @@ def _attach_recordings(
     cases: dict[tuple[Any, Any], dict[str, Any]],
     contract_fingerprints: dict[tuple[Any, Any], str],
     pipeline_fingerprints: dict[str, str],
+    planned_runs: set[tuple[str, str, str]],
 ) -> None:
+    observed_runs: set[tuple[str, str, str]] = set()
     for recorded in recordings["runs"]:
         recorded = _require_fields(
             recorded,
@@ -130,6 +133,13 @@ def _attach_recordings(
                 "recorded run does not match a fixture schema and case"
             )
         run = recorded["run"]
+        run_id = run.get("run_id") if isinstance(run, dict) else None
+        run_identity = (recorded["schema_id"], recorded["case_id"], run_id)
+        if run_identity not in planned_runs or run_identity in observed_runs:
+            raise EvaluationEvidenceError(
+                "recorded runs must match planned runs exactly"
+            )
+        observed_runs.add(run_identity)
         if not isinstance(run, dict) or any(
             run.get(name) != fingerprint
             for name, fingerprint in pipeline_fingerprints.items()
@@ -150,6 +160,8 @@ def _attach_recordings(
 
     if any(not assembled_case["runs"] for assembled_case in cases.values()):
         raise EvaluationEvidenceError("each fixture case must have recorded runs")
+    if observed_runs != planned_runs:
+        raise EvaluationEvidenceError("recorded runs must match planned runs exactly")
 
 
 def _validate_scope_snapshots(
@@ -252,10 +264,12 @@ def _validate_scope_snapshots(
 
 def assemble_bundle(
     fixture: dict[str, Any],
+    evaluation_plan: dict[str, Any],
     recordings: dict[str, Any],
     scope_snapshots: dict[str, Any],
     analysis_contracts: dict[str, Any],
     reviewed_fixture_sha256: str,
+    evaluation_plan_sha256: str,
     pipeline_fingerprints: dict[str, str],
 ) -> dict[str, Any]:
     """Join run records to reviewed cases without exposing references to runtime input."""
@@ -267,31 +281,35 @@ def assemble_bundle(
     _require_fields(
         recordings,
         RECORDINGS_KEYS,
-        "recordings must contain only version, reviewed fixture fingerprint, and runs",
+        "recordings must contain only version, evaluation plan fingerprint, and runs",
     )
     if type(fixture["version"]) is not int or fixture["version"] != 2:
         raise EvaluationEvidenceError("fixture version must be 2")
-    if type(recordings["version"]) is not int or recordings["version"] != 2:
-        raise EvaluationEvidenceError("recordings version must be 2")
+    if type(recordings["version"]) is not int or recordings["version"] != 3:
+        raise EvaluationEvidenceError("recordings version must be 3")
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
     if not isinstance(recordings["runs"], list):
         raise EvaluationEvidenceError("recordings runs must be a list")
 
     bundle, cases = _assemble_fixture(fixture)
-    recorded_fixture_sha256 = recordings["reviewed_fixture_sha256"]
+    recorded_plan_sha256 = recordings["evaluation_plan_sha256"]
     if not (
-        isinstance(recorded_fixture_sha256, str)
-        and len(recorded_fixture_sha256) == 64
-        and all(character in "0123456789abcdef" for character in recorded_fixture_sha256)
+        isinstance(recorded_plan_sha256, str)
+        and len(recorded_plan_sha256) == 64
+        and all(character in "0123456789abcdef" for character in recorded_plan_sha256)
     ):
         raise EvaluationEvidenceError(
-            "reviewed fixture fingerprint must be a lowercase SHA-256 value"
+            "evaluation plan fingerprint must be a lowercase SHA-256 value"
         )
-    if recorded_fixture_sha256 != reviewed_fixture_sha256:
-        raise EvaluationEvidenceError(
-            "recordings must bind to the exact reviewed fixture"
-        )
+    if recorded_plan_sha256 != evaluation_plan_sha256:
+        raise EvaluationEvidenceError("recordings must bind to the exact evaluation plan")
+    planned_runs = validate_evaluation_plan(
+        evaluation_plan,
+        set(cases),
+        reviewed_fixture_sha256,
+        pipeline_fingerprints,
+    )
     scope_observations = _validate_scope_snapshots(scope_snapshots, bundle)
     contract_fingerprints = validate_analysis_contracts(
         analysis_contracts,
@@ -303,15 +321,17 @@ def assemble_bundle(
         cases,
         contract_fingerprints,
         pipeline_fingerprints,
+        planned_runs,
     )
     evaluate_bundle(bundle)
     return bundle
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 9:
+    if len(argv) != 10:
         print(
-            "usage: assemble.py <reviewed-fixture.json> <recorded-runs.json> "
+            "usage: assemble.py <reviewed-fixture.json> <evaluation-plan.json> "
+            "<recorded-runs.json> "
             "<scope-snapshots.json> <analysis-contracts.json> "
             "<runtime-artifact> <prompt-artifact> <configuration-artifact> "
             "<evidence-output.json>",
@@ -321,28 +341,33 @@ def main(argv: list[str]) -> int:
     try:
         fixture_bytes = Path(argv[1]).read_bytes()
         fixture = json.loads(fixture_bytes.decode("utf-8"))
-        recordings = json.loads(Path(argv[2]).read_text(encoding="utf-8"))
-        scope_snapshots = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
-        analysis_contracts = json.loads(Path(argv[4]).read_text(encoding="utf-8"))
+        evaluation_plan_bytes = Path(argv[2]).read_bytes()
+        evaluation_plan = json.loads(evaluation_plan_bytes.decode("utf-8"))
+        recordings = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
+        scope_snapshots = json.loads(Path(argv[4]).read_text(encoding="utf-8"))
+        analysis_contracts = json.loads(Path(argv[5]).read_text(encoding="utf-8"))
         pipeline_paths = {
-            "runtime": Path(argv[5]),
-            "prompt": Path(argv[6]),
-            "configuration": Path(argv[7]),
+            "runtime": Path(argv[6]),
+            "prompt": Path(argv[7]),
+            "configuration": Path(argv[8]),
         }
         bundle = assemble_bundle(
             fixture,
+            evaluation_plan,
             recordings,
             scope_snapshots,
             analysis_contracts,
             hashlib.sha256(fixture_bytes).hexdigest(),
+            hashlib.sha256(evaluation_plan_bytes).hexdigest(),
             fingerprint_pipeline_artifacts(pipeline_paths),
         )
-        output = Path(argv[8])
+        output = Path(argv[9])
         if output.resolve() in {
             Path(argv[1]).resolve(),
             Path(argv[2]).resolve(),
             Path(argv[3]).resolve(),
             Path(argv[4]).resolve(),
+            Path(argv[5]).resolve(),
             *(path.resolve() for path in pipeline_paths.values()),
         }:
             raise EvaluationEvidenceError("evidence output must not overwrite an input")

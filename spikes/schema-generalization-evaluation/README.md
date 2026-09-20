@@ -27,18 +27,19 @@ runtime input、生成SQL、実行結果、描画成否、安全違反、処理b
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixture、version 2のruntime実行後のrun記録、version 1の
-scope snapshot artifact、version 1のanalysis contract artifact、実行に使用したruntime・prompt・configurationの
-3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
+`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 3のruntime実行後の
+run記録、version 1のscope snapshot artifact、version 1のanalysis contract artifact、実行に使用した
+runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
 capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
 既存の厳密なrun契約だけを許可し、参照SQLや期待結果の混入、未知のschema／case、記録のないfixture caseを拒否します。
 
-run記録の`reviewed_fixture_sha256`には、独立review完了後かつ最初のrun前に確定したfixture fileのSHA-256を記録します。
-assemblerはfixtureの正確なfile bytesを再計算し、fingerprintが異なる場合は結合を拒否します。これにより、別fixtureのrunとの
-取り違えと、実行結果確認後の参照SQL・期待結果・閾値・capability変更を検出します。このfingerprintはreviewerの本人性や
-review時刻を単独では証明しないため、独立review記録は引き続き別途必要です。fingerprintをruntime inputへ渡してはいけません。
+実行前評価計画は、fixture fileのSHA-256、3つのpipeline artifact fingerprint、実行予定のschema ID・case ID・run IDを
+固定します。run記録は評価計画fileの正確なbytesのSHA-256を持ちます。assemblerはfixture、pipeline artifact、計画、記録を
+相互照合し、全fixture caseに計画runがあること、計画と記録のrun IDが重複なく完全一致することを要求します。これにより、
+結果確認後の参照内容変更、pipeline差し替え、成功runだけの選別、未記録runを検出します。計画とfingerprintはruntime inputへ
+渡しません。fileだけでは作成時刻や作成者を証明しないため、独立review記録と実行前の保全手続きは引き続き別途必要です。
 
 scope snapshot artifactは、fixtureに含まれる全schemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
@@ -67,7 +68,8 @@ CI logやrepositoryへ保存しません。
 
 ```console
 python3 spikes/schema-generalization-evaluation/assemble.py \
-  /path/to/reviewed-fixture.json /path/to/recorded-runs.json \
+  /path/to/reviewed-fixture.json /path/to/evaluation-plan.json \
+  /path/to/recorded-runs.json \
   /path/to/scope-snapshots.json /path/to/analysis-contracts.json \
   /path/to/runtime.artifact /path/to/prompt.artifact \
   /path/to/configuration.artifact \
@@ -75,10 +77,10 @@ python3 spikes/schema-generalization-evaluation/assemble.py \
 python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.json
 ```
 
-run記録は次のtop-level契約を使います。`reviewed_fixture_sha256`はfile bytesの小文字SHA-256です。
+run記録は次のtop-level契約を使います。`evaluation_plan_sha256`は実行前評価計画file bytesの小文字SHA-256です。
 
 ```json
-{"version":2,"reviewed_fixture_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
+{"version":3,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な
@@ -87,6 +89,6 @@ assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scor
 ## 現在の制限
 
 公式の未知schema fixtureと実サービス結果はまだありません。テスト値はscorerの回帰確認用であり、製品能力の
-証拠ではありません。artifact照合は実行主体の本人性、署名、process-level attestationを証明しません。
+証拠ではありません。評価計画とartifact照合は作成時刻、実行主体の本人性、署名、process-level attestationを証明しません。
 独立review済みfixture、実値照合、同一runtimeでの実反復評価は未完了です。有料評価は対象と費用について
 オーナー承認を得た後だけ実行します。
