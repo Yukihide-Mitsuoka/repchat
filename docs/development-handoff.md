@@ -192,13 +192,17 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 2026-09-20にmerge済みです。
 日次shard統合後の最終snapshotとcontractを同じ結果として保持し、preflight失敗はraw例外を保存せず固定stage／codeで
 記録します。[PR #759](https://github.com/Yukihide-Mitsuoka/repchat/pull/759)で、review fixtureから参照SQL・期待結果・capabilityを除外し、
-認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装し、2026-09-20にmerge済みです。現在はmanifest全体を
-実行前に検証して全計画attemptを共通preflightへ渡し、失敗runをmanifestのpipeline fingerprintへ固定する境界を
-[PR #761](https://github.com/Yukihide-Mitsuoka/repchat/pull/761)で実装しています。
+認可scope・質問・計画runだけをruntimeへ渡すexecution manifestを実装し、2026-09-20にmerge済みです。
+[PR #761](https://github.com/Yukihide-Mitsuoka/repchat/pull/761)ではmanifest全体を実行前に検証して
+全計画attemptを共通preflightへ渡し、失敗runをmanifestのpipeline fingerprintへ固定する境界を実装し、
+2026-09-20にmerge済みです。現在は、十分な共通分析契約がある場合にも初回確認を最低1件要求していたplanner契約を修正し、
+対象固有の補足や手動意味定義なしで初回仕様を生成できるようにしています。確認が不可欠な場合だけ未回答fieldを最大3件返し、
+十分な場合は0件を許可します。
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
-次の最優先作業は、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
+この修正後の最優先作業は、成功したpreflightの共通分析契約を同じplannerへ接続し、計画失敗を安全なstage／codeで
+全attemptの分母へ残すことです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。

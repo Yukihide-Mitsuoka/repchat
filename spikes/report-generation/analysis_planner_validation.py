@@ -153,8 +153,8 @@ def normalize_plan_header(
                 ),
             }
         )
-    if len(clarifications) > 3 or (not answers and not clarifications):
-        raise PlannerError("初回の確認事項は1〜3件にしてください。")
+    if len(clarifications) > 3:
+        raise PlannerError("確認事項は最大3件にしてください。")
     normalized_objective = text(objective, "目的")
     objective_summary = text(raw.get("objective_summary"), "目的要約")
     audience = text(raw.get("audience"), "読者")

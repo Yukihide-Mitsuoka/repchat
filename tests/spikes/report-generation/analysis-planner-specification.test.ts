@@ -30,7 +30,7 @@ base={
  "audience":"月次マーケティング会議",
  "comparison":"月内の日次推移とファネル段階",
  "hypotheses":["商品閲覧からカート追加への減少が大きい"],
- "clarifications":[{"field":"audience","question":"主な読者は誰ですか","recommended_answer":"マーケティング責任者"}],
+ "clarifications":[],
  "panels":[panel(index) for index in range(1,7)],
 }
 class Models:
@@ -46,6 +46,7 @@ for changed in [
  {**base,"panels":[panel(index) for index in range(1,22)]},
  {**base,"panels":[*base["panels"][:5],base["panels"][0]]},
  {**base,"panels":[*base["panels"][:5],{**panel(6),"execution_prompt":"SELECT * FROM events"}]},
+ {**base,"clarifications":[{"field":"audience","question":f"質問{index}","recommended_answer":"責任者"} for index in range(4)]},
 ]:
  try:p.normalize_dashboard_plan(changed,first["objective"],period,{})
  except p.PlannerError as error:errors.append(str(error))
@@ -63,7 +64,7 @@ print(json.dumps({
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     first_status: 'proposed',
-    question_count: 1,
+    question_count: 0,
     revision_stable: true,
     confirmed_status: 'confirmed',
     revision_changed: true,
@@ -75,6 +76,7 @@ print(json.dumps({
       '分析計画のパネルは1〜20件にしてください。',
       '分析計画に重複した実行仕様があります。',
       '分析計画の実行仕様にはSQLを書けません。',
+      '確認事項は最大3件にしてください。',
     ],
   });
 });
@@ -89,7 +91,7 @@ spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)}
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 request=p.dashboard_planning_request("目的",{"label":"2021年1月"},"指標定義",{})
 panels=p._dashboard_response_schema({})["properties"]["panels"]
-print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"questions":"確認を1〜3件" in request,"flow_rule":"flow_sankey" in request and "循環しない" in request,"no_staged_rule":"段階付きsankey" not in request},ensure_ascii=False))`,
+print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標定義" in request,"new_specs":"分析仕様そのものを新規" in request,"fixed_ids":any(panel_id in request for panel_id in ["R4","R11","R12","R9","R16","R17"]),"profile_not_in_request":"データソースprofile" not in request and "ga4" not in request.lower(),"count":[panels["minItems"],panels["maxItems"]],"optional_questions":"確認が分析仕様に不可欠な場合だけ" in request and "最大3件" in request,"empty_when_sufficient":"十分ならclarificationsを空にする" in request,"flow_rule":"flow_sankey" in request and "循環しない" in request,"no_staged_rule":"段階付きsankey" not in request},ensure_ascii=False))`,
     ],
     { cwd: ROOT, encoding: 'utf8', env: PYTHON_ENV },
   );
@@ -101,7 +103,8 @@ print(json.dumps({"fixed_context":"demo-org-ec-v1" in request,"metrics":"指標�
     fixed_ids: false,
     profile_not_in_request: true,
     count: [6, 6],
-    questions: true,
+    optional_questions: true,
+    empty_when_sufficient: true,
     flow_rule: true,
     no_staged_rule: true,
   });
