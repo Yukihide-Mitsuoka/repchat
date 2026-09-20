@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v2.2.0) (2026-09-20)
+
+
+### Features
+
+* **evaluation:** BigQuery実行を評価経路へ接続する ([#772](https://github.com/Yukihide-Mitsuoka/repchat/issues/772)) ([dbfee1d](https://github.com/Yukihide-Mitsuoka/repchat/commit/dbfee1de9213e20bcd62bce0f3acfa6159438bb5))
+
 ## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
 
 
