@@ -206,7 +206,8 @@ planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`
 `initial_panel_count=1`を共通plannerへ渡します。通常のdashboardは管理者が設定した従来件数を維持します。
 評価plannerが確認質問、0件または複数パネルを返した場合は、恣意的な回答やパネル選択を行わず
 `planning`／`planning_failed`へ閉じ、2026-09-20にmerge済みです。
-現在は`manifest_sql_generation.py`で、成功した単一panelを既存の`build_planned_analysis_section`と
+現在は[PR #768](https://github.com/Yukihide-Mitsuoka/repchat/pull/768)の`manifest_sql_generation.py`で、
+成功した単一panelを既存の`build_planned_analysis_section`と
 `sql_generation.generate`へ渡します。SQL generatorには同じ分析契約から導出した期間とSQL規則だけを渡し、
 生成拒否、SQLと未定義語の同時返却、不正形式、例外はraw detailを残さず固定
 `sql_generation`／`sql_generation_failed`へ変換します。前段失敗は元のstage／codeを保持し、このstageでは
