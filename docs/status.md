@@ -54,7 +54,8 @@ SELECT・scope・field・period・partition・可視化出力契約validatorへ�
 出力schema、推定処理bytesと契約上限を照合するstageを実装し、merge済みである。
 [PR #772](https://github.com/Yukihide-Mitsuoka/repchat/pull/772)では、dry run成功attemptだけを
 共通BigQuery実行へ渡し、契約のbytes上限と行上限を維持して、行・列・実`total_bytes_processed`を保持する。
-失敗は固定`execution`／`execution_failed`へ閉じ、merge済みである。現在の変更では、製品側と評価側を
+失敗は固定`execution`／`execution_failed`へ閉じ、merge済みである。
+[PR #774](https://github.com/Yukihide-Mitsuoka/repchat/pull/774)では、製品側と評価側を
 同じ共通結果検証へ接続し、列、行数、可視化shapeを照合して、成功結果だけをJSON-safe化する。
 検証失敗は実行済みとして処理bytesを保持する一方、生の未検証行をrun記録へ残さず、固定
 `result_validation`／`result_validation_failed`と`semantic_error`へ閉じる。
