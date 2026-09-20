@@ -83,6 +83,11 @@ SELECT-only、単一statement、認可table・field、nested／repeated path、�
 dry runは結果行を取得しないため、run記録の`bytes_processed`は0です。このstageはBigQuery query execution、
 結果検証、描画を行いません。
 
+`manifest_execution.py`はdry runまでの順序とidentityを維持し、成功attemptだけを既存の共通
+`execute_bq`へ渡します。契約の`maximum_bytes_billed`とsection／契約の小さい方の行上限＋1件を使い、
+成功時は行、列、実`total_bytes_processed`を保持します。前段失敗ではBigQueryへ接触せず、実行失敗はraw provider診断を
+保存しない固定`execution`／`execution_failed`へ変換します。結果行数・列・値の意味検証とJSON変換、描画は後続stageです。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -106,8 +111,8 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery dry runまで反復します。
-query execution・結果検証・描画はまだ実行しません。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery query executionまで反復します。
+結果検証・描画はまだ実行しません。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。

@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 from bigquery_execution import (
     DryRunInspection,
+    QueryExecution,
     exec_bq,
+    execute_bq,
     inspect_bq_dry_run,
     inspect_bq_schema,
     validate_sql,
