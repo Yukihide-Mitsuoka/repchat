@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-20
+updated: 2026-09-21
 ---
 
 # 未知schema反復評価の証拠harness
@@ -76,6 +76,13 @@ SELECT-only、単一statement、認可table・field、nested／repeated path、�
 `sql_validation`／`sql_validation_failed`へ変換します。生成SQLはreview用に保持し、失敗時の処理bytesは0に限定します。
 このstageはdry runまたはBigQuery実行を行いません。
 
+`manifest_dry_run.py`はlocal SQL検証までの順序とidentityを維持し、成功attemptだけを既存の共通
+`inspect_bq_dry_run`へ渡します。BigQueryが解析したstatement type、参照table、出力schema、推定処理bytesを取得し、
+分析契約のtable allowlist、`maximum_bytes_billed`、結果列、可視化shapeと照合します。失敗はraw provider診断を保存せず、
+固定`dry_run`／`dry_run_failed`と安全性booleanへ変換します。推定bytesは観測値としてattemptへ保持しますが、
+dry runは結果行を取得しないため、run記録の`bytes_processed`は0です。このstageはBigQuery query execution、
+結果検証、描画を行いません。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
@@ -99,7 +106,8 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのlocal SQL検証まで反復します。dry run・実行・結果検証・描画はまだ実行しません。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery dry runまで反復します。
+query execution・結果検証・描画はまだ実行しません。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。

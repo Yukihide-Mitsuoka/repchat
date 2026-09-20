@@ -2,9 +2,18 @@
 
 import re
 import time
+from dataclasses import dataclass
 
 from analysis_contract_context import AnalysisExecutionPolicy
 from contract_sql_validation import contract_sql_diagnostic
+
+
+@dataclass(frozen=True)
+class DryRunInspection:
+    """BigQuery-parsed dry-run evidence without result rows."""
+
+    schema: tuple[tuple[str, ...], ...]
+    estimated_bytes_processed: int
 
 
 def _dry_run_metadata_error(
@@ -35,13 +44,13 @@ def _dry_run_metadata_error(
     return ""
 
 
-def inspect_bq_schema(
+def inspect_bq_dry_run(
     bq,
     sql: str,
     *,
     policy: AnalysisExecutionPolicy | None = None,
 ):
-    """Dry-run a validated query and return its output schema without scanning rows."""
+    """Dry-run a validated query and return parsed schema and scan estimate."""
     s, validation_error = validate_sql(sql, policy=policy)
     if validation_error:
         return None, validation_error
@@ -58,17 +67,28 @@ def inspect_bq_schema(
                 use_query_cache=False,
             ),
         )
-        metadata_error = _dry_run_metadata_error(job, policy)
-        if metadata_error:
-            return None, metadata_error
-        return [
+        schema = tuple(
             (
                 (field.name, field.field_type, field.mode)
                 if isinstance(getattr(field, "mode", None), str)
                 else (field.name, field.field_type)
             )
             for field in job.schema
-        ], None
+        )
+        estimated_bytes = getattr(job, "total_bytes_processed", None)
+        if (
+            isinstance(estimated_bytes, bool)
+            or not isinstance(estimated_bytes, int)
+            or estimated_bytes < 0
+        ):
+            return None, "bq dry-run rejected: bytes processed were not returned"
+        inspection = DryRunInspection(schema, estimated_bytes)
+        metadata_error = _dry_run_metadata_error(job, policy)
+        if metadata_error:
+            return inspection, metadata_error
+        if estimated_bytes > policy.maximum_bytes_billed:
+            return inspection, "bq dry-run rejected: scan limit exceeded"
+        return inspection, None
     except Exception as error:  # noqa: BLE001 — dry-run diagnostics are user-actionable
         why = ""
         errors = getattr(error, "errors", None)
@@ -76,7 +96,26 @@ def inspect_bq_schema(
             why = errors[0].get("message", "")
         if not why:
             why = getattr(error, "message", "") or str(error)
+        if re.search(
+            r"(?:exceeded limit for bytes billed|maximum.*bytes.*billed|bytes billed.*limit)",
+            why,
+            re.I,
+        ):
+            return None, "bq dry-run rejected: scan limit exceeded"
         return None, f"bq dry-run error: {type(error).__name__}: {why[:220]}"
+
+
+def inspect_bq_schema(
+    bq,
+    sql: str,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+):
+    """Dry-run a validated query and return only its output schema."""
+    inspection, error = inspect_bq_dry_run(bq, sql, policy=policy)
+    if error or inspection is None:
+        return None, error
+    return list(inspection.schema), None
 
 
 def exec_bq(

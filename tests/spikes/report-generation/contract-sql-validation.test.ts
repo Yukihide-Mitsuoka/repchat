@@ -180,6 +180,7 @@ class Job:
  statement_type="SELECT"
  referenced_tables=[types.SimpleNamespace(project="alpha",dataset_id="dataset",table_id="records")]
  schema=[types.SimpleNamespace(name="record_id",field_type="STRING",mode="REQUIRED")]
+ total_bytes_processed=12
  def result(self,**_kwargs):return Rows([{"record_id":"value"}])
 class Client:
  def __init__(self):self.configs=[]

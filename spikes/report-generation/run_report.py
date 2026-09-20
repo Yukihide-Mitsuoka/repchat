@@ -7,7 +7,9 @@ live consultation flow and requires an AI-authored specification before SQL.
 import sys
 from pathlib import Path
 from bigquery_execution import (
+    DryRunInspection,
     exec_bq,
+    inspect_bq_dry_run,
     inspect_bq_schema,
     validate_sql,
 )
