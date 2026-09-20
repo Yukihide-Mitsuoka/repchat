@@ -121,8 +121,14 @@ test('dashboard panel counts are administrator policy rather than analysis hardc
 spec=importlib.util.spec_from_file_location("planner",${JSON.stringify(PLANNER)})
 p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 initial=p._dashboard_response_schema({})["properties"]["panels"]
+single=p._dashboard_response_schema({},initial_panel_count=1)["properties"]["panels"]
 revision=p._dashboard_response_schema({},revising=True)["properties"]["panels"]
-print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"initial_schema":[initial["minItems"],initial["maxItems"]],"revision_schema":[revision.get("minItems"),revision.get("maxItems")]},ensure_ascii=False))`,
+single_request=p.dashboard_planning_request("目的",None,"契約",{},initial_panel_count=1)
+errors=[]
+for value in (0,True,16):
+ try:p._dashboard_response_schema({},initial_panel_count=value)
+ except p.PlannerError as error:errors.append(str(error))
+print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"initial_schema":[initial["minItems"],initial["maxItems"]],"single_schema":[single["minItems"],single["maxItems"]],"single_prompt":"パネルを1件提案する" in single_request,"revision_schema":[revision.get("minItems"),revision.get("maxItems")],"override_errors":errors},ensure_ascii=False))`,
     ],
     {
       cwd: ROOT,
@@ -139,7 +145,14 @@ print(json.dumps({"initial":p.INITIAL_PANEL_COUNT,"maximum":p.MAX_PANEL_COUNT,"i
     initial: 5,
     maximum: 15,
     initial_schema: [5, 5],
+    single_schema: [1, 1],
+    single_prompt: true,
     revision_schema: [null, null],
+    override_errors: [
+      'initial_panel_countは1以上の整数にしてください。',
+      'initial_panel_countは1以上の整数にしてください。',
+      'initial_panel_countは最大パネル数15以下にしてください。',
+    ],
   });
   for (const [initial, maximum, error] of [
     ['0', '20', 'ANALYSIS_INITIAL_PANEL_COUNT must be a positive integer'],

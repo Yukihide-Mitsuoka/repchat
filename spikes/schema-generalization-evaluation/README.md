@@ -56,7 +56,10 @@ pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実
 `analysis_workflows.plan_dashboard`へ渡します。plannerへ渡すruntime入力はmanifestの質問とpreflightが生成した
 共通分析契約で、初回回答・現在案・revision指示は空です。成功時は正確な契約fingerprintへbindされた計画とplanner費用を
 保持します。preflight失敗時はplannerを呼ばず、planningの例外、plan event欠落、契約不一致、費用形式不正はraw detailを
-保存せず固定`planning`／`planning_failed`へ変換します。planning失敗はBigQuery処理bytesを0に限定してrun記録へ残します。
+保存せず固定`planning`／`planning_failed`へ変換します。評価artifactはcaseごとに参照SQLと期待結果を1件ずつ持つため、
+評価呼出しだけ共通plannerへ1パネルを要求します。通常のdashboardの設定件数は変更しません。確認質問、0件または
+複数パネルが返った場合は自動回答や恣意的なパネル選択を行わずplanning失敗へ閉じます。planning失敗はBigQuery処理bytesを
+0に限定してrun記録へ残します。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
@@ -81,8 +84,9 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動でplanningまで反復します。SQL生成・検証・dry run・実行・結果検証・描画はまだ実行しません。
-planningでは、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのplanningまで反復します。SQL生成・検証・dry run・実行・結果検証・描画はまだ実行しません。
+共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
+評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。
 したがって、単独では反復評価runnerの完成や未知schema品質の実証を意味しません。
 

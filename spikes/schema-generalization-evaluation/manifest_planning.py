@@ -120,6 +120,7 @@ def _plan_attempt(
             analysis_plan=None,
             revision_instruction=None,
             check_cancelled=lambda: None,
+            initial_panel_count=1,
         )
         plan_events = [
             event
@@ -134,6 +135,9 @@ def _plan_attempt(
         if (
             not isinstance(plan, dict)
             or re.fullmatch(r"plan-[0-9a-f]{12}", str(plan.get("revision"))) is None
+            or plan.get("clarifications") != []
+            or not isinstance(plan.get("panels"), list)
+            or len(plan["panels"]) != 1
             or isinstance(cost, bool)
             or not isinstance(cost, (int, float))
             or not math.isfinite(cost)

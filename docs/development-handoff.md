@@ -198,13 +198,17 @@ artifactの正確なfile bytesを全runのfingerprintへ照合し、自己申告
 2026-09-20にmerge済みです。[PR #763](https://github.com/Yukihide-Mitsuoka/repchat/pull/763)では、
 十分な共通分析契約がある場合にも初回確認を最低1件要求していたplanner契約を修正しました。対象固有の補足や手動意味定義なしで
 初回仕様を生成でき、確認が不可欠な場合だけ未回答fieldを最大3件返し、十分な場合は0件を許可します。2026-09-20にmerge済みです。
-現在は[PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)で、成功したmanifest preflightだけを
+続く[PR #765](https://github.com/Yukihide-Mitsuoka/repchat/pull/765)では、成功したmanifest preflightだけを
 既存の共通dashboard plannerへ接続し、契約にbindされた計画と費用をattemptへ保持します。preflight失敗時はplannerを呼ばず、
-planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`で記録します。
+planning失敗時はraw例外を保存せず固定`planning`／`planning_failed`で記録し、2026-09-20にmerge済みです。
+現在は、1件の参照SQL・期待結果を持つ評価caseとplanner出力を一意に対応させるため、評価呼出しだけ
+`initial_panel_count=1`を共通plannerへ渡します。通常のdashboardは管理者が設定した従来件数を維持します。
+評価plannerが確認質問、0件または複数パネルを返した場合は、恣意的な回答やパネル選択を行わず
+`planning`／`planning_failed`へ閉じます。
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
-この接続後の最優先作業は、契約にbindされた計画を同じ共通SQL生成へ渡し、SQL生成失敗も安全なstage／codeで
+この境界の次の最優先作業は、唯一のplan panelを同じ共通SQL生成へ渡し、SQL生成失敗も安全なstage／codeで
 全attemptの分母へ残すことです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
