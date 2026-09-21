@@ -7,11 +7,13 @@ import math
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
+from bigquery_scope_discovery import AuthorizedScope
 from manifest_preflight import planned_inputs
-from manifest_rendering import RenderingAttempt
+from manifest_rendering import RenderingAttempt, run_manifest_rendering
 from run_outcome import (
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
     SCOPE_DISCOVERY_FAILURE,
@@ -202,3 +204,136 @@ def write_manifest_artifacts(
         output.rmdir()
         raise
     return paths
+
+
+def _single_run_manifest(
+    manifest: dict[str, Any],
+    schema_id: str,
+    case_id: str,
+    run_id: str,
+    scope: AuthorizedScope,
+    question: str,
+) -> dict[str, Any]:
+    return {
+        "version": manifest["version"],
+        "evaluation_plan_sha256": manifest["evaluation_plan_sha256"],
+        "pipeline": dict(manifest["pipeline"]),
+        "schemas": [
+            {
+                "schema_id": schema_id,
+                "authorized_scope": {
+                    "datasets": sorted(scope.datasets),
+                    "tables": sorted(scope.tables),
+                },
+                "cases": [
+                    {
+                        "case_id": case_id,
+                        "question": question,
+                        "run_ids": [run_id],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _measure_attempt(
+    identity: tuple[str, str, str],
+    single_manifest: dict[str, Any],
+    bq,
+    vertex,
+    model: str,
+    as_of: date,
+    meter: Callable[
+        [tuple[str, str, str], Callable[[], RenderingAttempt]], RunMeasurement
+    ],
+    rendering_runner: Callable[..., tuple[RenderingAttempt, ...]],
+) -> tuple[RenderingAttempt, RunMeasurement]:
+    execution_count = 0
+    observed: RenderingAttempt | None = None
+
+    def execute() -> RenderingAttempt:
+        nonlocal execution_count, observed
+        execution_count += 1
+        if execution_count != 1:
+            raise ManifestArtifactError(
+                "meter must execute each planned run exactly once"
+            )
+        result = rendering_runner(
+            single_manifest,
+            bq,
+            vertex,
+            model,
+            as_of=as_of,
+        )
+        if (
+            not isinstance(result, tuple)
+            or len(result) != 1
+            or not isinstance(result[0], RenderingAttempt)
+            or _identity(result[0]) != identity
+        ):
+            raise ManifestArtifactError(
+                "rendering result must match its measured planned run"
+            )
+        observed = result[0]
+        return observed
+
+    measurement = meter(identity, execute)
+    if execution_count != 1 or observed is None:
+        raise ManifestArtifactError("meter must execute each planned run exactly once")
+    return observed, _measurement(measurement)
+
+
+def run_measured_manifest_evaluation(
+    manifest: Any,
+    bq,
+    vertex,
+    model: str,
+    *,
+    as_of: date,
+    output_directory: str | Path,
+    meter: Callable[
+        [tuple[str, str, str], Callable[[], RenderingAttempt]], RunMeasurement
+    ],
+    rendering_runner: Callable[..., tuple[RenderingAttempt, ...]] = (
+        run_manifest_rendering
+    ),
+) -> dict[str, Path]:
+    """Run each planned identity once inside an external measurement boundary."""
+    _, planned = planned_inputs(manifest)
+    output = Path(output_directory)
+    if os.path.lexists(output):
+        raise FileExistsError(output)
+    if not output.parent.is_dir():
+        raise FileNotFoundError(output.parent)
+    if (
+        not isinstance(model, str)
+        or not model.strip()
+        or not isinstance(as_of, date)
+        or not callable(meter)
+        or not callable(rendering_runner)
+    ):
+        raise ManifestArtifactError("measured evaluation inputs are invalid")
+
+    attempts: list[RenderingAttempt] = []
+    measurements: dict[tuple[str, str, str], RunMeasurement] = {}
+    for schema_id, case_id, run_id, scope, question in planned:
+        identity = (schema_id, case_id, run_id)
+        single_manifest = _single_run_manifest(
+            manifest, schema_id, case_id, run_id, scope, question
+        )
+        attempt, measurement = _measure_attempt(
+            identity,
+            single_manifest,
+            bq,
+            vertex,
+            model,
+            as_of,
+            meter,
+            rendering_runner,
+        )
+        attempts.append(attempt)
+        measurements[identity] = measurement
+
+    artifacts = build_manifest_artifacts(manifest, attempts, measurements)
+    return write_manifest_artifacts(output, artifacts)
