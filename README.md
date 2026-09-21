@@ -32,7 +32,9 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 [PR #774](https://github.com/Yukihide-Mitsuoka/repchat/pull/774)では、製品側と評価側が同じ
 共通結果検証を使い、列、行数、可視化shapeを照合して
 成功結果をJSON-safe化します。通常のdashboardは従来の設定件数を維持します。
-描画、公式fixtureの独立review、実値照合、
+[PR #776](https://github.com/Yukihide-Mitsuoka/repchat/pull/776)では共通rendererをES module化し、
+現在の変更では検証済みJSON結果だけを受け取る無出力probeから実ECharts SVG SSRまたは共通DOM rendererを
+実行します。評価stageからのprobe呼出し、公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 

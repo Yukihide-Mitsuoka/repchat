@@ -118,7 +118,8 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
 この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery query executionと
-共通結果検証まで反復します。描画はまだ実行しません。
+共通結果検証まで反復します。共通rendererは別processから呼べる無出力probeとしてpackage済みですが、
+この評価stageからの呼出しと描画結果のrun記録は後続作業です。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。

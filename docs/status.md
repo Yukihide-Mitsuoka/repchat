@@ -60,8 +60,11 @@ SELECT・scope・field・period・partition・可視化出力契約validatorへ�
 検証失敗は実行済みとして処理bytesを保持する一方、生の未検証行をrun記録へ残さず、固定
 `result_validation`／`result_validation_failed`と`semantic_error`へ閉じる。
 通常のdashboardの設定件数は変更しない。
-描画、公式fixture、独立review、実値照合、全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
-今回の更新ではfake clientによるテストだけを行い、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
+PR #776で共通rendererをES module化した。現在の変更では、stdinの検証済みJSON結果だけを受け取る無出力probeから
+vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、描画失敗、未知種別、不正payloadを非0終了へ閉じる。
+対象別profile、設定、fallbackは追加しない。評価stageからのprobe呼出し、公式fixture、独立review、実値照合、
+全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
+今回の更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /

@@ -239,11 +239,17 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 [PR #776](https://github.com/Yukihide-Mitsuoka/repchat/pull/776)では、旧UI削除後に呼出し口を失っていた
 共通renderer断片を通常のES moduleとしてpackageしています。
 旧UIに暗黙依存していた値表示・単位・KPI helperを対象名やmetric定義を推測しない共通実装へ置換し、全rendererが
-描画成功をbooleanで返します。sparkline tableを含むECharts経路はchart libraryを明示的に受け取ります。
+描画成功をbooleanで返します。sparkline tableを含むECharts経路はchart libraryを明示的に受け取り、
+2026-09-21にmerge済みです。
 
-この境界の次の最優先作業は、package済みrendererを別processから実ECharts SVG SSRで実行する無出力probeを追加し、
-その後`manifest_result_validation.py`の成功attemptだけをprobeへ渡して、検証済みのJSON-safeな結果と実測処理bytes・
-費用、描画成否を最終run記録へ接続することです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
+[PR #778](https://github.com/Yukihide-Mitsuoka/repchat/pull/778)では、package済みrendererを別processから
+実行する無出力probeを追加しています。入力は1 MiB以下の
+`visualization`、`columns`、`rows`だけに限定し、ECharts系はvendored EChartsのSVG SSR、scalar・table系は
+共通DOM rendererを実際に通します。成功時だけ終了code 0、描画失敗、未知種別、不正payloadは非0へ閉じ、
+結果値や例外診断をstdout／stderrへ出しません。
+
+この境界の次の最優先作業は、`manifest_result_validation.py`の成功attemptだけをprobeへ渡して、検証済みの
+JSON-safeな結果と実測処理bytes・費用、描画成否を最終run記録へ接続することです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。
