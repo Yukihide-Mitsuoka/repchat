@@ -111,6 +111,47 @@ test('contract execution boundary applies schema SQL validation before BigQuery'
   ]);
 });
 
+test('typed SQL diagnostics bind each closed code to one category and safe message', () => {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import sys
+sys.path.insert(0,${JSON.stringify(MODULE_DIR)})
+from analysis_contract_context import AnalysisExecutionPolicy
+from analysis_schema_policy import AnalysisFieldPolicy
+from bigquery_execution import (
+ SQLDiagnostic,SQLDiagnosticCategory,SQLDiagnosticCode,sql_diagnostic,
+ validate_sql_diagnostic,
+)
+table=${JSON.stringify(records)}
+policy=AnalysisExecutionPolicy(
+ frozenset({table}),frozenset({table}),100,20,None,
+ (AnalysisFieldPolicy(table,("record_id",),"STRING","REQUIRED",False,False),),
+)
+normalized,diagnostic=validate_sql_diagnostic(
+ 'SELECT record_id FROM '+chr(96)+'other.dataset.records'+chr(96),policy=policy,
+)
+assert normalized is None
+assert diagnostic==sql_diagnostic(SQLDiagnosticCode.TABLE_OUTSIDE_SCOPE)
+assert diagnostic.category is SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
+assert diagnostic.message=='rejected: table is outside the analysis contract'
+for candidate in (
+ lambda:SQLDiagnostic('unknown',diagnostic.category,diagnostic.message),
+ lambda:SQLDiagnostic(diagnostic.code,SQLDiagnosticCategory.DANGEROUS_SQL,diagnostic.message),
+ lambda:SQLDiagnostic(diagnostic.code,diagnostic.category,'provider detail'),
+):
+ try:candidate()
+ except (TypeError,ValueError):pass
+ else:raise AssertionError('invalid diagnostic contract was accepted')`,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('SQL execution boundary requires an analysis policy before accepting a table', () => {
   const sql = `SELECT record_id FROM \`${records}\``;
   const result = spawnSync(

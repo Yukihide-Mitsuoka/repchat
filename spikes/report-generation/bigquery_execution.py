@@ -6,6 +6,12 @@ from dataclasses import dataclass
 
 from analysis_contract_context import AnalysisExecutionPolicy
 from contract_sql_validation import contract_sql_diagnostic
+from sql_diagnostic import (
+    SQLDiagnostic,
+    SQLDiagnosticCategory,
+    SQLDiagnosticCode,
+    sql_diagnostic,
+)
 
 
 @dataclass(frozen=True)
@@ -216,21 +222,21 @@ def exec_bq(
     return (list(execution.rows), list(execution.columns)), None
 
 
-def validate_sql(
+def validate_sql_diagnostic(
     sql: str,
     *,
     policy: AnalysisExecutionPolicy | None = None,
-) -> tuple[str | None, str | None]:
-    """Return a normalized contract-bounded SELECT or a refusal reason."""
+) -> tuple[str | None, SQLDiagnostic | None]:
+    """Return normalized SQL or one closed, target-independent refusal."""
     if policy is None:
-        return None, "rejected: analysis contract required"
+        return None, sql_diagnostic(SQLDiagnosticCode.ANALYSIS_CONTRACT_REQUIRED)
     s = sql.strip()
     if s.endswith(";"):
         s = s[:-1].rstrip()
     if not re.match(r"^(select|with)\b", s, re.I):
-        return None, "rejected: not a SELECT"
+        return None, sql_diagnostic(SQLDiagnosticCode.NOT_SELECT)
     if ";" in s:
-        return None, "rejected: multiple statements"
+        return None, sql_diagnostic(SQLDiagnosticCode.MULTIPLE_STATEMENTS)
     without_comments = re.sub(r"/\*.*?\*/|--[^\n]*", " ", s, flags=re.S)
     without_literals = re.sub(r"'(?:''|[^'])*'", "''", without_comments)
     if re.search(
@@ -238,13 +244,13 @@ def validate_sql(
         without_literals,
         re.I,
     ):
-        return None, "rejected: forbidden keyword"
+        return None, sql_diagnostic(SQLDiagnosticCode.FORBIDDEN_KEYWORD)
     if re.search(
         r"\bselect\s+(?:distinct\s+)?(?:[a-zA-Z_][a-zA-Z0-9_]*\.)?\*",
         without_literals,
         re.I,
     ):
-        return None, "rejected: SELECT * anti-pattern"
+        return None, sql_diagnostic(SQLDiagnosticCode.SELECT_STAR)
     found_table = False
     for m in re.finditer(
         r"`?([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+)\.[a-zA-Z0-9_*]+`?",
@@ -252,13 +258,25 @@ def validate_sql(
     ):
         reference = m.group(0).strip("`")
         if m.end() < len(without_literals) and without_literals[m.end()] in "$@":
-            return None, "rejected: table decorator is outside the analysis contract"
+            return None, sql_diagnostic(
+                SQLDiagnosticCode.TABLE_DECORATOR_OUTSIDE_SCOPE
+            )
         if reference not in policy.query_tables:
-            return None, "rejected: table is outside the analysis contract"
+            return None, sql_diagnostic(SQLDiagnosticCode.TABLE_OUTSIDE_SCOPE)
         found_table = True
     if not found_table:
-        return None, "rejected: query must reference an analysis contract table"
+        return None, sql_diagnostic(SQLDiagnosticCode.CONTRACT_TABLE_REQUIRED)
     contract_error = contract_sql_diagnostic(s, policy)
     if contract_error:
-        return None, f"rejected: {contract_error}"
+        return None, sql_diagnostic(SQLDiagnosticCode.SCHEMA_POLICY_MISMATCH)
     return s, None
+
+
+def validate_sql(
+    sql: str,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+) -> tuple[str | None, str | None]:
+    """Return normalized SQL or the typed diagnostic's safe display message."""
+    normalized, diagnostic = validate_sql_diagnostic(sql, policy=policy)
+    return normalized, diagnostic.message if diagnostic else None

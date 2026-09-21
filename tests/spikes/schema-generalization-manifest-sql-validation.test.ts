@@ -103,6 +103,7 @@ from manifest_sql_generation import GeneratedSQLAttempt
 from run_outcome import validate_run_outcome
 ${setup}
 validation.analysis_contract_context.execution_policy=lambda _contract:policy
+validation.report.validate_sql=lambda *_args,**_kwargs:(_ for _ in ()).throw(AssertionError('text diagnostic API called'))
 cases=(
  ('dangerous','WITH source AS (SELECT 1) DELETE FROM '+chr(96)+table+chr(96),(False,True,False)),
  ('outside','SELECT COUNT(*) AS metric_value FROM '+chr(96)+'other.dataset.records'+chr(96),(True,False,False)),

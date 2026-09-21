@@ -9,11 +9,16 @@ from pathlib import Path
 from bigquery_execution import (
     DryRunInspection,
     QueryExecution,
+    SQLDiagnostic,
+    SQLDiagnosticCategory,
+    SQLDiagnosticCode,
     exec_bq,
     execute_bq,
     inspect_bq_dry_run,
     inspect_bq_schema,
+    sql_diagnostic,
     validate_sql,
+    validate_sql_diagnostic,
 )
 from sql_generation import (
     SHAPE_HINT,
