@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v2.2.0) (2026-09-21)
+
+
+### Features
+
+* **evaluation:** BigQuery実行を評価経路へ接続する ([#772](https://github.com/Yukihide-Mitsuoka/repchat/issues/772)) ([dbfee1d](https://github.com/Yukihide-Mitsuoka/repchat/commit/dbfee1de9213e20bcd62bce0f3acfa6159438bb5))
+* **evaluation:** provider usageをrun単位で計測する ([#785](https://github.com/Yukihide-Mitsuoka/repchat/issues/785)) ([d6f07d4](https://github.com/Yukihide-Mitsuoka/repchat/commit/d6f07d43c43f3d6c5d3a97fb4e9b802ddcadcb3b))
+* **evaluation:** 実行artifactを安全に記録する ([#781](https://github.com/Yukihide-Mitsuoka/repchat/issues/781)) ([d45e72e](https://github.com/Yukihide-Mitsuoka/repchat/commit/d45e72edbd9ad12285f140a2a57fe30123984aff))
+* **evaluation:** 実行結果を共通契約で検証する ([#774](https://github.com/Yukihide-Mitsuoka/repchat/issues/774)) ([7ebbe92](https://github.com/Yukihide-Mitsuoka/repchat/commit/7ebbe921fb9e02cc09f3be82e2c52b4bc0b3b518))
+* **evaluation:** 描画結果をrun記録へ接続する ([#780](https://github.com/Yukihide-Mitsuoka/repchat/issues/780)) ([c959ba0](https://github.com/Yukihide-Mitsuoka/repchat/commit/c959ba0d59bbb0d75694e8b582d5b7057692c732))
+* **evaluation:** 計測付きrun実行をartifactへ接続する ([#782](https://github.com/Yukihide-Mitsuoka/repchat/issues/782)) ([79fc577](https://github.com/Yukihide-Mitsuoka/repchat/commit/79fc5773a1df7f39b615d97ae531f0eea6ea3777))
+* **renderer:** 共通rendererをmodule化する ([#776](https://github.com/Yukihide-Mitsuoka/repchat/issues/776)) ([cf4ca0c](https://github.com/Yukihide-Mitsuoka/repchat/commit/cf4ca0c2b4ba543f13f992279eb56b17b91ebfb3))
+* **renderer:** 実描画probeを追加する ([#778](https://github.com/Yukihide-Mitsuoka/repchat/issues/778)) ([812f345](https://github.com/Yukihide-Mitsuoka/repchat/commit/812f3450056dedd505d1ae6df444508249b22ec8))
+* 評価入口に共通provider計測を接続する ([#786](https://github.com/Yukihide-Mitsuoka/repchat/issues/786)) ([4e01224](https://github.com/Yukihide-Mitsuoka/repchat/commit/4e0122434d731a400229c63165cc9c98d6419efd))
+
+
+### Bug Fixes
+
+* **evaluation:** 前段queryの処理bytesを失敗runへ記録する ([#783](https://github.com/Yukihide-Mitsuoka/repchat/issues/783)) ([acd0033](https://github.com/Yukihide-Mitsuoka/repchat/commit/acd003328330295f8850d1980ec57fa01ef9ef38))
+* **evaluation:** 成功queryを含むrun全体の処理bytesを記録する ([#784](https://github.com/Yukihide-Mitsuoka/repchat/issues/784)) ([1c06831](https://github.com/Yukihide-Mitsuoka/repchat/commit/1c06831d9a4db12f6461fa5c8c22fc16777a0679))
+
 ## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
 
 
