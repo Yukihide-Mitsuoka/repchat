@@ -109,6 +109,10 @@ vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0
 directory内の`0600` fileに限定し、既存pathを上書きしません。前段失敗時は、その時点で実在するartifactだけを残します。
 計測付き実行入口は各計画runを参照情報のない単独manifestへ分け、外部meterへ渡した実行callbackがちょうど1回
 呼ばれた場合だけattemptと計測値を採用します。出力先とmanifest全体は最初のruntime callより前に検証します。
+`manifest_runtime_meter.py`は実行に渡すBigQuery／Vertex clientを共通proxyで包み、1 run内の全Vertex responseの
+token usage、全BigQuery query jobの実処理bytesと課金bytes、dry runの推定bytesを区別して集計します。
+完了していないjob、欠落・矛盾したprovider metadata、応答を得られないprovider例外は計測不能として拒否します。
+費用は明示的なtoken／TiB単価と実測usageだけから計算し、呼出し回数や成功stageから推測しません。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
