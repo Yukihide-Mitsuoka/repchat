@@ -1,0 +1,152 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import test from 'node:test';
+import { ROOT } from './report-generation/live-demo-test-helpers.ts';
+
+const REPORT_GENERATION = path.join(ROOT, 'spikes/report-generation');
+const EVALUATION = path.join(ROOT, 'spikes/schema-generalization-evaluation');
+
+function assertPython(body: string) {
+  const result = spawnSync(
+    'python3',
+    [
+      '-c',
+      `import sys\nsys.path[:0]=[${JSON.stringify(EVALUATION)},${JSON.stringify(REPORT_GENERATION)}]\n${body}`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+}
+
+const setup = String.raw`
+from types import MappingProxyType,SimpleNamespace
+import manifest_artifacts as artifacts
+from bigquery_scope_discovery import DiscoverySnapshot
+from manifest_dry_run import DryRunAttempt
+from manifest_execution import ExecutionAttempt
+from manifest_planning import PlannedAnalysisAttempt
+from manifest_preflight import PlannedPreflightAttempt
+from manifest_rendering import RenderingAttempt
+from manifest_result_validation import ResultValidationAttempt
+from manifest_sql_generation import GeneratedSQLAttempt
+from manifest_sql_validation import ValidatedSQLAttempt
+from preflight import PreflightResult
+pipeline={'runtime':'1'*64,'prompt':'2'*64,'configuration':'3'*64}
+manifest={
+ 'version':1,'evaluation_plan_sha256':'4'*64,'pipeline':pipeline,
+ 'schemas':[{'schema_id':'schema-a','authorized_scope':{
+  'datasets':[],'tables':['alpha.dataset.records'],
+ },'cases':[{'case_id':'case-a','question':'区分別の値を集計して','run_ids':['run-1','run-2']}]}],
+}
+def make_attempt(run_id,snapshot_json='{"version":1}',contract_json='{"version":1}',rendered=True):
+ snapshot=DiscoverySnapshot(snapshot_json,'a'*64,'2026-09-21T00:00:00+00:00')
+ contract=SimpleNamespace(content_json=contract_json,fingerprint='b'*64)
+ preflight=PreflightResult('区分別の値を集計して',snapshot,contract,{'input_tokens':1,'output_tokens':1})
+ identity=PlannedPreflightAttempt('schema-a','case-a',run_id,MappingProxyType(pipeline),preflight)
+ planned=PlannedAnalysisAttempt(identity,{'panels':[{'id':'P1'}]},0.25)
+ generated=GeneratedSQLAttempt(planned,{'id':'P1'},'SELECT 1',0.5)
+ validated=ValidatedSQLAttempt(generated,'SELECT 1')
+ dry=DryRunAttempt(validated,(('metric_value','INT64','NULLABLE'),),42)
+ executed=ExecutionAttempt(dry,((1,),),('metric_value',),84)
+ result=ResultValidationAttempt(executed,((1,),),('metric_value',),'scalar',84)
+ return RenderingAttempt(result,rendered,None if rendered else 'rendering',None if rendered else 'rendering_failed')
+def make_preflight_failure(run_id,stage,discovery):
+ code=stage+'_failed'
+ preflight=PreflightResult('区分別の値を集計して',discovery,None,None,stage,code)
+ identity=PlannedPreflightAttempt('schema-a','case-a',run_id,MappingProxyType(pipeline),preflight)
+ planned=PlannedAnalysisAttempt(identity,None,None,stage,code)
+ generated=GeneratedSQLAttempt(planned,None,None,None,stage,code)
+ validated=ValidatedSQLAttempt(generated,None,stage,code)
+ dry=DryRunAttempt(validated,None,None,stage,code)
+ executed=ExecutionAttempt(dry,None,None,None,stage,code)
+ result=ResultValidationAttempt(executed,None,None,None,None,stage,code)
+ return RenderingAttempt(result,False,stage,code)
+attempts=(make_attempt('run-1'),make_attempt('run-2',rendered=False))
+measurements={
+ ('schema-a','case-a','run-1'):artifacts.RunMeasurement(84,0.75),
+ ('schema-a','case-a','run-2'):artifacts.RunMeasurement(84,0.8),
+}
+`;
+
+test('planned attempts become deduplicated assembler inputs and secure files', () => {
+  assertPython(String.raw`
+${setup}
+import json,stat,tempfile
+from pathlib import Path
+bundle=artifacts.build_manifest_artifacts(manifest,attempts,measurements)
+assert bundle.recordings['version']==5
+assert bundle.recordings['evaluation_plan_sha256']=='4'*64
+assert [item['run']['run_id'] for item in bundle.recordings['runs']]==['run-1','run-2']
+assert bundle.recordings['runs'][1]['run']['failure_stage']=='rendering'
+assert bundle.scope_snapshots=={'version':1,'snapshots':[{
+ 'schema_id':'schema-a','content_json':'{"version":1}',
+ 'retrieved_at':'2026-09-21T00:00:00+00:00',
+}]}
+assert bundle.analysis_contracts=={'version':1,'contracts':[{
+ 'schema_id':'schema-a','case_id':'case-a','content_json':'{"version":1}',
+}]}
+parent=Path(tempfile.mkdtemp())
+output=parent/'evaluation-run'
+paths=artifacts.write_manifest_artifacts(output,bundle)
+assert stat.S_IMODE(output.stat().st_mode)==0o700
+assert set(paths)=={'recordings','scope_snapshots','analysis_contracts'}
+for artifact_path in paths.values():
+ assert stat.S_IMODE(artifact_path.stat().st_mode)==0o600
+ assert '\n' not in artifact_path.read_text(encoding='utf-8')
+assert json.loads(paths['recordings'].read_text())==bundle.recordings
+`);
+});
+
+test('missing measurements and conflicting runtime artifacts fail closed', () => {
+  assertPython(String.raw`
+${setup}
+for candidate,message in (
+ ({key:value for key,value in measurements.items() if key[-1]=='run-1'},'measurements must match planned runs exactly'),
+ ({**measurements,('schema-a','case-a','run-3'):artifacts.RunMeasurement(0,0)},'measurements must match planned runs exactly'),
+):
+ try:artifacts.build_manifest_artifacts(manifest,attempts,candidate)
+ except artifacts.ManifestArtifactError as error:assert str(error)==message
+ else:raise AssertionError('invalid measurements were accepted')
+conflicting=(attempts[0],make_attempt('run-2',snapshot_json='{"version":2}'))
+try:artifacts.build_manifest_artifacts(manifest,conflicting,measurements)
+except artifacts.ManifestArtifactError as error:assert str(error)=='scope snapshot changed within one schema evaluation'
+else:raise AssertionError('conflicting snapshots were accepted')
+invalid=dict(measurements);invalid[('schema-a','case-a','run-2')]=artifacts.RunMeasurement(84,float('nan'))
+try:artifacts.build_manifest_artifacts(manifest,attempts,invalid)
+except artifacts.ManifestArtifactError as error:assert str(error)=='run measurements must contain non-negative bytes and finite cost'
+else:raise AssertionError('invalid measurement was accepted')
+`);
+});
+
+test('preflight failures emit only artifacts that actually exist', () => {
+  assertPython(String.raw`
+${setup}
+snapshot=DiscoverySnapshot('{"version":1}','a'*64,'2026-09-21T00:00:00+00:00')
+failed=(
+ make_preflight_failure('run-1','scope_discovery',None),
+ make_preflight_failure('run-2','analysis_contract_generation',snapshot),
+)
+measured={key:artifacts.RunMeasurement(0,0.1) for key in measurements}
+bundle=artifacts.build_manifest_artifacts(manifest,failed,measured)
+assert [item['run']['failure_stage'] for item in bundle.recordings['runs']]==['scope_discovery','analysis_contract_generation']
+assert len(bundle.scope_snapshots['snapshots'])==1
+assert bundle.analysis_contracts=={'version':1,'contracts':[]}
+`);
+});
+
+test('artifact output never overwrites an existing directory', () => {
+  assertPython(String.raw`
+${setup}
+import tempfile
+from pathlib import Path
+bundle=artifacts.build_manifest_artifacts(manifest,attempts,measurements)
+output=Path(tempfile.mkdtemp())/'evaluation-run'
+output.mkdir();marker=output/'preserved';marker.write_text('keep')
+try:artifacts.write_manifest_artifacts(output,bundle)
+except FileExistsError:pass
+else:raise AssertionError('existing output was overwritten')
+assert marker.read_text()=='keep' and list(output.iterdir())==[marker]
+`);
+});
