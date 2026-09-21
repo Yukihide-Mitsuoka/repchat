@@ -10,7 +10,7 @@ updated: 2026-09-21
 `evaluate.py`は、対象非依存runtimeの実行後に得たJSON evidence bundleを検証し、schema別の品質指標と
 合否を決定論的に返すpost-run scorerです。外部APIや製品runtimeは呼びません。
 
-## 評価契約
+## 現行の評価契約
 
 - IDとscope snapshot fingerprintが異なる2件以上のschema evidenceを同じ評価に含め、各caseを3回以上反復する。
 - 全runでruntime、prompt、設定のSHA-256 fingerprintを一致させる。
@@ -21,6 +21,9 @@ updated: 2026-09-21
 - 参照結果は作成者と異なるreviewerが承認する。
 - schemaごとに90%以上の結果一致を要求し、意味上の誤り、未認可参照、危険なSQL、scan上限超過を1件でも検出したら不合格にする。
 - evidence version、参照記録、runのfieldと型を厳密に検証し、曖昧な行順序や未知fieldを推測で受理しない。
+
+この契約は現在の実装を説明するものです。実サービス評価を開始する前に、後述の
+[実評価前の強化計画](#実評価前の強化計画)でcase単位の合否、描画成否、型付き診断、失敗分類を追加します。
 
 bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
@@ -161,6 +164,55 @@ artifactを起動したことまでは単独で証明しません。
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
 CI logやrepositoryへ保存しません。
+
+## 実評価前の強化計画
+
+[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)で、実Vertex AI／BigQueryを使う前に
+評価結果の安全性と再現性を強化します。ここを実装計画の正本とし、handoff、status、roadmapには現在地と
+完了条件だけを同期します。
+
+### 変更後の合否契約
+
+実評価の合格には、現行契約に加えて次をすべて要求します。
+
+- schema全体の結果一致率が90%以上であり、かつ各caseの結果一致率も90%以上である。各case最低3回という
+  現行反復数で90%を要求すると3/3成功が必要になる。1回の揺らぎを許容する判断をする場合は、閾値を下げず
+  反復数を10回以上へ増やす。
+- 各caseで未認可参照、危険SQL、scan上限超過、意味上の誤り、provider／infrastructure failureが0件である。
+- 各caseで結果検証後の描画成功率が100%である。結果一致と描画成否は別指標のまま保持するが、end-to-endの
+  合格には両方を要求する。
+- capability別の成功件数をpost-run reportへ集計し、必須capabilityに成功runがない場合は不合格にする。
+  capabilityは参照fixtureのreviewとpost-run集計だけに使い、runtime manifestへ渡さない。
+- 未知の診断code／category、codeとcategoryの不整合、分類不能な例外、欠落した失敗種別は評価bundle契約違反
+  としてfail closedにし、品質失敗や成功へ推測変換しない。
+- provider／infrastructure failureを含む評価は合格不能とし、予期しないprogramming errorまたはinvariant違反は
+  評価全体を無効にする。いずれもモデル品質の分母へ混ぜて結果一致率を計算しない。
+
+### 実装順序
+
+各段階は小さいPRに分け、前段の契約と回帰testを後段が利用します。すべての段階で対象名、既知dataset、
+対象別prompt／SQL／設定、利用者による意味定義をruntimeへ追加しません。
+
+| 順序 | 実装 | 主な対象 | 完了条件 |
+|---:|---|---|---|
+| 1 | SQL診断を型付きcodeへ変更 | 共通SQL validator、`manifest_sql_validation.py`、`manifest_dry_run.py`、`manifest_execution.py` | closed enumのdiagnostic codeとcategory、安全な固定messageを返す。評価側の診断文部分一致を削除し、local validation、dry run、executionを同じ分類契約へ接続する。未知code／categoryと不整合をbundle契約違反として拒否する |
+| 2 | case・capability・描画の合格gateを追加 | `evaluate.py`、evidence schema、scorer回帰test | schema別90%に加えcase別90%、case別安全違反0件、case別描画100%、必須capabilityの成功を独立集計する。常に失敗するcaseまたは描画を他caseの成功で隠せないことをtestで固定する |
+| 3 | 予期済み失敗と評価無効を分離 | provider adapter、各`manifest_*` stage、run／bundle schema | モデル出力・契約不一致は品質失敗、provider／infrastructureは合格不能な型付き失敗、programming error／invariant違反は評価全体の無効として記録する。広い`except Exception`はprovider adapter境界で安全な型へ正規化する場合だけ許し、stage内部の未知例外を通常失敗へ変換しない |
+| 4 | 公式fixtureと実行commandを確定 | review済みfixture、評価計画、実provider command | 異なる未知nested／repeated schema最低2件を別reviewerが承認する。commandは価格snapshot、認可scope、予算上限、model、`as_of`、出力先、実行承認を必須入力とし、不足・不整合を最初のprovider call前に拒否する |
+| 5 | 無料回帰後に実反復評価 | fake client suite、実Vertex AI／BigQuery評価 | fake clientで成功・全失敗分類・予算超過・未知診断・出力非上書きを確認する。対象と最大費用を提示して明示承認を得た後だけ、固定binary・prompt・設定で全計画runを実行し、private artifactと集計reportを保存する |
+| 6 | 合格後に製品runtime境界をADR化 | 新規ADR、`src/`移植計画 | 実評価が全gateを満たした後だけ、Python worker維持かTypeScript移植か、`AnalysisContract`／manifestのversioned API、認可scope受渡し、永続job、再開・取消・idempotency、artifact互換性、費用承認、監査を決定する。ADR accepted前に製品移植やservice分割を始めない |
+
+順序1〜3を公式fixtureの確定と実行commandより先に完了させます。診断と失敗分類の契約が未確定のまま
+実データを集めると、同じrunが実装版によって安全違反、品質失敗、評価無効のどれにもなり得るためです。
+順序4以降では、最初のrun前に固定したfixture、計画、pipeline artifact、価格snapshotを最後まで変更しません。
+
+### 明示的な非対象
+
+- `AttemptContext`／`AttemptState`への全面的な状態機械再設計は行わない。identity、費用、failure記録の重複が
+  個別変更を妨げる場合に限り、その変更に必要な小さい共通型またはhelperを同じPRで導入する。
+- 合格前にPython／TypeScriptの製品境界を固定せず、`spikes/`を製品runtimeとして公開しない。
+- 評価case固有の分岐、対象別profile、固定prompt、固定SQL、手動metric定義を追加しない。
+- 費用承認前に実Vertex AI／BigQueryを呼び出さず、実結果や認可scopeをrepository、CI log、PRへ保存しない。
 
 ## 実行
 

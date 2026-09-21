@@ -75,6 +75,8 @@ PR #785では実行clientを共通proxyで計測し、全Vertex responseのtoken
 明示されたusage単価だけで費用を算出する。PR #783〜#786はmerge済みである。
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
+実評価の前提となる型付きSQL診断、case／capability／描画単位の合格gate、infrastructure failureと
+programming errorの分離も[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)として未実装である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
 
@@ -198,7 +200,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 **現在は対象非依存runtimeの反復評価が最優先。** 旧デモは対象別profileと固定知識を含むため削除済みで、
 過去の成功を任意schema対応の証拠にはしない。共通preflightと評価harnessは実装済みだが、公式fixtureを使う
-全runtime段階の反復評価は未完了である。
+全runtime段階の反復評価は未完了である。先にIssue #788で評価契約を強化し、その後に公式fixture、
+費用承認付き実行command、実反復へ進む。
 
 **事業方針は2026-07-27に大きく動いた。** 競合調査（LOG-0062）で構想の技術要素が
 ほぼ既存製品にあると判明し、差別化を**日本語・国内対応・代理店経由の流通**に置き直した。
@@ -275,7 +278,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、全provider usageのrun単位計測、最終run記録、assembler入力artifactの安全な出力境界は実装済み | 明示的な価格snapshotと認可情報を受ける実行commandへ接続し、公式fixtureを独立reviewしたうえで、費用承認後に認可済みscopeだけを入力として複数の未知schemaを同一binary・prompt・設定で反復実行し、実値・安全性・費用・描画を照合する（ADR-0025、Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、全provider usageのrun単位計測、最終run記録、assembler入力artifactの安全な出力境界は実装済み | Issue #788で型付き診断、case／capability／描画gate、失敗分類を先に実装する。次に明示的な価格snapshotと認可情報を受ける実行commandへ接続し、公式fixtureを独立reviewしたうえで、費用承認後に認可済みscopeだけを入力として複数の未知schemaを同一binary・prompt・設定で反復実行する。実値・安全性・費用・描画が合格した後だけ製品runtime境界をADRで決める（ADR-0025、Issue #188） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | #188の対象非依存品質境界、#179、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
@@ -300,8 +303,9 @@ NL→SQLを一般化できるかは未検証**で、Issue #188を製品化gate�
 「小さく黒字」方針、LOG-0021）。
 
 未知schema benchmarkでは対象別コード、設定、手動意味定義を追加せず、同じruntimeによる自動理解を検証する。
-次の最大レバレッジは、公式fixtureの独立reviewと、参照情報をruntimeから隔離した反復実行を完了して、
-対象非依存品質の実測値を得ることである。
+次の最大レバレッジは、Issue #788の評価契約強化を完了し、公式fixtureの独立reviewと参照情報をruntimeから
+隔離した反復実行によって、対象非依存品質の実測値を得ることである。詳細な実装順序は
+[評価harnessの実評価前強化計画](../spikes/schema-generalization-evaluation/README.md#実評価前の強化計画)を正本とする。
 
 ---
 
