@@ -56,8 +56,8 @@ class PlannedAnalysisAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != 0:
-            raise ValueError("planning failure cannot record processed bytes")
+        if type(bytes_processed) is not int or bytes_processed < 0:
+            raise ValueError("planning bytes must be a non-negative integer")
         preflight = self.preflight_attempt.result
         return {
             "schema_id": self.preflight_attempt.schema_id,
@@ -76,7 +76,7 @@ class PlannedAnalysisAttempt:
                 "scan_limit_exceeded": False,
                 "semantic_error": False,
                 "render_succeeded": False,
-                "bytes_processed": 0,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }
