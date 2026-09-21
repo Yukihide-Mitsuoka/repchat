@@ -40,8 +40,11 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 接続しました。[PR #781](https://github.com/Yukihide-Mitsuoka/repchat/pull/781)では全計画runと
 外部計測値を照合し、run記録、scope snapshot、analysis contractを
 既存assemblerへ渡せる非上書きのprivate artifactとして出力しました。[PR #782](https://github.com/Yukihide-Mitsuoka/repchat/pull/782)では各計画runを外部meter内で
-ちょうど1回実行し、結果と計測値をartifact境界へ接続しました。現在の変更では、その実行に使う同一clientを計測し、
-全Vertex responseのtoken usageと、scope discoveryを含む全BigQuery jobの実処理・課金bytesをrun単位で集計します。
+ちょうど1回実行し、結果と計測値をartifact境界へ接続しました。[PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)と
+[PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、失敗・成功を問わずscope discoveryを含むrun全体の
+処理bytesを記録できるようにしました。[PR #785](https://github.com/Yukihide-Mitsuoka/repchat/pull/785)では全Vertex responseと
+全BigQuery jobのusage meterを追加し、[PR #786](https://github.com/Yukihide-Mitsuoka/repchat/pull/786)で実行clientと
+計測clientを同一に接続しました。PR #783〜#786はmerge済みです。
 公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
