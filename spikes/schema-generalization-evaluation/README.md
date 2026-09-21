@@ -105,6 +105,8 @@ vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0
 `recorded-runs.json`、`scope-snapshots.json`、`analysis-contracts.json`を既存assemblerへ渡せる形にします。
 同じschema／case内でsnapshotまたはcontractが変化した場合は、どれかを選ばず停止します。出力は新規`0700`
 directory内の`0600` fileに限定し、既存pathを上書きしません。前段失敗時は、その時点で実在するartifactだけを残します。
+計測付き実行入口は各計画runを参照情報のない単独manifestへ分け、外部meterへ渡した実行callbackがちょうど1回
+呼ばれた場合だけattemptと計測値を採用します。出力先とmanifest全体は最初のruntime callより前に検証します。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ

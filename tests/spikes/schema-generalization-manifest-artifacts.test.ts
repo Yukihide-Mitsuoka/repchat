@@ -150,3 +150,69 @@ else:raise AssertionError('existing output was overwritten')
 assert marker.read_text()=='keep' and list(output.iterdir())==[marker]
 `);
 });
+
+test('measured evaluation runs each planned identity once and writes artifacts', () => {
+  assertPython(String.raw`
+${setup}
+import json,tempfile
+from datetime import date
+from pathlib import Path
+seen=[]
+def rendering_runner(single,bq,vertex,model,*,as_of):
+ item=single['schemas'][0];case=item['cases'][0];run_id=case['run_ids'][0]
+ assert len(single['schemas'])==len(item['cases'])==len(case['run_ids'])==1
+ assert (bq,vertex,model,as_of)==('bq','vertex','model',date(2026,9,21))
+ seen.append(('run',run_id))
+ return (make_attempt(run_id),)
+def meter(identity,execute):
+ seen.append(('start',identity[-1]));attempt=execute();seen.append(('finish',identity[-1]))
+ assert isinstance(attempt,RenderingAttempt)
+ return measurements[identity]
+output=Path(tempfile.mkdtemp())/'evaluation-run'
+paths=artifacts.run_measured_manifest_evaluation(
+ manifest,'bq','vertex','model',as_of=date(2026,9,21),
+ output_directory=output,meter=meter,rendering_runner=rendering_runner,
+)
+assert seen==[
+ ('start','run-1'),('run','run-1'),('finish','run-1'),
+ ('start','run-2'),('run','run-2'),('finish','run-2'),
+]
+recorded=json.loads(paths['recordings'].read_text())
+assert [item['run']['run_id'] for item in recorded['runs']]==['run-1','run-2']
+`);
+});
+
+test('measured evaluation rejects unsafe output and meter execution counts', () => {
+  assertPython(String.raw`
+${setup}
+import tempfile
+from datetime import date
+from pathlib import Path
+parent=Path(tempfile.mkdtemp());existing=parent/'existing';existing.mkdir()
+calls=[]
+def rendering_runner(single,*_args,**_kwargs):
+ calls.append(single);return (make_attempt(single['schemas'][0]['cases'][0]['run_ids'][0]),)
+def once(identity,execute):return measurements[identity] if execute() else None
+try:artifacts.run_measured_manifest_evaluation(
+ manifest,object(),object(),'model',as_of=date(2026,9,21),output_directory=existing,
+ meter=once,rendering_runner=rendering_runner,
+)
+except FileExistsError:pass
+else:raise AssertionError('existing output was accepted')
+assert calls==[]
+def skipped(identity,_execute):return measurements[identity]
+try:artifacts.run_measured_manifest_evaluation(
+ manifest,object(),object(),'model',as_of=date(2026,9,21),output_directory=parent/'skipped',
+ meter=skipped,rendering_runner=rendering_runner,
+)
+except artifacts.ManifestArtifactError as error:assert str(error)=='meter must execute each planned run exactly once'
+else:raise AssertionError('skipped execution was accepted')
+def repeated(_identity,execute):execute();return artifacts.RunMeasurement(0,0) if execute() else None
+try:artifacts.run_measured_manifest_evaluation(
+ manifest,object(),object(),'model',as_of=date(2026,9,21),output_directory=parent/'repeated',
+ meter=repeated,rendering_runner=rendering_runner,
+)
+except artifacts.ManifestArtifactError as error:assert str(error)=='meter must execute each planned run exactly once'
+else:raise AssertionError('repeated execution was accepted')
+`);
+});

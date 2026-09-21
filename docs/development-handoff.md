@@ -259,7 +259,12 @@ JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run
 analysis contractを新規`0700` directory内の`0600` JSONとして出力します。既存path、計画外run、不足run、
 同一schema／case内で変化したartifactは拒否します。
 
-次の最優先作業は、外部計測器と`run_manifest_rendering`を一つの実行入口へ接続し、このartifact境界へ渡すことです。
+[PR #782](https://github.com/Yukihide-Mitsuoka/repchat/pull/782)では、各計画runを参照情報のない単独manifestへ分け、外部meterに渡した実行callbackがちょうど1回
+呼ばれた場合だけ`run_manifest_rendering`のattemptと計測値をartifact境界へ渡します。既存出力と不正manifestは
+最初のruntime callより前に拒否します。
+
+次の最優先作業は、Vertexの全response usageとscope discoveryを含む全BigQuery jobの実処理bytesをrun単位で
+集計する具体meterを、この実行入口へ接続することです。費用を呼出し回数や成功stageから推測してはいけません。
 認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
