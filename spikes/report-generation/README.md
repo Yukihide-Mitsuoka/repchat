@@ -363,6 +363,12 @@ rendererと番号付き隣接edgeの結果validatorは、将来の共通契約�
 nodeの表示名は値をそのまま使い、URLなどの
 対象別整形はしません。リンクには遷移元・遷移先と指標値を表示します。
 
+共通rendererは`chart_renderer_probe.mjs`へ`visualization`、`columns`、`rows`だけのJSONをstdinで渡して
+別processから実行できます。入力は1 MiB以下、列は1〜64件、行は最大10,001件です。成功時は終了code 0、
+payload不正または描画失敗時は非0で終了し、結果値や診断をstdout／stderrへ出しません。ECharts系はvendored
+EChartsのSVG SSRを実行し、scalar・table系は共通DOM rendererを実行します。このprobeは対象名、schema名、
+metric定義、対象別設定を受け取りません。
+
 複数系列の折れ線は、系列ごとに独立した縦軸範囲へ正規化して期間内の変化を同じ描画高で比較します。
 各系列の縦軸範囲をグラフ下へ明記し、単位が異なる系列を同一スケールに押し込めません。
 100%積み上げ棒・面は区分ごとの合計を100%へ正規化し、散布図・バブル図は任意の第2区分軸を
