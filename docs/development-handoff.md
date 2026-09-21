@@ -281,8 +281,12 @@ PR #785はmerge済みです。
 `run_measured_manifest_evaluation`の実行clientを同一に接続し、共有Vertex usage集計にtool prompt tokenを含めました。
 PR #786はmerge済みです。
 実providerを使う評価commandと価格snapshot・認可情報の入力境界は未実装です。接続だけでは実値照合や未知schema品質を
-証明したことになりません。次は、公式fixtureを独立reviewしたうえで、価格snapshot、許可scope、予算上限、
-実行承認を明示する評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
+証明したことになりません。公式fixtureと評価commandへ進む前に、
+[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)として、SQL診断の型付きcode化、case単位の
+合格gate、描画成功gate、provider／infrastructure failureとprogramming errorの分離を実装します。詳細な順序と
+受入条件は[評価harnessの実評価前強化計画](../spikes/schema-generalization-evaluation/README.md#実評価前の強化計画)を
+正本とします。その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
+評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。
@@ -342,7 +346,7 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
 | 6 | 旧実装を物理削除（完了） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にした。互換目的のadapter、feature flag、隠し設定は追加しない |
-| 7 | 同一runtimeの反復評価（評価基盤の最終接続PR #786までmerge、実反復は未実施） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行、結果検証、共通renderer probe、最終run記録、全provider usage計測までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+| 7 | 同一runtimeの反復評価（評価基盤の最終接続PR #786までmerge、実反復は未実施） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。実評価前にIssue #788で型付きSQL診断、schema別かつcase別90%、case別描画100%、capability別成功、infrastructure failure時の合格拒否、programming error時の評価無効を実装する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行、結果検証、共通renderer probe、最終run記録、全provider usage計測までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する。実評価合格後だけ、Python worker維持かTypeScript移植かを含む製品runtime境界をADRで決定する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
 contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の
@@ -358,7 +362,7 @@ contract fingerprint、provenance、結果形状、一般的なchart capability�
 - 利用者確認や手動意味定義を解決策として導入していない。固有処理が残る間は「任意の分析対象へ設定なしで
   適用可能」と表現しない。
 
-## 次に着手する作業キュー（2026-09-12）
+## 次に着手する作業キュー（2026-09-21）
 
 各作業の受入条件と進捗はリンク先のGitHub Issueを正本とします。この表は再開時の実施順序、
 着手条件、完了判定だけを保持します。
@@ -372,11 +376,12 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の設定不要schema汎用化と評価 | 対象名を受け取らない共通pipelineで、認可済みscopeからtable・schema・bounded value profile・期間・partition・join・grain・metric候補を自動生成する。live engineからprofile registryと`metrics.json`を除去し、対象別コード・設定を追加せず2種類以上の未知schemaで参照結果と反復照合する。利用者確認や手動定義は、共通処理の改善限界が証拠で確定するまで導入しない |
-| 2 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
-| 3 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
-| 4 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
-| 5 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、infrastructure failureとprogramming errorの分離を回帰testへ固定する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
+| 2 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
+| 3 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
+| 4 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
+| 5 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
+| 6 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
 
 条件付き作業は次のとおりです。
 
