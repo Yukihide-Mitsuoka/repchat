@@ -64,7 +64,7 @@ PR #776で共通rendererをES module化し、PR #778でstdinの検証済みJSON�
 vendored EChartsのSVG SSRまたは共通DOM rendererを実行できるようにした。PR #780では、結果検証成功attemptだけを
 probeへ渡し、描画成否、検証済み行、実処理bytes、計測費用を最終run記録へ接続する。描画失敗でも検証済み行を保持して
 結果一致と描画を独立評価し、前段失敗ではprobeを呼ばない。対象別profile、設定、fallbackは追加しない。
-現在の変更では、全計画runと外部計測値を一対一に照合し、run記録、scope snapshot、analysis contractを
+PR #781では、全計画runと外部計測値を一対一に照合し、run記録、scope snapshot、analysis contractを
 既存assembler用の非上書きprivate artifactへまとめる境界を実装する。不一致や同一schema／case内のartifact変化は拒否する。
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。

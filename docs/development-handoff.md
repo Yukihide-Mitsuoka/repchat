@@ -254,7 +254,8 @@ JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run
 結果一致と描画成否を独立評価し、前段失敗ではprobeを呼びません。費用を推測せず計測側から明示的に受け取り、
 実行metadataと異なる処理bytesは拒否します。
 
-現在の変更では、全計画attemptと外部計測した処理bytes／費用を一対一に照合し、最終run記録、scope snapshot、
+[PR #781](https://github.com/Yukihide-Mitsuoka/repchat/pull/781)では、全計画attemptと外部計測した
+処理bytes／費用を一対一に照合し、最終run記録、scope snapshot、
 analysis contractを新規`0700` directory内の`0600` JSONとして出力します。既存path、計画外run、不足run、
 同一schema／case内で変化したartifactは拒否します。
 
