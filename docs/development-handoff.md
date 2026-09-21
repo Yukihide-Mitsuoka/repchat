@@ -271,7 +271,7 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 [PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
 記録できるようにします。最終queryのmetadataより小さい値や負値は拒否します。
 
-現在の変更では、同一BigQuery／Vertex clientを共通proxyで包むmeterを追加します。全Vertex responseの
+[PR #785](https://github.com/Yukihide-Mitsuoka/repchat/pull/785)では、同一BigQuery／Vertex clientを共通proxyで包むmeterを追加します。全Vertex responseの
 token usage、全BigQuery query jobの実処理bytes・課金bytes、dry runの推定bytesをrun単位で分離して集計します。
 未完了job、欠落・矛盾したmetadata、応答を得られないprovider例外は計測不能として拒否します。
 費用は明示的なtoken／TiB単価と実測usageだけで算出します。
