@@ -214,6 +214,49 @@ CI logやrepositoryへ保存しません。
 - 評価case固有の分岐、対象別profile、固定prompt、固定SQL、手動metric定義を追加しない。
 - 費用承認前に実Vertex AI／BigQueryを呼び出さず、実結果や認可scopeをrepository、CI log、PRへ保存しない。
 
+## 評価契約強化後の精度改善計画
+
+[Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)では、Issue #788の順序1〜3を完了した後、
+未知schemaの結果不一致を工程別に測定し、観測した原因に対応する対象非依存の改善だけを実装します。
+モデル変更や複数候補生成を先に採用せず、同じ評価セットに対する改善量、安全性、追加費用を比較します。
+
+### 原因を特定する評価
+
+- post-run scorerまたは独立reviewerが、結果不一致を`schema_linking`、`value_linking`、`time_field`、
+  `join_path`、`output_grain`、`filter`、`aggregation`、`sql_dialect`、`result_shape`、`indeterminate`の
+  closed enumへ分類する。この分類と根拠は参照結果を読める評価側だけに置き、runtime manifestへ渡さない。
+- 自動生成contractを使う通常runとは別の診断用bundleで、独立review済みcontractを固定入力にしたablationを行う。
+  reviewed contractで解消する不一致はcontract生成以前、解消しない不一致はplanner／SQL生成以降の候補として切り分ける。
+  reviewed contract、参照SQL、期待結果は製品runtimeへ渡さず、通常runの合格率にも混ぜない。
+- 公式fixtureには、複数時間列、類似ID、surrogate keyとbusiness key、nullable join key、多対多join、
+  nested／repeated field、同型のdecoy列を含む対抗caseを置く。各caseはdescriptionまたはbounded value evidenceから
+  正答を決定できなければならず、根拠のない命名変更だけで本質的に解けない問題を作らない。
+- 同じroot causeが独立した2 case以上で再現するか、1 caseの全反復で再現した場合だけruntime改善へ進む。
+  一度だけの失敗、`indeterminate`、provider／infrastructure failureから実装方針を決めない。
+
+### 観測結果から選ぶ改善
+
+| 観測した主因 | 実装候補 | 実装境界と完了条件 |
+|---|---|---|
+| `join_path`または`output_grain` | 決定論的なJOIN候補graphとpanel単位の論理query plan | 型、NULL率、一意性、名前・descriptionを常時根拠にし、値集合の重複とJOIN増幅率は候補を絞った後だけ予算内で調べる。`selected_tables`、`selected_fields`、`join_path`、`output_grain`、`filters`、`temporal_field`、`aggregations`、`group_by`、`expected_output_schema`をcontract fingerprintへbindしてSQL生成前に検証する。複数根拠が揃わないedgeまたは同点のpathは選ばず失敗へ閉じる |
+| `value_linking` | 質問駆動のbounded value lookup | 質問中の値候補からmetadataで列を絞り、認可scope内の非restricted fieldだけをparameterized queryで調べる。field数、match方式、処理bytes、結果件数、文字数を固定上限へ閉じ、質問語とfield tokenの対応だけを契約根拠にする。無関係な生値をprompt、artifact、logへ追加しない |
+| `filter`、`aggregation`または結果値の意味違反 | contract由来のsemantic invariant | 宣言済みscaleの値域、grain列の一意性、対象期間、relationship cardinalityに対するJOIN増幅を検査する。funnel単調性など業務意味が必要な規則は、contractがstage順序と母集団を明示した場合だけ適用し、chart種別や列名から推測しない |
+| 決定論的な根拠が複数残る低確信case | 条件付き2〜3候補生成 | JOIN path、時間field、同義fieldの競合を機械的に検出したcaseだけを実行前計画へ候補数と総予算ごと固定する。local検証、dry run、参照table、出力schema、JOIN増幅、semantic invariantで比較する。実行結果の多数決または一致だけを正解根拠にせず、同点なら自動選択しない |
+| 上記改善後も複数caseで残るSQL生成誤り | model／prompt比較 | 同じcontract、論理query plan、fixture、予算でmodelまたはpromptだけを変えた別bundleを作り、結果一致率と追加token費用を比較する。fine-tuningまたは大型modelは、この比較で生成器自体が支配的な原因と確認した後だけ検討する |
+
+実装候補はこの表の上から無条件に追加しません。root-cause集計で対応する行の開始条件を満たしたものだけを
+小さいPRとして実装し、変更前後を別々の完全なevidence bundleで評価します。各bundle内ではbinary、prompt、設定を
+固定し、安全gate、case別合格基準、private artifact境界を弱めません。
+
+### 精度改善の完了条件
+
+- baselineと各variantについて、schema／case別結果一致率、root-cause件数、Vertex token、BigQuery処理bytes、
+  費用を同じ形式で比較できる。
+- 採用する変更は、開始条件になったroot causeを固定評価セットで減らし、別caseの一致率、安全性、描画成否を
+  後退させない。改善しないvariantは採用せず、その結果をIssue #791へ残す。
+- 新しい分析対象のためのcode、profile、prompt、SQL、設定、手動metric定義を追加しない。
+- 全caseが強化後の合格条件を満たした後だけ、製品runtime境界のADRへ進む。
+
 ## 実行
 
 ```console

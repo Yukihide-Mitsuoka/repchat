@@ -377,11 +377,12 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
 | 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、infrastructure failureとprogramming errorの分離を回帰testへ固定する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
-| 2 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
-| 3 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
-| 4 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
-| 5 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
-| 6 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
+| 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
+| 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
+| 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
+| 5 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
+| 6 | [#371](https://github.com/Yukihide-Mitsuoka/repchat/issues/371)のlayout保存・共有 | #179／#180のrevision契約確定後、行・panel revision・相対weight・responsive policyを保存し、競合をfail-closedで停止する。layout保存だけではAI生成とBigQueryを実行しない |
+| 7 | [#181](https://github.com/Yukihide-Mitsuoka/repchat/issues/181)の根拠付き報告 | 統制された生成・公開経路とrevision追跡が安定した後、数値根拠、人間承認、監査履歴を含む報告を実装する |
 
 条件付き作業は次のとおりです。
 

@@ -16,25 +16,26 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 
 ## 次の依頼を選ぶ優先順位
 
-2026-09-15時点では、分析対象固有のcode・設定・既知知識を除去し、対象非依存pipelineの品質境界を
+2026-09-21時点では、分析対象固有のcode・設定・既知知識を除去し、対象非依存pipelineの品質境界を
 確定してから、以下の順で依頼を選びます。
 各Issueが受入条件の正本であり、この表は開始順序と依存関係だけを管理します。
 
 | 優先 | 段階 | 依頼候補 | 目的 | 開始・完了条件 |
 |---:|---|---|---|---|
 | 1 | 基盤品質 | [#788 実評価前の評価契約強化](https://github.com/Yukihide-Mitsuoka/repchat/issues/788) | 対象非依存runtimeを実行する前に、安全性・品質・描画・評価無効の境界を再現可能にする | SQL診断を型付きcodeへ変更し、schema別かつcase別90%、case別描画100%、必須capabilityの成功を要求する。infrastructure failureを合格不能、programming errorを評価無効にした後、未知schema最低2種類を独立review済み参照結果と反復照合する |
-| 2 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #188の対象非依存pipelineと品質境界を壊さないことを確認し、interaction・deep link・認可境界を確定する |
-| 3 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | 対話、immutable specification revision、承認、非同期build、再開、公開を製品契約にする | #179のinteractionと#188のschema品質境界が確定した後 |
-| 4 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | AI配置と利用者の幅調整を構造化revisionとして保存・公開し、共有相手に再現する | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
-| 5 | 意思決定支援 | [#181 根拠付き経営報告とアクション](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | 根拠へ追跡できる判断、施策、担当、成功指標、検証方法を生成し、人間の承認後だけ配布する | #180の統制された生成・公開経路と、SQL・結果・根拠のrevision追跡が安定した後 |
-| 6 | 外部連携 | [#345 Action Package API](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) | 承認済み施策をprovider非依存のJSON packageとして外部systemへ渡し、権限・credential・監査を分析処理から分離する | #181の承認済みaction revisionが安定し、最初の外部consumerを確認した後 |
+| 2 | 精度検証 | [#791 baseline主導の未知schema精度改善](https://github.com/Yukihide-Mitsuoka/repchat/issues/791) | 不一致原因を工程別に特定し、観測した原因へだけ対象非依存の改善を適用する | #788の型付き診断、合否gate、失敗分類が完了した後、root-cause分類、reviewed contract ablation、対抗fixture、baselineを固定する。同じ原因が独立2 case以上または1 caseの全反復で再現した場合だけruntimeを変更し、同じ評価セットで精度・安全性・追加費用を比較する |
+| 3 | 製品UX | [#179 ダッシュボード閲覧とSQL来歴の分離](https://github.com/Yukihide-Mitsuoka/repchat/issues/179) | 一般閲覧面と、SQL・定義・検証・data lineageを確認する監査面を分離する | #188の対象非依存pipelineと品質境界を壊さないことを確認し、interaction・deep link・認可境界を確定する |
+| 4 | 分析契約 | [#180 対話による分析仕様確定](https://github.com/Yukihide-Mitsuoka/repchat/issues/180) | 対話、immutable specification revision、承認、非同期build、再開、公開を製品契約にする | #179のinteractionと#188のschema品質境界が確定した後 |
+| 5 | 保存・共有 | [#371 レイアウトrevisionの保存と共有](https://github.com/Yukihide-Mitsuoka/repchat/issues/371) | AI配置と利用者の幅調整を構造化revisionとして保存・公開し、共有相手に再現する | #179/#180のdashboard・panel・layout revision契約が確定し、共有需要をdesign partnerで確認した後 |
+| 6 | 意思決定支援 | [#181 根拠付き経営報告とアクション](https://github.com/Yukihide-Mitsuoka/repchat/issues/181) | 根拠へ追跡できる判断、施策、担当、成功指標、検証方法を生成し、人間の承認後だけ配布する | #180の統制された生成・公開経路と、SQL・結果・根拠のrevision追跡が安定した後 |
+| 7 | 外部連携 | [#345 Action Package API](https://github.com/Yukihide-Mitsuoka/repchat/issues/345) | 承認済み施策をprovider非依存のJSON packageとして外部systemへ渡し、権限・credential・監査を分析処理から分離する | #181の承認済みaction revisionが安定し、最初の外部consumerを確認した後 |
 | 条件付き | 品質向上 | [#380 AI考察後の根拠付きパネル補強](https://github.com/Yukihide-Mitsuoka/repchat/issues/380) | AI-only計画の後に根拠付き補強候補を任意提示し、固定パネル置換や自動fallbackを行わず品質差を測る | AI-only plannerのbaselineが代表シナリオで安定し、同一評価セットで改善と失敗例を比較できる場合だけ |
 | 着手直前 | 本番化 | [#194 課金・認証方式](https://github.com/Yukihide-Mitsuoka/repchat/issues/194) | 閲覧者・作成者・管理者の課金区分、初期認証方式、利用者管理主体をオーナー判断で確定する | 課金または本番オンボーディングへ着手する直前。オーナー判断なしにAIが方式を選ばない |
 | リリース前 | リリース | [#251 検証可能なrelease artifact](https://github.com/Yukihide-Mitsuoka/repchat/issues/251) | 実行コード、設定、依存関係、検査結果を同じ不変artifactとprovenanceへ結び付ける | 配布対象とconsumerを確定し、`make build`またはpublish jobがattestation対象を生成できる時点 |
 
-#188で残った対象非依存性の実証を安全に完了するため、#788の評価契約強化が現在の最優先です。
-固有処理が残る間、または強化後の実評価が合格する前は、それをデモ、製品能力、または後続機能の前提として
-扱いません。#179以降は、対象非依存pipelineを後退させない範囲で順に進めます。
+#188で残った対象非依存性の実証を安全に完了するため、#788の評価契約強化、#791のbaseline主導精度改善の順が
+現在の最優先です。固有処理が残る間、または強化後の実評価が合格する前は、それをデモ、製品能力、または
+後続機能の前提として扱いません。#179以降は、対象非依存pipelineを後退させない範囲で順に進めます。
 
 ## 残課題
 
@@ -44,7 +45,7 @@ RepChatの開発方向と実施順序を示します。詳細なスコープと�
 |---:|---|---|
 | 完了 | [#315 `make doctor` timeout](https://github.com/Yukihide-Mitsuoka/repchat/issues/315) | 一時Gitリポジトリを反復する試験を`make doctor-slow`へ分離し、fast／slowの両suiteをCIで独立実行する。timeout延長・retry・skipは追加しない |
 | 再発時 | [#169 serve round-trip flake](https://github.com/Yukihide-Mitsuoka/repchat/issues/169) | `serve`の本番bindを維持し、round-tripテストは`127.0.0.1`を明示してlistener割当とcleanupを隔離。5回連続の再現確認を行った |
-| 評価契約強化後 | AI分析計画の実サービス確認 | 型付き診断、case／capability／描画gate、失敗分類を完成させた後、対象別profileを受け取らない共通runtimeを費用承認付きで未知schemaへ反復実行する。旧対象別runnerは使用しない。合格後だけPython／TypeScriptの製品runtime境界をADRで決める |
+| 評価契約・原因分類後 | AI分析計画の実サービス確認 | 型付き診断、case／capability／描画gate、失敗分類、semantic root-cause分類を完成させた後、対象別profileを受け取らない共通runtimeを費用承認付きで未知schemaへ反復実行する。旧対象別runnerは使用しない。観測した原因だけを改善し、合格後だけPython／TypeScriptの製品runtime境界をADRで決める |
 
 Issue [#169](https://github.com/Yukihide-Mitsuoka/repchat/issues/169)は、本番の`0.0.0.0`既定bindを維持したまま
 テストlistenerを`127.0.0.1`へ隔離し、起動時socket errorのrejectと冪等なcleanupを回帰テストへ固定した。
