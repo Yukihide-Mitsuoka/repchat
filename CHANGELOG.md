@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.2.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v2.2.0) (2026-09-21)
+
+
+### Features
+
+* **evaluation:** BigQuery実行を評価経路へ接続する ([#772](https://github.com/Yukihide-Mitsuoka/repchat/issues/772)) ([dbfee1d](https://github.com/Yukihide-Mitsuoka/repchat/commit/dbfee1de9213e20bcd62bce0f3acfa6159438bb5))
+* **evaluation:** 実行結果を共通契約で検証する ([#774](https://github.com/Yukihide-Mitsuoka/repchat/issues/774)) ([7ebbe92](https://github.com/Yukihide-Mitsuoka/repchat/commit/7ebbe921fb9e02cc09f3be82e2c52b4bc0b3b518))
+* **renderer:** 共通rendererをmodule化する ([#776](https://github.com/Yukihide-Mitsuoka/repchat/issues/776)) ([cf4ca0c](https://github.com/Yukihide-Mitsuoka/repchat/commit/cf4ca0c2b4ba543f13f992279eb56b17b91ebfb3))
+
 ## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
 
 
