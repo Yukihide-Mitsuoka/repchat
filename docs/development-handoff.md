@@ -259,7 +259,7 @@ JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run
 analysis contractを新規`0700` directory内の`0600` JSONとして出力します。既存path、計画外run、不足run、
 同一schema／case内で変化したartifactは拒否します。
 
-現在の変更では、各計画runを参照情報のない単独manifestへ分け、外部meterに渡した実行callbackがちょうど1回
+[PR #782](https://github.com/Yukihide-Mitsuoka/repchat/pull/782)では、各計画runを参照情報のない単独manifestへ分け、外部meterに渡した実行callbackがちょうど1回
 呼ばれた場合だけ`run_manifest_rendering`のattemptと計測値をartifact境界へ渡します。既存出力と不正manifestは
 最初のruntime callより前に拒否します。
 

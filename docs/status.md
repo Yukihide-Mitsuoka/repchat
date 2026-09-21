@@ -66,7 +66,7 @@ probeへ渡し、描画成否、検証済み行、実処理bytes、計測費用�
 結果一致と描画を独立評価し、前段失敗ではprobeを呼ばない。対象別profile、設定、fallbackは追加しない。
 PR #781では、全計画runと外部計測値を一対一に照合し、run記録、scope snapshot、analysis contractを
 既存assembler用の非上書きprivate artifactへまとめる境界を実装する。不一致や同一schema／case内のartifact変化は拒否する。
-現在の変更では、各計画runを参照情報のない単独manifestとして外部meter内でちょうど1回実行し、
+PR #782では、各計画runを参照情報のない単独manifestとして外部meter内でちょうど1回実行し、
 `run_manifest_rendering`の結果と計測値をartifact出力へ接続する。既存出力や不正manifestはruntime call前に拒否する。
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
