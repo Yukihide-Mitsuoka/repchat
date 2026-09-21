@@ -242,7 +242,8 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 描画成功をbooleanで返します。sparkline tableを含むECharts経路はchart libraryを明示的に受け取り、
 2026-09-21にmerge済みです。
 
-現在の変更では、package済みrendererを別processから実行する無出力probeを追加しています。入力は1 MiB以下の
+[PR #778](https://github.com/Yukihide-Mitsuoka/repchat/pull/778)では、package済みrendererを別processから
+実行する無出力probeを追加しています。入力は1 MiB以下の
 `visualization`、`columns`、`rows`だけに限定し、ECharts系はvendored EChartsのSVG SSR、scalar・table系は
 共通DOM rendererを実際に通します。成功時だけ終了code 0、描画失敗、未知種別、不正payloadは非0へ閉じ、
 結果値や例外診断をstdout／stderrへ出しません。
