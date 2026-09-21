@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 未知schema反復評価の証拠harness
@@ -243,6 +243,70 @@ CI logやrepositoryへ保存しません。
 | `filter`、`aggregation`または結果値の意味違反 | contract由来のsemantic invariant | 宣言済みscaleの値域、grain列の一意性、対象期間、relationship cardinalityに対するJOIN増幅を検査する。funnel単調性など業務意味が必要な規則は、contractがstage順序と母集団を明示した場合だけ適用し、chart種別や列名から推測しない |
 | 決定論的な根拠が複数残る低確信case | 条件付き2〜3候補生成 | JOIN path、時間field、同義fieldの競合を機械的に検出したcaseだけを実行前計画へ候補数と総予算ごと固定する。local検証、dry run、参照table、出力schema、JOIN増幅、semantic invariantで比較する。実行結果の多数決または一致だけを正解根拠にせず、同点なら自動選択しない |
 | 上記改善後も複数caseで残るSQL生成誤り | model／prompt比較 | 同じcontract、論理query plan、fixture、予算でmodelまたはpromptだけを変えた別bundleを作り、結果一致率と追加token費用を比較する。fine-tuningまたは大型modelは、この比較で生成器自体が支配的な原因と確認した後だけ検討する |
+
+### 段階的推論・オーケストレーション候補
+
+複数のモデル呼出しを使う場合も、自律agent間の自由会話やagentごとのservice分割は採用しません。
+RepChatが所有する型付きartifactと決定論的な制御で、役割を限定したモデル呼出しを接続します。
+この節の候補はいずれも採用済み設計ではなく、前節のroot-cause開始条件を満たした場合に同じ固定評価セットで
+比較するvariantです。
+
+候補graphは次の依存順序にします。schema shortlistが未確定のままvalue lookupを全fieldへ実行せず、
+value evidenceを必要とするJOIN判定を先に確定しません。
+
+```text
+schema shortlist
+      |
+      +--> bounded value lookup --+
+      |                            |
+      +--> join evidence ----------+--> query plan compile
+                                           |
+                                           +--> primary SQL candidate
+                                           |
+                                           +--> conditional additional candidate
+                                                        |
+                                                        v
+                               deterministic validation and selection
+```
+
+各roleのartifactは、closed enumの判定code、table／field token、evidence ID、入力artifact fingerprint、
+使用したmodel／prompt／設定のfingerprint、token usage、実測したNULL率・一意性・値重複率・JOIN増幅率などを
+必要な範囲で持ちます。モデルが自己申告するconfidenceと自由文の`evidence`だけを選択根拠にしません。
+schema description、サンプル値、先行roleの出力はすべて未信頼入力として検証し、認可scope外のfieldまたは
+生値を後続prompt、artifact、logへ伝播させません。
+
+| 候補 | 開始条件 | 比較内容 | 採用しない条件 |
+|---|---|---|---|
+| schema／value／join roleの分離 | 対応するroot causeが改善開始条件を満たし、単一contract生成呼出しでは工程別の修正を独立評価できない | 同じmodelと予算上限で、単一路線と型付きrole分離を結果一致率、p50／p95時間、token、BigQuery bytes、費用、stage別失敗率、再現性で比較する | 一致率が改善しない、別caseが後退する、または追加費用・失敗点に対する効果がない |
+| roleの限定並列実行 | shortlist後のvalue lookupとjoin evidenceなど、入力依存のない外部呼出しが複数ある | 直列variantとのwall-clock時間、総処理量、timeout率、quota failure率を比較する | 依存する処理を推測で並列化する、総費用だけ増える、またはp95時間が改善しない |
+| 条件付き追加SQL候補 | 前節の決定論的な曖昧性signalが発生する | 候補数と総予算を実行前に固定し、単一候補variantとの一致率、選択失敗率、追加費用を比較する | 常時生成が必要、候補間の相関した誤りを多数決で正解扱いする、または同点を自動選択する |
+| semantic judge | local validation、dry run、出力schema、JOIN増幅、semantic invariantでも複数候補を選べないcaseが複数残る | judgeなしの拒否率と、助言的rankingの正選択率・誤選択率・費用を比較する | contract、安全判定、認可scopeを上書きする、参照情報をruntimeへ渡す、または誤選択を安全に検出できない |
+
+semantic judgeは初期variantに含めません。導入する場合もrankingだけを返し、contract、SQL validator、
+認可gate、予算gateを上書きできません。決定論的な選択基準が同点なら、judgeの結論だけで実行せず拒否または
+利用者確認へ閉じます。同じmodel、prompt系統、schema evidenceから作る複数候補は独立した投票ではないため、
+候補数や多数決を精度の根拠にしません。
+
+オーケストレーションは、まず現在の直接Vertex AI呼出しと明示的な関数で固定graphを実装します。
+汎用DAG executorは、独立した2種類以上のworkflowで同じ制御、再試行、再開契約が必要になった場合だけ
+別設計として検討します。Google ADKは型付きrole artifactが安定した後の交換可能なrunner variantとし、
+[ADKのworkflow機能](https://adk.dev/agents/workflow-agents/)へ製品契約を依存させません。
+
+外部基盤も評価結果または運用要件が開始条件を満たした場合だけ追加します。
+
+- dbtの[`manifest.json`](https://docs.getdbt.com/reference/artifacts/manifest-json)または
+  [`catalog.json`](https://docs.getdbt.com/reference/artifacts/catalog-json)は、description、依存関係、列型、
+  統計の不足が支配的な原因と確認された場合の任意metadata adapterに限定する。利用できないschemaを
+  評価対象外にせず、内容を共通snapshotへ検証付きで変換する。
+- Google Cloud Workflowsなどの永続orchestratorは、長時間化、processをまたぐ再開、取消、部分retryが
+  実測上必要になった後の製品runtime ADRで検討する。単価だけを採用理由にせず、retryの重複課金、
+  idempotency、状態の正本、artifact保全を同時に決める。
+- Airflowとroleごとのservice分割は評価harnessへ導入しない。単一processで表現できないscheduler要件または
+  独立した運用境界が確認されるまで候補外とする。
+
+role分離を比較する各bundleでは、partial failure後のretryで有料呼出しを重複させないidentity、全roleの
+failureを分母へ残す型付き記録、role別fingerprintを必須にします。採用したrole数そのものを改善指標にせず、
+固定caseに対する結果一致、安全性、時間、費用、失敗率、再現性だけで判断します。
 
 実装候補はこの表の上から無条件に追加しません。root-cause集計で対応する行の開始条件を満たしたものだけを
 小さいPRとして実装し、変更前後を別々の完全なevidence bundleで評価します。各bundle内ではbinary、prompt、設定を
