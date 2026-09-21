@@ -92,7 +92,14 @@ dry runは結果行を取得しないため、run記録の`bytes_processed`は0�
 `validate_dashboard_result`へ渡します。sectionと契約の小さい方の行上限、契約上の列、可視化shapeを照合し、
 日付と`Decimal`を含む成功行をJSON-safe化します。検証失敗はSQL実行成功と実処理bytesを保持する一方、
 生の未検証行と例外診断を保存せず、固定`result_validation`／`result_validation_failed`と
-`semantic_error=true`へ変換します。描画は後続stageです。
+`semantic_error=true`へ変換します。
+
+`manifest_rendering.py`は結果検証までの順序とidentityを維持し、成功attemptのJSON-safeな
+`visualization`、`columns`、`rows`だけを別processの共通renderer probeへ渡します。probeは
+vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0だけを描画成功とします。
+描画拒否、timeout、起動失敗、例外はraw detailを保存しない固定`rendering`／`rendering_failed`へ閉じます。
+描画失敗でも検証済み行は保持し、結果一致と描画成否を独立評価できます。前段失敗ではprobeを呼びません。
+最終run記録は実行metadataと一致する処理bytesだけを受理し、費用は推測せず計測側から明示的に受け取ります。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
@@ -117,9 +124,8 @@ scope discoveryまたはcontract生成で停止した場合は、raw例外文を
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
-この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery query executionと
-共通結果検証まで反復します。共通rendererは別processから呼べる無出力probeとしてpackage済みですが、
-この評価stageからの呼出しと描画結果のrun記録は後続作業です。
+この境界はartifactをrepositoryへ保存せず、manifest駆動で単一panelのBigQuery query execution、
+共通結果検証、共通renderer probeまで反復し、最終run記録を組み立てます。
 共通planner自体は、共通分析契約が十分なら初回clarificationを0件にでき、確認が不可欠な場合だけ未回答fieldを最大3件返します。
 評価runnerは対話を持たないため、clarificationが1件でもあればそのattemptを成功扱いしません。
 利用者確認をschema理解や対象固有の意味定義の代替にはしません。

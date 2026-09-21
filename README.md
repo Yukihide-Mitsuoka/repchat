@@ -33,8 +33,10 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 共通結果検証を使い、列、行数、可視化shapeを照合して
 成功結果をJSON-safe化します。通常のdashboardは従来の設定件数を維持します。
 [PR #776](https://github.com/Yukihide-Mitsuoka/repchat/pull/776)では共通rendererをES module化し、
-現在の変更では検証済みJSON結果だけを受け取る無出力probeから実ECharts SVG SSRまたは共通DOM rendererを
-実行します。評価stageからのprobe呼出し、公式fixtureの独立review、実値照合、
+続く[PR #778](https://github.com/Yukihide-Mitsuoka/repchat/pull/778)では検証済みJSON結果だけを受け取る
+無出力probeから実ECharts SVG SSRまたは共通DOM rendererを実行できるようにしました。現在の変更では
+結果検証に成功したattemptだけをprobeへ渡し、描画成否、検証済み行、実処理bytes、計測費用を最終run記録へ
+接続します。公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 
