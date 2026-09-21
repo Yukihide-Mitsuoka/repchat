@@ -61,7 +61,7 @@ SELECT・scope・field・period・partition・可視化出力契約validatorへ�
 `result_validation`／`result_validation_failed`と`semantic_error`へ閉じる。
 通常のdashboardの設定件数は変更しない。
 PR #776で共通rendererをES module化し、PR #778でstdinの検証済みJSON結果だけを受け取る無出力probeから
-vendored EChartsのSVG SSRまたは共通DOM rendererを実行できるようにした。現在の変更では、結果検証成功attemptだけを
+vendored EChartsのSVG SSRまたは共通DOM rendererを実行できるようにした。PR #780では、結果検証成功attemptだけを
 probeへ渡し、描画成否、検証済み行、実処理bytes、計測費用を最終run記録へ接続する。描画失敗でも検証済み行を保持して
 結果一致と描画を独立評価し、前段失敗ではprobeを呼ばない。対象別profile、設定、fallbackは追加しない。
 公式fixture、独立review、実値照合、
