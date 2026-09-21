@@ -133,3 +133,25 @@ for client_kind in ('bq','vertex'):
  else:raise AssertionError('unmeasured provider failure was accepted')
 `);
 });
+
+test('metered evaluation instruments the exact clients passed to the renderer', () => {
+  assertPython(String.raw`
+${setup}
+seen=[]
+def evaluation(manifest,bq,vertex,model,**kwargs):
+ assert (manifest,model)==({'manifest':True},'model')
+ def execute():
+  bq.query('analysis',job_config=SimpleNamespace(dry_run=False)).result()
+  vertex.models.generate_content()
+  return object()
+ measured=kwargs['meter'](('schema','case','run'),execute)
+ seen.append((measured.bytes_processed,measured.cost_jpy))
+ return {'recordings':'path'}
+runtime.run_measured_manifest_evaluation=evaluation
+result=runtime.run_runtime_metered_manifest_evaluation(
+ {'manifest':True},BQ([Job(5,7)]),Vertex([response(2,3)]),'model',
+ as_of=object(),output_directory='out',pricing=pricing,
+)
+assert result=={'recordings':'path'} and seen==[(5,15)]
+`);
+});

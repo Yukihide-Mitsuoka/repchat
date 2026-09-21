@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from datetime import date
+from pathlib import Path
 from typing import Any, Callable
 
-from manifest_artifacts import RunMeasurement
+from manifest_artifacts import RunMeasurement, run_measured_manifest_evaluation
 from manifest_rendering import RenderingAttempt
 
 
@@ -252,3 +254,32 @@ class RuntimeMeter:
         usage = ledger.usage()
         cost = _non_negative_number(self._pricing.cost_jpy(usage), "runtime cost")
         return RunMeasurement(usage.bigquery_bytes_processed, cost)
+
+
+def run_runtime_metered_manifest_evaluation(
+    manifest: Any,
+    bq: Any,
+    vertex: Any,
+    model: str,
+    *,
+    as_of: date,
+    output_directory: str | Path,
+    pricing: RuntimePricing,
+    rendering_runner: Callable[..., tuple[RenderingAttempt, ...]] | None = None,
+) -> dict[str, Path]:
+    """Instrument the exact clients used by the measured manifest entry."""
+    meter = RuntimeMeter(pricing)
+    measured_bq, measured_vertex = meter.instrument(bq, vertex)
+    options: dict[str, Any] = {}
+    if rendering_runner is not None:
+        options["rendering_runner"] = rendering_runner
+    return run_measured_manifest_evaluation(
+        manifest,
+        measured_bq,
+        measured_vertex,
+        model,
+        as_of=as_of,
+        output_directory=output_directory,
+        meter=meter,
+        **options,
+    )

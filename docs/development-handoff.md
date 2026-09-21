@@ -275,10 +275,17 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 token usage、全BigQuery query jobの実処理bytes・課金bytes、dry runの推定bytesをrun単位で分離して集計します。
 未完了job、欠落・矛盾したmetadata、応答を得られないprovider例外は計測不能として拒否します。
 費用は明示的なtoken／TiB単価と実測usageだけで算出します。
+PR #785はmerge済みです。
 
-次の最優先作業は、このmeterと`run_measured_manifest_evaluation`の実行clientを同一に接続することです。
-認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
-対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
+[PR #786](https://github.com/Yukihide-Mitsuoka/repchat/pull/786)では、このmeterと
+`run_measured_manifest_evaluation`の実行clientを同一に接続し、共有Vertex usage集計にtool prompt tokenを含めます。
+実providerを使う評価commandと価格snapshot・認可情報の入力境界は未実装です。接続だけでは実値照合や未知schema品質を
+証明したことになりません。次は、公式fixtureを独立reviewしたうえで、価格snapshot、許可scope、予算上限、
+実行承認を明示する評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
+
+引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
+対象非依存の同一pipelineで自動生成することです。
+新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。
 
