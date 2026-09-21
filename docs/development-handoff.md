@@ -264,7 +264,7 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 呼ばれた場合だけ`run_manifest_rendering`のattemptと計測値をartifact境界へ渡します。既存出力と不正manifestは
 最初のruntime callより前に拒否します。
 
-現在の変更では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
+[PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
 実処理bytesを残すよう失敗記録契約を修正します。dry runの推定bytesは実処理bytesに混ぜません。
 
 次の最優先作業は、最終query成功時もrun全体のbytesを記録できるようにし、同一BigQuery／Vertex clientを
