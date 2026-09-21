@@ -68,12 +68,14 @@ PR #781では、全計画runと外部計測値を一対一に照合し、run記�
 既存assembler用の非上書きprivate artifactへまとめる境界を実装する。不一致や同一schema／case内のartifact変化は拒否する。
 PR #782では、各計画runを参照情報のない単独manifestとして外部meter内でちょうど1回実行し、
 `run_manifest_rendering`の結果と計測値をartifact出力へ接続する。既存出力や不正manifestはruntime call前に拒否する。
-現在の変更では実行clientを共通proxyで計測し、全Vertex responseのtoken usage、全BigQuery query jobの実処理bytesと
-課金bytes、dry runの推定bytesをrun単位で集計する。未完了jobまたは欠落・矛盾したprovider metadataは拒否し、
-明示されたusage単価だけで費用を算出する。
+PR #783と#784では、失敗・成功を問わずscope discoveryを含むrun全体の実処理bytesを記録できるようにした。
+PR #785では実行clientを共通proxyで計測し、全Vertex responseのtoken usage、全BigQuery query jobの実処理bytesと
+課金bytes、dry runの推定bytesをrun単位で集計するmeterを追加した。PR #786では同じproxyを評価入口へ接続し、
+共有Vertex usage集計にtool prompt tokenを含めた。未完了jobまたは欠落・矛盾したprovider metadataは拒否し、
+明示されたusage単価だけで費用を算出する。PR #783〜#786はmerge済みである。
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
-今回の更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
+PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
 
 **直近のデモ修正**: [Issue #230](https://github.com/Yukihide-Mitsuoka/repchat/issues/230) /

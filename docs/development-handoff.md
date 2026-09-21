@@ -218,7 +218,7 @@ SQL検証、dry run、BigQuery実行を行わず、2026-09-20にmerge済みで�
 `unauthorized_reference`、非SELECT・複文・禁止操作等は`dangerous_sql`、期間・可視化出力契約の不一致は
 `semantic_error`として記録し、診断文は保存せず固定`sql_validation`／`sql_validation_failed`へ閉じます。
 検証失敗時も生成SQLは独立review用evidenceへ残します。当時の処理bytesを0に限定する条件は、
-run全体計測ではscope discoveryの実処理bytesを落とすため、現在の変更で更新します。PR #769は2026-09-20にmerge済みです。
+run全体計測ではscope discoveryの実処理bytesを落とすため、PR #783で更新済みです。PR #769は2026-09-20にmerge済みです。
 続く[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)の`manifest_dry_run.py`は成功した検証済みSQLだけを既存の共通BigQuery dry runへ渡します。
 BigQueryが解析したstatement typeと参照tableを再照合し、出力schema、推定処理bytes、
 `maximum_bytes_billed`を検査します。dry runは結果行を取得せず、実行成功や課金済みbytesとして記録しません。
@@ -271,14 +271,15 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 [PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
 記録できるようにしました。最終queryのmetadataより小さい値や負値は拒否します。PR #784はmerge済みです。
 
-[PR #785](https://github.com/Yukihide-Mitsuoka/repchat/pull/785)では、同一BigQuery／Vertex clientを共通proxyで包むmeterを追加します。全Vertex responseの
+[PR #785](https://github.com/Yukihide-Mitsuoka/repchat/pull/785)では、同一BigQuery／Vertex clientを共通proxyで包むmeterを追加しました。全Vertex responseの
 token usage、全BigQuery query jobの実処理bytes・課金bytes、dry runの推定bytesをrun単位で分離して集計します。
 未完了job、欠落・矛盾したmetadata、応答を得られないprovider例外は計測不能として拒否します。
 費用は明示的なtoken／TiB単価と実測usageだけで算出します。
 PR #785はmerge済みです。
 
 [PR #786](https://github.com/Yukihide-Mitsuoka/repchat/pull/786)では、このmeterと
-`run_measured_manifest_evaluation`の実行clientを同一に接続し、共有Vertex usage集計にtool prompt tokenを含めます。
+`run_measured_manifest_evaluation`の実行clientを同一に接続し、共有Vertex usage集計にtool prompt tokenを含めました。
+PR #786はmerge済みです。
 実providerを使う評価commandと価格snapshot・認可情報の入力境界は未実装です。接続だけでは実値照合や未知schema品質を
 証明したことになりません。次は、公式fixtureを独立reviewしたうえで、価格snapshot、許可scope、予算上限、
 実行承認を明示する評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
@@ -340,8 +341,8 @@ restricted／repeatedな時間型は利用可能な時間境界として扱わ�
 | 3 | planner・SQL・検査を契約だけへ接続（PR #687、#689、#691、#693、#695〜#698、#716〜#718、#727、#728 merge済み） | `analysis_planner.py`、`analysis_workflows.py`、`sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`section_execution.py` | planner、workflow、保存plan、section executorは共通契約からscope・上限・期間・field・SQL規則・結果形状検査を導出する。section executorから対象別dataset、期間callback、SQL正規化callback、SQL検査・実行から契約欠落fallback、URL関数の特殊補正を削除済み |
 | 4 | live runtimeをprofileなしへ切替 | `analysis_workflows.py` | 旧実サービス検証runner、ライブデモ・HTTP入口・facade、`live_engine.py`、保存dashboard planの`profile`依存は削除済み。workflowの相談・dashboard計画は共通契約を必須入力とし、契約取得不能時は対象別fallbackへ戻らずfail closedにする。未参照の旧単一Insight profile経路は削除済み |
 | 5 | UI・成果物を中立化 | `visualization_contracts.py`、`visualization_sections.py` | 旧ライブデモ入口とUI payload、未参照の固定Evidence成果物出力、`tenant_serve.py`は削除済み。PR #732で`time_value`へ中立化し、PR #733で区分軸の時間型、PR #736で時系列SQLの直接field来歴を共通契約へ照合済み。PR #734で段階付きSankeyのWeb導線前提、PR #735でdate-shard疑似日時のdimension接続を実装済み。PR #738で完全経路を証明できない段階付きSankeyを閉じ、一般flowだけを維持する |
-| 6 | 旧実装を物理削除（進行中） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にする。互換目的のadapter、feature flag、隠し設定を追加しない |
-| 7 | 同一runtimeの反復評価（PR #743・#744・#746・#747・#749・#750・#751・#752・#754・#755・#756・#757・#759・#761・#763・#765・#767・#768・#769・#770・#772・#774・#776・#778をmerge、PR #780で描画と最終run記録を接続） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行、結果検証、共通renderer probe、最終run記録までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
+| 6 | 旧実装を物理削除（完了） | `run_report.py`の旧export等 | `dashboard_build.py`、registry、対象別profile moduleはPR #720〜#722、固定schema・手動metric資産はPR #723、固定Evidence成果物出力と対応する旧exportはPR #725、固定dataset・20GiB上限のexportはPR #727で削除済み。PR #739で固定SQL検出の誤検出を除き、runtime inventoryのallowlistを全13分類で空にした。互換目的のadapter、feature flag、隠し設定は追加しない |
+| 7 | 同一runtimeの反復評価（評価基盤の最終接続PR #786までmerge、実反復は未実施） | source固有testを隔離したevaluation harness、未知nested/repeated schema最低2種類 | fixtureが持てるのは認可scope、質問、独立review済み期待SQL／期待結果と評価capabilityだけとし、期待知識とcapabilityをruntimeへ渡さない。各schemaはUNNEST、複数階層、join、期間比較、window、順序付き行動分析を網羅する。参照fixtureとrun記録を別入力にし、実行後だけIDで結合する。scorerは異なるschema最低2件、各case最低3回、schema別結果一致率90%以上、contract再現、厳密なrun型と安全違反のfail-closedを検証する。runtime・prompt・設定は最初のrun前に固定したartifact bytesへ全runを照合し、予定run IDも実行前計画へ固定する。計画runの途中停止も固定stageで分母へ残し、未取得fingerprintを捏造しない。共通preflightから単一panel計画、SQL生成、local検証、BigQuery dry run、実行、結果検証、共通renderer probe、最終run記録、全provider usage計測までを接続済み。runtimeは参照fixtureを直接読まず、認可scope・質問・計画runだけのmanifestを入力にする。公式fixtureで同一binary・prompt・設定を実反復し、結果一致率、誤推測、生成・検証失敗、scan上限違反を記録する作業は未完了。失敗は共通metadata・profiler・prompt・validatorだけを修正して再評価する |
 
 残すのは、認可scope、tenant分離、table allowlist、read-only SQL、`SELECT *`拒否、dry run、費用・行数上限、
 contract fingerprint、provenance、結果形状、一般的なchart capabilityなど、分析対象に依存しない安全性と再現性の
