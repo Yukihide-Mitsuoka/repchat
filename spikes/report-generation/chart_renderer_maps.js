@@ -1,3 +1,9 @@
+import {
+  standardChartBase,
+  standardChartFormat,
+  standardChartNumber,
+} from './chart_renderer_core.js';
+
 function standardMapName(result) {
   let hash = 2166136261;
   const geometryIndex = result.visualization === 'base_map' ? 2 : 1;
@@ -95,3 +101,10 @@ function standardBaseMapOption(result) {
   };
 }
 
+export {
+  standardAreaMapOption,
+  standardBaseMapOption,
+  standardMapGeoJson,
+  standardMapName,
+  standardPointMapOption,
+};

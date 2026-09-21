@@ -1,4 +1,45 @@
 
+import { chartValue, kpiGroup, metricUnit } from './chart_renderer_runtime.js';
+import {
+  standardChartCategoryOrientation,
+  standardChartInstances,
+} from './chart_renderer_core.js';
+import {
+  standardAnnotatedLineOption,
+  standardBarOption,
+  standardBoxPlotOption,
+  standardCalendarOption,
+  standardHeatmapOption,
+  standardHistogramOption,
+  standardLineOption,
+  standardMixedOption,
+  standardReferenceAreaOption,
+  standardReferenceLineOption,
+  standardScatterOption,
+  standardSparklineOption,
+} from './chart_renderer_cartesian.js';
+import {
+  standardDonutOption,
+  standardFunnelOption,
+  standardPieOption,
+  standardSankeyOption,
+  standardTreemapOption,
+} from './chart_renderer_composition.js';
+import {
+  standardAreaMapOption,
+  standardBaseMapOption,
+  standardMapGeoJson,
+  standardMapName,
+  standardPointMapOption,
+} from './chart_renderer_maps.js';
+import { standardDeltaOption } from './chart_renderer_indicators.js';
+import {
+  renderAdvancedResultTable,
+  renderComparisonResultTable,
+  renderPivotResultTable,
+  renderSparklineResultTable,
+} from './chart_renderer_tables.js';
+
 function standardChartOption(result) {
   switch (result.visualization) {
     case 'bar': return standardBarOption(result, 'single');
@@ -66,11 +107,10 @@ function standardChartHeight(result) {
   return 380;
 }
 
-function renderStandardChart(result, box) {
-  const chartLibrary = typeof globalThis !== 'undefined' ? globalThis.echarts : undefined;
+function renderStandardChart(result, box, chartLibrary) {
   if (!chartLibrary) {
     box.replaceChildren(Object.assign(document.createElement('p'), { className: 'notice error', textContent: 'チャートライブラリを読み込めないため描画できません。' }));
-    return;
+    return false;
   }
   const previous = standardChartInstances.get(box);
   if (previous) {
@@ -98,6 +138,7 @@ function renderStandardChart(result, box) {
     instance.resize();
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => instance.resize());
     standardChartInstances.set(box, { instance, resizeObserver });
+    return true;
   } catch (error) {
     resizeObserver?.disconnect();
     instance?.dispose();
@@ -105,38 +146,43 @@ function renderStandardChart(result, box) {
       className: 'notice error',
       textContent: `チャートの描画に失敗しました。結果データは「データ」タブで確認できます。${error instanceof Error ? ` (${error.message})` : ''}`,
     }));
+    return false;
   }
 }
 
-function graph(result, box = $('chart')) {
+function graph(result, box = $('chart'), chartLibrary = globalThis.echarts) {
   box.replaceChildren();
   if (!result.rows.length) {
+    if (!['scalar', 'kpi_group', 'kpi_pair', 'table', 'pivot_table', 'comparison_table', 'sparkline_table'].includes(result.visualization)) {
+      try {
+        standardChartOption(result);
+      } catch (_error) {
+        return false;
+      }
+    }
     box.appendChild(Object.assign(document.createElement('p'), { className: 'notice warning', textContent: '該当する行はありませんでした。' }));
-    return;
+    return true;
   }
   if (result.visualization === 'scalar') {
     box.appendChild(Object.assign(document.createElement('div'), { className: 'metric', textContent: chartValue(result.rows[0][0], result.columns[0], true) }));
-    return;
+    return true;
   }
   if (['kpi_group', 'kpi_pair'].includes(result.visualization)) {
-    kpiGroup(result, box);
-    return;
+    return kpiGroup(result, box);
   }
   if (result.visualization === 'table') {
-    renderAdvancedResultTable(result, box);
-    return;
+    return renderAdvancedResultTable(result, box);
   }
   if (result.visualization === 'pivot_table') {
-    renderPivotResultTable(result, box);
-    return;
+    return renderPivotResultTable(result, box);
   }
   if (result.visualization === 'comparison_table') {
-    renderComparisonResultTable(result, box);
-    return;
+    return renderComparisonResultTable(result, box);
   }
   if (result.visualization === 'sparkline_table') {
-    renderSparklineResultTable(result, box);
-    return;
+    return renderSparklineResultTable(result, box, chartLibrary);
   }
-  renderStandardChart(result, box);
+  return renderStandardChart(result, box, chartLibrary);
 }
+
+export { graph };

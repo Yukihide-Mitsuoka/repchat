@@ -236,8 +236,14 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 公式fixture、独立reviewと実値照合、
 成功後の全runtime段階を含む同一runtime反復評価は引き続き未完了です。
 
-この境界の次の最優先作業は、検証済みのJSON-safeな結果と実測処理bytes・費用をrun記録へ接続し、
-既存の共通rendererで描画成否を記録することです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
+[PR #776](https://github.com/Yukihide-Mitsuoka/repchat/pull/776)では、旧UI削除後に呼出し口を失っていた
+共通renderer断片を通常のES moduleとしてpackageしています。
+旧UIに暗黙依存していた値表示・単位・KPI helperを対象名やmetric定義を推測しない共通実装へ置換し、全rendererが
+描画成功をbooleanで返します。sparkline tableを含むECharts経路はchart libraryを明示的に受け取ります。
+
+この境界の次の最優先作業は、package済みrendererを別processから実ECharts SVG SSRで実行する無出力probeを追加し、
+その後`manifest_result_validation.py`の成功attemptだけをprobeへ渡して、検証済みのJSON-safeな結果と実測処理bytes・
+費用、描画成否を最終run記録へ接続することです。認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
 意味定義登録も解決策にせず、未知schemaの反復評価を根拠に共通処理を改善します。

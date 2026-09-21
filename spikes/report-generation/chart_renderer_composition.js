@@ -1,3 +1,11 @@
+import {
+  standardChartBase,
+  standardChartFormat,
+  standardChartLabel,
+  standardChartNumber,
+  standardChartPalette,
+} from './chart_renderer_core.js';
+
 function standardDonutOption(result) {
   return {
     ...standardChartBase({ legend: true, tooltip: true }),
@@ -96,3 +104,11 @@ function standardPieOption(result) {
   option.series[0].center = ['42%', '52%'];
   return option;
 }
+
+export {
+  standardDonutOption,
+  standardFunnelOption,
+  standardPieOption,
+  standardSankeyOption,
+  standardTreemapOption,
+};
