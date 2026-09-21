@@ -101,7 +101,7 @@ dry run自体の推定bytesは実処理bytesへ加えず、先行するscope dis
 vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0だけを描画成功とします。
 描画拒否、timeout、起動失敗、例外はraw detailを保存しない固定`rendering`／`rendering_failed`へ閉じます。
 描画失敗でも検証済み行は保持し、結果一致と描画成否を独立評価できます。前段失敗ではprobeを呼びません。
-最終run記録は実行metadataと一致する処理bytesだけを受理し、費用は推測せず計測側から明示的に受け取ります。
+最終run記録は最終queryの実行metadata以上のrun全体の実処理bytesだけを受理し、費用は推測せず計測側から明示的に受け取ります。
 
 `manifest_artifacts.py`は全計画runと完了attempt、外部計測した処理bytes・費用を一対一に照合し、
 `recorded-runs.json`、`scope-snapshots.json`、`analysis-contracts.json`を既存assemblerへ渡せる形にします。

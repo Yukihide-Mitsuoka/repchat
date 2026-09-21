@@ -56,9 +56,13 @@ class ResultValidationAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != self.bytes_processed:
+        if (
+            type(bytes_processed) is not int
+            or self.bytes_processed is None
+            or bytes_processed < self.bytes_processed
+        ):
             raise ValueError(
-                "result validation bytes must match execution metadata"
+                "result validation bytes must include execution metadata"
             )
         if (
             isinstance(cost_jpy, bool)
@@ -87,7 +91,7 @@ class ResultValidationAttempt:
                 "scan_limit_exceeded": False,
                 "semantic_error": self.semantic_error,
                 "render_succeeded": False,
-                "bytes_processed": self.bytes_processed,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }

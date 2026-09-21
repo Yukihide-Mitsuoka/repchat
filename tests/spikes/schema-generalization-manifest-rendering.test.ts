@@ -70,6 +70,7 @@ assert recording['run']['actual_rows']==[['A',2],['B',1]]
 assert recording['run']['render_succeeded'] is True
 assert recording['run']['bytes_processed']==84
 assert recording['run']['cost_jpy']==0.75
+assert attempt.recording(bytes_processed=126,cost_jpy=0.9)['run']['bytes_processed']==126
 validate_run_outcome(recording['run'])
 `);
 });
@@ -124,7 +125,7 @@ attempt=rendering.run_manifest_rendering(
  result_runner=validations,renderer=lambda _payload:True,
 )[0]
 for kwargs,message in (
- ({'bytes_processed':83,'cost_jpy':0.75},'rendering bytes must match execution metadata'),
+ ({'bytes_processed':83,'cost_jpy':0.75},'rendering bytes must include execution metadata'),
  ({'bytes_processed':84,'cost_jpy':float('nan')},'rendering cost must be finite and non-negative'),
 ):
  try:attempt.recording(**kwargs)

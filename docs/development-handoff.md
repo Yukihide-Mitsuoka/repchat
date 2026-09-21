@@ -253,7 +253,8 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 成功attemptだけをprobeへ渡して、検証済みの
 JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run記録へ接続します。描画失敗でも検証済み行を保持して
 結果一致と描画成否を独立評価し、前段失敗ではprobeを呼びません。費用を推測せず計測側から明示的に受け取り、
-実行metadataと異なる処理bytesは拒否します。この条件は後続のrun全体計測に合わせて更新が必要です。
+最終queryの実行metadataより小さい処理bytesは拒否します。run全体のbytesには先行するscope discoveryの
+実行jobも含めます。
 
 [PR #781](https://github.com/Yukihide-Mitsuoka/repchat/pull/781)では、全計画attemptと外部計測した
 処理bytes／費用を一対一に照合し、最終run記録、scope snapshot、
@@ -265,10 +266,13 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 最初のruntime callより前に拒否します。
 
 [PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
-実処理bytesを残すよう失敗記録契約を修正します。dry runの推定bytesは実処理bytesに混ぜません。
+実処理bytesを残すよう失敗記録契約を修正しました。dry runの推定bytesは実処理bytesに混ぜません。PR #783はmerge済みです。
 
-次の最優先作業は、最終query成功時もrun全体のbytesを記録できるようにし、同一BigQuery／Vertex clientを
-計測する具体meterを実行入口へ接続することです。費用を呼出し回数や成功stageから推測してはいけません。
+[PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
+記録できるようにします。最終queryのmetadataより小さい値や負値は拒否します。
+
+次の最優先作業は、同一BigQuery／Vertex clientを計測する具体meterを実行入口へ接続することです。
+費用を呼出し回数や成功stageから推測してはいけません。
 認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
