@@ -268,7 +268,7 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 [PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
 実処理bytesを残すよう失敗記録契約を修正します。dry runの推定bytesは実処理bytesに混ぜません。
 
-現在の変更では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
+[PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
 記録できるようにします。最終queryのmetadataより小さい値や負値は拒否します。
 
 次の最優先作業は、同一BigQuery／Vertex clientを計測する具体meterを実行入口へ接続することです。
