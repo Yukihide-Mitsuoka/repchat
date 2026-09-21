@@ -48,7 +48,6 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
     rendered = run["render_succeeded"]
     sql = run["generated_sql"]
     rows = run["actual_rows"]
-    bytes_processed = run["bytes_processed"]
     if stage == NO_FAILURE:
         valid = code == "" and bool(sql.strip()) and executed and rendered
     elif not code or rendered:
@@ -56,9 +55,9 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
     elif stage in PREFLIGHT_FAILURE_STAGES:
         valid = not sql and not executed and not rows
     elif stage in {"planning", "sql_generation"}:
-        valid = not sql and not executed and not rows and bytes_processed == 0
+        valid = not sql and not executed and not rows
     elif stage in {"sql_validation", "dry_run"}:
-        valid = bool(sql.strip()) and not executed and not rows and bytes_processed == 0
+        valid = bool(sql.strip()) and not executed and not rows
     elif stage == "execution":
         valid = bool(sql.strip()) and not executed and not rows
     else:

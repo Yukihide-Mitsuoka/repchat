@@ -58,8 +58,8 @@ class DryRunAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != 0:
-            raise ValueError("dry run failure cannot record processed bytes")
+        if type(bytes_processed) is not int or bytes_processed < 0:
+            raise ValueError("dry run bytes must be a non-negative integer")
         generated_attempt = self.validated_attempt.generated_attempt
         preflight_attempt = generated_attempt.planned_attempt.preflight_attempt
         return {
@@ -79,7 +79,7 @@ class DryRunAttempt:
                 "scan_limit_exceeded": self.scan_limit_exceeded,
                 "semantic_error": self.semantic_error,
                 "render_succeeded": False,
-                "bytes_processed": 0,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }

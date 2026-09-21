@@ -119,18 +119,19 @@ for name,sql,expected in cases:
  assert (attempt.failure_stage,attempt.failure_code)==('sql_validation','sql_validation_failed'),name
  assert (attempt.unauthorized_reference,attempt.dangerous_sql,attempt.semantic_error)==expected,name
  assert 'BigQueryへ送信' not in repr(attempt)
- recording=attempt.failure_recording(bytes_processed=0,cost_jpy=0.75)
+ recording=attempt.failure_recording(bytes_processed=7,cost_jpy=0.75)
+ assert recording['run']['bytes_processed']==7
  assert recording['run']['generated_sql']==sql
  assert recording['run']['unauthorized_reference']==expected[0]
  assert recording['run']['dangerous_sql']==expected[1]
  assert recording['run']['semantic_error']==expected[2]
  validate_run_outcome(recording['run'])
  try:
-  attempt.failure_recording(bytes_processed=1,cost_jpy=0.75)
+  attempt.failure_recording(bytes_processed=-1,cost_jpy=0.75)
  except ValueError as error:
-  assert str(error)=='SQL validation failure cannot record processed bytes'
+  assert str(error)=='SQL validation bytes must be a non-negative integer'
  else:
-  raise AssertionError('SQL validation failure cannot claim query processing')
+  raise AssertionError('negative measured bytes were accepted')
 `);
 });
 

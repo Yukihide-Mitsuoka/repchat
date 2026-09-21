@@ -58,8 +58,8 @@ pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実
 保持します。preflight失敗時はplannerを呼ばず、planningの例外、plan event欠落、契約不一致、費用形式不正はraw detailを
 保存せず固定`planning`／`planning_failed`へ変換します。評価artifactはcaseごとに参照SQLと期待結果を1件ずつ持つため、
 評価呼出しだけ共通plannerへ1パネルを要求します。通常のdashboardの設定件数は変更しません。確認質問、0件または
-複数パネルが返った場合は自動回答や恣意的なパネル選択を行わずplanning失敗へ閉じます。planning失敗はBigQuery処理bytesを
-0に限定してrun記録へ残します。
+複数パネルが返った場合は自動回答や恣意的なパネル選択を行わずplanning失敗へ閉じます。planning失敗でも、
+先行するscope discoveryで実行したqueryの処理bytesをrun記録へ残します。
 
 `manifest_sql_generation.py`はplanningまでの順序とidentityを維持し、成功した単一panelだけを既存の
 `build_planned_analysis_section`と共通`sql_generation.generate`へ渡します。期間とSQL system instructionは同じ
@@ -73,14 +73,16 @@ pipeline fingerprintに固定され、preflight失敗時だけ呼出し側が実
 SELECT-only、単一statement、認可table・field、nested／repeated path、期間・partition、出力alias・行上限・集計形状を
 対象非依存の同じpolicyで検証します。契約外table・fieldを`unauthorized_reference`、非SELECT・複文・禁止操作等を
 `dangerous_sql`、期間・可視化出力契約の不一致を`semantic_error`として記録します。診断文は保存せず、失敗を固定
-`sql_validation`／`sql_validation_failed`へ変換します。生成SQLはreview用に保持し、失敗時の処理bytesは0に限定します。
+`sql_validation`／`sql_validation_failed`へ変換します。生成SQLはreview用に保持し、先行するscope discoveryの
+実処理bytesもrun記録へ残します。
 このstageはdry runまたはBigQuery実行を行いません。
 
 `manifest_dry_run.py`はlocal SQL検証までの順序とidentityを維持し、成功attemptだけを既存の共通
 `inspect_bq_dry_run`へ渡します。BigQueryが解析したstatement type、参照table、出力schema、推定処理bytesを取得し、
 分析契約のtable allowlist、`maximum_bytes_billed`、結果列、可視化shapeと照合します。失敗はraw provider診断を保存せず、
 固定`dry_run`／`dry_run_failed`と安全性booleanへ変換します。推定bytesは観測値としてattemptへ保持しますが、
-dry runは結果行を取得しないため、run記録の`bytes_processed`は0です。このstageはBigQuery query execution、
+dry run自体の推定bytesは実処理bytesへ加えず、先行するscope discoveryの実処理bytesだけをrun記録へ残します。
+このstageは最終SQLのBigQuery query execution、
 結果検証、描画を行いません。
 
 `manifest_execution.py`はdry runまでの順序とidentityを維持し、成功attemptだけを既存の共通

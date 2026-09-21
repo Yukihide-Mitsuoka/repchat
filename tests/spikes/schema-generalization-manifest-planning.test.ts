@@ -137,7 +137,8 @@ assert len(attempts)==2
 assert all(not item.succeeded for item in attempts)
 assert all((item.failure_stage,item.failure_code)==('planning','planning_failed') for item in attempts)
 assert secret not in repr(attempts)
-recording=attempts[0].failure_recording(bytes_processed=0,cost_jpy=0.2)
+recording=attempts[0].failure_recording(bytes_processed=7,cost_jpy=0.2)
+assert recording['run']['bytes_processed']==7
 assert recording['run']['runtime_input']=={
  'scope_snapshot_fingerprint':'a'*64,
  'analysis_contract_fingerprint':contract.fingerprint,
@@ -148,11 +149,11 @@ assert recording['run']['failure_stage']=='planning'
 assert recording['run']['failure_code']=='planning_failed'
 validate_run_outcome(recording['run'])
 try:
- attempts[0].failure_recording(bytes_processed=1,cost_jpy=0.2)
+ attempts[0].failure_recording(bytes_processed=-1,cost_jpy=0.2)
 except ValueError as error:
- assert str(error)=='planning failure cannot record processed bytes'
+ assert str(error)=='planning bytes must be a non-negative integer'
 else:
- raise AssertionError('planning failure cannot claim query processing')
+ raise AssertionError('negative measured bytes were accepted')
 `);
 });
 

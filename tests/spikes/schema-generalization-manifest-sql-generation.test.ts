@@ -119,16 +119,17 @@ for runner in (raises,empty,refusal,conflicted,malformed):
  assert (attempt.failure_stage,attempt.failure_code)==('sql_generation','sql_generation_failed')
  assert attempt.generated_sql is None and attempt.sql_generation_cost_jpy is None
  assert secret not in repr(attempt)
- recording=attempt.failure_recording(bytes_processed=0,cost_jpy=0.75)
+ recording=attempt.failure_recording(bytes_processed=7,cost_jpy=0.75)
+ assert recording['run']['bytes_processed']==7
  assert recording['run']['generated_sql']==''
  assert recording['run']['failure_stage']=='sql_generation'
  assert recording['run']['failure_code']=='sql_generation_failed'
  validate_run_outcome(recording['run'])
  try:
-  attempt.failure_recording(bytes_processed=1,cost_jpy=0.75)
+  attempt.failure_recording(bytes_processed=-1,cost_jpy=0.75)
  except ValueError as error:
-  assert str(error)=='SQL generation failure cannot record processed bytes'
+  assert str(error)=='SQL generation bytes must be a non-negative integer'
  else:
-  raise AssertionError('SQL generation failure cannot claim query processing')
+  raise AssertionError('negative measured bytes were accepted')
 `);
 });

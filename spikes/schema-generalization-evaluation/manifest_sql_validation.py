@@ -68,8 +68,8 @@ class ValidatedSQLAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != 0:
-            raise ValueError("SQL validation failure cannot record processed bytes")
+        if type(bytes_processed) is not int or bytes_processed < 0:
+            raise ValueError("SQL validation bytes must be a non-negative integer")
         planned_attempt = self.generated_attempt.planned_attempt
         preflight_attempt = planned_attempt.preflight_attempt
         return {
@@ -89,7 +89,7 @@ class ValidatedSQLAttempt:
                 "scan_limit_exceeded": False,
                 "semantic_error": self.semantic_error,
                 "render_succeeded": False,
-                "bytes_processed": 0,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }

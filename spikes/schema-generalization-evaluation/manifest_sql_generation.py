@@ -57,8 +57,8 @@ class GeneratedSQLAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != 0:
-            raise ValueError("SQL generation failure cannot record processed bytes")
+        if type(bytes_processed) is not int or bytes_processed < 0:
+            raise ValueError("SQL generation bytes must be a non-negative integer")
         preflight_attempt = self.planned_attempt.preflight_attempt
         return {
             "schema_id": preflight_attempt.schema_id,
@@ -77,7 +77,7 @@ class GeneratedSQLAttempt:
                 "scan_limit_exceeded": False,
                 "semantic_error": False,
                 "render_succeeded": False,
-                "bytes_processed": 0,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }

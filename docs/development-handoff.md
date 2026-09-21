@@ -217,7 +217,8 @@ SQL検証、dry run、BigQuery実行を行わず、2026-09-20にmerge済みで�
 `contract_period_diagnostic`、`validate_generated_dashboard_sql`へ順に渡します。契約外table・fieldは
 `unauthorized_reference`、非SELECT・複文・禁止操作等は`dangerous_sql`、期間・可視化出力契約の不一致は
 `semantic_error`として記録し、診断文は保存せず固定`sql_validation`／`sql_validation_failed`へ閉じます。
-検証失敗時も生成SQLは独立review用evidenceへ残し、処理bytesは0に限定します。2026-09-20にmerge済みです。
+検証失敗時も生成SQLは独立review用evidenceへ残します。当時の処理bytesを0に限定する条件は、
+run全体計測ではscope discoveryの実処理bytesを落とすため、現在の変更で更新します。PR #769は2026-09-20にmerge済みです。
 続く[PR #770](https://github.com/Yukihide-Mitsuoka/repchat/pull/770)の`manifest_dry_run.py`は成功した検証済みSQLだけを既存の共通BigQuery dry runへ渡します。
 BigQueryが解析したstatement typeと参照tableを再照合し、出力schema、推定処理bytes、
 `maximum_bytes_billed`を検査します。dry runは結果行を取得せず、実行成功や課金済みbytesとして記録しません。
@@ -252,7 +253,7 @@ BigQueryが解析したstatement typeと参照tableを再照合し、出力schem
 成功attemptだけをprobeへ渡して、検証済みの
 JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run記録へ接続します。描画失敗でも検証済み行を保持して
 結果一致と描画成否を独立評価し、前段失敗ではprobeを呼びません。費用を推測せず計測側から明示的に受け取り、
-実行metadataと異なる処理bytesは拒否します。
+実行metadataと異なる処理bytesは拒否します。この条件は後続のrun全体計測に合わせて更新が必要です。
 
 [PR #781](https://github.com/Yukihide-Mitsuoka/repchat/pull/781)では、全計画attemptと外部計測した
 処理bytes／費用を一対一に照合し、最終run記録、scope snapshot、
@@ -263,8 +264,11 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 呼ばれた場合だけ`run_manifest_rendering`のattemptと計測値をartifact境界へ渡します。既存出力と不正manifestは
 最初のruntime callより前に拒否します。
 
-次の最優先作業は、Vertexの全response usageとscope discoveryを含む全BigQuery jobの実処理bytesをrun単位で
-集計する具体meterを、この実行入口へ接続することです。費用を呼出し回数や成功stageから推測してはいけません。
+[PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
+実処理bytesを残すよう失敗記録契約を修正します。dry runの推定bytesは実処理bytesに混ぜません。
+
+次の最優先作業は、最終query成功時もrun全体のbytesを記録できるようにし、同一BigQuery／Vertex clientを
+計測する具体meterを実行入口へ接続することです。費用を呼出し回数や成功stageから推測してはいけません。
 認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
