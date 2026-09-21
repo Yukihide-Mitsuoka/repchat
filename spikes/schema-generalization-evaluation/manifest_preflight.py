@@ -132,9 +132,10 @@ def _validate_case(
     return case_id, question, list(run_ids)
 
 
-def _planned_inputs(
+def planned_inputs(
     manifest: Any,
 ) -> tuple[dict[str, str], list[tuple[str, str, str, AuthorizedScope, str]]]:
+    """Validate a complete manifest and return its bounded runtime inputs."""
     manifest = _require_fields(
         manifest, MANIFEST_KEYS, "execution manifest fields are invalid"
     )
@@ -187,7 +188,7 @@ def run_manifest_preflights(
     preflight_runner: Callable[..., PreflightResult] = run_preflight,
 ) -> tuple[PlannedPreflightAttempt, ...]:
     """Run each planned preflight only after validating the complete manifest."""
-    pipeline, planned = _planned_inputs(manifest)
+    pipeline, planned = planned_inputs(manifest)
     if not isinstance(model, str) or not model.strip() or not isinstance(as_of, date):
         raise ExecutionManifestError("runtime model and as-of date are required")
     attempts: list[PlannedPreflightAttempt] = []

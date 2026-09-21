@@ -37,7 +37,8 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 無出力probeから実ECharts SVG SSRまたは共通DOM rendererを実行できるようにしました。
 [PR #780](https://github.com/Yukihide-Mitsuoka/repchat/pull/780)では
 結果検証に成功したattemptだけをprobeへ渡し、描画成否、検証済み行、実処理bytes、計測費用を最終run記録へ
-接続します。公式fixtureの独立review、実値照合、
+接続しました。現在の変更では全計画runと外部計測値を照合し、run記録、scope snapshot、analysis contractを
+既存assemblerへ渡せる非上書きのprivate artifactとして出力します。公式fixtureの独立review、実値照合、
 同一runtimeでの反復評価は未完了であり、任意schema対応を
 製品能力とはまだ扱いません。詳細は[実装状況サマリー](docs/status.md)を参照してください。
 

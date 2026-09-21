@@ -101,6 +101,11 @@ vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0
 描画失敗でも検証済み行は保持し、結果一致と描画成否を独立評価できます。前段失敗ではprobeを呼びません。
 最終run記録は実行metadataと一致する処理bytesだけを受理し、費用は推測せず計測側から明示的に受け取ります。
 
+`manifest_artifacts.py`は全計画runと完了attempt、外部計測した処理bytes・費用を一対一に照合し、
+`recorded-runs.json`、`scope-snapshots.json`、`analysis-contracts.json`を既存assemblerへ渡せる形にします。
+同じschema／case内でsnapshotまたはcontractが変化した場合は、どれかを選ばず停止します。出力は新規`0700`
+directory内の`0600` fileに限定し、既存pathを上書きしません。前段失敗時は、その時点で実在するartifactだけを残します。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。

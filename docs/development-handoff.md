@@ -254,8 +254,11 @@ JSON-safeな結果と実測処理bytes・計測費用、描画成否を最終run
 結果一致と描画成否を独立評価し、前段失敗ではprobeを呼びません。費用を推測せず計測側から明示的に受け取り、
 実行metadataと異なる処理bytesは拒否します。
 
-この境界の次の最優先作業は、全計画attemptの最終run記録とscope snapshot／analysis contract artifactを
-一つの実行単位として安全なローカルartifactへ書き出し、既存assemblerへそのまま渡せるrunnerを作ることです。
+現在の変更では、全計画attemptと外部計測した処理bytes／費用を一対一に照合し、最終run記録、scope snapshot、
+analysis contractを新規`0700` directory内の`0600` JSONとして出力します。既存path、計画外run、不足run、
+同一schema／case内で変化したartifactは拒否します。
+
+次の最優先作業は、外部計測器と`run_manifest_rendering`を一つの実行入口へ接続し、このartifact境界へ渡すことです。
 認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。新しい分析対象のためのPython module、profile登録、固定prompt、
 固定SQL、期間parser、識別子補正、metrics file、対象別設定を追加してはいけません。現段階では利用者確認や手動の
