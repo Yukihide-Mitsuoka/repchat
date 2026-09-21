@@ -97,8 +97,9 @@ assert recording['run']['actual_rows']==[]
 assert recording['run']['bytes_processed']==84
 assert recording['run']['cost_jpy']==0.75
 validate_run_outcome(recording['run'])
+assert attempt.failure_recording(bytes_processed=126,cost_jpy=0.8)['run']['bytes_processed']==126
 try:attempt.failure_recording(bytes_processed=83,cost_jpy=0.75)
-except ValueError as error:assert str(error)=='result validation bytes must match execution metadata'
+except ValueError as error:assert str(error)=='result validation bytes must include execution metadata'
 else:raise AssertionError('measured execution bytes must not be replaced')
 `);
 });

@@ -66,8 +66,8 @@ class RenderingAttempt:
                 bytes_processed=bytes_processed,
                 cost_jpy=cost_jpy,
             )
-        if bytes_processed != result.bytes_processed:
-            raise ValueError("rendering bytes must match execution metadata")
+        if type(bytes_processed) is not int or bytes_processed < result.bytes_processed:
+            raise ValueError("rendering bytes must include execution metadata")
         if (
             isinstance(cost_jpy, bool)
             or not isinstance(cost_jpy, (int, float))
@@ -103,7 +103,7 @@ class RenderingAttempt:
                 "scan_limit_exceeded": False,
                 "semantic_error": False,
                 "render_succeeded": self.render_succeeded,
-                "bytes_processed": result.bytes_processed,
+                "bytes_processed": bytes_processed,
                 "cost_jpy": cost_jpy,
             },
         }
