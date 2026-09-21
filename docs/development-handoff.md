@@ -266,10 +266,10 @@ analysis contractを新規`0700` directory内の`0600` JSONとして出力しま
 最初のruntime callより前に拒否します。
 
 [PR #783](https://github.com/Yukihide-Mitsuoka/repchat/pull/783)では、planning・SQL生成／検証・dry runで停止したrunにも、先行するscope discovery queryの
-実処理bytesを残すよう失敗記録契約を修正します。dry runの推定bytesは実処理bytesに混ぜません。
+実処理bytesを残すよう失敗記録契約を修正しました。dry runの推定bytesは実処理bytesに混ぜません。PR #783はmerge済みです。
 
 [PR #784](https://github.com/Yukihide-Mitsuoka/repchat/pull/784)では、最終query成功後の結果検証失敗・描画失敗・成功runにも先行queryの処理bytesを合算して
-記録できるようにします。最終queryのmetadataより小さい値や負値は拒否します。
+記録できるようにしました。最終queryのmetadataより小さい値や負値は拒否します。PR #784はmerge済みです。
 
 [PR #785](https://github.com/Yukihide-Mitsuoka/repchat/pull/785)では、同一BigQuery／Vertex clientを共通proxyで包むmeterを追加します。全Vertex responseの
 token usage、全BigQuery query jobの実処理bytes・課金bytes、dry runの推定bytesをrun単位で分離して集計します。
