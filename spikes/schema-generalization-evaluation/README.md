@@ -113,6 +113,8 @@ directory内の`0600` fileに限定し、既存pathを上書きしません。�
 token usage、全BigQuery query jobの実処理bytesと課金bytes、dry runの推定bytesを区別して集計します。
 完了していないjob、欠落・矛盾したprovider metadata、応答を得られないprovider例外は計測不能として拒否します。
 費用は明示的なtoken／TiB単価と実測usageだけから計算し、呼出し回数や成功stageから推測しません。
+`run_runtime_metered_manifest_evaluation`はこのproxyを計測付きmanifest実行入口へ渡し、実行に使うclientと
+計測するclientを同一にします。価格は呼出し側の明示入力が必須で、ここではprovider接続や有料実行を開始しません。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ

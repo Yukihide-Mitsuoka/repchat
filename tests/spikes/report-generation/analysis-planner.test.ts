@@ -196,7 +196,7 @@ print(json.dumps({"calls":calls,"schemas":schemas,"errors":errors},ensure_ascii=
   });
 });
 
-test('planner usage includes thought tokens and supports metadata without them', () => {
+test('planner usage includes tool and thought tokens and supports older metadata', () => {
   const result = spawnSync(
     'python3',
     [
@@ -219,7 +219,7 @@ raw={
  "panels":[{"title":f"分析{index}","kpi":f"指標{index}","chart":"scorecard","decision":f"判断{index}","reason":"目的に必要","execution_prompt":f"2021年1月の指標{index}を1行で出す","dimensions":[],"measures":[f"指標{index}"],"layout_row":(index+1)//2,"layout_weight":1} for index in range(1,7)],
 }
 usage=[
- types.SimpleNamespace(prompt_token_count=10,candidates_token_count=5,thoughts_token_count=7),
+ types.SimpleNamespace(prompt_token_count=10,candidates_token_count=5,thoughts_token_count=7,tool_use_prompt_token_count=3),
  types.SimpleNamespace(prompt_token_count=10,candidates_token_count=5),
 ]
 calls=0
@@ -240,7 +240,7 @@ print(json.dumps({"calls":calls,"first":first,"without_thoughts":without_thought
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), {
     calls: 2,
-    first: { input_tokens: 10, output_tokens: 12 },
+    first: { input_tokens: 13, output_tokens: 12 },
     without_thoughts: { input_tokens: 10, output_tokens: 5 },
   });
 });
