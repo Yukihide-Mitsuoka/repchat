@@ -108,13 +108,13 @@ def _generate_attempt(
         )
 
     preflight = attempt.preflight_attempt.result
+    if preflight.contract is None or attempt.plan is None:
+        raise ValueError("successful planning requires a contract and plan")
+    panels = attempt.plan.get("panels")
+    if not isinstance(panels, list) or len(panels) != 1:
+        raise ValueError("SQL generation requires exactly one panel")
+    section = visualization_sections.build_planned_analysis_section(panels[0])
     try:
-        if preflight.contract is None or attempt.plan is None:
-            raise ValueError("successful planning requires a contract and plan")
-        panels = attempt.plan.get("panels")
-        if not isinstance(panels, list) or len(panels) != 1:
-            raise ValueError("SQL generation requires exactly one panel")
-        section = visualization_sections.build_planned_analysis_section(panels[0])
         answer, usage = sql_runner(
             vertex,
             model,
@@ -122,34 +122,38 @@ def _generate_attempt(
             analysis_contract_context.planning_period(preflight.contract),
             analysis_contract_context.sql_rules(preflight.contract),
         )
-        if not isinstance(answer, dict):
-            raise ValueError("SQL generation output is invalid")
-        sql = answer.get("sql")
-        undefined_terms = answer.get("undefined_terms")
-        clarification = answer.get("clarification_question", "")
-        if (
-            not isinstance(sql, str)
-            or not sql.strip()
-            or not isinstance(answer.get("reason"), str)
-            or not isinstance(undefined_terms, list)
-            or any(not isinstance(term, str) for term in undefined_terms)
-            or undefined_terms
-            or not isinstance(clarification, str)
-        ):
-            raise ValueError("SQL generation output is invalid")
-        cost = report.vertex_cost_jpy(model, usage)
-        if (
-            isinstance(cost, bool)
-            or not isinstance(cost, (int, float))
-            or not math.isfinite(cost)
-            or cost < 0
-        ):
-            raise ValueError("SQL generation cost is invalid")
-        section_copy = json.loads(json.dumps(section, ensure_ascii=False))
-    except Exception:
+    except sql_generation.SQLGenerationError:
         return _failed_attempt(
             attempt, SQL_GENERATION_FAILURE, SQL_GENERATION_FAILURE_CODE
         )
+    if not isinstance(answer, dict):
+        return _failed_attempt(
+            attempt, SQL_GENERATION_FAILURE, SQL_GENERATION_FAILURE_CODE
+        )
+    sql = answer.get("sql")
+    undefined_terms = answer.get("undefined_terms")
+    clarification = answer.get("clarification_question", "")
+    if (
+        not isinstance(sql, str)
+        or not sql.strip()
+        or not isinstance(answer.get("reason"), str)
+        or not isinstance(undefined_terms, list)
+        or any(not isinstance(term, str) for term in undefined_terms)
+        or undefined_terms
+        or not isinstance(clarification, str)
+    ):
+        return _failed_attempt(
+            attempt, SQL_GENERATION_FAILURE, SQL_GENERATION_FAILURE_CODE
+        )
+    cost = report.vertex_cost_jpy(model, usage)
+    if (
+        isinstance(cost, bool)
+        or not isinstance(cost, (int, float))
+        or not math.isfinite(cost)
+        or cost < 0
+    ):
+        raise ValueError("SQL generation cost is invalid")
+    section_copy = json.loads(json.dumps(section, ensure_ascii=False))
     return GeneratedSQLAttempt(
         planned_attempt=attempt,
         section=section_copy,

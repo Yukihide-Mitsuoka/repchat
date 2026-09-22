@@ -19,6 +19,10 @@ class AnalysisWorkflowError(RuntimeError):
         self.suggested_instruction = suggested_instruction
 
 
+class AnalysisWorkflowOutputError(AnalysisWorkflowError):
+    """Raised when generated analysis output fails the workflow contract."""
+
+
 def consult(
     client: object,
     model: str,
@@ -124,7 +128,7 @@ def plan_dashboard(
             }
         )
     except planner.PlannerError as error:
-        raise AnalysisWorkflowError(
+        raise AnalysisWorkflowOutputError(
             str(error),
             suggested_instruction=error.suggested_instruction,
         ) from error

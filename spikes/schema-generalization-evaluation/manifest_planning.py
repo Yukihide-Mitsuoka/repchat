@@ -106,7 +106,7 @@ def _plan_attempt(
             attempt, str(preflight.failure_stage), str(preflight.failure_code)
         )
     if preflight.contract is None:
-        return _failed_attempt(attempt, PLANNING_FAILURE, PLANNING_FAILURE_CODE)
+        raise ValueError("successful preflight requires an analysis contract")
 
     events: list[dict[str, Any]] = []
     try:
@@ -122,34 +122,40 @@ def _plan_attempt(
             check_cancelled=lambda: None,
             initial_panel_count=1,
         )
-        plan_events = [
-            event
-            for event in events
-            if isinstance(event, dict) and event.get("type") == "plan"
-        ]
-        if len(plan_events) != 1:
-            raise ValueError("planning must emit exactly one plan")
-        event = plan_events[0]
-        plan = event.get("plan")
-        cost = event.get("cost_jpy")
-        if (
-            not isinstance(plan, dict)
-            or re.fullmatch(r"plan-[0-9a-f]{12}", str(plan.get("revision"))) is None
-            or plan.get("clarifications") != []
-            or not isinstance(plan.get("panels"), list)
-            or len(plan["panels"]) != 1
-            or isinstance(cost, bool)
-            or not isinstance(cost, (int, float))
-            or not math.isfinite(cost)
-            or cost < 0
-        ):
-            raise ValueError("planning output is invalid")
-        analysis_contract_context.require_specification_contract(
-            plan, preflight.contract
-        )
-        plan_copy = json.loads(json.dumps(plan, ensure_ascii=False))
-    except Exception:
+    except analysis_workflows.AnalysisWorkflowOutputError:
         return _failed_attempt(attempt, PLANNING_FAILURE, PLANNING_FAILURE_CODE)
+
+    plan_events = [
+        event
+        for event in events
+        if isinstance(event, dict) and event.get("type") == "plan"
+    ]
+    if len(plan_events) != 1:
+        return _failed_attempt(attempt, PLANNING_FAILURE, PLANNING_FAILURE_CODE)
+    event = plan_events[0]
+    plan = event.get("plan")
+    cost = event.get("cost_jpy")
+    if (
+        not isinstance(plan, dict)
+        or re.fullmatch(r"plan-[0-9a-f]{12}", str(plan.get("revision"))) is None
+        or plan.get("clarifications") != []
+        or not isinstance(plan.get("panels"), list)
+        or len(plan["panels"]) != 1
+        or isinstance(cost, bool)
+        or not isinstance(cost, (int, float))
+        or not math.isfinite(cost)
+        or cost < 0
+    ):
+        return _failed_attempt(attempt, PLANNING_FAILURE, PLANNING_FAILURE_CODE)
+    if (
+        plan.get("analysis_contract_fingerprint")
+        != preflight.contract.fingerprint
+    ):
+        return _failed_attempt(attempt, PLANNING_FAILURE, PLANNING_FAILURE_CODE)
+    analysis_contract_context.require_specification_contract(
+        plan, preflight.contract
+    )
+    plan_copy = json.loads(json.dumps(plan, ensure_ascii=False))
     return PlannedAnalysisAttempt(
         preflight_attempt=attempt,
         plan=plan_copy,

@@ -186,6 +186,17 @@ for runner,error_type,message in (
   assert str(error)==message
  else:
   raise AssertionError('planning runner failure became a quality failure')
+def non_json_plan(_client,_model,_question,_answers,emit,**kwargs):
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[{'id':'P1'}],'opaque':object()},'cost_jpy':0})
+try:
+ manifest_planning.run_manifest_planning(
+  manifest,object(),object(),'model',as_of=date(2026,9,20),
+  preflight_runner=preflight,planning_runner=non_json_plan,
+ )
+except TypeError:
+ pass
+else:
+ raise AssertionError('non-serializable plan became a quality failure')
 def incomplete_preflight(_bq,_vertex,_model,_scope,question,*,as_of):
  return PreflightResult(question,snapshot,None,{'input_tokens':1,'output_tokens':1})
 try:
@@ -213,7 +224,7 @@ def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
  return PreflightResult(question,snapshot,contract,{'input_tokens':1,'output_tokens':1})
 def no_plan(*_args,**_kwargs):return None
 def wrong_contract(_client,_model,_question,_answers,emit,**_kwargs):
- emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':'f'*64},'cost_jpy':0})
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':'f'*64,'clarifications':[],'panels':[{'id':'P1'}]},'cost_jpy':0})
 def needs_answer(_client,_model,_question,_answers,emit,**kwargs):
  emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[{'field':'audience'}],'panels':[{'id':'P1'}]},'cost_jpy':0})
 def multiple_panels(_client,_model,_question,_answers,emit,**kwargs):

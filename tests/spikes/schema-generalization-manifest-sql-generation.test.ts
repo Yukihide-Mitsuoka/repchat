@@ -168,6 +168,20 @@ except ValueError as error:
  assert str(error)=='successful planning requires a contract and plan'
 else:
  raise AssertionError('missing successful-plan state became a quality failure')
+original_builder=generation.visualization_sections.build_planned_analysis_section
+def broken_section(_panel):raise RuntimeError('section-invariant')
+generation.visualization_sections.build_planned_analysis_section=broken_section
+try:
+ generation.run_manifest_sql_generation(
+  {},object(),object(),'model',as_of=date(2026,9,20),
+  planning_runner=planning,sql_runner=unknown,
+ )
+except RuntimeError as error:
+ assert str(error)=='section-invariant'
+else:
+ raise AssertionError('section invariant became a quality failure')
+finally:
+ generation.visualization_sections.build_planned_analysis_section=original_builder
 generation.report.vertex_cost_jpy=lambda _model,_usage:float('nan')
 try:
  generation.run_manifest_sql_generation(
@@ -179,5 +193,19 @@ except ValueError as error:
  assert str(error)=='SQL generation cost is invalid'
 else:
  raise AssertionError('invalid cost became a quality failure')
+generation.report.vertex_cost_jpy=lambda _model,_usage:0
+generation.visualization_sections.build_planned_analysis_section=lambda _panel:{'opaque':object()}
+try:
+ generation.run_manifest_sql_generation(
+  {},object(),object(),'model',as_of=date(2026,9,20),
+  planning_runner=planning,
+  sql_runner=lambda *_args,**_kwargs:({'sql':'SELECT 1','reason':'ok','undefined_terms':[]},{'input_tokens':1,'output_tokens':1}),
+ )
+except TypeError:
+ pass
+else:
+ raise AssertionError('non-serializable section became a quality failure')
+finally:
+ generation.visualization_sections.build_planned_analysis_section=original_builder
 `);
 });
