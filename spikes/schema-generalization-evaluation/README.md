@@ -28,11 +28,11 @@ updated: 2026-09-22
 bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
 runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stageを記録します。
-evidence bundleはversion 3です。
+evidence bundleはversion 4です。
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 5のruntime実行後の
+`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 6のruntime実行後の
 run記録、version 1のscope snapshot artifact、version 1のanalysis contract artifact、実行に使用した
 runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
@@ -212,8 +212,10 @@ CI logやrepositoryへ保存しません。
 BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovider診断文を解析しません。既存の
 `inspect_bq_dry_run`は表示・SQL修正用messageを返すadapterとして維持します。BigQuery executionも同じ境界へ接続し、
 処理bytes欠落、scan上限、取消、timeout、provider失敗を閉じたcode／categoryへ変換します。既存の`execute_bq`は
-表示用messageを返すadapterです。Issue #804の最初のsliceでは、local validation、dry run、executionの
-attempt間で同じ型付き診断を失わずに伝播します。evidence bundleへのcode／category保存は後続sliceで行います。
+表示用messageを返すadapterです。recordings version 6とevidence bundle version 4では、attempt間で保持した
+型付き診断のcode／categoryだけを`diagnostic`へ保存します。成功runと型付き診断を持たない失敗は`null`です。
+ただしSQL境界の失敗で`diagnostic`が`null`の場合、semantic errorが明示されない限りbundleを拒否します。
+生のprovider messageは保存せず、未知code／category、stage・安全性flagとの不整合をfail closedで拒否します。
 
 ### 明示的な非対象
 
@@ -349,7 +351,7 @@ python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.js
 run記録は次のtop-level契約を使います。`evaluation_plan_sha256`は実行前評価計画file bytesの小文字SHA-256です。
 
 ```json
-{"version":5,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
+{"version":6,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な

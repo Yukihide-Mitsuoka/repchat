@@ -56,7 +56,7 @@ def _assemble_fixture(
     fixture: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[tuple[Any, Any], dict[str, Any]]]:
     bundle = {
-        "version": 3,
+        "version": 4,
         "thresholds": copy.deepcopy(fixture["thresholds"]),
         "schemas": [],
     }
@@ -259,8 +259,8 @@ def assemble_bundle(
     )
     if type(fixture["version"]) is not int or fixture["version"] != 2:
         raise EvaluationEvidenceError("fixture version must be 2")
-    if type(recordings["version"]) is not int or recordings["version"] != 5:
-        raise EvaluationEvidenceError("recordings version must be 5")
+    if type(recordings["version"]) is not int or recordings["version"] != 6:
+        raise EvaluationEvidenceError("recordings version must be 6")
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
     if not isinstance(recordings["runs"], list):

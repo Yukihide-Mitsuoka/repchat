@@ -12,10 +12,11 @@ const FINGERPRINTS = {
   prompt: '2'.repeat(64),
   configuration: '3'.repeat(64),
 };
+type Diagnostic = { code: string; category: string } | null;
 
 function evidenceBundle() {
   return {
-    version: 3,
+    version: 4,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const scopeFingerprint = String(schemaIndex + 4).repeat(64);
@@ -48,6 +49,7 @@ function evidenceBundle() {
                 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               failure_stage: 'none',
               failure_code: '',
+              diagnostic: null as Diagnostic,
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
               unauthorized_reference: false,
@@ -129,6 +131,81 @@ test('two schemas with three matching runs produce passing evidence', () => {
   );
 });
 
+test('recorded diagnostics reject unknown values, mismatched pairs, and raw messages', () => {
+  const cases = [
+    [
+      { code: 'unknown_code', category: 'dangerous_sql' },
+      /diagnostic code or category is unsupported/,
+    ],
+    [
+      { code: 'forbidden_keyword', category: 'unknown_category' },
+      /diagnostic code or category is unsupported/,
+    ],
+    [
+      { code: 'forbidden_keyword', category: 'provider_failure' },
+      /diagnostic code and category are inconsistent/,
+    ],
+    [
+      { code: 'forbidden_keyword', category: 'dangerous_sql', message: 'private-table' },
+      /diagnostic must contain only code and category/,
+    ],
+  ] as const;
+  for (const [diagnostic, expected] of cases) {
+    const bundle = evidenceBundle();
+    const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+    run.failure_stage = 'sql_validation';
+    run.failure_code = 'sql_validation_failed';
+    run.sql_execution_succeeded = false;
+    run.actual_rows = [];
+    run.render_succeeded = false;
+    run.dangerous_sql = true;
+    run.diagnostic = diagnostic;
+    const result = evaluate(bundle);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, expected);
+  }
+});
+
+test('diagnostic stage and safety flags must match while semantic failures may have no diagnostic', () => {
+  const bundle = evidenceBundle();
+  const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  run.failure_stage = 'dry_run';
+  run.failure_code = 'dry_run_failed';
+  run.sql_execution_succeeded = false;
+  run.actual_rows = [];
+  run.render_succeeded = false;
+  run.scan_limit_exceeded = true;
+
+  assert.match(evaluate(bundle).stderr, /safety evidence requires a matching diagnostic/);
+  run.diagnostic = { code: 'execution_scan_limit_exceeded', category: 'scan_limit_exceeded' };
+  assert.match(evaluate(bundle).stderr, /diagnostic code does not match failure stage/);
+  run.diagnostic = { code: 'dry_run_scan_limit_exceeded', category: 'scan_limit_exceeded' };
+  assert.equal(evaluate(bundle).status, 1);
+  run.scan_limit_exceeded = false;
+  assert.match(evaluate(bundle).stderr, /safety evidence requires a matching diagnostic/);
+  run.diagnostic = null;
+  assert.match(
+    evaluate(bundle).stderr,
+    /SQL boundary failure requires a diagnostic or semantic error/,
+  );
+  run.semantic_error = true;
+  assert.equal(evaluate(bundle).status, 1);
+});
+
+test('successful and non-SQL failure stages reject typed diagnostics', () => {
+  const bundle = evidenceBundle();
+  const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  run.diagnostic = { code: 'forbidden_keyword', category: 'dangerous_sql' };
+  assert.match(evaluate(bundle).stderr, /successful runs cannot contain a diagnostic/);
+  run.failure_stage = 'planning';
+  run.failure_code = 'planning_failed';
+  run.generated_sql = '';
+  run.sql_execution_succeeded = false;
+  run.actual_rows = [];
+  run.render_succeeded = false;
+  assert.match(evaluate(bundle).stderr, /diagnostic code does not match failure stage/);
+});
+
 test('a fingerprint change between schema runs is rejected before scoring', () => {
   const bundle = evidenceBundle();
   bundle.schemas[1]!.cases[0]!.runs[0]!.runtime = '9'.repeat(64);
@@ -195,8 +272,13 @@ test('unknown result ordering semantics are rejected instead of guessed', () => 
 test('unsafe or mismatched runs remain visible in a failing report', () => {
   const bundle = evidenceBundle();
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
-  failedRun.actual_rows = [{ category: 'wrong', metric_value: 999 }];
+  failedRun.failure_stage = 'sql_validation';
+  failedRun.failure_code = 'sql_validation_failed';
+  failedRun.sql_execution_succeeded = false;
+  failedRun.actual_rows = [];
   failedRun.dangerous_sql = true;
+  failedRun.render_succeeded = false;
+  failedRun.diagnostic = { code: 'forbidden_keyword', category: 'dangerous_sql' };
 
   const result = evaluate(bundle);
 
@@ -392,7 +474,7 @@ test('unsupported evidence versions are rejected before evaluation', () => {
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 3/);
+  assert.match(result.stderr, /evidence version must be 4/);
   assert.equal(result.stdout, '');
 });
 
