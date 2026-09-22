@@ -239,6 +239,56 @@ test('a matching result with failed rendering does not pass end to end', () => {
   assert.equal(report.schemas[0].passed, false);
 });
 
+test('an infrastructure failure is excluded from quality rates and prevents passing', () => {
+  const bundle = evidenceBundle();
+  const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  Object.assign(run, {
+    failure_kind: 'infrastructure',
+    failure_stage: 'dry_run',
+    failure_code: 'dry_run_failed',
+    diagnostic: { code: 'dry_run_provider_failure', category: 'provider_failure' },
+    sql_execution_succeeded: false,
+    actual_rows: [],
+    render_succeeded: false,
+  });
+  for (const schema of bundle.schemas) {
+    for (const candidate of schema.cases[0]!.runs) {
+      if (!('failure_kind' in candidate)) Object.assign(candidate, { failure_kind: 'none' });
+    }
+  }
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.result_match_rate, 1);
+  assert.equal(report.schemas[0].quality_run_count, 2);
+  assert.equal(report.schemas[0].infrastructure_failure_count, 1);
+  assert.equal(report.schemas[0].cases[0].quality_run_count, 2);
+  assert.equal(report.schemas[0].cases[0].infrastructure_failure_count, 1);
+  assert.equal(report.schemas[0].cases[0].result_match_rate, 1);
+  assert.equal(report.schemas[0].passed, false);
+  assert.equal(report.passed, false);
+});
+
+test('unknown or inconsistent failure kinds invalidate the evidence bundle', () => {
+  for (const [kind, expected] of [
+    ['dependency', /failure kind is unsupported/],
+    ['infrastructure', /failure kind conflicts with its outcome/],
+  ] as const) {
+    const bundle = evidenceBundle();
+    for (const schema of bundle.schemas) {
+      for (const run of schema.cases[0]!.runs) Object.assign(run, { failure_kind: 'none' });
+    }
+    Object.assign(bundle.schemas[0]!.cases[0]!.runs[0]!, { failure_kind: kind });
+
+    const result = evaluate(bundle);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, expected);
+  }
+});
+
 test('recorded diagnostics reject unknown values, mismatched pairs, and raw messages', () => {
   const cases = [
     [
