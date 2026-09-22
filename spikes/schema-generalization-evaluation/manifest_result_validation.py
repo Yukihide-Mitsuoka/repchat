@@ -126,23 +126,23 @@ def _validate_attempt(attempt: ExecutionAttempt) -> ResultValidationAttempt:
     if not attempt.succeeded:
         return _upstream_failure(attempt)
 
+    dry_run_attempt = attempt.dry_run_attempt
+    generated_attempt = dry_run_attempt.validated_attempt.generated_attempt
+    contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
+    section = generated_attempt.section
+    if (
+        contract is None
+        or section is None
+        or attempt.rows is None
+        or attempt.columns is None
+        or attempt.bytes_processed is None
+    ):
+        raise ValueError("successful execution output is incomplete")
+    policy = analysis_contract_context.execution_policy(contract)
+    section_limit = section.get("max_result_rows")
+    if type(section_limit) is not int or section_limit < 1:
+        raise ValueError("section result row limit is invalid")
     try:
-        dry_run_attempt = attempt.dry_run_attempt
-        generated_attempt = dry_run_attempt.validated_attempt.generated_attempt
-        contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
-        section = generated_attempt.section
-        if (
-            contract is None
-            or section is None
-            or attempt.rows is None
-            or attempt.columns is None
-            or attempt.bytes_processed is None
-        ):
-            raise ValueError("successful execution output is incomplete")
-        policy = analysis_contract_context.execution_policy(contract)
-        section_limit = section.get("max_result_rows")
-        if type(section_limit) is not int or section_limit < 1:
-            raise ValueError("section result row limit is invalid")
         result = common_result_validation.validate_dashboard_result(
             section,
             attempt.rows,
@@ -150,7 +150,7 @@ def _validate_attempt(attempt: ExecutionAttempt) -> ResultValidationAttempt:
             max_result_rows=min(section_limit, policy.maximum_result_rows),
             policy=policy,
         )
-    except Exception:
+    except common_result_validation.ResultValidationError:
         return _result_failure(attempt)
     return ResultValidationAttempt(
         attempt,
