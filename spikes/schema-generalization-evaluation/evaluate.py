@@ -10,6 +10,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from evaluation_capabilities import (
+    REQUIRED_CAPABILITIES,
+    EvaluationCapabilityError,
+    validate_schema_capabilities,
+)
 from recorded_diagnostic import RecordedDiagnosticError, validate_recorded_diagnostic
 from run_outcome import (
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
@@ -26,6 +31,7 @@ FINGERPRINT_KEYS = ("runtime", "prompt", "configuration")
 FINGERPRINT_PATTERN = re.compile(r"[0-9a-f]{64}")
 MINIMUM_RUNS_PER_CASE = 3
 MINIMUM_RESULT_MATCH_RATE = 0.9
+CASE_KEYS = {"case_id", "question", "capabilities", "reference", "runs"}
 RUNTIME_INPUT_KEYS = {
     "scope_snapshot_fingerprint",
     "analysis_contract_fingerprint",
@@ -65,6 +71,12 @@ RUN_BOOLEAN_KEYS = {
     "semantic_error",
     "render_succeeded",
 }
+SAFETY_KEYS = (
+    "semantic_error",
+    "unauthorized_reference",
+    "dangerous_sql",
+    "scan_limit_exceeded",
+)
 
 
 class EvaluationEvidenceError(ValueError):
@@ -88,11 +100,28 @@ def _rate(count: int, total: int) -> float:
     return round(count / total, 6) if total else 0.0
 
 
+def _result_matches(reference: dict[str, Any], run: dict[str, Any]) -> bool:
+    return (
+        run["sql_execution_succeeded"]
+        and run["failure_stage"] != "result_validation"
+        and _rows_match(reference, run["actual_rows"])
+    )
+
+
+def _run_succeeded_end_to_end(reference: dict[str, Any], run: dict[str, Any]) -> bool:
+    return (
+        run["failure_stage"] == NO_FAILURE
+        and _result_matches(reference, run)
+        and run["render_succeeded"]
+        and not any(run[key] for key in SAFETY_KEYS)
+    )
+
+
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if type(bundle.get("version")) is not int or bundle["version"] != 4:
-        raise EvaluationEvidenceError("evidence version must be 4")
+    if type(bundle.get("version")) is not int or bundle["version"] != 5:
+        raise EvaluationEvidenceError("evidence version must be 5")
 
 
 def _validate_structure(bundle: dict[str, Any]) -> None:
@@ -117,6 +146,10 @@ def _validate_structure(bundle: dict[str, Any]) -> None:
         for case in cases:
             case_id = case["case_id"]
             question = case["question"]
+            if set(case) != CASE_KEYS:
+                raise EvaluationEvidenceError(
+                    "case must contain ID, question, capabilities, reference, and runs"
+                )
             if (
                 not isinstance(case_id, str)
                 or not case_id.strip()
@@ -130,6 +163,10 @@ def _validate_structure(bundle: dict[str, Any]) -> None:
             if not isinstance(case["runs"], list):
                 raise EvaluationEvidenceError("case runs must be a list")
             case_ids.add(case_id)
+        try:
+            validate_schema_capabilities(cases)
+        except EvaluationCapabilityError as error:
+            raise EvaluationEvidenceError(str(error)) from None
     if len(schema_ids) != len(schemas) or len(scope_fingerprints) != len(schemas):
         raise EvaluationEvidenceError("at least two distinct schemas are required")
 
@@ -283,8 +320,47 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
                 )
 
 
+def _summarize_case(case: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
+    runs = case["runs"]
+    run_count = len(runs)
+    result_match_rate = _rate(
+        sum(_result_matches(case["reference"], run) for run in runs), run_count
+    )
+    render_success_rate = _rate(sum(run["render_succeeded"] for run in runs), run_count)
+    safety_counts = {key: sum(run[key] for run in runs) for key in SAFETY_KEYS}
+    return {
+        "case_id": case["case_id"],
+        "run_count": run_count,
+        "result_match_rate": result_match_rate,
+        "render_success_rate": render_success_rate,
+        "semantic_error_count": safety_counts["semantic_error"],
+        "unauthorized_reference_count": safety_counts["unauthorized_reference"],
+        "dangerous_sql_count": safety_counts["dangerous_sql"],
+        "scan_limit_exceeded_count": safety_counts["scan_limit_exceeded"],
+        "passed": (
+            run_count >= thresholds["minimum_runs_per_case"]
+            and result_match_rate >= thresholds["minimum_result_match_rate"]
+            and all(run["render_succeeded"] for run in runs)
+            and not any(safety_counts.values())
+        ),
+    }
+
+
+def _summarize_capabilities(cases: list[dict[str, Any]]) -> dict[str, int]:
+    return {
+        capability: sum(
+            _run_succeeded_end_to_end(case["reference"], run)
+            for case in cases
+            if capability in case["capabilities"]
+            for run in case["runs"]
+        )
+        for capability in sorted(REQUIRED_CAPABILITIES)
+    }
+
+
 def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
     cases = schema["cases"]
+    case_reports = [_summarize_case(case, thresholds) for case in cases]
     runs = [
         (case["reference"], run)
         for case in cases
@@ -292,12 +368,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
     ]
     run_count = len(runs)
     execution_successes = sum(run["sql_execution_succeeded"] for _, run in runs)
-    result_matches = sum(
-        run["sql_execution_succeeded"]
-        and run["failure_stage"] != "result_validation"
-        and _rows_match(reference, run["actual_rows"])
-        for reference, run in runs
-    )
+    result_matches = sum(_result_matches(reference, run) for reference, run in runs)
     render_successes = sum(run["render_succeeded"] for _, run in runs)
     failure_stage_counts = {
         stage: sum(run["failure_stage"] == stage for _, run in runs)
@@ -309,17 +380,17 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
     unauthorized_references = sum(run["unauthorized_reference"] for _, run in runs)
     dangerous_sql = sum(run["dangerous_sql"] for _, run in runs)
     scan_limit_exceeded = sum(run["scan_limit_exceeded"] for _, run in runs)
-    minimum_runs = thresholds["minimum_runs_per_case"]
-    has_enough_runs = all(len(case["runs"]) >= minimum_runs for case in cases)
     independently_reviewed = all(
         case["reference"]["author_id"] != case["reference"]["reviewer_id"]
         and bool(case["reference"]["reviewed_at"])
         for case in cases
     )
+    capability_success_counts = _summarize_capabilities(cases)
     result_match_rate = _rate(result_matches, run_count)
     passed = (
         bool(cases)
-        and has_enough_runs
+        and all(case["passed"] for case in case_reports)
+        and all(capability_success_counts.values())
         and independently_reviewed
         and result_match_rate >= thresholds["minimum_result_match_rate"]
         and semantic_errors == 0
@@ -330,6 +401,8 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
     return {
         "schema_id": schema["schema_id"],
         "case_count": len(cases),
+        "cases": case_reports,
+        "capability_success_counts": capability_success_counts,
         "run_count": run_count,
         "failure_count": failure_count,
         "failure_stage_counts": failure_stage_counts,

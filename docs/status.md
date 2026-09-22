@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 実装状況サマリー
@@ -75,8 +75,9 @@ PR #785では実行clientを共通proxyで計測し、全Vertex responseのtoken
 明示されたusage単価だけで費用を算出する。PR #783〜#786はmerge済みである。
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
-実評価の前提となる型付きSQL診断、case／capability／描画単位の合格gate、infrastructure failureと
-programming errorの分離も[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)として未実装である。
+実評価の前提となる型付きSQL診断はIssue #796／#799／#802／#804で実装済みである。Issue #807では、
+case別結果一致率、安全違反0件、描画成功率100%、必須capability別成功を合格gateへ追加する。残る
+infrastructure failureとprogramming errorの分離は[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の次段階である。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
 [Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
@@ -280,7 +281,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、全provider usageのrun単位計測、最終run記録、assembler入力artifactの安全な出力境界は実装済み。local SQL validator、BigQuery dry run／executionをIssue #796／#799／#802で型付きcode／categoryへ接続し、Issue #804で生のmessageを除いた診断をversion付きrecording／evidenceへ保存して不整合を拒否 | Issue #788の計画に従い、case／capability／描画gate、失敗分類を順に実装する。Issue #791で工程別root cause、ablation、対抗fixture、baselineを固定し、再現した原因に対応する対象非依存の改善だけを比較する。その後、費用承認付きで複数の未知schemaを同一binary・prompt・設定で反復実行する。実値・安全性・費用・描画が合格した後だけ製品runtime境界をADRで決める（ADR-0025、Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、全provider usageのrun単位計測、最終run記録、assembler入力artifactの安全な出力境界は実装済み。local SQL validator、BigQuery dry run／executionをIssue #796／#799／#802で型付きcode／categoryへ接続し、Issue #804で生のmessageを除いた診断を保存した。Issue #807でcase別一致率・安全性・描画とcapability別成功を合格gateへ追加 | Issue #788の計画に従い、provider／infrastructure failureとprogramming errorの分離を実装する。Issue #791で工程別root cause、ablation、対抗fixture、baselineを固定し、再現した原因に対応する対象非依存の改善だけを比較する。その後、費用承認付きで複数の未知schemaを同一binary・prompt・設定で反復実行する。実値・安全性・費用・描画が合格した後だけ製品runtime境界をADRで決める（ADR-0025、Issue #188） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | #188の対象非依存品質境界、#179、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
