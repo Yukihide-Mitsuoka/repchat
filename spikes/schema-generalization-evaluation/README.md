@@ -224,7 +224,10 @@ BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovide
 `rendering_failed`へ変換します。成功attemptの必須field欠落、policy生成失敗、validatorまたはrendererの
 未知例外は通常の失敗runへ変換せず伝播させ、評価処理を停止します。renderer processの起動失敗とtimeoutは
 raw detailを除いた`RendererInfrastructureError`へ正規化して伝播させます。raw例外文はrecordingへ保存しません。
-preflightからexecutionまでのstage分類とprovider／infrastructure failureのrun契約は後続sliceです。
+順序3の次のsliceでは、local SQL validation、BigQuery dry run、BigQuery executionの型付き診断と明示的な
+SQL／schema契約不一致だけを既知失敗として保持します。成功attemptの必須field欠落、policy生成失敗、各共通境界の
+未知例外は通常の失敗runへ変換せず伝播させます。provider／infrastructure failureの専用run契約と、preflight、
+planning、SQL生成の分類は後続sliceです。
 
 ### 明示的な非対象
 

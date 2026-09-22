@@ -130,51 +130,48 @@ def _dry_run_attempt(attempt: ValidatedSQLAttempt, bq) -> DryRunAttempt:
     if not attempt.succeeded:
         return _upstream_failure(attempt)
 
-    try:
-        generated_attempt = attempt.generated_attempt
-        contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
-        section = generated_attempt.section
-        if contract is None or section is None or attempt.validated_sql is None:
-            raise ValueError("successful SQL validation output is incomplete")
-        policy = analysis_contract_context.execution_policy(contract)
-        inspection, diagnostic = report.inspect_bq_dry_run_diagnostic(
-            bq,
-            attempt.validated_sql,
-            policy=policy,
+    generated_attempt = attempt.generated_attempt
+    contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
+    section = generated_attempt.section
+    if contract is None or section is None or attempt.validated_sql is None:
+        raise ValueError("successful SQL validation output is incomplete")
+    policy = analysis_contract_context.execution_policy(contract)
+    inspection, diagnostic = report.inspect_bq_dry_run_diagnostic(
+        bq,
+        attempt.validated_sql,
+        policy=policy,
+    )
+    if diagnostic:
+        category = diagnostic.category
+        return _dry_run_failure(
+            attempt,
+            inspection,
+            unauthorized_reference=(
+                category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
+            ),
+            dangerous_sql=(
+                category is report.SQLDiagnosticCategory.DANGEROUS_SQL
+            ),
+            scan_limit_exceeded=(
+                category is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
+            ),
+            diagnostic=diagnostic,
         )
-        if diagnostic:
-            category = diagnostic.category
-            return _dry_run_failure(
-                attempt,
-                inspection,
-                unauthorized_reference=(
-                    category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
-                ),
-                dangerous_sql=(
-                    category is report.SQLDiagnosticCategory.DANGEROUS_SQL
-                ),
-                scan_limit_exceeded=(
-                    category is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
-                ),
-                diagnostic=diagnostic,
-            )
-        if inspection is None:
-            raise ValueError("common dry run returned no inspection")
-        if contract_result_validation.contract_result_diagnostic(
+    if inspection is None:
+        raise ValueError("common dry run returned no inspection")
+    if contract_result_validation.contract_result_diagnostic(
+        section,
+        list(inspection.schema),
+        policy,
+    ):
+        return _dry_run_failure(attempt, inspection, semantic_error=True)
+    try:
+        sql_contract_validation.validate_dashboard_dry_run_schema(
             section,
-            list(inspection.schema),
-            policy,
-        ):
-            return _dry_run_failure(attempt, inspection, semantic_error=True)
-        try:
-            sql_contract_validation.validate_dashboard_dry_run_schema(
-                section,
-                [(field[0], field[1]) for field in inspection.schema],
-            )
-        except sql_contract_validation.SQLContractError:
-            return _dry_run_failure(attempt, inspection, semantic_error=True)
-    except Exception:
-        return _dry_run_failure(attempt, None)
+            [(field[0], field[1]) for field in inspection.schema],
+        )
+    except sql_contract_validation.SQLContractError:
+        return _dry_run_failure(attempt, inspection, semantic_error=True)
     return DryRunAttempt(
         validated_attempt=attempt,
         dry_run_schema=inspection.schema,

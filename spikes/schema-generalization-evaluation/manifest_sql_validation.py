@@ -112,60 +112,53 @@ def _validate_attempt(attempt: GeneratedSQLAttempt) -> ValidatedSQLAttempt:
             attempt, str(attempt.failure_stage), str(attempt.failure_code)
         )
 
-    try:
-        planned_attempt = attempt.planned_attempt
-        contract = planned_attempt.preflight_attempt.result.contract
-        if contract is None or attempt.section is None or attempt.generated_sql is None:
-            raise ValueError("successful SQL generation output is incomplete")
-        policy = analysis_contract_context.execution_policy(contract)
-        normalized, diagnostic = report.validate_sql_diagnostic(
-            attempt.generated_sql,
-            policy=policy,
-        )
-        if diagnostic:
-            category = diagnostic.category
-            return _failed_attempt(
-                attempt,
-                SQL_VALIDATION_FAILURE,
-                SQL_VALIDATION_FAILURE_CODE,
-                unauthorized_reference=(
-                    category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
-                ),
-                dangerous_sql=(
-                    category is report.SQLDiagnosticCategory.DANGEROUS_SQL
-                ),
-                diagnostic=diagnostic,
-            )
-        if normalized is None:
-            raise ValueError("common SQL validation returned no SQL")
-        period_diagnostic = contract_period_validation.contract_period_diagnostic(
-            normalized, policy
-        )
-        if period_diagnostic:
-            return _failed_attempt(
-                attempt,
-                SQL_VALIDATION_FAILURE,
-                SQL_VALIDATION_FAILURE_CODE,
-                semantic_error=True,
-            )
-        try:
-            sql_contract_validation.validate_generated_dashboard_sql(
-                attempt.section,
-                normalized,
-                policy,
-            )
-        except sql_contract_validation.SQLContractError:
-            return _failed_attempt(
-                attempt,
-                SQL_VALIDATION_FAILURE,
-                SQL_VALIDATION_FAILURE_CODE,
-                semantic_error=True,
-            )
-    except Exception:
+    planned_attempt = attempt.planned_attempt
+    contract = planned_attempt.preflight_attempt.result.contract
+    if contract is None or attempt.section is None or attempt.generated_sql is None:
+        raise ValueError("successful SQL generation output is incomplete")
+    policy = analysis_contract_context.execution_policy(contract)
+    normalized, diagnostic = report.validate_sql_diagnostic(
+        attempt.generated_sql,
+        policy=policy,
+    )
+    if diagnostic:
+        category = diagnostic.category
         return _failed_attempt(
             attempt,
             SQL_VALIDATION_FAILURE,
             SQL_VALIDATION_FAILURE_CODE,
+            unauthorized_reference=(
+                category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
+            ),
+            dangerous_sql=(
+                category is report.SQLDiagnosticCategory.DANGEROUS_SQL
+            ),
+            diagnostic=diagnostic,
+        )
+    if normalized is None:
+        raise ValueError("common SQL validation returned no SQL")
+    period_diagnostic = contract_period_validation.contract_period_diagnostic(
+        normalized, policy
+    )
+    if period_diagnostic:
+        return _failed_attempt(
+            attempt,
+            SQL_VALIDATION_FAILURE,
+            SQL_VALIDATION_FAILURE_CODE,
+            semantic_error=True,
+        )
+    try:
+        sql_contract_validation.validate_generated_dashboard_sql(
+            attempt.section,
+            normalized,
+            policy,
+        )
+    except sql_contract_validation.SQLContractError:
+        return _failed_attempt(
+            attempt,
+            SQL_VALIDATION_FAILURE,
+            SQL_VALIDATION_FAILURE_CODE,
+            semantic_error=True,
         )
     return ValidatedSQLAttempt(
         generated_attempt=attempt,

@@ -145,3 +145,35 @@ assert 'Query exceeded limit' not in repr(attempt)
 assert (attempt.diagnostic.code.value,attempt.diagnostic.category.value)==('execution_scan_limit_exceeded','scan_limit_exceeded')
 `);
 });
+
+test('unknown execution exceptions invalidate evaluation', () => {
+  assertPython(String.raw`
+${setup}
+def raises(*_args,**_kwargs):raise RuntimeError('sensitive implementation detail')
+execution.report.execute_bq_diagnostic=raises
+try:
+ execution.run_manifest_executions(
+  {},object(),object(),'model',as_of=date(2026,9,21),dry_run_runner=dry_runs,
+ )
+except RuntimeError as error:
+ assert str(error)=='sensitive implementation detail'
+else:
+ raise AssertionError('unknown execution exception became a provider failure')
+`);
+});
+
+test('incomplete successful dry run is an invariant error', () => {
+  assertPython(String.raw`
+${setup}
+incomplete=DryRunAttempt(validated,None,None)
+def dry_runs(*_args,**_kwargs):return (incomplete,)
+try:
+ execution.run_manifest_executions(
+  {},object(),object(),'model',as_of=date(2026,9,21),dry_run_runner=dry_runs,
+ )
+except ValueError as error:
+ assert str(error)=='successful dry run output is incomplete'
+else:
+ raise AssertionError('incomplete dry run reached query execution')
+`);
+});
