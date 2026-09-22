@@ -1,5 +1,40 @@
 # Changelog
 
+## [3.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v3.0.0) (2026-09-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **evaluation:** case単位の合格gateを追加する ([#808](https://github.com/Yukihide-Mitsuoka/repchat/issues/808))
+* **evaluation:** 型付き診断をevidenceへ保存する ([#806](https://github.com/Yukihide-Mitsuoka/repchat/issues/806))
+
+### Features
+
+* **evaluation:** BigQuery実行を評価経路へ接続する ([#772](https://github.com/Yukihide-Mitsuoka/repchat/issues/772)) ([dbfee1d](https://github.com/Yukihide-Mitsuoka/repchat/commit/dbfee1de9213e20bcd62bce0f3acfa6159438bb5))
+* **evaluation:** case単位の合格gateを追加する ([#808](https://github.com/Yukihide-Mitsuoka/repchat/issues/808)) ([0f78ff9](https://github.com/Yukihide-Mitsuoka/repchat/commit/0f78ff92934c14893c63d30dee54d2aadfccd061))
+* **evaluation:** provider usageをrun単位で計測する ([#785](https://github.com/Yukihide-Mitsuoka/repchat/issues/785)) ([d6f07d4](https://github.com/Yukihide-Mitsuoka/repchat/commit/d6f07d43c43f3d6c5d3a97fb4e9b802ddcadcb3b))
+* **evaluation:** 型付き診断をattempt間で保持する ([#805](https://github.com/Yukihide-Mitsuoka/repchat/issues/805)) ([ca467d7](https://github.com/Yukihide-Mitsuoka/repchat/commit/ca467d7a4cb1077580bfdaac5c7144477995e59b))
+* **evaluation:** 型付き診断をevidenceへ保存する ([#806](https://github.com/Yukihide-Mitsuoka/repchat/issues/806)) ([59e5c44](https://github.com/Yukihide-Mitsuoka/repchat/commit/59e5c44842b1c767c264cf09950c4f05e91be59b))
+* **evaluation:** 実行artifactを安全に記録する ([#781](https://github.com/Yukihide-Mitsuoka/repchat/issues/781)) ([d45e72e](https://github.com/Yukihide-Mitsuoka/repchat/commit/d45e72edbd9ad12285f140a2a57fe30123984aff))
+* **evaluation:** 実行結果を共通契約で検証する ([#774](https://github.com/Yukihide-Mitsuoka/repchat/issues/774)) ([7ebbe92](https://github.com/Yukihide-Mitsuoka/repchat/commit/7ebbe921fb9e02cc09f3be82e2c52b4bc0b3b518))
+* **evaluation:** 描画結果をrun記録へ接続する ([#780](https://github.com/Yukihide-Mitsuoka/repchat/issues/780)) ([c959ba0](https://github.com/Yukihide-Mitsuoka/repchat/commit/c959ba0d59bbb0d75694e8b582d5b7057692c732))
+* **evaluation:** 計測付きrun実行をartifactへ接続する ([#782](https://github.com/Yukihide-Mitsuoka/repchat/issues/782)) ([79fc577](https://github.com/Yukihide-Mitsuoka/repchat/commit/79fc5773a1df7f39b615d97ae531f0eea6ea3777))
+* **renderer:** 共通rendererをmodule化する ([#776](https://github.com/Yukihide-Mitsuoka/repchat/issues/776)) ([cf4ca0c](https://github.com/Yukihide-Mitsuoka/repchat/commit/cf4ca0c2b4ba543f13f992279eb56b17b91ebfb3))
+* **renderer:** 実描画probeを追加する ([#778](https://github.com/Yukihide-Mitsuoka/repchat/issues/778)) ([812f345](https://github.com/Yukihide-Mitsuoka/repchat/commit/812f3450056dedd505d1ae6df444508249b22ec8))
+* 評価入口に共通provider計測を接続する ([#786](https://github.com/Yukihide-Mitsuoka/repchat/issues/786)) ([4e01224](https://github.com/Yukihide-Mitsuoka/repchat/commit/4e0122434d731a400229c63165cc9c98d6419efd))
+
+
+### Bug Fixes
+
+* **evaluation:** BigQuery dry run診断を型付けする ([#800](https://github.com/Yukihide-Mitsuoka/repchat/issues/800)) ([59b9482](https://github.com/Yukihide-Mitsuoka/repchat/commit/59b9482ea0c1d56d091fcb785b4bdf91eaecabae))
+* **evaluation:** BigQuery実行診断を型付けする ([#803](https://github.com/Yukihide-Mitsuoka/repchat/issues/803)) ([6fb53ea](https://github.com/Yukihide-Mitsuoka/repchat/commit/6fb53eae996de708edfa7a178d5e114d979b9523))
+* **evaluation:** SQL後半stageの未知例外を伝播する ([#813](https://github.com/Yukihide-Mitsuoka/repchat/issues/813)) ([3fc24ba](https://github.com/Yukihide-Mitsuoka/repchat/commit/3fc24ba290c9f293e408105b153c60ccf8745331))
+* **evaluation:** SQL診断判定を型付き分類へ移行する ([#797](https://github.com/Yukihide-Mitsuoka/repchat/issues/797)) ([d0b0338](https://github.com/Yukihide-Mitsuoka/repchat/commit/d0b0338e2f20bd2acf5cadac39a26dfdbfa0cba4))
+* **evaluation:** 前段queryの処理bytesを失敗runへ記録する ([#783](https://github.com/Yukihide-Mitsuoka/repchat/issues/783)) ([acd0033](https://github.com/Yukihide-Mitsuoka/repchat/commit/acd003328330295f8850d1980ec57fa01ef9ef38))
+* **evaluation:** 成功queryを含むrun全体の処理bytesを記録する ([#784](https://github.com/Yukihide-Mitsuoka/repchat/issues/784)) ([1c06831](https://github.com/Yukihide-Mitsuoka/repchat/commit/1c06831d9a4db12f6461fa5c8c22fc16777a0679))
+* **evaluation:** 生成stageの未知例外を伝播する ([#815](https://github.com/Yukihide-Mitsuoka/repchat/issues/815)) ([579f632](https://github.com/Yukihide-Mitsuoka/repchat/commit/579f6323dad27f3859bf1e278235532218f5c925))
+* **evaluation:** 結果・描画の未知例外を伝播する ([#810](https://github.com/Yukihide-Mitsuoka/repchat/issues/810)) ([3a4d161](https://github.com/Yukihide-Mitsuoka/repchat/commit/3a4d161202cfd55d6bc221a6d8f9308f78bcd6d0))
+
 ## [2.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.0.0...v2.1.0) (2026-09-20)
 
 
