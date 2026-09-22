@@ -318,8 +318,11 @@ provider／infrastructure failureと未知例外は伝播させ、評価結果�
 provider／infrastructure failureを閉じたrun種別へ分離し、基盤障害を品質率の分母から除外しつつ評価を
 合格不能にするrecordings／evidence契約を実装しました。ローカルの`make format`、`make lint`、
 `make test-unit`、`make test`、`make coverage`と必須CI checks 13件は成功し、2026-09-23にmerge済みです。
-[Issue #822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)でrenderer processの起動失敗・timeoutを
-基盤障害runへ接続します。preflight、planning、SQL生成、meterの安全な基盤例外は後続sliceです。
+[Issue #822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)／
+[PR #823](https://github.com/Yukihide-Mitsuoka/repchat/pull/823)でrenderer processの起動失敗・timeoutを
+基盤障害runへ接続し、CI確認中です。ローカルの`make format`、`make lint`、`make test`は成功しました。
+`make coverage`は最終修正後、既存renderer probeテストの子プロセス5秒timeoutで2回失敗しています。
+preflight、planning、SQL生成、meterの安全な基盤例外は後続sliceです。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
@@ -411,7 +414,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、各stageの未知例外伝播、[#820](https://github.com/Yukihide-Mitsuoka/repchat/issues/820)／[PR #821](https://github.com/Yukihide-Mitsuoka/repchat/pull/821)の基盤障害run／bundle契約はmerge済み。[#822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)でrenderer起動失敗・timeoutを同契約へ接続する。その後、preflight、planning、SQL生成、meterの安全な基盤例外を小さいPRで接続する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、各stageの未知例外伝播、[#820](https://github.com/Yukihide-Mitsuoka/repchat/issues/820)／[PR #821](https://github.com/Yukihide-Mitsuoka/repchat/pull/821)の基盤障害run／bundle契約はmerge済み。[#822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)／[PR #823](https://github.com/Yukihide-Mitsuoka/repchat/pull/823)でrenderer起動失敗・timeoutを同契約へ接続し、CI確認中。その後、preflight、planning、SQL生成、meterの安全な基盤例外を小さいPRで接続する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
