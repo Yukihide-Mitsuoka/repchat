@@ -101,16 +101,17 @@ test('SQL generation failures use one safe stage and never expose provider detai
   assertPython(String.raw`
 from datetime import date
 import manifest_sql_generation as generation
+import sql_generation
 from run_outcome import validate_run_outcome
 ${setup}
-secret='private-provider-response'
+detail='generated-output-detail'
 def planning(*_args,**_kwargs):return (planned,)
-def raises(*_args,**_kwargs):raise RuntimeError(secret)
-def empty(*_args,**_kwargs):return ({'sql':'','reason':secret,'undefined_terms':[]},{'input_tokens':1,'output_tokens':1})
-def refusal(*_args,**_kwargs):return ({'sql':'','reason':secret,'undefined_terms':['unknown']},{'input_tokens':1,'output_tokens':1})
-def conflicted(*_args,**_kwargs):return ({'sql':'SELECT 1','reason':secret,'undefined_terms':['unknown']},{'input_tokens':1,'output_tokens':1})
+def rejected(*_args,**_kwargs):raise sql_generation.SQLGenerationError(detail)
+def empty(*_args,**_kwargs):return ({'sql':'','reason':detail,'undefined_terms':[]},{'input_tokens':1,'output_tokens':1})
+def refusal(*_args,**_kwargs):return ({'sql':'','reason':detail,'undefined_terms':['unknown']},{'input_tokens':1,'output_tokens':1})
+def conflicted(*_args,**_kwargs):return ({'sql':'SELECT 1','reason':detail,'undefined_terms':['unknown']},{'input_tokens':1,'output_tokens':1})
 def malformed(*_args,**_kwargs):return ({'sql':'SELECT 1','reason':'ok','undefined_terms':'unknown'},{'input_tokens':1,'output_tokens':1})
-for runner in (raises,empty,refusal,conflicted,malformed):
+for runner in (rejected,empty,refusal,conflicted,malformed):
  attempt=generation.run_manifest_sql_generation(
   {},object(),object(),'model',as_of=date(2026,9,20),
   planning_runner=planning,sql_runner=runner,
@@ -118,7 +119,7 @@ for runner in (raises,empty,refusal,conflicted,malformed):
  assert not attempt.succeeded
  assert (attempt.failure_stage,attempt.failure_code)==('sql_generation','sql_generation_failed')
  assert attempt.generated_sql is None and attempt.sql_generation_cost_jpy is None
- assert secret not in repr(attempt)
+ assert detail not in repr(attempt)
  recording=attempt.failure_recording(bytes_processed=7,cost_jpy=0.75)
  assert recording['run']['bytes_processed']==7
  assert recording['run']['generated_sql']==''
@@ -131,5 +132,52 @@ for runner in (raises,empty,refusal,conflicted,malformed):
   assert str(error)=='SQL generation bytes must be a non-negative integer'
  else:
   raise AssertionError('negative measured bytes were accepted')
+`);
+});
+
+test('SQL generation dependency and invariant failures propagate', () => {
+  assertPython(String.raw`
+from datetime import date
+import manifest_sql_generation as generation
+from manifest_planning import PlannedAnalysisAttempt
+from vertex_generation import VertexRequestError
+${setup}
+def planning(*_args,**_kwargs):return (planned,)
+def unknown(*_args,**_kwargs):raise RuntimeError('unknown-runner-failure')
+def provider(*_args,**_kwargs):raise VertexRequestError('safe-provider-failure')
+for runner,error_type,message in (
+ (unknown,RuntimeError,'unknown-runner-failure'),
+ (provider,VertexRequestError,'safe-provider-failure'),
+):
+ try:
+  generation.run_manifest_sql_generation(
+   {},object(),object(),'model',as_of=date(2026,9,20),
+   planning_runner=planning,sql_runner=runner,
+  )
+ except error_type as error:
+  assert str(error)==message
+ else:
+  raise AssertionError('SQL generation dependency failure became a quality failure')
+incomplete=PlannedAnalysisAttempt(identity,None,0.25)
+try:
+ generation.run_manifest_sql_generation(
+  {},object(),object(),'model',as_of=date(2026,9,20),
+  planning_runner=lambda *_args,**_kwargs:(incomplete,),sql_runner=unknown,
+ )
+except ValueError as error:
+ assert str(error)=='successful planning requires a contract and plan'
+else:
+ raise AssertionError('missing successful-plan state became a quality failure')
+generation.report.vertex_cost_jpy=lambda _model,_usage:float('nan')
+try:
+ generation.run_manifest_sql_generation(
+  {},object(),object(),'model',as_of=date(2026,9,20),
+  planning_runner=planning,
+  sql_runner=lambda *_args,**_kwargs:({'sql':'SELECT 1','reason':'ok','undefined_terms':[]},{'input_tokens':1,'output_tokens':1}),
+ )
+except ValueError as error:
+ assert str(error)=='SQL generation cost is invalid'
+else:
+ raise AssertionError('invalid cost became a quality failure')
 `);
 });
