@@ -152,3 +152,41 @@ assert not attempt.succeeded and attempt.semantic_error
 assert 'private period diagnostic' not in repr(attempt)
 `);
 });
+
+test('unknown local validator exceptions invalidate evaluation', () => {
+  assertPython(String.raw`
+from datetime import date
+import manifest_sql_validation as validation
+${setup}
+validation.analysis_contract_context.execution_policy=lambda _contract:policy
+def raises(*_args,**_kwargs):raise RuntimeError('sensitive implementation detail')
+validation.report.validate_sql_diagnostic=raises
+def generation(*_args,**_kwargs):return (generated,)
+try:
+ validation.run_manifest_sql_validation(
+  {},object(),object(),'model',as_of=date(2026,9,20),generation_runner=generation,
+ )
+except RuntimeError as error:
+ assert str(error)=='sensitive implementation detail'
+else:
+ raise AssertionError('unknown validator exception became a quality failure')
+`);
+});
+
+test('incomplete successful SQL generation is an invariant error', () => {
+  assertPython(String.raw`
+from datetime import date
+import manifest_sql_validation as validation
+${setup}
+incomplete=GeneratedSQLAttempt(planned,None,None,0.5)
+def generation(*_args,**_kwargs):return (incomplete,)
+try:
+ validation.run_manifest_sql_validation(
+  {},object(),object(),'model',as_of=date(2026,9,20),generation_runner=generation,
+ )
+except ValueError as error:
+ assert str(error)=='successful SQL generation output is incomplete'
+else:
+ raise AssertionError('incomplete SQL generation became a validation failure')
+`);
+});

@@ -179,3 +179,41 @@ assert not attempt.succeeded and attempt.semantic_error
 assert attempt.estimated_bytes_processed==42
 `);
 });
+
+test('unknown dry-run exceptions invalidate evaluation', () => {
+  assertPython(String.raw`
+from datetime import date
+import manifest_dry_run as dry_run
+${setup}
+dry_run.analysis_contract_context.execution_policy=lambda _contract:policy
+def raises(*_args,**_kwargs):raise RuntimeError('sensitive implementation detail')
+dry_run.report.inspect_bq_dry_run_diagnostic=raises
+def validation(*_args,**_kwargs):return (validated,)
+try:
+ dry_run.run_manifest_dry_runs(
+  {},object(),object(),'model',as_of=date(2026,9,20),validation_runner=validation,
+ )
+except RuntimeError as error:
+ assert str(error)=='sensitive implementation detail'
+else:
+ raise AssertionError('unknown dry-run exception became a quality failure')
+`);
+});
+
+test('incomplete successful SQL validation is an invariant error', () => {
+  assertPython(String.raw`
+from datetime import date
+import manifest_dry_run as dry_run
+${setup}
+incomplete=ValidatedSQLAttempt(generated,None)
+def validation(*_args,**_kwargs):return (incomplete,)
+try:
+ dry_run.run_manifest_dry_runs(
+  {},object(),object(),'model',as_of=date(2026,9,20),validation_runner=validation,
+ )
+except ValueError as error:
+ assert str(error)=='successful SQL validation output is incomplete'
+else:
+ raise AssertionError('incomplete SQL validation became a dry-run failure')
+`);
+});

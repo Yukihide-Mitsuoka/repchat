@@ -118,37 +118,40 @@ def _execute_attempt(attempt: DryRunAttempt, bq) -> ExecutionAttempt:
     if not attempt.succeeded:
         return _upstream_failure(attempt)
 
-    try:
-        validated_attempt = attempt.validated_attempt
-        generated_attempt = validated_attempt.generated_attempt
-        contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
-        section = generated_attempt.section
-        sql = validated_attempt.validated_sql
-        if contract is None or section is None or sql is None:
-            raise ValueError("successful dry run output is incomplete")
-        policy = analysis_contract_context.execution_policy(contract)
-        section_limit = section.get("max_result_rows")
-        if type(section_limit) is not int or section_limit < 1:
-            raise ValueError("section result row limit is invalid")
-        execution, diagnostic = report.execute_bq_diagnostic(
-            bq,
-            sql,
-            max_results=min(section_limit, policy.maximum_result_rows) + 1,
-            policy=policy,
+    validated_attempt = attempt.validated_attempt
+    generated_attempt = validated_attempt.generated_attempt
+    contract = generated_attempt.planned_attempt.preflight_attempt.result.contract
+    section = generated_attempt.section
+    sql = validated_attempt.validated_sql
+    if (
+        contract is None
+        or section is None
+        or sql is None
+        or attempt.dry_run_schema is None
+        or attempt.estimated_bytes_processed is None
+    ):
+        raise ValueError("successful dry run output is incomplete")
+    policy = analysis_contract_context.execution_policy(contract)
+    section_limit = section.get("max_result_rows")
+    if type(section_limit) is not int or section_limit < 1:
+        raise ValueError("section result row limit is invalid")
+    execution, diagnostic = report.execute_bq_diagnostic(
+        bq,
+        sql,
+        max_results=min(section_limit, policy.maximum_result_rows) + 1,
+        policy=policy,
+    )
+    if diagnostic:
+        return _execution_failure(
+            attempt,
+            scan_limit_exceeded=(
+                diagnostic.category
+                is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
+            ),
+            diagnostic=diagnostic,
         )
-        if diagnostic:
-            return _execution_failure(
-                attempt,
-                scan_limit_exceeded=(
-                    diagnostic.category
-                    is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
-                ),
-                diagnostic=diagnostic,
-            )
-        if execution is None:
-            raise ValueError("common execution returned no result")
-    except Exception:
-        return _execution_failure(attempt)
+    if execution is None:
+        raise ValueError("common execution returned no result")
     return ExecutionAttempt(
         attempt, execution.rows, execution.columns, execution.bytes_processed
     )
