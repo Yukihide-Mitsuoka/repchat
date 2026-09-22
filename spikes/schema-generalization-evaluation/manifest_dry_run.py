@@ -133,23 +133,25 @@ def _dry_run_attempt(attempt: ValidatedSQLAttempt, bq) -> DryRunAttempt:
         if contract is None or section is None or attempt.validated_sql is None:
             raise ValueError("successful SQL validation output is incomplete")
         policy = analysis_contract_context.execution_policy(contract)
-        inspection, diagnostic = report.inspect_bq_dry_run(
+        inspection, diagnostic = report.inspect_bq_dry_run_diagnostic(
             bq,
             attempt.validated_sql,
             policy=policy,
         )
         if diagnostic:
+            category = diagnostic.category
             return _dry_run_failure(
                 attempt,
                 inspection,
                 unauthorized_reference=(
-                    "outside the analysis contract" in diagnostic
-                    or "referenced table identity" in diagnostic
+                    category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
                 ),
                 dangerous_sql=(
-                    "statement type" in diagnostic and "expected SELECT" in diagnostic
+                    category is report.SQLDiagnosticCategory.DANGEROUS_SQL
                 ),
-                scan_limit_exceeded="scan limit exceeded" in diagnostic,
+                scan_limit_exceeded=(
+                    category is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
+                ),
             )
         if inspection is None:
             raise ValueError("common dry run returned no inspection")

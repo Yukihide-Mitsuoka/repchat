@@ -23,6 +23,13 @@ class DryRunInspection:
 
 
 @dataclass(frozen=True)
+class _DryRunOutcome:
+    inspection: DryRunInspection | None
+    diagnostic: SQLDiagnostic | None
+    display_message: str | None
+
+
+@dataclass(frozen=True)
 class QueryExecution:
     """Completed BigQuery result and measured processing metadata."""
 
@@ -31,44 +38,52 @@ class QueryExecution:
     bytes_processed: int
 
 
-def _dry_run_metadata_error(
+def _dry_run_metadata_diagnostic(
     job,
     policy: AnalysisExecutionPolicy,
-) -> str:
+) -> tuple[SQLDiagnostic | None, str | None]:
     """Validate the query using BigQuery's parsed job statistics."""
     # Keep the local text check for fast feedback, then trust BigQuery's parsed
     # metadata at the network boundary so SQL syntax tricks cannot bypass scope.
     statement_type = getattr(job, "statement_type", None)
     if statement_type != "SELECT":
         observed = statement_type or "missing"
-        return f"bq dry-run rejected: statement type {observed}; expected SELECT"
+        diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_STATEMENT_NOT_SELECT)
+        return diagnostic, (
+            f"bq dry-run rejected: statement type {observed}; expected SELECT"
+        )
 
     references = getattr(job, "referenced_tables", None)
     if not references:
-        return "bq dry-run rejected: referenced tables were not returned"
+        diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_REFERENCES_MISSING)
+        return diagnostic, diagnostic.message
     for reference in references:
         project = getattr(reference, "project", None)
         dataset_id = getattr(reference, "dataset_id", None)
         if not project or not dataset_id:
-            return "bq dry-run rejected: referenced table identity is incomplete"
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_REFERENCE_INCOMPLETE)
+            return diagnostic, diagnostic.message
         table_id = getattr(reference, "table_id", None)
         if not table_id:
-            return "bq dry-run rejected: referenced table identity is incomplete"
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_REFERENCE_INCOMPLETE)
+            return diagnostic, diagnostic.message
         if f"{project}.{dataset_id}.{table_id}" not in policy.job_tables:
-            return "bq dry-run rejected: table is outside the analysis contract"
-    return ""
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_TABLE_OUTSIDE_SCOPE)
+            return diagnostic, diagnostic.message
+    return None, None
 
 
-def inspect_bq_dry_run(
+def _inspect_bq_dry_run(
     bq,
     sql: str,
     *,
     policy: AnalysisExecutionPolicy | None = None,
-):
-    """Dry-run a validated query and return parsed schema and scan estimate."""
-    s, validation_error = validate_sql(sql, policy=policy)
-    if validation_error:
-        return None, validation_error
+) -> _DryRunOutcome:
+    s, validation_diagnostic = validate_sql_diagnostic(sql, policy=policy)
+    if validation_diagnostic:
+        return _DryRunOutcome(
+            None, validation_diagnostic, validation_diagnostic.message
+        )
     assert s is not None
     assert policy is not None
     from google.cloud import bigquery
@@ -96,14 +111,20 @@ def inspect_bq_dry_run(
             or not isinstance(estimated_bytes, int)
             or estimated_bytes < 0
         ):
-            return None, "bq dry-run rejected: bytes processed were not returned"
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_BYTES_MISSING)
+            return _DryRunOutcome(None, diagnostic, diagnostic.message)
         inspection = DryRunInspection(schema, estimated_bytes)
-        metadata_error = _dry_run_metadata_error(job, policy)
-        if metadata_error:
-            return inspection, metadata_error
+        metadata_diagnostic, display_message = _dry_run_metadata_diagnostic(
+            job, policy
+        )
+        if metadata_diagnostic:
+            return _DryRunOutcome(
+                inspection, metadata_diagnostic, display_message
+            )
         if estimated_bytes > policy.maximum_bytes_billed:
-            return inspection, "bq dry-run rejected: scan limit exceeded"
-        return inspection, None
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_SCAN_LIMIT_EXCEEDED)
+            return _DryRunOutcome(inspection, diagnostic, diagnostic.message)
+        return _DryRunOutcome(inspection, None, None)
     except Exception as error:  # noqa: BLE001 — dry-run diagnostics are user-actionable
         why = ""
         errors = getattr(error, "errors", None)
@@ -116,8 +137,36 @@ def inspect_bq_dry_run(
             why,
             re.I,
         ):
-            return None, "bq dry-run rejected: scan limit exceeded"
-        return None, f"bq dry-run error: {type(error).__name__}: {why[:220]}"
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_SCAN_LIMIT_EXCEEDED)
+            return _DryRunOutcome(None, diagnostic, diagnostic.message)
+        diagnostic = sql_diagnostic(SQLDiagnosticCode.DRY_RUN_PROVIDER_FAILURE)
+        return _DryRunOutcome(
+            None,
+            diagnostic,
+            f"bq dry-run error: {type(error).__name__}: {why[:220]}",
+        )
+
+
+def inspect_bq_dry_run_diagnostic(
+    bq,
+    sql: str,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+) -> tuple[DryRunInspection | None, SQLDiagnostic | None]:
+    """Dry-run SQL and return only closed diagnostics at the evaluation boundary."""
+    outcome = _inspect_bq_dry_run(bq, sql, policy=policy)
+    return outcome.inspection, outcome.diagnostic
+
+
+def inspect_bq_dry_run(
+    bq,
+    sql: str,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+):
+    """Dry-run SQL and adapt its typed diagnostic to the display message API."""
+    outcome = _inspect_bq_dry_run(bq, sql, policy=policy)
+    return outcome.inspection, outcome.display_message
 
 
 def inspect_bq_schema(
