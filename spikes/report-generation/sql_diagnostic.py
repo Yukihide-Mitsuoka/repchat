@@ -14,6 +14,8 @@ class SQLDiagnosticCategory(str, Enum):
     DANGEROUS_SQL = "dangerous_sql"
     SCAN_LIMIT_EXCEEDED = "scan_limit_exceeded"
     PROVIDER_FAILURE = "provider_failure"
+    INFRASTRUCTURE_FAILURE = "infrastructure_failure"
+    CANCELLED = "cancelled"
 
 
 class SQLDiagnosticCode(str, Enum):
@@ -35,6 +37,11 @@ class SQLDiagnosticCode(str, Enum):
     DRY_RUN_BYTES_MISSING = "dry_run_bytes_missing"
     DRY_RUN_SCAN_LIMIT_EXCEEDED = "dry_run_scan_limit_exceeded"
     DRY_RUN_PROVIDER_FAILURE = "dry_run_provider_failure"
+    EXECUTION_BYTES_MISSING = "execution_bytes_missing"
+    EXECUTION_SCAN_LIMIT_EXCEEDED = "execution_scan_limit_exceeded"
+    EXECUTION_CANCELLED = "execution_cancelled"
+    EXECUTION_TIMEOUT = "execution_timeout"
+    EXECUTION_PROVIDER_FAILURE = "execution_provider_failure"
 
 
 _SQL_DIAGNOSTICS = {
@@ -101,6 +108,26 @@ _SQL_DIAGNOSTICS = {
     SQLDiagnosticCode.DRY_RUN_PROVIDER_FAILURE: (
         SQLDiagnosticCategory.PROVIDER_FAILURE,
         "bq dry-run error: provider request failed",
+    ),
+    SQLDiagnosticCode.EXECUTION_BYTES_MISSING: (
+        SQLDiagnosticCategory.PROVIDER_FAILURE,
+        "bq execution rejected: bytes processed were not returned",
+    ),
+    SQLDiagnosticCode.EXECUTION_SCAN_LIMIT_EXCEEDED: (
+        SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED,
+        "bq execution rejected: scan limit exceeded",
+    ),
+    SQLDiagnosticCode.EXECUTION_CANCELLED: (
+        SQLDiagnosticCategory.CANCELLED,
+        "cancelled",
+    ),
+    SQLDiagnosticCode.EXECUTION_TIMEOUT: (
+        SQLDiagnosticCategory.INFRASTRUCTURE_FAILURE,
+        "bq error: TimeoutError: query exceeded 180 seconds",
+    ),
+    SQLDiagnosticCode.EXECUTION_PROVIDER_FAILURE: (
+        SQLDiagnosticCategory.PROVIDER_FAILURE,
+        "bq error: provider request failed",
     ),
 }
 

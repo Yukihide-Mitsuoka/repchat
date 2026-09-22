@@ -14,6 +14,7 @@ from bigquery_execution import (
     SQLDiagnosticCode,
     exec_bq,
     execute_bq,
+    execute_bq_diagnostic,
     inspect_bq_dry_run,
     inspect_bq_dry_run_diagnostic,
     inspect_bq_schema,

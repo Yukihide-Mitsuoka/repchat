@@ -124,7 +124,7 @@ def _execute_attempt(attempt: DryRunAttempt, bq) -> ExecutionAttempt:
         section_limit = section.get("max_result_rows")
         if type(section_limit) is not int or section_limit < 1:
             raise ValueError("section result row limit is invalid")
-        execution, diagnostic = report.execute_bq(
+        execution, diagnostic = report.execute_bq_diagnostic(
             bq,
             sql,
             max_results=min(section_limit, policy.maximum_result_rows) + 1,
@@ -133,7 +133,10 @@ def _execute_attempt(attempt: DryRunAttempt, bq) -> ExecutionAttempt:
         if diagnostic:
             return _execution_failure(
                 attempt,
-                scan_limit_exceeded="scan limit exceeded" in diagnostic,
+                scan_limit_exceeded=(
+                    diagnostic.category
+                    is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
+                ),
             )
         if execution is None:
             raise ValueError("common execution returned no result")
