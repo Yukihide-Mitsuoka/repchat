@@ -19,16 +19,17 @@ updated: 2026-09-22
 - 計画済みrunが途中停止しても記録から除外せず、固定failure stageと安全なmachine codeで成功率・一致率の分母へ残す。
 - 参照SQLと期待結果はpost-run scorerだけが読み、生成runtimeへ渡さない。
 - 参照結果は作成者と異なるreviewerが承認する。
-- schemaごとに90%以上の結果一致を要求し、意味上の誤り、未認可参照、危険なSQL、scan上限超過を1件でも検出したら不合格にする。
+- schemaと各caseで90%以上の結果一致、各caseで描画成功率100%を要求し、意味上の誤り、未認可参照、危険なSQL、scan上限超過を1件でも検出したら不合格にする。
+- fixtureの必須capability別にend-to-end成功runを集計し、成功が0件のcapabilityを持つschemaは不合格にする。
 - evidence version、参照記録、runのfieldと型を厳密に検証し、曖昧な行順序や未知fieldを推測で受理しない。
 
 この契約は現在の実装を説明するものです。実サービス評価を開始する前に、後述の
-[実評価前の強化計画](#実評価前の強化計画)でcase単位の合否、描画成否、型付き診断、失敗分類を追加します。
+[実評価前の強化計画](#実評価前の強化計画)で失敗分類を追加します。
 
-bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、参照SQL、
+bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、capability、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
 runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stageを記録します。
-evidence bundleはversion 4です。
+evidence bundleはversion 5です。
 
 ## 参照fixtureとrun記録の分離
 
@@ -37,7 +38,8 @@ run記録、version 1のscope snapshot artifact、version 1のanalysis contract 
 runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
 `multi_level_nesting`、`join`、`period_comparison`、`window_function`、`ordered_behavior`をcase全体で網羅する必要があります。
-capabilityは評価範囲のreview用であり、runtime inputと結合後のevidenceには渡しません。run記録にはschema ID、case ID、
+capabilityは評価範囲のreviewとpost-run集計にだけ使用し、runtime manifestへ渡しません。assemblerはreview済みの
+capabilityをevidenceへ結合します。run記録にはschema ID、case ID、
 既存の厳密なrun契約だけを許可し、参照SQLや期待結果の混入、未知のschema／case、記録のないfixture caseを拒否します。
 
 実行前評価計画は、fixture fileのSHA-256、3つのpipeline artifact fingerprint、実行予定のschema ID・case ID・run IDを
@@ -212,7 +214,7 @@ CI logやrepositoryへ保存しません。
 BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovider診断文を解析しません。既存の
 `inspect_bq_dry_run`は表示・SQL修正用messageを返すadapterとして維持します。BigQuery executionも同じ境界へ接続し、
 処理bytes欠落、scan上限、取消、timeout、provider失敗を閉じたcode／categoryへ変換します。既存の`execute_bq`は
-表示用messageを返すadapterです。recordings version 6とevidence bundle version 4では、attempt間で保持した
+表示用messageを返すadapterです。recordings version 6とevidence bundle version 5では、attempt間で保持した
 型付き診断のcode／categoryだけを`diagnostic`へ保存します。成功runと型付き診断を持たない失敗は`null`です。
 ただしSQL境界の失敗で`diagnostic`が`null`の場合、semantic errorが明示されない限りbundleを拒否します。
 生のprovider messageは保存せず、未知code／category、stage・安全性flagとの不整合をfail closedで拒否します。

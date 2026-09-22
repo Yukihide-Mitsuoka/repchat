@@ -88,7 +88,7 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 function evidenceBundle() {
   const fingerprints = pipelineFingerprints();
   return {
-    version: 4,
+    version: 5,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const encodedScope = canonicalJson(scopeContent(schemaId));
@@ -102,6 +102,7 @@ function evidenceBundle() {
           {
             case_id: 'question-1',
             question: '区分別の値を集計して',
+            capabilities: REQUIRED_CAPABILITIES,
             reference: {
               sql: 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               expected_rows: expectedRows,

@@ -13,10 +13,18 @@ const FINGERPRINTS = {
   configuration: '3'.repeat(64),
 };
 type Diagnostic = { code: string; category: string } | null;
+const REQUIRED_CAPABILITIES = [
+  'nested_unnest',
+  'multi_level_nesting',
+  'join',
+  'period_comparison',
+  'window_function',
+  'ordered_behavior',
+];
 
 function evidenceBundle() {
   return {
-    version: 4,
+    version: 5,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const scopeFingerprint = String(schemaIndex + 4).repeat(64);
@@ -29,6 +37,7 @@ function evidenceBundle() {
           {
             case_id: 'question-1',
             question: '区分別の値を集計して',
+            capabilities: REQUIRED_CAPABILITIES,
             reference: {
               sql: 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               expected_rows: expectedRows,
@@ -96,6 +105,22 @@ test('two schemas with three matching runs produce passing evidence', () => {
       {
         schema_id: 'scope-a',
         case_count: 1,
+        cases: [
+          {
+            case_id: 'question-1',
+            run_count: 3,
+            result_match_rate: 1,
+            render_success_rate: 1,
+            semantic_error_count: 0,
+            unauthorized_reference_count: 0,
+            dangerous_sql_count: 0,
+            scan_limit_exceeded_count: 0,
+            passed: true,
+          },
+        ],
+        capability_success_counts: Object.fromEntries(
+          REQUIRED_CAPABILITIES.map((capability) => [capability, 3]),
+        ),
         run_count: 3,
         failure_count: 0,
         failure_stage_counts: {},
@@ -113,6 +138,22 @@ test('two schemas with three matching runs produce passing evidence', () => {
       {
         schema_id: 'scope-b',
         case_count: 1,
+        cases: [
+          {
+            case_id: 'question-1',
+            run_count: 3,
+            result_match_rate: 1,
+            render_success_rate: 1,
+            semantic_error_count: 0,
+            unauthorized_reference_count: 0,
+            dangerous_sql_count: 0,
+            scan_limit_exceeded_count: 0,
+            passed: true,
+          },
+        ],
+        capability_success_counts: Object.fromEntries(
+          REQUIRED_CAPABILITIES.map((capability) => [capability, 3]),
+        ),
         run_count: 3,
         failure_count: 0,
         failure_stage_counts: {},
@@ -129,6 +170,73 @@ test('two schemas with three matching runs produce passing evidence', () => {
       },
     ],
   );
+});
+
+test('one failing case cannot be hidden by another case in the same schema', () => {
+  const bundle = evidenceBundle();
+  const cases = bundle.schemas[0]!.cases;
+  const passingCase = cases[0]!;
+  passingCase.runs = Array.from({ length: 27 }, (_, index) => ({
+    ...structuredClone(passingCase.runs[index % 3]!),
+    run_id: `passing-${index}`,
+  }));
+  const failingCase = structuredClone(passingCase);
+  failingCase.case_id = 'question-2';
+  passingCase.capabilities = REQUIRED_CAPABILITIES.slice(0, -1);
+  failingCase.capabilities = ['ordered_behavior'];
+  failingCase.runs = Array.from({ length: 3 }, (_, index) => ({
+    ...structuredClone(passingCase.runs[index]!),
+    run_id: `failing-${index}`,
+    actual_rows: [{ category: 'wrong', metric_value: 999 }],
+  }));
+  cases.push(failingCase);
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.schemas[0].result_match_rate, 0.9);
+  assert.equal(report.schemas[0].cases[1].result_match_rate, 0);
+  assert.equal(report.schemas[0].cases[1].passed, false);
+  assert.equal(report.schemas[0].capability_success_counts.ordered_behavior, 0);
+  assert.equal(report.schemas[0].passed, false);
+});
+
+test('required capabilities report successful end-to-end run counts', () => {
+  const result = evaluate(evidenceBundle());
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(
+    report.schemas[0].capability_success_counts,
+    Object.fromEntries(REQUIRED_CAPABILITIES.map((capability) => [capability, 3])),
+  );
+});
+
+test('evidence rejects incomplete or unknown capability assignments', () => {
+  const incomplete = evidenceBundle();
+  incomplete.schemas[0]!.cases[0]!.capabilities = REQUIRED_CAPABILITIES.slice(0, -1);
+  assert.match(evaluate(incomplete).stderr, /each schema must cover every required capability/);
+
+  const unknown = evidenceBundle();
+  unknown.schemas[0]!.cases[0]!.capabilities = ['unknown'];
+  assert.match(evaluate(unknown).stderr, /case capabilities are invalid/);
+});
+
+test('a matching result with failed rendering does not pass end to end', () => {
+  const bundle = evidenceBundle();
+  const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+  run.failure_stage = 'rendering';
+  run.failure_code = 'rendering_failed';
+  run.render_succeeded = false;
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.schemas[0].result_match_rate, 1);
+  assert.equal(report.schemas[0].cases[0].render_success_rate, 0.666667);
+  assert.equal(report.schemas[0].passed, false);
 });
 
 test('recorded diagnostics reject unknown values, mismatched pairs, and raw messages', () => {
@@ -474,7 +582,7 @@ test('unsupported evidence versions are rejected before evaluation', () => {
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 4/);
+  assert.match(result.stderr, /evidence version must be 5/);
   assert.equal(result.stdout, '');
 });
 

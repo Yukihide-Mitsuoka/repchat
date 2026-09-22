@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-21
+updated: 2026-09-22
 ---
 
 # 開発引き継ぎ
@@ -291,8 +291,11 @@ PR #786はmerge済みです。
 評価側のprovider診断文部分一致を削除します。[Issue #802](https://github.com/Yukihide-Mitsuoka/repchat/issues/802)では
 BigQuery executionも同じ境界へ接続し、評価側のscan上限判定から文字列部分一致を削除します。
 [Issue #804](https://github.com/Yukihide-Mitsuoka/repchat/issues/804)では、local validation、dry run、execution間で
-保持した型付き診断から生のmessageを除き、code／categoryをrecordings version 6とevidence version 4へ保存します。
-未知値、stage・安全性flagとの不整合は評価前に拒否します。次はcase／capability／描画の合格gateです。
+保持した型付き診断から生のmessageを除き、code／categoryをrecordings version 6へ保存しました。
+[Issue #807](https://github.com/Yukihide-Mitsuoka/repchat/issues/807)／
+[PR #808](https://github.com/Yukihide-Mitsuoka/repchat/pull/808)ではevidence version 5へreview済みcapabilityを結合し、
+case別結果一致率90%、case別描画100%、安全違反0件、必須capability別成功を合格条件にします。capabilityはruntime
+manifestへ渡しません。次はprovider／infrastructure failureとprogramming errorの分離です。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
@@ -370,7 +373,7 @@ contract fingerprint、provenance、結果形状、一般的なchart capability�
 - 利用者確認や手動意味定義を解決策として導入していない。固有処理が残る間は「任意の分析対象へ設定なしで
   適用可能」と表現しない。
 
-## 次に着手する作業キュー（2026-09-21）
+## 次に着手する作業キュー（2026-09-22）
 
 各作業の受入条件と進捗はリンク先のGitHub Issueを正本とします。この表は再開時の実施順序、
 着手条件、完了判定だけを保持します。
@@ -384,7 +387,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、infrastructure failureとprogramming errorの分離を回帰testへ固定する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断は#796／#799／#802／#804、case／capability／描画の合格gateは#807で実装。次にinfrastructure failureとprogramming errorの分離を回帰testへ固定する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
