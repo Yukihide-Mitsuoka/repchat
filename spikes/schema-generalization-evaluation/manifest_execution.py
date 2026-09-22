@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -36,6 +36,7 @@ class ExecutionAttempt:
     failure_stage: str | None = None
     failure_code: str | None = None
     scan_limit_exceeded: bool = False
+    diagnostic: report.SQLDiagnostic | None = field(default=None, repr=False)
 
     @property
     def succeeded(self) -> bool:
@@ -91,11 +92,15 @@ def _upstream_failure(attempt: DryRunAttempt) -> ExecutionAttempt:
         failure_stage=attempt.failure_stage,
         failure_code=attempt.failure_code,
         scan_limit_exceeded=attempt.scan_limit_exceeded,
+        diagnostic=attempt.diagnostic,
     )
 
 
 def _execution_failure(
-    attempt: DryRunAttempt, *, scan_limit_exceeded: bool = False
+    attempt: DryRunAttempt,
+    *,
+    scan_limit_exceeded: bool = False,
+    diagnostic: report.SQLDiagnostic | None = None,
 ) -> ExecutionAttempt:
     return ExecutionAttempt(
         attempt,
@@ -105,6 +110,7 @@ def _execution_failure(
         failure_stage=EXECUTION_FAILURE,
         failure_code=EXECUTION_FAILURE_CODE,
         scan_limit_exceeded=scan_limit_exceeded,
+        diagnostic=diagnostic,
     )
 
 
@@ -137,6 +143,7 @@ def _execute_attempt(attempt: DryRunAttempt, bq) -> ExecutionAttempt:
                     diagnostic.category
                     is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
                 ),
+                diagnostic=diagnostic,
             )
         if execution is None:
             raise ValueError("common execution returned no result")

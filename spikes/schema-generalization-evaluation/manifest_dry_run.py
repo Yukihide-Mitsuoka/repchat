@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -40,6 +40,7 @@ class DryRunAttempt:
     dangerous_sql: bool = False
     scan_limit_exceeded: bool = False
     semantic_error: bool = False
+    diagnostic: report.SQLDiagnostic | None = field(default=None, repr=False)
 
     @property
     def succeeded(self) -> bool:
@@ -95,6 +96,7 @@ def _upstream_failure(attempt: ValidatedSQLAttempt) -> DryRunAttempt:
         unauthorized_reference=attempt.unauthorized_reference,
         dangerous_sql=attempt.dangerous_sql,
         semantic_error=attempt.semantic_error,
+        diagnostic=attempt.diagnostic,
     )
 
 
@@ -106,6 +108,7 @@ def _dry_run_failure(
     dangerous_sql: bool = False,
     scan_limit_exceeded: bool = False,
     semantic_error: bool = False,
+    diagnostic: report.SQLDiagnostic | None = None,
 ) -> DryRunAttempt:
     return DryRunAttempt(
         validated_attempt=attempt,
@@ -119,6 +122,7 @@ def _dry_run_failure(
         dangerous_sql=dangerous_sql,
         scan_limit_exceeded=scan_limit_exceeded,
         semantic_error=semantic_error,
+        diagnostic=diagnostic,
     )
 
 
@@ -152,6 +156,7 @@ def _dry_run_attempt(attempt: ValidatedSQLAttempt, bq) -> DryRunAttempt:
                 scan_limit_exceeded=(
                     category is report.SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED
                 ),
+                diagnostic=diagnostic,
             )
         if inspection is None:
             raise ValueError("common dry run returned no inspection")

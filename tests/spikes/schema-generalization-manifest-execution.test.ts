@@ -94,13 +94,16 @@ else:raise AssertionError('successful execution must continue to result validati
 test('upstream failures skip execution and retain their original recording', () => {
   assertPython(String.raw`
 ${setup}
-failed=DryRunAttempt(validated,None,None,'dry_run','dry_run_failed',scan_limit_exceeded=True)
+from sql_diagnostic import SQLDiagnosticCode,sql_diagnostic
+diagnostic=sql_diagnostic(SQLDiagnosticCode.DRY_RUN_SCAN_LIMIT_EXCEEDED)
+failed=DryRunAttempt(validated,None,None,'dry_run','dry_run_failed',scan_limit_exceeded=True,diagnostic=diagnostic)
 class Client:
  def query(self,*_args,**_kwargs):raise AssertionError('BigQuery was contacted')
 def dry_runs(*_args,**_kwargs):return (failed,)
 attempt=execution.run_manifest_executions({},Client(),object(),'model',as_of=date(2026,9,21),dry_run_runner=dry_runs)[0]
 assert not attempt.succeeded
 assert (attempt.failure_stage,attempt.failure_code)==('dry_run','dry_run_failed')
+assert attempt.diagnostic is diagnostic
 recording=attempt.failure_recording(bytes_processed=0,cost_jpy=0.75)
 assert recording['run']['scan_limit_exceeded'] is True
 `);
@@ -121,6 +124,7 @@ assert (attempt.failure_stage,attempt.failure_code)==('execution','execution_fai
 recording=attempt.failure_recording(bytes_processed=7,cost_jpy=0.75)
 assert recording['run']['generated_sql']==sql
 assert recording['run']['bytes_processed']==7
+assert (attempt.diagnostic.code.value,attempt.diagnostic.category.value)==('execution_bytes_missing','provider_failure')
 validate_run_outcome(recording['run'])
 `);
 });
@@ -138,5 +142,6 @@ class Client:
 attempt=execution.run_manifest_executions({},Client(),object(),'model',as_of=date(2026,9,21),dry_run_runner=dry_runs)[0]
 assert not attempt.succeeded and attempt.scan_limit_exceeded
 assert 'Query exceeded limit' not in repr(attempt)
+assert (attempt.diagnostic.code.value,attempt.diagnostic.category.value)==('execution_scan_limit_exceeded','scan_limit_exceeded')
 `);
 });
