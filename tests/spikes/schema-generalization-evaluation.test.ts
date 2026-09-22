@@ -257,7 +257,7 @@ test('an infrastructure failure is excluded from quality rates and prevents pass
   Object.assign(run, {
     failure_kind: 'infrastructure',
     failure_stage: 'rendering',
-    failure_code: 'renderer_unavailable',
+    failure_code: 'renderer_infrastructure_failed',
     render_succeeded: false,
   });
   for (const schema of bundle.schemas) {
@@ -278,6 +278,36 @@ test('an infrastructure failure is excluded from quality rates and prevents pass
   assert.equal(report.schemas[0].cases[0].result_match_rate, 1);
   assert.equal(report.schemas[0].passed, false);
   assert.equal(report.passed, false);
+});
+
+test('renderer infrastructure code cannot be recorded as a quality failure', () => {
+  const bundle = evidenceBundle();
+  Object.assign(bundle.schemas[0]!.cases[0]!.runs[0]!, {
+    failure_kind: 'quality',
+    failure_stage: 'rendering',
+    failure_code: 'renderer_infrastructure_failed',
+    render_succeeded: false,
+  });
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /failure kind conflicts with its outcome/);
+});
+
+test('existing non-SQL infrastructure recordings remain valid', () => {
+  const bundle = evidenceBundle();
+  Object.assign(bundle.schemas[0]!.cases[0]!.runs[0]!, {
+    failure_kind: 'infrastructure',
+    failure_stage: 'rendering',
+    failure_code: 'renderer_unavailable',
+    render_succeeded: false,
+  });
+
+  const result = evaluate(bundle);
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(JSON.parse(result.stdout).infrastructure_failure_count, 1);
 });
 
 test('unknown or inconsistent failure kinds invalidate the evidence bundle', () => {

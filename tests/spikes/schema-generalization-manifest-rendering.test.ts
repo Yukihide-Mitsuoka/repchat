@@ -125,6 +125,24 @@ else:
 `);
 });
 
+test('renderer infrastructure failure retains validated rows for a measured run', () => {
+  assertPython(String.raw`
+${setup}
+def validations(*_args,**_kwargs):return (valid_result,)
+def unavailable(_payload):raise rendering.RendererInfrastructureError('renderer probe could not complete')
+attempt=rendering.run_manifest_rendering(
+ {},object(),object(),'model',as_of=date(2026,9,21),
+ result_runner=validations,renderer=unavailable,
+)[0]
+assert not attempt.succeeded and not attempt.render_succeeded
+assert (attempt.failure_stage,attempt.failure_code)==('rendering','renderer_infrastructure_failed')
+recording=attempt.recording(bytes_processed=126,cost_jpy=0.9)['run']
+assert recording['actual_rows']==[['A',2],['B',1]]
+assert recording['bytes_processed']==126 and recording['cost_jpy']==0.9
+assert recording['failure_code']=='renderer_infrastructure_failed'
+`);
+});
+
 test('incomplete validated result is an invariant error rather than a rendering failure', () => {
   assertPython(String.raw`
 ${setup}

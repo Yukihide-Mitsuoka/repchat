@@ -140,7 +140,9 @@ def build_manifest_artifacts(
             diagnostic = attempt.result_attempt.execution_attempt.diagnostic
             recorded["run"]["diagnostic"] = serialize_sql_diagnostic(diagnostic)
             recorded["run"]["failure_kind"] = failure_kind_for_diagnostic(
-                recorded["run"]["failure_stage"], recorded["run"]["diagnostic"]
+                recorded["run"]["failure_stage"],
+                recorded["run"]["diagnostic"],
+                recorded["run"]["failure_code"],
             )
             validate_recorded_diagnostic(recorded["run"])
         except RecordedDiagnosticError as error:

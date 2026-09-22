@@ -104,7 +104,10 @@ dry run自体の推定bytesは実処理bytesへ加えず、先行するscope dis
 `manifest_rendering.py`は結果検証までの順序とidentityを維持し、成功attemptのJSON-safeな
 `visualization`、`columns`、`rows`だけを別processの共通renderer probeへ渡します。probeは
 vendored EChartsのSVG SSRまたは共通DOM rendererを実行し、終了code 0だけを描画成功とします。
-描画拒否、timeout、起動失敗、例外はraw detailを保存しない固定`rendering`／`rendering_failed`へ閉じます。
+描画内容の拒否は固定`rendering`／`rendering_failed`の品質失敗とします。renderer processの
+起動失敗・timeoutは`RendererInfrastructureError`から固定`rendering`／
+`renderer_infrastructure_failed`の基盤障害runへ変換し、検証済み行と計測値を保持します。
+未知例外は評価を停止し、raw detailはrun記録へ保存しません。
 描画失敗でも検証済み行は保持し、結果一致と描画成否を独立評価できます。前段失敗ではprobeを呼びません。
 最終run記録は最終queryの実行metadata以上のrun全体の実処理bytesだけを受理し、費用は推測せず計測側から明示的に受け取ります。
 
@@ -230,7 +233,8 @@ BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovide
 `ResultValidationError`とrendererの明示的な`false`だけを、それぞれ`result_validation_failed`、
 `rendering_failed`へ変換します。成功attemptの必須field欠落、policy生成失敗、validatorまたはrendererの
 未知例外は通常の失敗runへ変換せず伝播させ、評価処理を停止します。renderer processの起動失敗とtimeoutは
-raw detailを除いた`RendererInfrastructureError`へ正規化して伝播させます。raw例外文はrecordingへ保存しません。
+raw detailを除いた`RendererInfrastructureError`へ正規化し、Issue #822で基盤障害runへ接続しました。
+raw例外文はrecordingへ保存しません。
 順序3の次のsliceでは、local SQL validation、BigQuery dry run、BigQuery executionの型付き診断と明示的な
 SQL／schema契約不一致だけを既知失敗として保持します。成功attemptの必須field欠落、policy生成失敗、各共通境界の
 未知例外は通常の失敗runへ変換せず伝播させます。続くplanning／SQL生成sliceでは、plannerの明示的な出力拒否、
@@ -241,7 +245,8 @@ preflightの分類はIssue #817で実装し、既知の検証拒否だけを品�
 Issue #820では、この専用契約をrecordings version 7とevidence version 6へ追加しました。成功、品質失敗、
 基盤障害を閉じた`failure_kind`で検証し、型付きSQL診断のprovider／infrastructure／cancelled categoryを
 基盤障害へ分類します。基盤障害は品質率の分母から除外して件数を独立集計し、1件でもあれば不合格です。
-preflight、planning、SQL生成、renderer、meterから伝播する安全な基盤例外をこの契約へ接続する処理は次のsliceです。
+rendererの安全な基盤例外はIssue #822で接続しました。preflight、planning、SQL生成、meterから伝播する
+安全な基盤例外の接続は後続sliceです。
 
 ### 明示的な非対象
 
