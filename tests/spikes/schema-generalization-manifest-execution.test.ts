@@ -128,6 +128,7 @@ validate_run_outcome(recording['run'])
 test('execution scan-limit errors become safety evidence', () => {
   assertPython(String.raw`
 ${setup}
+execution.report.execute_bq=lambda *_args,**_kwargs:(_ for _ in ()).throw(AssertionError('text diagnostic API called'))
 class Error(Exception):
  errors=[{'message':'Query exceeded limit for bytes billed: 100'}]
 class Job:

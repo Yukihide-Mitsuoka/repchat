@@ -38,6 +38,13 @@ class QueryExecution:
     bytes_processed: int
 
 
+@dataclass(frozen=True)
+class _ExecutionOutcome:
+    execution: QueryExecution | None
+    diagnostic: SQLDiagnostic | None
+    display_message: str | None
+
+
 def _dry_run_metadata_diagnostic(
     job,
     policy: AnalysisExecutionPolicy,
@@ -182,18 +189,19 @@ def inspect_bq_schema(
     return list(inspection.schema), None
 
 
-def execute_bq(
+def _execute_bq(
     bq,
     sql: str,
     max_results: int | None = None,
     cancel_event=None,
     *,
     policy: AnalysisExecutionPolicy | None = None,
-):
-    """Read-only execution, guarded the same way the executor guards tenant SQL."""
-    s, validation_error = validate_sql(sql, policy=policy)
-    if validation_error:
-        return None, validation_error
+) -> _ExecutionOutcome:
+    s, validation_diagnostic = validate_sql_diagnostic(sql, policy=policy)
+    if validation_diagnostic:
+        return _ExecutionOutcome(
+            None, validation_diagnostic, validation_diagnostic.message
+        )
     assert s is not None
     assert policy is not None
     from google.cloud import bigquery
@@ -211,10 +219,12 @@ def execute_bq(
             while not job.done():
                 if cancel_event.wait(0.2):
                     job.cancel()
-                    return None, "cancelled"
+                    diagnostic = sql_diagnostic(SQLDiagnosticCode.EXECUTION_CANCELLED)
+                    return _ExecutionOutcome(None, diagnostic, diagnostic.message)
                 if time.monotonic() >= deadline:
                     job.cancel()
-                    return None, "bq error: TimeoutError: query exceeded 180 seconds"
+                    diagnostic = sql_diagnostic(SQLDiagnosticCode.EXECUTION_TIMEOUT)
+                    return _ExecutionOutcome(None, diagnostic, diagnostic.message)
         it = job.result(timeout=180, max_results=max_results)
         # Column names come off this same job. Re-querying just to read the
         # schema would triple the scan cost of every section.
@@ -224,13 +234,18 @@ def execute_bq(
             or not isinstance(bytes_processed, int)
             or bytes_processed < 0
         ):
-            return None, "bq execution rejected: bytes processed were not returned"
-        return QueryExecution(
-            tuple(tuple(row.values()) for row in it),
-            tuple(field.name for field in it.schema),
-            bytes_processed,
-        ), None
-    except Exception as e:  # noqa: BLE001 — the message is the diagnostic
+            diagnostic = sql_diagnostic(SQLDiagnosticCode.EXECUTION_BYTES_MISSING)
+            return _ExecutionOutcome(None, diagnostic, diagnostic.message)
+        return _ExecutionOutcome(
+            QueryExecution(
+                tuple(tuple(row.values()) for row in it),
+                tuple(field.name for field in it.schema),
+                bytes_processed,
+            ),
+            None,
+            None,
+        )
+    except Exception as e:  # noqa: BLE001 — provider failures share one boundary
         # Take the reason out of the exception rather than truncating its front:
         # a BadRequest stringifies as a long API URL first, so a head-clipped
         # message shows the endpoint and hides the syntax error. Fourth time this
@@ -246,8 +261,54 @@ def execute_bq(
             why,
             re.I,
         ):
-            return None, "bq execution rejected: scan limit exceeded"
-        return None, f"bq error: {type(e).__name__}: {why[:220]}"
+            diagnostic = sql_diagnostic(
+                SQLDiagnosticCode.EXECUTION_SCAN_LIMIT_EXCEEDED
+            )
+            return _ExecutionOutcome(None, diagnostic, diagnostic.message)
+        diagnostic = sql_diagnostic(SQLDiagnosticCode.EXECUTION_PROVIDER_FAILURE)
+        return _ExecutionOutcome(
+            None,
+            diagnostic,
+            f"bq error: {type(e).__name__}: {why[:220]}",
+        )
+
+
+def execute_bq_diagnostic(
+    bq,
+    sql: str,
+    max_results: int | None = None,
+    cancel_event=None,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+) -> tuple[QueryExecution | None, SQLDiagnostic | None]:
+    """Execute SQL and return only closed diagnostics at the evaluation boundary."""
+    outcome = _execute_bq(
+        bq,
+        sql,
+        max_results=max_results,
+        cancel_event=cancel_event,
+        policy=policy,
+    )
+    return outcome.execution, outcome.diagnostic
+
+
+def execute_bq(
+    bq,
+    sql: str,
+    max_results: int | None = None,
+    cancel_event=None,
+    *,
+    policy: AnalysisExecutionPolicy | None = None,
+):
+    """Execute SQL and adapt its typed diagnostic to the display message API."""
+    outcome = _execute_bq(
+        bq,
+        sql,
+        max_results=max_results,
+        cancel_event=cancel_event,
+        policy=policy,
+    )
+    return outcome.execution, outcome.display_message
 
 
 def exec_bq(
