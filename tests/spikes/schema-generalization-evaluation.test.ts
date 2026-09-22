@@ -256,11 +256,8 @@ test('an infrastructure failure is excluded from quality rates and prevents pass
   const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
   Object.assign(run, {
     failure_kind: 'infrastructure',
-    failure_stage: 'dry_run',
-    failure_code: 'dry_run_failed',
-    diagnostic: { code: 'dry_run_provider_failure', category: 'provider_failure' },
-    sql_execution_succeeded: false,
-    actual_rows: [],
+    failure_stage: 'rendering',
+    failure_code: 'renderer_unavailable',
     render_succeeded: false,
   });
   for (const schema of bundle.schemas) {

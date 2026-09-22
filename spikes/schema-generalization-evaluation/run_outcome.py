@@ -92,10 +92,7 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
 
 def validate_failure_kind(run: dict[str, Any]) -> None:
     """Require failure kind to agree with typed diagnostics and safety evidence."""
-    expected = failure_kind_for_diagnostic(run["failure_stage"], run["diagnostic"])
-    if run["failure_kind"] != expected:
-        raise RunOutcomeError("failure kind conflicts with its outcome")
-    if run["failure_kind"] == INFRASTRUCTURE_FAILURE and any(
+    quality_evidence = any(
         run[name]
         for name in (
             "unauthorized_reference",
@@ -103,5 +100,11 @@ def validate_failure_kind(run: dict[str, Any]) -> None:
             "scan_limit_exceeded",
             "semantic_error",
         )
-    ):
+    )
+    diagnostic = run["diagnostic"]
+    if diagnostic is not None:
+        expected = failure_kind_for_diagnostic(run["failure_stage"], diagnostic)
+        if run["failure_kind"] != expected:
+            raise RunOutcomeError("failure kind conflicts with its outcome")
+    elif quality_evidence and run["failure_kind"] == INFRASTRUCTURE_FAILURE:
         raise RunOutcomeError("infrastructure failures cannot contain quality evidence")
