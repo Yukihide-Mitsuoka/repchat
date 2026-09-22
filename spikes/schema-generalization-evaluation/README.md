@@ -226,8 +226,10 @@ BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovide
 raw detailを除いた`RendererInfrastructureError`へ正規化して伝播させます。raw例外文はrecordingへ保存しません。
 順序3の次のsliceでは、local SQL validation、BigQuery dry run、BigQuery executionの型付き診断と明示的な
 SQL／schema契約不一致だけを既知失敗として保持します。成功attemptの必須field欠落、policy生成失敗、各共通境界の
-未知例外は通常の失敗runへ変換せず伝播させます。provider／infrastructure failureの専用run契約と、preflight、
-planning、SQL生成の分類は後続sliceです。
+未知例外は通常の失敗runへ変換せず伝播させます。続くplanning／SQL生成sliceでは、plannerの明示的な出力拒否、
+plan eventと契約の不一致、`SQLGenerationError`、SQL生成の不正応答だけを品質失敗へ変換します。runner例外、
+成功状態の必須field欠落、section生成・費用計算・複製処理の不変条件違反は伝播させます。
+provider／infrastructure failureの専用run契約とpreflightの分類は後続sliceです。
 
 ### 明示的な非対象
 

@@ -115,9 +115,10 @@ validate_run_outcome(recording['run'])
 `);
 });
 
-test('planning failures keep every attempt with a safe code and no provider detail', () => {
+test('explicit planner output failures keep every attempt with a safe code', () => {
   assertPython(String.raw`
 from datetime import date
+import analysis_workflows
 import manifest_planning
 from bigquery_scope_discovery import DiscoverySnapshot
 from preflight import PreflightResult
@@ -127,8 +128,9 @@ manifest=${manifest}
 snapshot=DiscoverySnapshot('{}','a'*64,'2026-09-20T00:00:00+00:00')
 def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
  return PreflightResult(question,snapshot,contract,{'input_tokens':1,'output_tokens':1})
-secret='private-provider-response'
-def plan(*_args,**_kwargs):raise RuntimeError(secret)
+detail='generated-output-detail'
+output_error=analysis_workflows.AnalysisWorkflowOutputError
+def plan(*_args,**_kwargs):raise output_error(detail)
 attempts=manifest_planning.run_manifest_planning(
  manifest,object(),object(),'model',as_of=date(2026,9,20),
  preflight_runner=preflight,planning_runner=plan,
@@ -136,7 +138,7 @@ attempts=manifest_planning.run_manifest_planning(
 assert len(attempts)==2
 assert all(not item.succeeded for item in attempts)
 assert all((item.failure_stage,item.failure_code)==('planning','planning_failed') for item in attempts)
-assert secret not in repr(attempts)
+assert detail not in repr(attempts)
 recording=attempts[0].failure_recording(bytes_processed=7,cost_jpy=0.2)
 assert recording['run']['bytes_processed']==7
 assert recording['run']['runtime_input']=={
@@ -157,6 +159,58 @@ else:
 `);
 });
 
+test('planning runner and invariant failures propagate instead of becoming quality failures', () => {
+  assertPython(String.raw`
+from datetime import date
+import analysis_workflows
+import manifest_planning
+from bigquery_scope_discovery import DiscoverySnapshot
+from preflight import PreflightResult
+${contract}
+manifest=${manifest}
+snapshot=DiscoverySnapshot('{}','a'*64,'2026-09-20T00:00:00+00:00')
+def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
+ return PreflightResult(question,snapshot,contract,{'input_tokens':1,'output_tokens':1})
+def unknown(*_args,**_kwargs):raise RuntimeError('private-provider-response')
+def classified(*_args,**_kwargs):raise analysis_workflows.AnalysisWorkflowError('safe-provider-failure')
+for runner,error_type,message in (
+ (unknown,RuntimeError,'private-provider-response'),
+ (classified,analysis_workflows.AnalysisWorkflowError,'safe-provider-failure'),
+):
+ try:
+  manifest_planning.run_manifest_planning(
+   manifest,object(),object(),'model',as_of=date(2026,9,20),
+   preflight_runner=preflight,planning_runner=runner,
+  )
+ except error_type as error:
+  assert str(error)==message
+ else:
+  raise AssertionError('planning runner failure became a quality failure')
+def non_json_plan(_client,_model,_question,_answers,emit,**kwargs):
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[{'id':'P1'}],'opaque':object()},'cost_jpy':0})
+try:
+ manifest_planning.run_manifest_planning(
+  manifest,object(),object(),'model',as_of=date(2026,9,20),
+  preflight_runner=preflight,planning_runner=non_json_plan,
+ )
+except TypeError:
+ pass
+else:
+ raise AssertionError('non-serializable plan became a quality failure')
+def incomplete_preflight(_bq,_vertex,_model,_scope,question,*,as_of):
+ return PreflightResult(question,snapshot,None,{'input_tokens':1,'output_tokens':1})
+try:
+ manifest_planning.run_manifest_planning(
+  manifest,object(),object(),'model',as_of=date(2026,9,20),
+  preflight_runner=incomplete_preflight,planning_runner=lambda *_args,**_kwargs:None,
+ )
+except ValueError as error:
+ assert str(error)=='successful preflight requires an analysis contract'
+else:
+ raise AssertionError('missing successful-preflight contract became a quality failure')
+`);
+});
+
 test('missing or contract-mismatched plan events fail closed', () => {
   assertPython(String.raw`
 from datetime import date
@@ -170,7 +224,7 @@ def preflight(_bq,_vertex,_model,_scope,question,*,as_of):
  return PreflightResult(question,snapshot,contract,{'input_tokens':1,'output_tokens':1})
 def no_plan(*_args,**_kwargs):return None
 def wrong_contract(_client,_model,_question,_answers,emit,**_kwargs):
- emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':'f'*64},'cost_jpy':0})
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':'f'*64,'clarifications':[],'panels':[{'id':'P1'}]},'cost_jpy':0})
 def needs_answer(_client,_model,_question,_answers,emit,**kwargs):
  emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[{'field':'audience'}],'panels':[{'id':'P1'}]},'cost_jpy':0})
 def multiple_panels(_client,_model,_question,_answers,emit,**kwargs):
@@ -181,15 +235,5 @@ for runner in (no_plan,wrong_contract,needs_answer,multiple_panels):
   preflight_runner=preflight,planning_runner=runner,
  )
  assert all((item.failure_stage,item.failure_code)==('planning','planning_failed') for item in attempts)
-def invalid_preflight(_bq,_vertex,_model,_scope,question,*,as_of):
- return PreflightResult(question,snapshot,None,{'input_tokens':1,'output_tokens':1})
-calls=[]
-def plan(*args,**kwargs):calls.append((args,kwargs))
-attempts=manifest_planning.run_manifest_planning(
- manifest,object(),object(),'model',as_of=date(2026,9,20),
- preflight_runner=invalid_preflight,planning_runner=plan,
-)
-assert calls==[]
-assert all((item.failure_stage,item.failure_code)==('planning','planning_failed') for item in attempts)
 `);
 });
