@@ -108,7 +108,11 @@ def _table_metadata(
         raise SchemaInspectionInfrastructureError(
             "table metadata retrieval failed"
         ) from None
+    if not isinstance(raw, dict):
+        raise SchemaInspectionError("table metadata is invalid")
     ref = raw.get("tableReference", {})
+    if not isinstance(ref, dict):
+        raise SchemaInspectionError("table metadata is invalid")
     identity = ".".join(str(ref.get(key, "")) for key in ("projectId", "datasetId", "tableId"))
     if identity != requested:
         raise SchemaInspectionError("returned table differs from approved request")
@@ -122,7 +126,12 @@ def _table_metadata(
     result = {
         "table": requested,
         "location": location,
-        "fields": _fields(raw.get("schema", {}).get("fields"), budget),
+        "fields": _fields(
+            raw["schema"].get("fields")
+            if isinstance(raw.get("schema"), dict)
+            else None,
+            budget,
+        ),
     }
     # Preserve partition metadata separately from business time semantics.
     for key in ("timePartitioning", "rangePartitioning", "clustering"):

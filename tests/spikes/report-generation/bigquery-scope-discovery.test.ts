@@ -190,6 +190,13 @@ assert len(client.list_calls)==before
 try:d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
 except d.ScopeDiscoveryError as error:assert str(error)=="partitioned date-shard groups are unsupported"
 else:raise AssertionError("partitioned shard group accepted")
+from bigquery_schema_snapshot import SchemaInspectionInfrastructureError
+original=d.inspect_date_shards
+d.inspect_date_shards=lambda *_args,**_kwargs:(_ for _ in ()).throw(SchemaInspectionInfrastructureError("private provider payload"))
+try:d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
+except d.ScopeDiscoveryInfrastructureError as error:assert "private" not in str(error)
+else:raise AssertionError("shard infrastructure failure accepted")
+d.inspect_date_shards=original
 assert [name for name,_,_ in client.query_calls]==[exact,exact]
 print("ok")
 `,
