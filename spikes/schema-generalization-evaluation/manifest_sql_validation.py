@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -38,6 +38,7 @@ class ValidatedSQLAttempt:
     unauthorized_reference: bool = False
     dangerous_sql: bool = False
     semantic_error: bool = False
+    diagnostic: report.SQLDiagnostic | None = field(default=None, repr=False)
 
     @property
     def succeeded(self) -> bool:
@@ -91,6 +92,7 @@ def _failed_attempt(
     unauthorized_reference: bool = False,
     dangerous_sql: bool = False,
     semantic_error: bool = False,
+    diagnostic: report.SQLDiagnostic | None = None,
 ) -> ValidatedSQLAttempt:
     return ValidatedSQLAttempt(
         generated_attempt=attempt,
@@ -100,6 +102,7 @@ def _failed_attempt(
         unauthorized_reference=unauthorized_reference,
         dangerous_sql=dangerous_sql,
         semantic_error=semantic_error,
+        diagnostic=diagnostic,
     )
 
 
@@ -131,6 +134,7 @@ def _validate_attempt(attempt: GeneratedSQLAttempt) -> ValidatedSQLAttempt:
                 dangerous_sql=(
                     category is report.SQLDiagnosticCategory.DANGEROUS_SQL
                 ),
+                diagnostic=diagnostic,
             )
         if normalized is None:
             raise ValueError("common SQL validation returned no SQL")

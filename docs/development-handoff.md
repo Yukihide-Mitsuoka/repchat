@@ -290,7 +290,8 @@ PR #786はmerge済みです。
 [Issue #799](https://github.com/Yukihide-Mitsuoka/repchat/issues/799)ではBigQuery dry runも同じ型付き診断へ接続し、
 評価側のprovider診断文部分一致を削除します。[Issue #802](https://github.com/Yukihide-Mitsuoka/repchat/issues/802)では
 BigQuery executionも同じ境界へ接続し、評価側のscan上限判定から文字列部分一致を削除します。
-evidence bundleへの型付き診断接続は後続sliceです。
+[Issue #804](https://github.com/Yukihide-Mitsuoka/repchat/issues/804)では、まずlocal validation、dry run、execution間で
+型付き診断を失わず伝播させ、その後のsliceで生のmessageを除いたcode／categoryをversion付きevidence bundleへ保存します。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 

@@ -212,7 +212,8 @@ CI logやrepositoryへ保存しません。
 BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovider診断文を解析しません。既存の
 `inspect_bq_dry_run`は表示・SQL修正用messageを返すadapterとして維持します。BigQuery executionも同じ境界へ接続し、
 処理bytes欠落、scan上限、取消、timeout、provider失敗を閉じたcode／categoryへ変換します。既存の`execute_bq`は
-表示用messageを返すadapterです。evidence bundleへのcode／category保存は後続sliceで行います。
+表示用messageを返すadapterです。Issue #804の最初のsliceでは、local validation、dry run、executionの
+attempt間で同じ型付き診断を失わずに伝播します。evidence bundleへのcode／category保存は後続sliceで行います。
 
 ### 明示的な非対象
 

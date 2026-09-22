@@ -105,12 +105,12 @@ ${setup}
 validation.analysis_contract_context.execution_policy=lambda _contract:policy
 validation.report.validate_sql=lambda *_args,**_kwargs:(_ for _ in ()).throw(AssertionError('text diagnostic API called'))
 cases=(
- ('dangerous','WITH source AS (SELECT 1) DELETE FROM '+chr(96)+table+chr(96),(False,True,False)),
- ('outside','SELECT COUNT(*) AS metric_value FROM '+chr(96)+'other.dataset.records'+chr(96),(True,False,False)),
- ('unknown_field','SELECT r.unknown AS category, COUNT(*) AS metric_value FROM '+chr(96)+table+chr(96)+' AS r GROUP BY r.unknown ORDER BY metric_value LIMIT 10',(True,False,False)),
- ('shape','SELECT r.category AS category, COUNT(*) AS metric_value FROM '+chr(96)+table+chr(96)+' AS r GROUP BY r.category',(False,False,True)),
+ ('dangerous','WITH source AS (SELECT 1) DELETE FROM '+chr(96)+table+chr(96),(False,True,False),('forbidden_keyword','dangerous_sql')),
+ ('outside','SELECT COUNT(*) AS metric_value FROM '+chr(96)+'other.dataset.records'+chr(96),(True,False,False),('table_outside_scope','unauthorized_reference')),
+ ('unknown_field','SELECT r.unknown AS category, COUNT(*) AS metric_value FROM '+chr(96)+table+chr(96)+' AS r GROUP BY r.unknown ORDER BY metric_value LIMIT 10',(True,False,False),('schema_policy_mismatch','unauthorized_reference')),
+ ('shape','SELECT r.category AS category, COUNT(*) AS metric_value FROM '+chr(96)+table+chr(96)+' AS r GROUP BY r.category',(False,False,True),None),
 )
-for name,sql,expected in cases:
+for name,sql,expected,expected_diagnostic in cases:
  current=GeneratedSQLAttempt(planned,section,sql,0.5)
  def generation(*_args,attempt=current,**_kwargs):return (attempt,)
  attempt=validation.run_manifest_sql_validation(
@@ -126,6 +126,7 @@ for name,sql,expected in cases:
  assert recording['run']['unauthorized_reference']==expected[0]
  assert recording['run']['dangerous_sql']==expected[1]
  assert recording['run']['semantic_error']==expected[2]
+ assert (None if attempt.diagnostic is None else (attempt.diagnostic.code.value,attempt.diagnostic.category.value))==expected_diagnostic
  validate_run_outcome(recording['run'])
  try:
   attempt.failure_recording(bytes_processed=-1,cost_jpy=0.75)

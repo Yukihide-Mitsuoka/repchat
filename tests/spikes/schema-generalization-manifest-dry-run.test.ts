@@ -98,7 +98,9 @@ test('upstream failures skip BigQuery and retain their original stage', () => {
 from datetime import date
 import manifest_dry_run as dry_run
 ${setup}
-failed=ValidatedSQLAttempt(generated,None,'sql_validation','sql_validation_failed',dangerous_sql=True)
+from sql_diagnostic import SQLDiagnosticCode,sql_diagnostic
+diagnostic=sql_diagnostic(SQLDiagnosticCode.FORBIDDEN_KEYWORD)
+failed=ValidatedSQLAttempt(generated,None,'sql_validation','sql_validation_failed',dangerous_sql=True,diagnostic=diagnostic)
 class Client:
  def query(self,*_args,**_kwargs):raise AssertionError('BigQuery was contacted')
 def validation(*_args,**_kwargs):return (failed,)
@@ -107,6 +109,7 @@ attempt=dry_run.run_manifest_dry_runs(
 )[0]
 assert not attempt.succeeded
 assert (attempt.failure_stage,attempt.failure_code)==('sql_validation','sql_validation_failed')
+assert attempt.diagnostic is diagnostic
 recording=attempt.failure_recording(bytes_processed=0,cost_jpy=0.75)
 assert recording['run']['dangerous_sql'] is True
 `);
@@ -125,11 +128,11 @@ class Client:
  def query(self,*_args,**_kwargs):return self.job
 def validation(*_args,**_kwargs):return (validated,)
 jobs=(
- (SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='other',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=1),(True,False,False,1)),
- (SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='alpha',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=101),(False,True,False,101)),
- (SimpleNamespace(statement_type='DELETE',referenced_tables=[SimpleNamespace(project='alpha',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=1),(False,False,True,1)),
+ (SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='other',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=1),(True,False,False,1),('dry_run_table_outside_scope','unauthorized_reference')),
+ (SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='alpha',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=101),(False,True,False,101),('dry_run_scan_limit_exceeded','scan_limit_exceeded')),
+ (SimpleNamespace(statement_type='DELETE',referenced_tables=[SimpleNamespace(project='alpha',dataset_id='dataset',table_id='records')],schema=[],total_bytes_processed=1),(False,False,True,1),('dry_run_statement_not_select','dangerous_sql')),
 )
-for job,expected in jobs:
+for job,expected,expected_diagnostic in jobs:
  attempt=dry_run.run_manifest_dry_runs(
   {},Client(job),object(),'model',as_of=date(2026,9,20),validation_runner=validation,
  )[0]
@@ -144,6 +147,7 @@ for job,expected in jobs:
  assert recording['run']['unauthorized_reference']==expected[0]
  assert recording['run']['scan_limit_exceeded']==expected[1]
  assert recording['run']['dangerous_sql']==expected[2]
+ assert (attempt.diagnostic.code.value,attempt.diagnostic.category.value)==expected_diagnostic
  validate_run_outcome(recording['run'])
  try:
   attempt.failure_recording(bytes_processed=-1,cost_jpy=0.75)
