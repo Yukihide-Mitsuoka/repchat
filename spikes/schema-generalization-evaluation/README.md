@@ -139,8 +139,10 @@ contract本文は結合後のevidenceへ複製せず、fingerprintだけを残�
 `preflight.py`は、実際の共通`discover_scope`と`generate_discovered_contract_artifacts`を順に呼び、
 planning前のruntime境界を評価artifactへ接続します。成功時は、日次shard統合があれば統合後の
 `DiscoverySnapshot`と、その正確なsnapshotから生成した`AnalysisContract`を同じ結果として返します。
-scope discoveryまたはcontract生成で停止した場合は、raw例外文を保持せず、固定stageと安全なmachine code、
-その時点までに実在するartifactだけを返します。失敗runへ記録する処理bytesと費用はこの境界で推測せず、
+scope discoveryの既知検証拒否とcontract compilerの既知拒否で停止した場合だけ、raw例外文を保持せず、
+固定stageと安全なmachine code、その時点までに実在するartifactだけを返します。schema inspectionとscope
+discoveryのprovider／dependency障害は安全な専用派生型へ正規化し、Vertex provider障害、基盤障害、未知例外と
+ともにpreflightから伝播させます。失敗runへ記録する処理bytesと費用はこの境界で推測せず、
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
@@ -229,7 +231,8 @@ SQL／schema契約不一致だけを既知失敗として保持します。成�
 未知例外は通常の失敗runへ変換せず伝播させます。続くplanning／SQL生成sliceでは、plannerの明示的な出力拒否、
 plan eventと契約の不一致、`SQLGenerationError`、SQL生成の不正応答だけを品質失敗へ変換します。runner例外、
 成功状態の必須field欠落、section生成・費用計算・複製処理の不変条件違反は伝播させます。
-provider／infrastructure failureの専用run契約とpreflightの分類は後続sliceです。
+preflightの分類はIssue #817で実装し、既知の検証拒否だけを品質失敗へ変換します。
+provider／infrastructure failureを合格不能として保持する専用run／bundle契約は後続sliceです。
 
 ### 明示的な非対象
 
