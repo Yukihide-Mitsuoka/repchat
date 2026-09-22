@@ -285,7 +285,9 @@ PR #786はmerge済みです。
 [Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)として、SQL診断の型付きcode化、case単位の
 合格gate、描画成功gate、provider／infrastructure failureとprogramming errorの分離を実装します。詳細な順序と
 受入条件は[評価harnessの実評価前強化計画](../spikes/schema-generalization-evaluation/README.md#実評価前の強化計画)を
-正本とします。その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
+正本とします。[Issue #796](https://github.com/Yukihide-Mitsuoka/repchat/issues/796)では、その最初のsliceとして
+共通SQL validatorへ閉じたcode／categoryを追加し、評価側local validationの診断文部分一致を削除します。
+BigQuery dry run／executionとevidence bundleへの型付き診断接続は後続sliceです。その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を

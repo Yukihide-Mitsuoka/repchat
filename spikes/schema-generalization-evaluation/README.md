@@ -206,6 +206,11 @@ CI logやrepositoryへ保存しません。
 実データを集めると、同じrunが実装版によって安全違反、品質失敗、評価無効のどれにもなり得るためです。
 順序4以降では、最初のrun前に固定したfixture、計画、pipeline artifact、価格snapshotを最後まで変更しません。
 
+順序1の最初のsliceとして、共通SQL validatorは閉じたcode、category、安全な固定messageを返す
+`validate_sql_diagnostic`を持ちます。評価側のlocal SQL validationはcategoryを直接参照し、診断文の
+部分一致を行いません。既存の`validate_sql`は画面表示用messageだけを返す薄いadapterです。
+BigQuery dry run／execution診断の型付き移行と、evidence bundleへのcode／category保存は後続sliceで行います。
+
 ### 明示的な非対象
 
 - `AttemptContext`／`AttemptState`への全面的な状態機械再設計は行わない。identity、費用、failure記録の重複が

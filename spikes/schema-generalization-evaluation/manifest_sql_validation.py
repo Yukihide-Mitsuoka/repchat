@@ -25,18 +25,6 @@ from manifest_sql_generation import (  # noqa: E402 - local import after path se
 
 SQL_VALIDATION_FAILURE = "sql_validation"
 SQL_VALIDATION_FAILURE_CODE = "sql_validation_failed"
-_UNAUTHORIZED_DIAGNOSTICS = (
-    "table decorator is outside the analysis contract",
-    "table is outside the analysis contract",
-    "schema policyとSQLを照合できません",
-)
-_DANGEROUS_DIAGNOSTICS = (
-    "not a SELECT",
-    "multiple statements",
-    "forbidden keyword",
-    "SELECT * anti-pattern",
-    "query must reference an analysis contract table",
-)
 
 
 @dataclass(frozen=True)
@@ -115,13 +103,6 @@ def _failed_attempt(
     )
 
 
-def _local_safety_flags(diagnostic: str) -> tuple[bool, bool]:
-    """Map only stable common-validator classes to evaluation safety evidence."""
-    unauthorized = any(item in diagnostic for item in _UNAUTHORIZED_DIAGNOSTICS)
-    dangerous = any(item in diagnostic for item in _DANGEROUS_DIAGNOSTICS)
-    return unauthorized, dangerous
-
-
 def _validate_attempt(attempt: GeneratedSQLAttempt) -> ValidatedSQLAttempt:
     if not attempt.succeeded:
         return _failed_attempt(
@@ -134,18 +115,22 @@ def _validate_attempt(attempt: GeneratedSQLAttempt) -> ValidatedSQLAttempt:
         if contract is None or attempt.section is None or attempt.generated_sql is None:
             raise ValueError("successful SQL generation output is incomplete")
         policy = analysis_contract_context.execution_policy(contract)
-        normalized, diagnostic = report.validate_sql(
+        normalized, diagnostic = report.validate_sql_diagnostic(
             attempt.generated_sql,
             policy=policy,
         )
         if diagnostic:
-            unauthorized, dangerous = _local_safety_flags(diagnostic)
+            category = diagnostic.category
             return _failed_attempt(
                 attempt,
                 SQL_VALIDATION_FAILURE,
                 SQL_VALIDATION_FAILURE_CODE,
-                unauthorized_reference=unauthorized,
-                dangerous_sql=dangerous,
+                unauthorized_reference=(
+                    category is report.SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE
+                ),
+                dangerous_sql=(
+                    category is report.SQLDiagnosticCategory.DANGEROUS_SQL
+                ),
             )
         if normalized is None:
             raise ValueError("common SQL validation returned no SQL")
