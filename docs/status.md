@@ -82,7 +82,7 @@ infrastructure failureとprogramming errorの分離は[Issue #788](https://githu
 [PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)では最終2 stageの既知品質拒否だけを失敗runへ変換し、
 未知例外と不変条件違反を伝播させ、2026-09-22にmerge済みである。[Issue #812](https://github.com/Yukihide-Mitsuoka/repchat/issues/812)／
 [PR #813](https://github.com/Yukihide-Mitsuoka/repchat/pull/813)ではlocal SQL validation、dry run、executionにも
-同じ境界を追加する。ローカル検証は成功し、PRはCI実行中である。
+同じ境界を追加する。ローカル検証と必須CI checksは成功し、PRはmerge待ちである。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
 [Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
