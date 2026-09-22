@@ -82,7 +82,8 @@ infrastructure failureとprogramming errorの分離は[Issue #788](https://githu
 [PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)では最終2 stageの既知品質拒否だけを失敗runへ変換し、
 未知例外と不変条件違反を伝播させ、2026-09-22にmerge済みである。[Issue #812](https://github.com/Yukihide-Mitsuoka/repchat/issues/812)／
 [PR #813](https://github.com/Yukihide-Mitsuoka/repchat/pull/813)ではlocal SQL validation、dry run、executionにも
-同じ境界を追加し、2026-09-22にmerge済みである。[Issue #814](https://github.com/Yukihide-Mitsuoka/repchat/issues/814)では、
+同じ境界を追加し、2026-09-22にmerge済みである。[Issue #814](https://github.com/Yukihide-Mitsuoka/repchat/issues/814)／
+[PR #815](https://github.com/Yukihide-Mitsuoka/repchat/pull/815)では、
 planningとSQL生成で明示的な生成内容の不合格だけを品質失敗へ変換し、runner例外と不変条件違反を伝播させる。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
 [Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
