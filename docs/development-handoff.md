@@ -292,7 +292,8 @@ PR #786はmerge済みです。
 BigQuery executionも同じ境界へ接続し、評価側のscan上限判定から文字列部分一致を削除します。
 [Issue #804](https://github.com/Yukihide-Mitsuoka/repchat/issues/804)では、local validation、dry run、execution間で
 保持した型付き診断から生のmessageを除き、code／categoryをrecordings version 6へ保存しました。
-[Issue #807](https://github.com/Yukihide-Mitsuoka/repchat/issues/807)ではevidence version 5へreview済みcapabilityを結合し、
+[Issue #807](https://github.com/Yukihide-Mitsuoka/repchat/issues/807)／
+[PR #808](https://github.com/Yukihide-Mitsuoka/repchat/pull/808)ではevidence version 5へreview済みcapabilityを結合し、
 case別結果一致率90%、case別描画100%、安全違反0件、必須capability別成功を合格条件にします。capabilityはruntime
 manifestへ渡しません。次はprovider／infrastructure failureとprogramming errorの分離です。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
