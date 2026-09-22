@@ -209,7 +209,9 @@ CI logやrepositoryへ保存しません。
 順序1の最初のsliceとして、共通SQL validatorは閉じたcode、category、安全な固定messageを返す
 `validate_sql_diagnostic`を持ちます。評価側のlocal SQL validationはcategoryを直接参照し、診断文の
 部分一致を行いません。既存の`validate_sql`は画面表示用messageだけを返す薄いadapterです。
-BigQuery dry run／execution診断の型付き移行と、evidence bundleへのcode／category保存は後続sliceで行います。
+BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovider診断文を解析しません。既存の
+`inspect_bq_dry_run`は表示・SQL修正用messageを返すadapterとして維持します。execution診断の型付き移行と、
+evidence bundleへのcode／category保存は後続sliceで行います。
 
 ### 明示的な非対象
 

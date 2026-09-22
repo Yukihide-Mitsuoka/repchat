@@ -12,6 +12,8 @@ class SQLDiagnosticCategory(str, Enum):
     INVALID_REQUEST = "invalid_request"
     UNAUTHORIZED_REFERENCE = "unauthorized_reference"
     DANGEROUS_SQL = "dangerous_sql"
+    SCAN_LIMIT_EXCEEDED = "scan_limit_exceeded"
+    PROVIDER_FAILURE = "provider_failure"
 
 
 class SQLDiagnosticCode(str, Enum):
@@ -26,6 +28,13 @@ class SQLDiagnosticCode(str, Enum):
     TABLE_OUTSIDE_SCOPE = "table_outside_scope"
     CONTRACT_TABLE_REQUIRED = "contract_table_required"
     SCHEMA_POLICY_MISMATCH = "schema_policy_mismatch"
+    DRY_RUN_STATEMENT_NOT_SELECT = "dry_run_statement_not_select"
+    DRY_RUN_REFERENCES_MISSING = "dry_run_references_missing"
+    DRY_RUN_REFERENCE_INCOMPLETE = "dry_run_reference_incomplete"
+    DRY_RUN_TABLE_OUTSIDE_SCOPE = "dry_run_table_outside_scope"
+    DRY_RUN_BYTES_MISSING = "dry_run_bytes_missing"
+    DRY_RUN_SCAN_LIMIT_EXCEEDED = "dry_run_scan_limit_exceeded"
+    DRY_RUN_PROVIDER_FAILURE = "dry_run_provider_failure"
 
 
 _SQL_DIAGNOSTICS = {
@@ -64,6 +73,34 @@ _SQL_DIAGNOSTICS = {
     SQLDiagnosticCode.SCHEMA_POLICY_MISMATCH: (
         SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE,
         "rejected: schema policyとSQLを照合できません。",
+    ),
+    SQLDiagnosticCode.DRY_RUN_STATEMENT_NOT_SELECT: (
+        SQLDiagnosticCategory.DANGEROUS_SQL,
+        "bq dry-run rejected: statement type must be SELECT",
+    ),
+    SQLDiagnosticCode.DRY_RUN_REFERENCES_MISSING: (
+        SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE,
+        "bq dry-run rejected: referenced tables were not returned",
+    ),
+    SQLDiagnosticCode.DRY_RUN_REFERENCE_INCOMPLETE: (
+        SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE,
+        "bq dry-run rejected: referenced table identity is incomplete",
+    ),
+    SQLDiagnosticCode.DRY_RUN_TABLE_OUTSIDE_SCOPE: (
+        SQLDiagnosticCategory.UNAUTHORIZED_REFERENCE,
+        "bq dry-run rejected: table is outside the analysis contract",
+    ),
+    SQLDiagnosticCode.DRY_RUN_BYTES_MISSING: (
+        SQLDiagnosticCategory.PROVIDER_FAILURE,
+        "bq dry-run rejected: bytes processed were not returned",
+    ),
+    SQLDiagnosticCode.DRY_RUN_SCAN_LIMIT_EXCEEDED: (
+        SQLDiagnosticCategory.SCAN_LIMIT_EXCEEDED,
+        "bq dry-run rejected: scan limit exceeded",
+    ),
+    SQLDiagnosticCode.DRY_RUN_PROVIDER_FAILURE: (
+        SQLDiagnosticCategory.PROVIDER_FAILURE,
+        "bq dry-run error: provider request failed",
     ),
 }
 

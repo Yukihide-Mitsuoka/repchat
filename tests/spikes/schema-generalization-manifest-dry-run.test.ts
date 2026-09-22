@@ -119,6 +119,7 @@ import manifest_dry_run as dry_run
 from run_outcome import validate_run_outcome
 ${setup}
 dry_run.analysis_contract_context.execution_policy=lambda _contract:policy
+dry_run.report.inspect_bq_dry_run=lambda *_args,**_kwargs:(_ for _ in ()).throw(AssertionError('text diagnostic API called'))
 class Client:
  def __init__(self,job):self.job=job
  def query(self,*_args,**_kwargs):return self.job
