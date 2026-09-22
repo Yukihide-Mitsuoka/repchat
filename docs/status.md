@@ -85,9 +85,10 @@ infrastructure failureとprogramming errorの分離は[Issue #788](https://githu
 同じ境界を追加し、2026-09-22にmerge済みである。[Issue #814](https://github.com/Yukihide-Mitsuoka/repchat/issues/814)／
 [PR #815](https://github.com/Yukihide-Mitsuoka/repchat/pull/815)では、
 planningとSQL生成で明示的な生成内容の不合格だけを品質失敗へ変換し、runner例外と不変条件違反を伝播させ、
-2026-09-22にmerge済みである。[Issue #817](https://github.com/Yukihide-Mitsuoka/repchat/issues/817)では、
-schema inspectionとscope discoveryのprovider障害を安全な専用型へ分類し、preflightで既知の検証拒否だけを
-品質失敗へ変換する。基盤障害と未知例外は伝播させ、専用run契約は次のsliceで追加する。
+2026-09-22にmerge済みである。[Issue #817](https://github.com/Yukihide-Mitsuoka/repchat/issues/817)／
+[PR #818](https://github.com/Yukihide-Mitsuoka/repchat/pull/818)では、schema inspectionとscope discoveryの
+provider障害を安全な専用型へ分類し、preflightで既知の検証拒否だけを品質失敗へ変換する。基盤障害と
+未知例外は伝播させ、専用run契約は次のsliceで追加する。PRはmerge待ちである。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
 [Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
