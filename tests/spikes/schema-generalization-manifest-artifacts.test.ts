@@ -76,9 +76,10 @@ ${setup}
 import json,stat,tempfile
 from pathlib import Path
 bundle=artifacts.build_manifest_artifacts(manifest,attempts,measurements)
-assert bundle.recordings['version']==5
+assert bundle.recordings['version']==6
 assert bundle.recordings['evaluation_plan_sha256']=='4'*64
 assert [item['run']['run_id'] for item in bundle.recordings['runs']]==['run-1','run-2']
+assert [item['run']['diagnostic'] for item in bundle.recordings['runs']]==[None,None]
 assert bundle.recordings['runs'][1]['run']['failure_stage']=='rendering'
 assert bundle.scope_snapshots=={'version':1,'snapshots':[{
  'schema_id':'schema-a','content_json':'{"version":1}',
@@ -96,6 +97,90 @@ for artifact_path in paths.values():
  assert stat.S_IMODE(artifact_path.stat().st_mode)==0o600
  assert '\n' not in artifact_path.read_text(encoding='utf-8')
 assert json.loads(paths['recordings'].read_text())==bundle.recordings
+`);
+});
+
+test('recordings retain only closed diagnostic identifiers from a failed attempt', () => {
+  assertPython(String.raw`
+${setup}
+from dataclasses import replace
+from sql_diagnostic import SQLDiagnosticCode,sql_diagnostic
+base=make_attempt('run-1')
+failed_execution=replace(
+ base.result_attempt.execution_attempt,
+ rows=None,columns=None,bytes_processed=None,
+ failure_stage='execution',failure_code='execution_failed',
+ diagnostic=sql_diagnostic(SQLDiagnosticCode.EXECUTION_PROVIDER_FAILURE),
+)
+failed_result=replace(
+ base.result_attempt,execution_attempt=failed_execution,
+ rows=None,columns=None,visualization=None,bytes_processed=None,
+ failure_stage='execution',failure_code='execution_failed',
+)
+failed=RenderingAttempt(failed_result,False,'execution','execution_failed')
+bundle=artifacts.build_manifest_artifacts(
+ manifest,(failed,make_attempt('run-2')),measurements,
+)
+diagnostic=bundle.recordings['runs'][0]['run']['diagnostic']
+assert diagnostic=={'code':'execution_provider_failure','category':'provider_failure'}
+assert 'message' not in diagnostic
+unsafe=replace(failed_result,execution_attempt=replace(failed_execution,diagnostic='private provider message'))
+try:
+ artifacts.build_manifest_artifacts(
+  manifest,(RenderingAttempt(unsafe,False,'execution','execution_failed'),make_attempt('run-2')),
+  measurements,
+ )
+except artifacts.ManifestArtifactError as error:
+ assert str(error)=='recorded diagnostic must use the closed SQL type'
+ assert 'private provider message' not in str(error)
+else:
+ raise AssertionError('raw provider message reached the recording')
+`);
+});
+
+test('upstream SQL and dry-run diagnostics survive final recording', () => {
+  assertPython(String.raw`
+${setup}
+from dataclasses import replace
+from sql_diagnostic import SQLDiagnosticCode,sql_diagnostic
+base=make_attempt('run-1')
+for stage,code,flags in (
+ ('sql_validation',SQLDiagnosticCode.FORBIDDEN_KEYWORD,{'dangerous_sql':True}),
+ ('dry_run',SQLDiagnosticCode.DRY_RUN_SCAN_LIMIT_EXCEEDED,{'scan_limit_exceeded':True}),
+):
+ diagnostic=sql_diagnostic(code)
+ original_execution=base.result_attempt.execution_attempt
+ original_dry=original_execution.dry_run_attempt
+ original_validated=original_dry.validated_attempt
+ validated=replace(
+  original_validated,
+  validated_sql=None if stage=='sql_validation' else original_validated.validated_sql,
+  failure_stage=stage if stage=='sql_validation' else None,
+  failure_code='sql_validation_failed' if stage=='sql_validation' else None,
+  diagnostic=diagnostic if stage=='sql_validation' else None,
+  **(flags if stage=='sql_validation' else {}),
+ )
+ dry=replace(
+  original_dry,validated_attempt=validated,dry_run_schema=None,
+  estimated_bytes_processed=None,failure_stage=stage,
+  failure_code=stage+'_failed',diagnostic=diagnostic,**flags,
+ )
+ execution=replace(
+  original_execution,dry_run_attempt=dry,rows=None,columns=None,
+  bytes_processed=None,failure_stage=stage,failure_code=stage+'_failed',
+  diagnostic=diagnostic,
+  **({'scan_limit_exceeded':True} if stage=='dry_run' else {}),
+ )
+ result=replace(
+  base.result_attempt,execution_attempt=execution,rows=None,columns=None,
+  visualization=None,bytes_processed=None,failure_stage=stage,
+  failure_code=stage+'_failed',
+ )
+ failed=RenderingAttempt(result,False,stage,stage+'_failed')
+ recording=artifacts.build_manifest_artifacts(
+  manifest,(failed,make_attempt('run-2')),measurements,
+ ).recordings['runs'][0]['run']
+ assert recording['diagnostic']=={'code':code.value,'category':diagnostic.category.value}
 `);
 });
 

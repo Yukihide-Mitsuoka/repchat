@@ -14,6 +14,11 @@ from typing import Any, Callable
 from bigquery_scope_discovery import AuthorizedScope
 from manifest_preflight import planned_inputs
 from manifest_rendering import RenderingAttempt, run_manifest_rendering
+from recorded_diagnostic import (
+    RecordedDiagnosticError,
+    serialize_sql_diagnostic,
+    validate_recorded_diagnostic,
+)
 from run_outcome import (
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
     SCOPE_DISCOVERY_FAILURE,
@@ -130,6 +135,12 @@ def build_manifest_artifacts(
             raise ManifestArtifactError(str(error)) from None
         if (recorded["schema_id"], recorded["case_id"], recorded["run"]["run_id"]) != identity:
             raise ManifestArtifactError("recording identity differs from its planned run")
+        try:
+            diagnostic = attempt.result_attempt.execution_attempt.diagnostic
+            recorded["run"]["diagnostic"] = serialize_sql_diagnostic(diagnostic)
+            validate_recorded_diagnostic(recorded["run"])
+        except RecordedDiagnosticError as error:
+            raise ManifestArtifactError(str(error)) from None
         recordings.append(recorded)
 
         preflight = _preflight(attempt)
@@ -167,7 +178,7 @@ def build_manifest_artifacts(
 
     return ManifestArtifacts(
         recordings={
-            "version": 5,
+            "version": 6,
             "evaluation_plan_sha256": manifest["evaluation_plan_sha256"],
             "runs": recordings,
         },

@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from recorded_diagnostic import RecordedDiagnosticError, validate_recorded_diagnostic
 from run_outcome import (
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
     FAILURE_STAGES,
@@ -45,6 +46,7 @@ RUN_KEYS = {
     "generated_sql",
     "failure_stage",
     "failure_code",
+    "diagnostic",
     "sql_execution_succeeded",
     "actual_rows",
     "unauthorized_reference",
@@ -89,8 +91,8 @@ def _rate(count: int, total: int) -> float:
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if type(bundle.get("version")) is not int or bundle["version"] != 3:
-        raise EvaluationEvidenceError("evidence version must be 3")
+    if type(bundle.get("version")) is not int or bundle["version"] != 4:
+        raise EvaluationEvidenceError("evidence version must be 4")
 
 
 def _validate_structure(bundle: dict[str, Any]) -> None:
@@ -203,7 +205,8 @@ def _validate_runs(bundle: dict[str, Any]) -> None:
                     raise EvaluationEvidenceError("cost_jpy must be finite and non-negative")
                 try:
                     validate_run_outcome(run)
-                except RunOutcomeError as error:
+                    validate_recorded_diagnostic(run)
+                except (RunOutcomeError, RecordedDiagnosticError) as error:
                     raise EvaluationEvidenceError(str(error)) from None
 
 
