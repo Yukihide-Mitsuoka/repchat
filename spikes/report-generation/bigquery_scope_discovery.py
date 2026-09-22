@@ -16,6 +16,7 @@ from bigquery_schema_snapshot import (
     MAX_SHARDS,
     MAX_TABLES,
     SchemaInspectionError,
+    SchemaInspectionInfrastructureError,
     SchemaSnapshot,
     inspect_date_shards,
     inspect_schema,
@@ -52,6 +53,10 @@ ORDERED_TYPES = NUMERIC_TYPES | TEMPORAL_TYPES
 
 class ScopeDiscoveryError(ValueError):
     """Authorized scope cannot be converted into a safe bounded catalog."""
+
+
+class ScopeDiscoveryInfrastructureError(ScopeDiscoveryError):
+    """A discovery dependency failed before a bounded catalog was available."""
 
 
 @dataclass(frozen=True)
@@ -115,7 +120,9 @@ def _authorized_table_ids(bq, scope: AuthorizedScope) -> list[str]:
                 )
             )
         except Exception:
-            raise ScopeDiscoveryError("authorized table listing failed") from None
+            raise ScopeDiscoveryInfrastructureError(
+                "authorized table listing failed"
+            ) from None
         if len(listed) > MAX_LISTED_TABLES:
             raise ScopeDiscoveryError("authorized table listing exceeds discovery limit")
         for item in listed:
@@ -312,7 +319,9 @@ def _query_configs():
     try:
         from google.cloud import bigquery
     except Exception:
-        raise ScopeDiscoveryError("BigQuery query support is unavailable") from None
+        raise ScopeDiscoveryInfrastructureError(
+            "BigQuery query support is unavailable"
+        ) from None
     return (
         bigquery.QueryJobConfig(
             dry_run=True,
@@ -333,7 +342,9 @@ def _dry_run_queries(bq, queries: list[tuple[dict, list[dict], str]]) -> None:
         try:
             job = bq.query(sql, job_config=dry_config)
         except Exception:
-            raise ScopeDiscoveryError("value summary dry run failed") from None
+            raise ScopeDiscoveryInfrastructureError(
+                "value summary dry run failed"
+            ) from None
         error = _job_scope_error(job, table)
         if error:
             raise ScopeDiscoveryError(error)
@@ -453,13 +464,13 @@ def _run_queries(bq, queries: list[tuple[dict, list[dict], str]]) -> None:
         try:
             job = bq.query(sql, job_config=run_config)
             rows = list(job.result(timeout=QUERY_TIMEOUT_SECONDS, max_results=2))
-            error = _job_scope_error(job, table)
-            if error:
-                raise ScopeDiscoveryError(error)
-        except ScopeDiscoveryError:
-            raise
         except Exception:
-            raise ScopeDiscoveryError("value summary query failed") from None
+            raise ScopeDiscoveryInfrastructureError(
+                "value summary query failed"
+            ) from None
+        error = _job_scope_error(job, table)
+        if error:
+            raise ScopeDiscoveryError(error)
         if len(rows) != 1:
             raise ScopeDiscoveryError("value summary query must return exactly one row")
         _apply_row(table, fields, _row_mapping(rows[0]))
@@ -638,6 +649,10 @@ def consolidate_date_shards(
                 end_suffix=end_suffix,
                 allowed_patterns=allowed_patterns,
             )
+        except SchemaInspectionInfrastructureError:
+            raise ScopeDiscoveryInfrastructureError(
+                "date-shard schema inspection failed"
+            ) from None
         except SchemaInspectionError as error:
             raise ScopeDiscoveryError(str(error)) from None
         metadata = inspected.metadata()["tables"][0]
@@ -692,10 +707,10 @@ def discover_scope(bq, scope: AuthorizedScope) -> DiscoverySnapshot:
     table_ids = _authorized_table_ids(bq, scope)
     try:
         schema = inspect_schema(bq, table_ids, allowed_tables=frozenset(table_ids))
+    except SchemaInspectionInfrastructureError:
+        raise ScopeDiscoveryInfrastructureError("schema discovery failed") from None
     except SchemaInspectionError as error:
         raise ScopeDiscoveryError(str(error)) from None
-    except Exception:
-        raise ScopeDiscoveryError("schema discovery failed") from None
     tables, queries = _catalog(schema)
     _dry_run_queries(bq, queries)
     _run_queries(bq, queries)

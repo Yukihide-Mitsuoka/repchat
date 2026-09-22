@@ -14,12 +14,17 @@ if str(REPORT_GENERATION_DIR) not in sys.path:
     sys.path.insert(0, str(REPORT_GENERATION_DIR))
 
 from analysis_contract import AnalysisContract  # noqa: E402 - sibling spike import
+from analysis_contract_compiler import (  # noqa: E402 - sibling spike import
+    ContractCompilerError,
+)
 from analysis_contract_orchestration import (  # noqa: E402 - sibling spike import
     generate_discovered_contract_artifacts,
 )
 from bigquery_scope_discovery import (  # noqa: E402 - sibling spike import
     AuthorizedScope,
     DiscoverySnapshot,
+    ScopeDiscoveryError,
+    ScopeDiscoveryInfrastructureError,
     discover_scope,
 )
 from run_outcome import (  # noqa: E402 - path bootstrap precedes local import
@@ -134,7 +139,9 @@ def run_preflight(
     """Discover authorized metadata and generate a contract from that exact snapshot."""
     try:
         discovery = discover_scope(bq, scope)
-    except Exception:
+    except ScopeDiscoveryInfrastructureError:
+        raise
+    except ScopeDiscoveryError:
         return PreflightResult(
             question=question,
             discovery=None,
@@ -152,7 +159,9 @@ def run_preflight(
             question,
             as_of=as_of,
         )
-    except Exception:
+    except ScopeDiscoveryInfrastructureError:
+        raise
+    except (ContractCompilerError, ScopeDiscoveryError):
         return PreflightResult(
             question=question,
             discovery=discovery,
