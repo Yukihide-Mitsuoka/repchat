@@ -16,7 +16,7 @@ updated: 2026-09-22
 - 全runでruntime、prompt、設定のSHA-256 fingerprintを一致させる。
 - runtime inputはscope snapshot fingerprint、analysis contract fingerprint、質問だけに限定する。scope discovery停止時は両fingerprint、analysis contract生成停止時はcontract fingerprintだけを`null`とし、未取得値を捏造しない。
 - contract生成後へ進んだ同じcaseの反復runは、同一のanalysis contract fingerprintを再現する。
-- 計画済みrunが途中停止しても記録から除外せず、固定failure stageと安全なmachine codeで成功率・一致率の分母へ残す。
+- 計画済みrunが途中停止しても記録から除外せず、固定failure stage、安全なmachine code、閉じた失敗種別を保持する。品質失敗は品質率の分母へ残し、provider／infrastructure failureは品質率の分母から除外して評価を合格不能にする。
 - 参照SQLと期待結果はpost-run scorerだけが読み、生成runtimeへ渡さない。
 - 参照結果は作成者と異なるreviewerが承認する。
 - schemaと各caseで90%以上の結果一致、各caseで描画成功率100%を要求し、意味上の誤り、未認可参照、危険なSQL、scan上限超過を1件でも検出したら不合格にする。
@@ -28,12 +28,12 @@ updated: 2026-09-22
 
 bundleには`version`、`thresholds`、2件以上の`schemas`を記録します。schemaごとのcaseは質問、capability、参照SQL、
 期待行、行順序、review記録、反復runを持ちます。runには同一pipelineのfingerprint、実際の
-runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stageを記録します。
-evidence bundleはversion 5です。
+runtime input、生成SQL、実行結果、描画成否、安全違反、処理bytes、費用、失敗stage、失敗種別を記録します。
+evidence bundleはversion 6です。
 
 ## 参照fixtureとrun記録の分離
 
-`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 6のruntime実行後の
+`assemble.py`は、version 2の独立review済み参照fixture、version 1の実行前評価計画、version 7のruntime実行後の
 run記録、version 1のscope snapshot artifact、version 1のanalysis contract artifact、実行に使用した
 runtime・prompt・configurationの3つの不透明なartifact fileを検証し、schema ID・case IDだけで結合します。
 fixture caseにはID、質問、参照記録、評価capabilityだけを許可し、runを含めません。各schemaは`nested_unnest`、
@@ -163,7 +163,11 @@ artifactを起動したことまでは単独で証明しません。
 `result_validation`、`rendering`のいずれかです。正常終了は`none`と空の`failure_code`、途中停止は対応stageと
 小文字英数字・underscoreだけの64文字以下のmachine codeを記録します。providerの例外文、SQL、table名、値を
 `failure_code`へ保存してはいけません。stageごとに生成SQLの有無、実行成否、結果行、描画成否、処理bytesの整合を検証し、
-矛盾するrunを拒否します。失敗runも削除せず、schema別の`failure_count`と`failure_stage_counts`へ集計します。
+矛盾するrunを拒否します。`failure_kind`は成功時の`none`、予期済みの生成・契約・検証拒否を表す`quality`、
+provider failure、infrastructure failure、cancelledを表す`infrastructure`だけを許可します。型付き診断との不整合、
+未知または欠落した種別はbundle契約違反です。失敗runも削除せず、schema別の`failure_count`、
+`failure_stage_counts`、`infrastructure_failure_count`へ集計します。`infrastructure` runはcase／schema／bundleの
+結果一致率、描画率、実行成功率の分母へ混ぜず、1件でも存在すれば評価を不合格にします。
 
 結合後のevidenceには期待行と実行行が含まれるため、標準出力へは出しません。指定した新規fileを所有者だけが
 読書きできる`0600`で作り、既存fileや入力fileの上書きも拒否します。artifactは認可されたローカル領域で管理し、
@@ -216,8 +220,9 @@ CI logやrepositoryへ保存しません。
 BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovider診断文を解析しません。既存の
 `inspect_bq_dry_run`は表示・SQL修正用messageを返すadapterとして維持します。BigQuery executionも同じ境界へ接続し、
 処理bytes欠落、scan上限、取消、timeout、provider失敗を閉じたcode／categoryへ変換します。既存の`execute_bq`は
-表示用messageを返すadapterです。recordings version 6とevidence bundle version 5では、attempt間で保持した
-型付き診断のcode／categoryだけを`diagnostic`へ保存します。成功runと型付き診断を持たない失敗は`null`です。
+表示用messageを返すadapterです。recordings version 6とevidence bundle version 5で追加した型付き診断は、
+現行のversion 7／6にも引き継ぎます。attempt間で保持したcode／categoryだけを`diagnostic`へ保存し、
+成功runと型付き診断を持たない失敗は`null`です。
 ただしSQL境界の失敗で`diagnostic`が`null`の場合、semantic errorが明示されない限りbundleを拒否します。
 生のprovider messageは保存せず、未知code／category、stage・安全性flagとの不整合をfail closedで拒否します。
 
@@ -232,7 +237,11 @@ SQL／schema契約不一致だけを既知失敗として保持します。成�
 plan eventと契約の不一致、`SQLGenerationError`、SQL生成の不正応答だけを品質失敗へ変換します。runner例外、
 成功状態の必須field欠落、section生成・費用計算・複製処理の不変条件違反は伝播させます。
 preflightの分類はIssue #817で実装し、既知の検証拒否だけを品質失敗へ変換します。
-provider／infrastructure failureを合格不能として保持する専用run／bundle契約は後続sliceです。
+
+Issue #820では、この専用契約をrecordings version 7とevidence version 6へ追加しました。成功、品質失敗、
+基盤障害を閉じた`failure_kind`で検証し、型付きSQL診断のprovider／infrastructure／cancelled categoryを
+基盤障害へ分類します。基盤障害は品質率の分母から除外して件数を独立集計し、1件でもあれば不合格です。
+preflight、planning、SQL生成、renderer、meterから伝播する安全な基盤例外をこの契約へ接続する処理は次のsliceです。
 
 ### 明示的な非対象
 
@@ -368,7 +377,7 @@ python3 spikes/schema-generalization-evaluation/evaluate.py /path/to/evidence.js
 run記録は次のtop-level契約を使います。`evaluation_plan_sha256`は実行前評価計画file bytesの小文字SHA-256です。
 
 ```json
-{"version":6,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
+{"version":7,"evaluation_plan_sha256":"0000000000000000000000000000000000000000000000000000000000000000","runs":[]}
 ```
 
 assemblerのexit code `0`は結合成功、`2`は入力契約違反です。scorerのexit code `0`は合格、`1`は検証可能な

@@ -22,6 +22,7 @@ from recorded_diagnostic import (
 from run_outcome import (
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
     SCOPE_DISCOVERY_FAILURE,
+    failure_kind_for_diagnostic,
 )
 
 
@@ -138,6 +139,9 @@ def build_manifest_artifacts(
         try:
             diagnostic = attempt.result_attempt.execution_attempt.diagnostic
             recorded["run"]["diagnostic"] = serialize_sql_diagnostic(diagnostic)
+            recorded["run"]["failure_kind"] = failure_kind_for_diagnostic(
+                recorded["run"]["failure_stage"], recorded["run"]["diagnostic"]
+            )
             validate_recorded_diagnostic(recorded["run"])
         except RecordedDiagnosticError as error:
             raise ManifestArtifactError(str(error)) from None
@@ -178,7 +182,7 @@ def build_manifest_artifacts(
 
     return ManifestArtifacts(
         recordings={
-            "version": 6,
+            "version": 7,
             "evaluation_plan_sha256": manifest["evaluation_plan_sha256"],
             "runs": recordings,
         },

@@ -23,6 +23,7 @@ from run_outcome import (
     PREFLIGHT_FAILURE_STAGES,
     SCOPE_DISCOVERY_FAILURE,
     RunOutcomeError,
+    validate_failure_kind,
     validate_run_outcome,
 )
 
@@ -52,6 +53,7 @@ RUN_KEYS = {
     "generated_sql",
     "failure_stage",
     "failure_code",
+    "failure_kind",
     "diagnostic",
     "sql_execution_succeeded",
     "actual_rows",
@@ -120,8 +122,8 @@ def _run_succeeded_end_to_end(reference: dict[str, Any], run: dict[str, Any]) ->
 def _validate_version(bundle: dict[str, Any]) -> None:
     if not isinstance(bundle, dict):
         raise EvaluationEvidenceError("evidence root must be an object")
-    if type(bundle.get("version")) is not int or bundle["version"] != 5:
-        raise EvaluationEvidenceError("evidence version must be 5")
+    if type(bundle.get("version")) is not int or bundle["version"] != 6:
+        raise EvaluationEvidenceError("evidence version must be 6")
 
 
 def _validate_structure(bundle: dict[str, Any]) -> None:
@@ -243,6 +245,7 @@ def _validate_runs(bundle: dict[str, Any]) -> None:
                 try:
                     validate_run_outcome(run)
                     validate_recorded_diagnostic(run)
+                    validate_failure_kind(run)
                 except (RunOutcomeError, RecordedDiagnosticError) as error:
                     raise EvaluationEvidenceError(str(error)) from None
 
@@ -323,14 +326,22 @@ def _validate_runtime_inputs(bundle: dict[str, Any]) -> None:
 def _summarize_case(case: dict[str, Any], thresholds: dict[str, Any]) -> dict[str, Any]:
     runs = case["runs"]
     run_count = len(runs)
+    quality_runs = [run for run in runs if run["failure_kind"] != "infrastructure"]
+    quality_run_count = len(quality_runs)
+    infrastructure_failure_count = run_count - quality_run_count
     result_match_rate = _rate(
-        sum(_result_matches(case["reference"], run) for run in runs), run_count
+        sum(_result_matches(case["reference"], run) for run in quality_runs),
+        quality_run_count,
     )
-    render_success_rate = _rate(sum(run["render_succeeded"] for run in runs), run_count)
+    render_success_rate = _rate(
+        sum(run["render_succeeded"] for run in quality_runs), quality_run_count
+    )
     safety_counts = {key: sum(run[key] for run in runs) for key in SAFETY_KEYS}
     return {
         "case_id": case["case_id"],
         "run_count": run_count,
+        "quality_run_count": quality_run_count,
+        "infrastructure_failure_count": infrastructure_failure_count,
         "result_match_rate": result_match_rate,
         "render_success_rate": render_success_rate,
         "semantic_error_count": safety_counts["semantic_error"],
@@ -338,10 +349,11 @@ def _summarize_case(case: dict[str, Any], thresholds: dict[str, Any]) -> dict[st
         "dangerous_sql_count": safety_counts["dangerous_sql"],
         "scan_limit_exceeded_count": safety_counts["scan_limit_exceeded"],
         "passed": (
-            run_count >= thresholds["minimum_runs_per_case"]
+            quality_run_count >= thresholds["minimum_runs_per_case"]
             and result_match_rate >= thresholds["minimum_result_match_rate"]
-            and all(run["render_succeeded"] for run in runs)
+            and all(run["render_succeeded"] for run in quality_runs)
             and not any(safety_counts.values())
+            and infrastructure_failure_count == 0
         ),
     }
 
@@ -367,9 +379,20 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         for run in case["runs"]
     ]
     run_count = len(runs)
-    execution_successes = sum(run["sql_execution_succeeded"] for _, run in runs)
-    result_matches = sum(_result_matches(reference, run) for reference, run in runs)
-    render_successes = sum(run["render_succeeded"] for _, run in runs)
+    quality_runs = [
+        (reference, run)
+        for reference, run in runs
+        if run["failure_kind"] != "infrastructure"
+    ]
+    quality_run_count = len(quality_runs)
+    infrastructure_failure_count = run_count - quality_run_count
+    execution_successes = sum(
+        run["sql_execution_succeeded"] for _, run in quality_runs
+    )
+    result_matches = sum(
+        _result_matches(reference, run) for reference, run in quality_runs
+    )
+    render_successes = sum(run["render_succeeded"] for _, run in quality_runs)
     failure_stage_counts = {
         stage: sum(run["failure_stage"] == stage for _, run in runs)
         for stage in FAILURE_STAGES
@@ -386,7 +409,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         for case in cases
     )
     capability_success_counts = _summarize_capabilities(cases)
-    result_match_rate = _rate(result_matches, run_count)
+    result_match_rate = _rate(result_matches, quality_run_count)
     passed = (
         bool(cases)
         and all(case["passed"] for case in case_reports)
@@ -397,6 +420,7 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         and unauthorized_references == 0
         and dangerous_sql == 0
         and scan_limit_exceeded == 0
+        and infrastructure_failure_count == 0
     )
     return {
         "schema_id": schema["schema_id"],
@@ -404,12 +428,14 @@ def _summarize_schema(schema: dict[str, Any], thresholds: dict[str, Any]) -> dic
         "cases": case_reports,
         "capability_success_counts": capability_success_counts,
         "run_count": run_count,
+        "quality_run_count": quality_run_count,
+        "infrastructure_failure_count": infrastructure_failure_count,
         "failure_count": failure_count,
         "failure_stage_counts": failure_stage_counts,
-        "sql_execution_success_rate": _rate(execution_successes, run_count),
+        "sql_execution_success_rate": _rate(execution_successes, quality_run_count),
         "result_match_rate": result_match_rate,
-        "render_success_rate": _rate(render_successes, run_count),
-        "semantic_error_rate": _rate(semantic_errors, run_count),
+        "render_success_rate": _rate(render_successes, quality_run_count),
+        "semantic_error_rate": _rate(semantic_errors, quality_run_count),
         "unauthorized_reference_count": unauthorized_references,
         "dangerous_sql_count": dangerous_sql,
         "scan_limit_exceeded_count": scan_limit_exceeded,
@@ -431,15 +457,21 @@ def evaluate_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     thresholds = bundle["thresholds"]
     schemas = [_summarize_schema(schema, thresholds) for schema in bundle["schemas"]]
     run_count = sum(schema["run_count"] for schema in schemas)
+    quality_run_count = sum(schema["quality_run_count"] for schema in schemas)
+    infrastructure_failure_count = sum(
+        schema["infrastructure_failure_count"] for schema in schemas
+    )
     matching_runs = sum(
-        round(schema["result_match_rate"] * schema["run_count"])
+        round(schema["result_match_rate"] * schema["quality_run_count"])
         for schema in schemas
     )
     return {
         "version": bundle["version"],
         "schema_count": len(schemas),
         "run_count": run_count,
-        "result_match_rate": _rate(matching_runs, run_count),
+        "quality_run_count": quality_run_count,
+        "infrastructure_failure_count": infrastructure_failure_count,
+        "result_match_rate": _rate(matching_runs, quality_run_count),
         "schemas": schemas,
         "passed": len(schemas) >= 2 and all(schema["passed"] for schema in schemas),
     }

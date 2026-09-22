@@ -88,7 +88,7 @@ function contractFingerprint(content: ReturnType<typeof contractContent>) {
 function evidenceBundle() {
   const fingerprints = pipelineFingerprints();
   return {
-    version: 5,
+    version: 6,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const encodedScope = canonicalJson(scopeContent(schemaId));
@@ -123,6 +123,7 @@ function evidenceBundle() {
                 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               failure_stage: 'none',
               failure_code: '',
+              failure_kind: 'none',
               diagnostic: null,
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
@@ -171,7 +172,7 @@ function separatedEvidence() {
     runs: plannedRuns,
   };
   const recordings = {
-    version: 6,
+    version: 7,
     evaluation_plan_sha256: sha256(JSON.stringify(evaluationPlan)),
     runs: bundle.schemas.flatMap((schema) =>
       schema.cases.flatMap((evaluationCase) =>
@@ -344,7 +345,7 @@ test('recordings version must be an integer rather than a JSON boolean', () => {
   const { result } = assemble(fixture, recordings, scopeSnapshots);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /recordings version must be 6/);
+  assert.match(result.stderr, /recordings version must be 7/);
   assert.equal(result.stdout, '');
 });
 
@@ -437,6 +438,7 @@ test('planned scope discovery failures assemble without invented snapshot or con
   for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
     recorded.run.failure_stage = 'scope_discovery';
     recorded.run.failure_code = 'metadata_request_failed';
+    recorded.run.failure_kind = 'quality';
     recorded.run.runtime_input.scope_snapshot_fingerprint = null as unknown as string;
     recorded.run.runtime_input.analysis_contract_fingerprint = null as unknown as string;
     recorded.run.generated_sql = '';
@@ -471,6 +473,7 @@ test('planned contract generation failures require a snapshot but no contract ar
   for (const recorded of recordings.runs.filter((run) => run.schema_id === 'scope-a')) {
     recorded.run.failure_stage = 'analysis_contract_generation';
     recorded.run.failure_code = 'contract_response_invalid';
+    recorded.run.failure_kind = 'quality';
     recorded.run.runtime_input.analysis_contract_fingerprint = null as unknown as string;
     recorded.run.generated_sql = '';
     recorded.run.sql_execution_succeeded = false;
