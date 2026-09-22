@@ -295,8 +295,10 @@ BigQuery executionも同じ境界へ接続し、評価側のscan上限判定か�
 [Issue #807](https://github.com/Yukihide-Mitsuoka/repchat/issues/807)／
 [PR #808](https://github.com/Yukihide-Mitsuoka/repchat/pull/808)ではevidence version 5へreview済みcapabilityを結合し、
 case別結果一致率90%、case別描画100%、安全違反0件、必須capability別成功を合格条件にしました。capabilityはruntime
-manifestへ渡しません。[Issue #809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)では失敗分類の最初のsliceとして、
+manifestへ渡しません。[Issue #809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／
+[PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)では失敗分類の最初のsliceとして、
 結果検証・描画の既知拒否だけを品質失敗へ変換し、未知例外と不変条件違反を伝播させて評価を停止します。
+ローカル検証と必須CI checksは成功し、PRはmerge待ちです。
 次はpreflightからexecutionまでのstage分類とprovider／infrastructure failureのrun契約です。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
@@ -389,7 +391,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断は#796／#799／#802／#804、case／capability／描画の合格gateは#807で実装。#809で結果検証・描画の未知例外を通常失敗へ変換しない境界を追加する。次にpreflightからexecutionまでのstage分類とprovider／infrastructure failureのrun契約を実装する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断は#796／#799／#802／#804、case／capability／描画の合格gateは#807で実装。[#809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／[PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)で結果検証・描画の未知例外を通常失敗へ変換しない境界を追加し、必須CI checksは成功、merge待ち。merge後にpreflightからexecutionまでのstage分類とprovider／infrastructure failureのrun契約を実装する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |

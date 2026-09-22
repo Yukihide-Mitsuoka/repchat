@@ -78,7 +78,9 @@ PR #785では実行clientを共通proxyで計測し、全Vertex responseのtoken
 実評価の前提となる型付きSQL診断はIssue #796／#799／#802／#804で実装済みである。Issue #807では、
 case別結果一致率、安全違反0件、描画成功率100%、必須capability別成功を合格gateへ追加済みである。残る
 infrastructure failureとprogramming errorの分離は[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の次段階である。
-Issue #809では最終2 stageの既知品質拒否だけを失敗runへ変換し、未知例外と不変条件違反を伝播させる。
+[Issue #809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／
+[PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)では最終2 stageの既知品質拒否だけを失敗runへ変換し、
+未知例外と不変条件違反を伝播させる。必須CI checksは成功し、PRはmerge待ちである。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
 [Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
