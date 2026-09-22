@@ -190,6 +190,13 @@ assert len(client.list_calls)==before
 try:d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
 except d.ScopeDiscoveryError as error:assert str(error)=="partitioned date-shard groups are unsupported"
 else:raise AssertionError("partitioned shard group accepted")
+from bigquery_schema_snapshot import SchemaInspectionInfrastructureError
+original=d.inspect_date_shards
+d.inspect_date_shards=lambda *_args,**_kwargs:(_ for _ in ()).throw(SchemaInspectionInfrastructureError("private provider payload"))
+try:d.consolidate_date_shards(client,physical,{pattern:("20260101","20260102")})
+except d.ScopeDiscoveryInfrastructureError as error:assert "private" not in str(error)
+else:raise AssertionError("shard infrastructure failure accepted")
+d.inspect_date_shards=original
 assert [name for name,_,_ in client.query_calls]==[exact,exact]
 print("ok")
 `,
@@ -264,17 +271,30 @@ test('provider and result failures are sanitized and fail closed', () => {
   const result = python(
     setup +
       String.raw`
-client=Client();client.result_error="credential=private-value"
-try:discover(client)
-except d.ScopeDiscoveryError as error:
- import traceback
- assert "private-value" not in "".join(traceback.format_exception(error))
-else:raise AssertionError("provider failure accepted")
+def fail(*_args,**_kwargs):raise RuntimeError("credential=private-value")
+provider_clients=[]
+client=Client();client.list_tables=fail;provider_clients.append(client)
+client=Client();client.get_table=fail;provider_clients.append(client)
+client=Client();client.query=fail;provider_clients.append(client)
+client=Client();client.result_error="credential=private-value";provider_clients.append(client)
+for client in provider_clients:
+ try:discover(client)
+ except d.ScopeDiscoveryInfrastructureError as error:
+  import traceback
+  assert "private-value" not in "".join(traceback.format_exception(error))
+ else:raise AssertionError("provider failure accepted")
 for rows in ([],[result_row(),result_row()],[{"sampled_rows":True}]):
  client=Client();client.rows=rows
  try:discover(client)
+ except d.ScopeDiscoveryInfrastructureError:raise AssertionError("invalid provider result classified as infrastructure")
  except d.ScopeDiscoveryError:pass
  else:raise AssertionError("invalid result accepted")
+original=d.inspect_schema
+d.inspect_schema=lambda *_args,**_kwargs:(_ for _ in ()).throw(RuntimeError("programming defect"))
+try:discover(Client())
+except RuntimeError as error:assert str(error)=="programming defect"
+else:raise AssertionError("unknown exception was converted")
+d.inspect_schema=original
 print("ok")
 `,
   );

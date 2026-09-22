@@ -111,12 +111,13 @@ test('contract generation failure retains only the completed scope artifact', ()
   const result = python(String.raw`
 from datetime import date
 import preflight
+from analysis_contract_compiler import ContractCompilerError
 from bigquery_scope_discovery import AuthorizedScope, DiscoverySnapshot
 
 secret='private-model-response'
 snapshot=DiscoverySnapshot('{"version":1}','d'*64,'2026-09-20T00:00:00+00:00')
 preflight.discover_scope=lambda _bq,_scope:snapshot
-def generate(*_args,**_kwargs):raise RuntimeError(secret)
+def generate(*_args,**_kwargs):raise ContractCompilerError(secret)
 preflight.generate_discovered_contract_artifacts=generate
 scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
 result=preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
@@ -134,6 +135,51 @@ assert result.runtime_input()=={
 assert result.scope_snapshot_entry('schema-a')['content_json']=='{"version":1}'
 assert result.analysis_contract_entry('schema-a','case-a') is None
 assert secret not in repr(result)
+`);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
+test('preflight propagates infrastructure and unknown discovery failures', () => {
+  const result = python(String.raw`
+from datetime import date
+import preflight
+from bigquery_scope_discovery import AuthorizedScope, ScopeDiscoveryInfrastructureError
+
+scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
+for failure in (ScopeDiscoveryInfrastructureError('schema discovery failed'),RuntimeError('programming defect')):
+ def discover(_bq,_scope,failure=failure):raise failure
+ preflight.discover_scope=discover
+ try:preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
+ except type(failure) as error:assert str(error)==str(failure)
+ else:raise AssertionError('discovery failure was converted to a quality result')
+`);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
+test('preflight propagates provider, infrastructure and unknown contract failures', () => {
+  const result = python(String.raw`
+from datetime import date
+import preflight
+from bigquery_scope_discovery import AuthorizedScope, DiscoverySnapshot, ScopeDiscoveryInfrastructureError
+from vertex_generation import VertexRequestError
+
+snapshot=DiscoverySnapshot('{"version":1}','d'*64,'2026-09-20T00:00:00+00:00')
+preflight.discover_scope=lambda _bq,_scope:snapshot
+scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
+for failure in (
+ VertexRequestError('Vertex AI request failed'),
+ ScopeDiscoveryInfrastructureError('scope discovery failed'),
+ RuntimeError('programming defect'),
+):
+ def generate(*_args,failure=failure,**_kwargs):raise failure
+ preflight.generate_discovered_contract_artifacts=generate
+ try:preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
+ except type(failure) as error:assert str(error)==str(failure)
+ else:raise AssertionError('contract failure was converted to a quality result')
 `);
 
   assert.equal(result.status, 0, result.stderr);

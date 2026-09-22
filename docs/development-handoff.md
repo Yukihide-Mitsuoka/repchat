@@ -307,8 +307,13 @@ BigQuery dry run、BigQuery executionの既知診断だけを失敗runへ変換�
 [PR #815](https://github.com/Yukihide-Mitsuoka/repchat/pull/815)では、planningの明示的な出力拒否と
 SQL生成の`SQLGenerationError`・不正応答だけを品質失敗へ変換し、runner例外、成功状態の必須field欠落、
 section生成・費用計算・複製処理の不変条件違反を伝播させます。ローカルの`make format`、`make lint`、
-`make test-unit`、`make test`と必須CI checks 13件は成功し、PRはmerge待ちです。
-次はpreflightの分類とprovider／infrastructure failureのrun契約です。
+`make test-unit`、`make test`と必須CI checks 13件は成功し、2026-09-22にmerge済みです。
+[Issue #817](https://github.com/Yukihide-Mitsuoka/repchat/issues/817)／
+[PR #818](https://github.com/Yukihide-Mitsuoka/repchat/pull/818)では、schema inspectionとscope discoveryの
+provider障害を安全な専用派生型へ分類し、preflightは既知のscope／contract検証拒否だけを品質失敗へ変換します。
+provider／infrastructure failureと未知例外は伝播させ、評価結果へ混入させません。ローカルの`make format`、
+`make lint`、`make test-unit`、`make test`は成功し、PRはmerge待ちです。次はこれらの基盤障害を合格不能として
+保持する専用run／bundle契約です。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
@@ -400,7 +405,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断は#796／#799／#802／#804、case／capability／描画の合格gateは#807で実装。[#809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／[PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)で結果検証・描画、[#812](https://github.com/Yukihide-Mitsuoka/repchat/issues/812)／[PR #813](https://github.com/Yukihide-Mitsuoka/repchat/pull/813)でlocal SQL validation・dry run・executionの未知例外伝播を実装し、merge済み。[#814](https://github.com/Yukihide-Mitsuoka/repchat/issues/814)／[PR #815](https://github.com/Yukihide-Mitsuoka/repchat/pull/815)でplanning・SQL生成の明示的な品質拒否だけを失敗runへ変換し、必須CI checksは成功、merge待ち。次にpreflightの分類とprovider／infrastructure failureのrun契約を実装する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断は#796／#799／#802／#804、case／capability／描画の合格gateは#807で実装。[#809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／[PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)で結果検証・描画、[#812](https://github.com/Yukihide-Mitsuoka/repchat/issues/812)／[PR #813](https://github.com/Yukihide-Mitsuoka/repchat/pull/813)でlocal SQL validation・dry run・execution、[#814](https://github.com/Yukihide-Mitsuoka/repchat/issues/814)／[PR #815](https://github.com/Yukihide-Mitsuoka/repchat/pull/815)でplanning・SQL生成の未知例外伝播を実装し、merge済み。[#817](https://github.com/Yukihide-Mitsuoka/repchat/issues/817)／[PR #818](https://github.com/Yukihide-Mitsuoka/repchat/pull/818)でpreflightの既知品質拒否とprovider／infrastructure・未知例外を分離し、merge待ち。次にprovider／infrastructure failureの専用run／bundle契約を実装する。attempt状態機械の全面再設計は行わない。完了後に公式fixtureと実行commandへ進む |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |

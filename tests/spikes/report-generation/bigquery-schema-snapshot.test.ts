@@ -87,6 +87,9 @@ variants=[]
 for key,value in [("location",None),("type","VIEW"),("schema",{"fields":[]}),("requirePartitionFilter","true")]:
  item=copy.deepcopy(original);item[key]=value;variants.append(item)
 item=copy.deepcopy(original);item["tableReference"]["tableId"]="other";variants.append(item)
+variants.append(None)
+item=copy.deepcopy(original);item["tableReference"]=[];variants.append(item)
+item=copy.deepcopy(original);item["schema"]=[];variants.append(item)
 for field in ({"name":"bad","type":"UNKNOWN"},{"name":"occurred","type":"DATE"},{"name":"bad","type":"STRING","mode":"UNKNOWN"}):
  item=copy.deepcopy(original);item["schema"]["fields"].append(field);variants.append(item)
 for policy_tags in ([],{}, {"names":[]},{"names":["tag","tag"]},{"names":[None]},{"names":["tag"],"extra":True}):
@@ -94,16 +97,23 @@ for policy_tags in ([],{}, {"names":[]},{"names":["tag","tag"]},{"names":[None]}
 item=copy.deepcopy(original);item["schema"]["fields"][1]["description"]="x"*(s.MAX_METADATA_BYTES+1);variants.append(item)
 for raw in variants:
  try:inspect()
+ except s.SchemaInspectionInfrastructureError:raise AssertionError("invalid metadata classified as infrastructure")
  except s.SchemaInspectionError:pass
  else:raise AssertionError("invalid metadata accepted")
 raw=original
 def fail(*args,**kwargs):raise RuntimeError("private provider payload")
 client.get_table=fail
 try:inspect()
-except s.SchemaInspectionError as error:
+except s.SchemaInspectionInfrastructureError as error:
  import traceback
  assert "private" not in "".join(traceback.format_exception(error))
 else:raise AssertionError("provider failure accepted")
+class BrokenTable:
+ def to_api_repr(self):raise RuntimeError("private provider payload")
+client.get_table=lambda *_args,**_kwargs:BrokenTable()
+try:inspect()
+except s.SchemaInspectionInfrastructureError as error:assert "private" not in str(error)
+else:raise AssertionError("provider conversion failure accepted")
 print("ok")
 `,
   );
@@ -267,10 +277,14 @@ assert not client.get_calls
 def fail(*args,**kwargs):raise RuntimeError("private provider payload")
 client=ShardClient([]);client.list_tables=fail
 try:shards(client)
-except s.SchemaInspectionError as error:
+except s.SchemaInspectionInfrastructureError as error:
  import traceback
  assert "private" not in "".join(traceback.format_exception(error))
 else:raise AssertionError("provider failure accepted")
+client=ShardClient(["events_20260101","events_20260102","events_20260103"]);client.get_table=fail
+try:shards(client)
+except s.SchemaInspectionInfrastructureError as error:assert "private" not in str(error)
+else:raise AssertionError("shard metadata provider failure accepted")
 print("ok")
 `,
   );

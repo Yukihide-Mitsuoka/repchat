@@ -32,6 +32,10 @@ class SchemaInspectionError(ValueError):
     """Metadata cannot safely represent the requested approved tables."""
 
 
+class SchemaInspectionInfrastructureError(SchemaInspectionError):
+    """A schema metadata provider failed before inspection could complete."""
+
+
 @dataclass(frozen=True)
 class SchemaSnapshot:
     """Immutable schema content; observation time is not part of its identity."""
@@ -98,8 +102,17 @@ def _fields(raw: list, budget: list[int], depth: int = 0) -> list[dict]:
 def _table_metadata(
     table, requested: str, budget: list[int], *, wildcard: bool = False,
 ) -> dict:
-    raw = table.to_api_repr()
+    try:
+        raw = table.to_api_repr()
+    except Exception:
+        raise SchemaInspectionInfrastructureError(
+            "table metadata retrieval failed"
+        ) from None
+    if not isinstance(raw, dict):
+        raise SchemaInspectionError("table metadata is invalid")
     ref = raw.get("tableReference", {})
+    if not isinstance(ref, dict):
+        raise SchemaInspectionError("table metadata is invalid")
     identity = ".".join(str(ref.get(key, "")) for key in ("projectId", "datasetId", "tableId"))
     if identity != requested:
         raise SchemaInspectionError("returned table differs from approved request")
@@ -113,7 +126,12 @@ def _table_metadata(
     result = {
         "table": requested,
         "location": location,
-        "fields": _fields(raw.get("schema", {}).get("fields"), budget),
+        "fields": _fields(
+            raw["schema"].get("fields")
+            if isinstance(raw.get("schema"), dict)
+            else None,
+            budget,
+        ),
     }
     # Preserve partition metadata separately from business time semantics.
     for key in ("timePartitioning", "rangePartitioning", "clustering"):
@@ -191,7 +209,7 @@ def inspect_date_shards(
             timeout=30, retry=None,
         ))
     except Exception:
-        raise SchemaInspectionError("table listing failed") from None
+        raise SchemaInspectionInfrastructureError("table listing failed") from None
     if len(listed) > MAX_LISTED_TABLES:
         raise SchemaInspectionError("dataset table listing exceeds inspection limit")
 
@@ -215,13 +233,12 @@ def inspect_date_shards(
     observed = []
     for name in sorted(members.values()):
         try:
-            observed.append(_table_metadata(
-                bq.get_table(name, timeout=30, retry=None), name, [0], wildcard=True,
-            ))
-        except SchemaInspectionError:
-            raise
+            table = bq.get_table(name, timeout=30, retry=None)
         except Exception:
-            raise SchemaInspectionError("table metadata retrieval failed") from None
+            raise SchemaInspectionInfrastructureError(
+                "table metadata retrieval failed"
+            ) from None
+        observed.append(_table_metadata(table, name, [0], wildcard=True))
     common = {key: value for key, value in observed[0].items() if key != "table"}
     if any(
         {key: value for key, value in table.items() if key != "table"} != common
@@ -255,12 +272,12 @@ def inspect_schema(bq, table_ids: list[str], *, allowed_tables: frozenset[str]) 
     for name in sorted(table_ids):
         try:
             table = bq.get_table(name, timeout=30, retry=None)
-            tables.append(_table_metadata(table, name, budget))
-        except SchemaInspectionError:
-            raise
         except Exception:
             # Provider errors can contain URLs or credentials; retain only a stable category.
-            raise SchemaInspectionError("table metadata retrieval failed") from None
+            raise SchemaInspectionInfrastructureError(
+                "table metadata retrieval failed"
+            ) from None
+        tables.append(_table_metadata(table, name, budget))
     if len({table["location"] for table in tables}) != 1:
         raise SchemaInspectionError("tables must use one data location")
     return _snapshot(tables)
