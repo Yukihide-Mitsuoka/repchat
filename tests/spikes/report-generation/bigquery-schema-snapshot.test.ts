@@ -94,13 +94,14 @@ for policy_tags in ([],{}, {"names":[]},{"names":["tag","tag"]},{"names":[None]}
 item=copy.deepcopy(original);item["schema"]["fields"][1]["description"]="x"*(s.MAX_METADATA_BYTES+1);variants.append(item)
 for raw in variants:
  try:inspect()
+ except s.SchemaInspectionInfrastructureError:raise AssertionError("invalid metadata classified as infrastructure")
  except s.SchemaInspectionError:pass
  else:raise AssertionError("invalid metadata accepted")
 raw=original
 def fail(*args,**kwargs):raise RuntimeError("private provider payload")
 client.get_table=fail
 try:inspect()
-except s.SchemaInspectionError as error:
+except s.SchemaInspectionInfrastructureError as error:
  import traceback
  assert "private" not in "".join(traceback.format_exception(error))
 else:raise AssertionError("provider failure accepted")
@@ -267,7 +268,7 @@ assert not client.get_calls
 def fail(*args,**kwargs):raise RuntimeError("private provider payload")
 client=ShardClient([]);client.list_tables=fail
 try:shards(client)
-except s.SchemaInspectionError as error:
+except s.SchemaInspectionInfrastructureError as error:
  import traceback
  assert "private" not in "".join(traceback.format_exception(error))
 else:raise AssertionError("provider failure accepted")
