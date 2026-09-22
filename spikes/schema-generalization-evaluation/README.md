@@ -219,6 +219,13 @@ BigQuery dry runも閉じたcode／categoryへ正規化し、評価側はprovide
 ただしSQL境界の失敗で`diagnostic`が`null`の場合、semantic errorが明示されない限りbundleを拒否します。
 生のprovider messageは保存せず、未知code／category、stage・安全性flagとの不整合をfail closedで拒否します。
 
+順序3の最初のsliceでは、結果検証と描画の予期済み品質失敗を未知例外から分離します。共通result validatorの
+`ResultValidationError`とrendererの明示的な`false`だけを、それぞれ`result_validation_failed`、
+`rendering_failed`へ変換します。成功attemptの必須field欠落、policy生成失敗、validatorまたはrendererの
+未知例外は通常の失敗runへ変換せず伝播させ、評価処理を停止します。renderer processの起動失敗とtimeoutは
+raw detailを除いた`RendererInfrastructureError`へ正規化して伝播させます。raw例外文はrecordingへ保存しません。
+preflightからexecutionまでのstage分類とprovider／infrastructure failureのrun契約は後続sliceです。
+
 ### 明示的な非対象
 
 - `AttemptContext`／`AttemptState`への全面的な状態機械再設計は行わない。identity、費用、failure記録の重複が

@@ -75,24 +75,70 @@ validate_run_outcome(recording['run'])
 `);
 });
 
-test('renderer rejection or exception fails closed while retaining validated evidence', () => {
+test('renderer rejection is a quality failure that retains validated evidence', () => {
   assertPython(String.raw`
 from run_outcome import validate_run_outcome
 ${setup}
 def validations(*_args,**_kwargs):return (valid_result,)
-def raises(_payload):raise RuntimeError('sensitive provider detail')
-for renderer in (lambda _payload:False,raises):
- attempt=rendering.run_manifest_rendering(
+attempt=rendering.run_manifest_rendering(
+ {},object(),object(),'model',as_of=date(2026,9,21),
+ result_runner=validations,renderer=lambda _payload:False,
+)[0]
+assert not attempt.succeeded and not attempt.render_succeeded
+assert (attempt.failure_stage,attempt.failure_code)==('rendering','rendering_failed')
+recording=attempt.recording(bytes_processed=84,cost_jpy=0.75)
+assert recording['run']['actual_rows']==[['A',2],['B',1]]
+assert recording['run']['failure_code']=='rendering_failed'
+validate_run_outcome(recording['run'])
+`);
+});
+
+test('renderer exceptions invalidate evaluation instead of becoming quality failures', () => {
+  assertPython(String.raw`
+${setup}
+def validations(*_args,**_kwargs):return (valid_result,)
+def raises(_payload):raise RuntimeError('sensitive implementation detail')
+try:
+ rendering.run_manifest_rendering(
   {},object(),object(),'model',as_of=date(2026,9,21),
-  result_runner=validations,renderer=renderer,
- )[0]
- assert not attempt.succeeded and not attempt.render_succeeded
- assert (attempt.failure_stage,attempt.failure_code)==('rendering','rendering_failed')
- recording=attempt.recording(bytes_processed=84,cost_jpy=0.75)
- assert recording['run']['actual_rows']==[['A',2],['B',1]]
- assert recording['run']['failure_code']=='rendering_failed'
- assert 'sensitive' not in repr(recording)
- validate_run_outcome(recording['run'])
+  result_runner=validations,renderer=raises,
+ )
+except RuntimeError as error:
+ assert str(error)=='sensitive implementation detail'
+else:
+ raise AssertionError('renderer exception became a quality failure')
+`);
+});
+
+test('renderer process failures become a safe infrastructure error', () => {
+  assertPython(String.raw`
+${setup}
+def unavailable(*_args,**_kwargs):raise OSError('sensitive local path')
+rendering.subprocess.run=unavailable
+try:
+ rendering.run_renderer_probe({'visualization':'bar','columns':[],'rows':[]})
+except rendering.RendererInfrastructureError as error:
+ assert str(error)=='renderer probe could not complete'
+ assert 'sensitive' not in str(error)
+else:
+ raise AssertionError('renderer process failure became a quality rejection')
+`);
+});
+
+test('incomplete validated result is an invariant error rather than a rendering failure', () => {
+  assertPython(String.raw`
+${setup}
+incomplete=ResultValidationAttempt(executed,None,None,None,84)
+def validations(*_args,**_kwargs):return (incomplete,)
+try:
+ rendering.run_manifest_rendering(
+  {},object(),object(),'model',as_of=date(2026,9,21),
+  result_runner=validations,renderer=lambda _payload:True,
+ )
+except ValueError as error:
+ assert str(error)=='successful result validation output is incomplete'
+else:
+ raise AssertionError('incomplete validated result became a rendering failure')
 `);
 });
 

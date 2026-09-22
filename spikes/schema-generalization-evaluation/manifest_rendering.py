@@ -26,6 +26,10 @@ RENDERER_PROBE = (
 )
 
 
+class RendererInfrastructureError(RuntimeError):
+    """Indicate that the renderer process could not be started or completed."""
+
+
 def run_renderer_probe(payload: dict[str, Any]) -> bool:
     """Return whether the packaged renderer accepts and renders one payload."""
     try:
@@ -39,7 +43,9 @@ def run_renderer_probe(payload: dict[str, Any]) -> bool:
             timeout=RENDERER_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.SubprocessError):
-        return False
+        raise RendererInfrastructureError(
+            "renderer probe could not complete"
+        ) from None
     return completed.returncode == 0
 
 
@@ -121,21 +127,18 @@ def _render_attempt(
             failure_code=attempt.failure_code,
         )
 
-    try:
-        if (
-            attempt.rows is None
-            or attempt.columns is None
-            or attempt.visualization is None
-        ):
-            raise ValueError("successful result validation output is incomplete")
-        payload = {
-            "visualization": attempt.visualization,
-            "columns": list(attempt.columns),
-            "rows": [list(row) for row in attempt.rows],
-        }
-        if renderer(payload) is not True:
-            raise ValueError("renderer rejected result")
-    except Exception:
+    if (
+        attempt.rows is None
+        or attempt.columns is None
+        or attempt.visualization is None
+    ):
+        raise ValueError("successful result validation output is incomplete")
+    payload = {
+        "visualization": attempt.visualization,
+        "columns": list(attempt.columns),
+        "rows": [list(row) for row in attempt.rows],
+    }
+    if renderer(payload) is not True:
         return RenderingAttempt(
             attempt,
             False,

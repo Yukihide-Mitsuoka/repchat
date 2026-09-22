@@ -120,6 +120,40 @@ assert recording['run']['actual_rows']==[]
 `);
 });
 
+test('unknown result-validator exceptions invalidate evaluation instead of becoming quality failures', () => {
+  assertPython(String.raw`
+${setup}
+executed=ExecutionAttempt(dry,(('A',2),),('category','metric_value'),84)
+def executions(*_args,**_kwargs):return (executed,)
+def raises(*_args,**_kwargs):raise RuntimeError('sensitive implementation detail')
+result_validation.common_result_validation.validate_dashboard_result=raises
+try:
+ result_validation.run_manifest_result_validation(
+  {},object(),object(),'model',as_of=date(2026,9,21),execution_runner=executions,
+ )
+except RuntimeError as error:
+ assert str(error)=='sensitive implementation detail'
+else:
+ raise AssertionError('unknown result-validator exception became a quality failure')
+`);
+});
+
+test('incomplete successful execution is an invariant error rather than a quality failure', () => {
+  assertPython(String.raw`
+${setup}
+incomplete=ExecutionAttempt(dry,None,None,84)
+def executions(*_args,**_kwargs):return (incomplete,)
+try:
+ result_validation.run_manifest_result_validation(
+  {},object(),object(),'model',as_of=date(2026,9,21),execution_runner=executions,
+ )
+except ValueError as error:
+ assert str(error)=='successful execution output is incomplete'
+else:
+ raise AssertionError('incomplete successful execution became a quality failure')
+`);
+});
+
 test('upstream failures skip result validation and retain their original recording', () => {
   assertPython(String.raw`
 ${setup}
