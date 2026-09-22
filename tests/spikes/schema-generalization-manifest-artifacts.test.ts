@@ -76,10 +76,11 @@ ${setup}
 import json,stat,tempfile
 from pathlib import Path
 bundle=artifacts.build_manifest_artifacts(manifest,attempts,measurements)
-assert bundle.recordings['version']==6
+assert bundle.recordings['version']==7
 assert bundle.recordings['evaluation_plan_sha256']=='4'*64
 assert [item['run']['run_id'] for item in bundle.recordings['runs']]==['run-1','run-2']
 assert [item['run']['diagnostic'] for item in bundle.recordings['runs']]==[None,None]
+assert [item['run']['failure_kind'] for item in bundle.recordings['runs']]==['none','quality']
 assert bundle.recordings['runs'][1]['run']['failure_stage']=='rendering'
 assert bundle.scope_snapshots=={'version':1,'snapshots':[{
  'schema_id':'schema-a','content_json':'{"version":1}',
@@ -123,6 +124,7 @@ bundle=artifacts.build_manifest_artifacts(
 )
 diagnostic=bundle.recordings['runs'][0]['run']['diagnostic']
 assert diagnostic=={'code':'execution_provider_failure','category':'provider_failure'}
+assert bundle.recordings['runs'][0]['run']['failure_kind']=='infrastructure'
 assert 'message' not in diagnostic
 unsafe=replace(failed_result,execution_attempt=replace(failed_execution,diagnostic='private provider message'))
 try:

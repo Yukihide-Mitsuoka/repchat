@@ -24,7 +24,7 @@ const REQUIRED_CAPABILITIES = [
 
 function evidenceBundle() {
   return {
-    version: 5,
+    version: 6,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
     schemas: ['scope-a', 'scope-b'].map((schemaId, schemaIndex) => {
       const scopeFingerprint = String(schemaIndex + 4).repeat(64);
@@ -58,6 +58,7 @@ function evidenceBundle() {
                 'SELECT category, SUM(value) AS metric_value FROM authorized_table GROUP BY category',
               failure_stage: 'none',
               failure_code: '',
+              failure_kind: 'none',
               diagnostic: null as Diagnostic,
               sql_execution_succeeded: true,
               actual_rows: expectedRows,
@@ -98,6 +99,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
   assert.equal(report.passed, true);
   assert.equal(report.schema_count, 2);
   assert.equal(report.run_count, 6);
+  assert.equal(report.quality_run_count, 6);
+  assert.equal(report.infrastructure_failure_count, 0);
   assert.equal(report.result_match_rate, 1);
   assert.deepEqual(
     report.schemas.map((schema: { schema_id: string; passed: boolean }) => schema),
@@ -109,6 +112,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
           {
             case_id: 'question-1',
             run_count: 3,
+            quality_run_count: 3,
+            infrastructure_failure_count: 0,
             result_match_rate: 1,
             render_success_rate: 1,
             semantic_error_count: 0,
@@ -122,6 +127,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
           REQUIRED_CAPABILITIES.map((capability) => [capability, 3]),
         ),
         run_count: 3,
+        quality_run_count: 3,
+        infrastructure_failure_count: 0,
         failure_count: 0,
         failure_stage_counts: {},
         sql_execution_success_rate: 1,
@@ -142,6 +149,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
           {
             case_id: 'question-1',
             run_count: 3,
+            quality_run_count: 3,
+            infrastructure_failure_count: 0,
             result_match_rate: 1,
             render_success_rate: 1,
             semantic_error_count: 0,
@@ -155,6 +164,8 @@ test('two schemas with three matching runs produce passing evidence', () => {
           REQUIRED_CAPABILITIES.map((capability) => [capability, 3]),
         ),
         run_count: 3,
+        quality_run_count: 3,
+        infrastructure_failure_count: 0,
         failure_count: 0,
         failure_stage_counts: {},
         sql_execution_success_rate: 1,
@@ -228,6 +239,7 @@ test('a matching result with failed rendering does not pass end to end', () => {
   const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
   run.failure_stage = 'rendering';
   run.failure_code = 'rendering_failed';
+  run.failure_kind = 'quality';
   run.render_succeeded = false;
 
   const result = evaluate(bundle);
@@ -287,6 +299,23 @@ test('unknown or inconsistent failure kinds invalidate the evidence bundle', () 
     assert.equal(result.status, 2);
     assert.match(result.stderr, expected);
   }
+
+  const mismatchedDiagnostic = evidenceBundle();
+  const failedRun = mismatchedDiagnostic.schemas[0]!.cases[0]!.runs[0]!;
+  Object.assign(failedRun, {
+    failure_kind: 'quality',
+    failure_stage: 'dry_run',
+    failure_code: 'dry_run_failed',
+    diagnostic: { code: 'dry_run_provider_failure', category: 'provider_failure' },
+    sql_execution_succeeded: false,
+    actual_rows: [],
+    render_succeeded: false,
+  });
+  assert.match(evaluate(mismatchedDiagnostic).stderr, /failure kind conflicts with its outcome/);
+
+  const missingKind = evidenceBundle();
+  delete (missingKind.schemas[0]!.cases[0]!.runs[0]! as { failure_kind?: string }).failure_kind;
+  assert.match(evaluate(missingKind).stderr, /run contains unsupported or missing fields/);
 });
 
 test('recorded diagnostics reject unknown values, mismatched pairs, and raw messages', () => {
@@ -313,6 +342,7 @@ test('recorded diagnostics reject unknown values, mismatched pairs, and raw mess
     const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
     run.failure_stage = 'sql_validation';
     run.failure_code = 'sql_validation_failed';
+    run.failure_kind = 'quality';
     run.sql_execution_succeeded = false;
     run.actual_rows = [];
     run.render_succeeded = false;
@@ -329,6 +359,7 @@ test('diagnostic stage and safety flags must match while semantic failures may h
   const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
   run.failure_stage = 'dry_run';
   run.failure_code = 'dry_run_failed';
+  run.failure_kind = 'quality';
   run.sql_execution_succeeded = false;
   run.actual_rows = [];
   run.render_succeeded = false;
@@ -357,6 +388,7 @@ test('successful and non-SQL failure stages reject typed diagnostics', () => {
   assert.match(evaluate(bundle).stderr, /successful runs cannot contain a diagnostic/);
   run.failure_stage = 'planning';
   run.failure_code = 'planning_failed';
+  run.failure_kind = 'quality';
   run.generated_sql = '';
   run.sql_execution_succeeded = false;
   run.actual_rows = [];
@@ -432,6 +464,7 @@ test('unsafe or mismatched runs remain visible in a failing report', () => {
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'sql_validation';
   failedRun.failure_code = 'sql_validation_failed';
+  failedRun.failure_kind = 'quality';
   failedRun.sql_execution_succeeded = false;
   failedRun.actual_rows = [];
   failedRun.dangerous_sql = true;
@@ -460,6 +493,7 @@ test('a recorded SQL generation failure remains in rates and stage counts', () =
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'sql_generation';
   failedRun.failure_code = 'structured_response_invalid';
+  failedRun.failure_kind = 'quality';
   failedRun.generated_sql = '';
   failedRun.sql_execution_succeeded = false;
   failedRun.actual_rows = [];
@@ -495,6 +529,7 @@ test('a scope discovery failure remains in rates without invented runtime finger
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'scope_discovery';
   failedRun.failure_code = 'metadata_request_failed';
+  failedRun.failure_kind = 'quality';
   failedRun.runtime_input.scope_snapshot_fingerprint = null as unknown as string;
   failedRun.runtime_input.analysis_contract_fingerprint = null as unknown as string;
   failedRun.generated_sql = '';
@@ -523,6 +558,7 @@ test('an analysis contract generation failure keeps only its observed scope fing
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'analysis_contract_generation';
   failedRun.failure_code = 'contract_response_invalid';
+  failedRun.failure_kind = 'quality';
   failedRun.runtime_input.analysis_contract_fingerprint = null as unknown as string;
   failedRun.generated_sql = '';
   failedRun.sql_execution_succeeded = false;
@@ -544,6 +580,7 @@ test('failure codes reject raw provider messages', () => {
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'sql_generation';
   failedRun.failure_code = 'Provider said: secret table missing';
+  failedRun.failure_kind = 'quality';
   failedRun.generated_sql = '';
   failedRun.sql_execution_succeeded = false;
   failedRun.actual_rows = [];
@@ -562,6 +599,7 @@ test('run outcome fields must agree with their failure stage', () => {
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'sql_generation';
   failedRun.failure_code = 'structured_response_invalid';
+  failedRun.failure_kind = 'quality';
 
   const result = evaluate(bundle);
 
@@ -586,6 +624,7 @@ test('unsupported failure stages are rejected', () => {
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'provider_specific';
   failedRun.failure_code = 'provider_error';
+  failedRun.failure_kind = 'quality';
 
   const result = evaluate(bundle);
 
@@ -599,6 +638,7 @@ test('a result validation failure cannot count as a matching result', () => {
   const failedRun = bundle.schemas[0]!.cases[0]!.runs[0]!;
   failedRun.failure_stage = 'result_validation';
   failedRun.failure_code = 'result_contract_mismatch';
+  failedRun.failure_kind = 'quality';
   failedRun.render_succeeded = false;
 
   const result = evaluate(bundle);
@@ -632,7 +672,7 @@ test('unsupported evidence versions are rejected before evaluation', () => {
   const result = evaluate(bundle);
 
   assert.equal(result.status, 2);
-  assert.match(result.stderr, /evidence version must be 5/);
+  assert.match(result.stderr, /evidence version must be 6/);
   assert.equal(result.stdout, '');
 });
 

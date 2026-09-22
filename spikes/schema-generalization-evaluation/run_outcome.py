@@ -7,6 +7,9 @@ from typing import Any
 
 
 NO_FAILURE = "none"
+QUALITY_FAILURE = "quality"
+INFRASTRUCTURE_FAILURE = "infrastructure"
+FAILURE_KINDS = frozenset({NO_FAILURE, QUALITY_FAILURE, INFRASTRUCTURE_FAILURE})
 SCOPE_DISCOVERY_FAILURE = "scope_discovery"
 ANALYSIS_CONTRACT_GENERATION_FAILURE = "analysis_contract_generation"
 PREFLIGHT_FAILURE_STAGES = frozenset({
@@ -31,10 +34,26 @@ class RunOutcomeError(ValueError):
     """A run's stage metadata conflicts with its recorded outcome."""
 
 
+def failure_kind_for_diagnostic(
+    stage: str, diagnostic: dict[str, Any] | None
+) -> str:
+    """Classify only validated run outcomes and closed diagnostic categories."""
+    if stage == NO_FAILURE:
+        return NO_FAILURE
+    if diagnostic is not None and diagnostic.get("category") in {
+        "provider_failure",
+        "infrastructure_failure",
+        "cancelled",
+    }:
+        return INFRASTRUCTURE_FAILURE
+    return QUALITY_FAILURE
+
+
 def validate_run_outcome(run: dict[str, Any]) -> None:
     """Require one safe stage/code pair consistent with observable run fields."""
     stage = run["failure_stage"]
     code = run["failure_code"]
+    kind = run.get("failure_kind")
     if not isinstance(stage, str) or stage not in {NO_FAILURE, *FAILURE_STAGES}:
         raise RunOutcomeError("failure stage is unsupported")
     if not isinstance(code, str) or (
@@ -43,6 +62,11 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
         raise RunOutcomeError(
             "failure code must be an empty value or a safe machine code"
         )
+    if kind is not None:
+        if not isinstance(kind, str) or kind not in FAILURE_KINDS:
+            raise RunOutcomeError("failure kind is unsupported")
+        if (stage == NO_FAILURE) != (kind == NO_FAILURE):
+            raise RunOutcomeError("failure kind conflicts with its outcome")
 
     executed = run["sql_execution_succeeded"]
     rendered = run["render_succeeded"]
@@ -64,3 +88,20 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
         valid = bool(sql.strip()) and executed
     if not valid:
         raise RunOutcomeError("run outcome conflicts with its failure stage")
+
+
+def validate_failure_kind(run: dict[str, Any]) -> None:
+    """Require failure kind to agree with typed diagnostics and safety evidence."""
+    expected = failure_kind_for_diagnostic(run["failure_stage"], run["diagnostic"])
+    if run["failure_kind"] != expected:
+        raise RunOutcomeError("failure kind conflicts with its outcome")
+    if run["failure_kind"] == INFRASTRUCTURE_FAILURE and any(
+        run[name]
+        for name in (
+            "unauthorized_reference",
+            "dangerous_sql",
+            "scan_limit_exceeded",
+            "semantic_error",
+        )
+    ):
+        raise RunOutcomeError("infrastructure failures cannot contain quality evidence")
