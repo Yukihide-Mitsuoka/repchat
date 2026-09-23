@@ -225,6 +225,11 @@ CI logやrepositoryへ保存しません。
 実データを集めると、同じrunが実装版によって安全違反、品質失敗、評価無効のどれにもなり得るためです。
 順序4以降では、最初のrun前に固定したfixture、計画、pipeline artifact、価格snapshotを最後まで変更しません。
 
+順序4の費用承認と予算制御の設計は[ADR-0027（提案中）](../../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md)を
+正本とします。現行のmeterは実行後の使用量・費用集計であり、評価全体の上限を強制しません。
+BigQueryのquery単位の`maximum_bytes_billed`だけでも合計上限にはなりません。ADRが人間に承認され、
+呼出し前budget gateと無料回帰が実装されるまで、有料評価commandを実行可能にしません。
+
 順序1の最初のsliceとして、共通SQL validatorは閉じたcode、category、安全な固定messageを返す
 `validate_sql_diagnostic`を持ちます。評価側のlocal SQL validationはcategoryを直接参照し、診断文の
 部分一致を行いません。既存の`validate_sql`は画面表示用messageだけを返す薄いadapterです。
