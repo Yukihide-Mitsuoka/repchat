@@ -352,8 +352,10 @@ Issue #832もclose済みです。実provider呼出しは行っていません。
 価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証がmerge済みです。
 検証済み上限を受け取る逐次budget ledgerは
 [PR #847](https://github.com/Yukihide-Mitsuoka/repchat/pull/847)でmerge済み、Issue #846もclose済みです。
-現在の[Issue #849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849)では、BigQuery on-demand queryの
-`maximum_bytes_billed`と検証済み価格から、呼出し前予約額を正確なDecimalで算定する無料回帰を追加します。
+現在の[Issue #849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849)／
+[PR #850](https://github.com/Yukihide-Mitsuoka/repchat/pull/850)では、BigQuery on-demand queryの
+`maximum_bytes_billed`と検証済み価格から、呼出し前予約額を正確なDecimalで算定する無料回帰を追加しました。
+ローカルの`make format`、`make lint`、`make test`は成功しています。
 これは上界の計算だけであり、実providerへの接続、Vertex上界の証明、個別承認は後続です。
 次はBigQuery provider adapterの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
