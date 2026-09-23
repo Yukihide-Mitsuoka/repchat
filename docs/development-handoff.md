@@ -347,8 +347,10 @@ Issue #832もclose済みです。実provider呼出しは行っていません。
 [PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835)で
 [ADR-0027](adr/0027-bound-evaluation-spend-before-provider-calls.md)は承認済み、
 [PR #838](https://github.com/Yukihide-Mitsuoka/repchat/pull/838)で価格snapshot照合はmerge済みです。
-現在は[Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839)で、評価計画・認可scope入りmanifest・
-価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証を実装中です。
+現在は[Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839)／
+[PR #841](https://github.com/Yukihide-Mitsuoka/repchat/pull/841)で、評価計画・認可scope入りmanifest・
+価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証を実装済みです。
+ローカルの`make format`、`make lint`、`make test`は成功しました。PR CIは確認中です。
 次は呼出し前budget gateの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
