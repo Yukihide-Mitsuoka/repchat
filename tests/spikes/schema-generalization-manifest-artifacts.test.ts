@@ -52,8 +52,8 @@ def make_attempt(run_id,snapshot_json='{"version":1}',contract_json='{"version":
  executed=ExecutionAttempt(dry,((1,),),('metric_value',),84)
  result=ResultValidationAttempt(executed,((1,),),('metric_value',),'scalar',84)
  return RenderingAttempt(result,rendered,None if rendered else 'rendering',None if rendered else 'rendering_failed')
-def make_preflight_failure(run_id,stage,discovery):
- code=stage+'_failed'
+def make_preflight_failure(run_id,stage,discovery,code=None):
+ code=code or stage+'_failed'
  preflight=PreflightResult('区分別の値を集計して',discovery,None,None,stage,code)
  identity=PlannedPreflightAttempt('schema-a','case-a',run_id,MappingProxyType(pipeline),preflight)
  planned=PlannedAnalysisAttempt(identity,None,None,stage,code)
@@ -236,6 +236,42 @@ bundle=artifacts.build_manifest_artifacts(manifest,failed,measured)
 assert [item['run']['failure_stage'] for item in bundle.recordings['runs']]==['scope_discovery','analysis_contract_generation']
 assert len(bundle.scope_snapshots['snapshots'])==1
 assert bundle.analysis_contracts=={'version':1,'contracts':[]}
+`);
+});
+
+test('typed preflight infrastructure failures retain measured accounting and no diagnostic', () => {
+  assertPython(String.raw`
+${setup}
+from run_outcome import RunOutcomeError,validate_failure_kind
+snapshot=DiscoverySnapshot('{"version":1}','a'*64,'2026-09-21T00:00:00+00:00')
+failed=(
+ make_preflight_failure('run-1','scope_discovery',None,'scope_discovery_infrastructure_failed'),
+ make_preflight_failure('run-2','analysis_contract_generation',snapshot,'analysis_contract_generation_infrastructure_failed'),
+)
+measured={
+ ('schema-a','case-a','run-1'):artifacts.RunMeasurement(0,0),
+ ('schema-a','case-a','run-2'):artifacts.RunMeasurement(72,0.4),
+}
+bundle=artifacts.build_manifest_artifacts(manifest,failed,measured)
+runs=[item['run'] for item in bundle.recordings['runs']]
+assert [run['failure_kind'] for run in runs]==['infrastructure','infrastructure']
+assert [run['diagnostic'] for run in runs]==[None,None]
+assert [(run['bytes_processed'],run['cost_jpy']) for run in runs]==[(0,0),(72,0.4)]
+assert bundle.scope_snapshots['snapshots']==[{
+ 'schema_id':'schema-a','content_json':'{"version":1}',
+ 'retrieved_at':'2026-09-21T00:00:00+00:00',
+}]
+assert bundle.analysis_contracts=={'version':1,'contracts':[]}
+for run in runs:
+ run['failure_kind']='quality'
+ try:validate_failure_kind(run)
+ except RunOutcomeError as error:assert str(error)=='failure kind conflicts with its outcome'
+ else:raise AssertionError('typed infrastructure failure was accepted as quality')
+runs[0]['failure_kind']='infrastructure'
+runs[0]['failure_stage']='analysis_contract_generation'
+try:validate_failure_kind(runs[0])
+except RunOutcomeError as error:assert str(error)=='infrastructure failure code conflicts with its stage'
+else:raise AssertionError('infrastructure code was accepted at the wrong stage')
 `);
 });
 

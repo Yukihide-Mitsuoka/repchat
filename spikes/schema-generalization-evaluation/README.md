@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-22
+updated: 2026-09-23
 ---
 
 # 未知schema反復評価の証拠harness
@@ -142,10 +142,11 @@ contract本文は結合後のevidenceへ複製せず、fingerprintだけを残�
 `preflight.py`は、実際の共通`discover_scope`と`generate_discovered_contract_artifacts`を順に呼び、
 planning前のruntime境界を評価artifactへ接続します。成功時は、日次shard統合があれば統合後の
 `DiscoverySnapshot`と、その正確なsnapshotから生成した`AnalysisContract`を同じ結果として返します。
-scope discoveryの既知検証拒否とcontract compilerの既知拒否で停止した場合だけ、raw例外文を保持せず、
-固定stageと安全なmachine code、その時点までに実在するartifactだけを返します。schema inspectionとscope
-discoveryのprovider／dependency障害は安全な専用派生型へ正規化し、Vertex provider障害、基盤障害、未知例外と
-ともにpreflightから伝播させます。失敗runへ記録する処理bytesと費用はこの境界で推測せず、
+scope discoveryの既知検証拒否、contract compilerの既知拒否、安全な`ScopeDiscoveryInfrastructureError`で
+停止した場合だけ、raw例外文を保持せず、固定stageとmachine code、その時点までに実在するartifactだけを返します。
+型付き基盤障害は`scope_discovery_infrastructure_failed`または
+`analysis_contract_generation_infrastructure_failed`として品質失敗と分けます。計測不能なprovider障害、
+Vertex provider障害、未知例外は評価を停止します。失敗runへ記録する処理bytesと費用はこの境界で推測せず、
 実行を計測する呼出し側が`failure_recording`へ明示的に渡します。contract生成失敗時のtoken usageも
 取得済みと証明できないため`null`とし、ゼロを捏造しません。
 
@@ -240,13 +241,13 @@ SQL／schema契約不一致だけを既知失敗として保持します。成�
 未知例外は通常の失敗runへ変換せず伝播させます。続くplanning／SQL生成sliceでは、plannerの明示的な出力拒否、
 plan eventと契約の不一致、`SQLGenerationError`、SQL生成の不正応答だけを品質失敗へ変換します。runner例外、
 成功状態の必須field欠落、section生成・費用計算・複製処理の不変条件違反は伝播させます。
-preflightの分類はIssue #817で実装し、既知の検証拒否だけを品質失敗へ変換します。
+preflightの検証拒否と未知例外の分離はIssue #817、安全な型付き基盤障害のrun接続はIssue #824で実装します。
 
 Issue #820では、この専用契約をrecordings version 7とevidence version 6へ追加しました。成功、品質失敗、
 基盤障害を閉じた`failure_kind`で検証し、型付きSQL診断のprovider／infrastructure／cancelled categoryを
 基盤障害へ分類します。基盤障害は品質率の分母から除外して件数を独立集計し、1件でもあれば不合格です。
-rendererの安全な基盤例外はIssue #822で接続しました。preflight、planning、SQL生成、meterから伝播する
-安全な基盤例外の接続は後続sliceです。
+rendererの安全な基盤例外はIssue #822、preflightの安全な基盤例外はIssue #824で接続しました。
+planning、SQL生成、meterから伝播する安全な基盤例外の接続は後続sliceです。
 
 ### 明示的な非対象
 

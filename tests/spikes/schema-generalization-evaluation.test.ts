@@ -280,6 +280,40 @@ test('an infrastructure failure is excluded from quality rates and prevents pass
   assert.equal(report.passed, false);
 });
 
+test('preflight infrastructure failures exclude only their own run from quality rates', () => {
+  for (const [stage, code] of [
+    ['scope_discovery', 'scope_discovery_infrastructure_failed'],
+    ['analysis_contract_generation', 'analysis_contract_generation_infrastructure_failed'],
+  ] as const) {
+    const bundle = evidenceBundle();
+    const run = bundle.schemas[0]!.cases[0]!.runs[0]!;
+    Object.assign(run, {
+      failure_kind: 'infrastructure',
+      failure_stage: stage,
+      failure_code: code,
+      generated_sql: '',
+      sql_execution_succeeded: false,
+      actual_rows: [],
+      render_succeeded: false,
+      runtime_input: {
+        ...run.runtime_input,
+        scope_snapshot_fingerprint:
+          stage === 'scope_discovery' ? null : run.runtime_input.scope_snapshot_fingerprint,
+        analysis_contract_fingerprint: null,
+      },
+    });
+
+    const result = evaluate(bundle);
+
+    assert.equal(result.status, 1, result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.schemas[0].cases[0].quality_run_count, 2);
+    assert.equal(report.schemas[0].cases[0].infrastructure_failure_count, 1);
+    assert.equal(report.schemas[0].cases[0].result_match_rate, 1);
+    assert.equal(report.passed, false);
+  }
+});
+
 test('renderer infrastructure code cannot be recorded as a quality failure', () => {
   const bundle = evidenceBundle();
   Object.assign(bundle.schemas[0]!.cases[0]!.runs[0]!, {

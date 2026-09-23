@@ -28,7 +28,9 @@ from bigquery_scope_discovery import (  # noqa: E402 - sibling spike import
     discover_scope,
 )
 from run_outcome import (  # noqa: E402 - path bootstrap precedes local import
+    ANALYSIS_CONTRACT_GENERATION_INFRASTRUCTURE_FAILURE_CODE,
     ANALYSIS_CONTRACT_GENERATION_FAILURE,
+    SCOPE_DISCOVERY_INFRASTRUCTURE_FAILURE_CODE,
     SCOPE_DISCOVERY_FAILURE,
 )
 
@@ -140,7 +142,14 @@ def run_preflight(
     try:
         discovery = discover_scope(bq, scope)
     except ScopeDiscoveryInfrastructureError:
-        raise
+        return PreflightResult(
+            question=question,
+            discovery=None,
+            contract=None,
+            usage=None,
+            failure_stage=SCOPE_DISCOVERY_FAILURE,
+            failure_code=SCOPE_DISCOVERY_INFRASTRUCTURE_FAILURE_CODE,
+        )
     except ScopeDiscoveryError:
         return PreflightResult(
             question=question,
@@ -160,7 +169,14 @@ def run_preflight(
             as_of=as_of,
         )
     except ScopeDiscoveryInfrastructureError:
-        raise
+        return PreflightResult(
+            question=question,
+            discovery=discovery,
+            contract=None,
+            usage=None,
+            failure_stage=ANALYSIS_CONTRACT_GENERATION_FAILURE,
+            failure_code=ANALYSIS_CONTRACT_GENERATION_INFRASTRUCTURE_FAILURE_CODE,
+        )
     except (ContractCompilerError, ScopeDiscoveryError):
         return PreflightResult(
             question=question,
