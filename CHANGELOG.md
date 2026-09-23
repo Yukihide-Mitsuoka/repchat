@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v3.0.0...v4.0.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **evaluation:** 基盤障害を品質分母から分離する ([#821](https://github.com/Yukihide-Mitsuoka/repchat/issues/821))
+
+### Features
+
+* **evaluation:** fixtureの評価成立条件を実行前に検証する ([#830](https://github.com/Yukihide-Mitsuoka/repchat/issues/830)) ([0440b6d](https://github.com/Yukihide-Mitsuoka/repchat/commit/0440b6d04da0a13518ac553a46464470f075b7e1))
+* **evaluation:** manifest作成前にpipeline artifactを照合する ([#833](https://github.com/Yukihide-Mitsuoka/repchat/issues/833)) ([c1fc88c](https://github.com/Yukihide-Mitsuoka/repchat/commit/c1fc88cfb1a4feed0a99b08ce754082e67c56138))
+* **evaluation:** preflightの型付き基盤障害をrunへ記録する ([#825](https://github.com/Yukihide-Mitsuoka/repchat/issues/825)) ([9133d2f](https://github.com/Yukihide-Mitsuoka/repchat/commit/9133d2f1bcbb94e03d6e005c2617141811d9df83))
+* **evaluation:** renderer基盤障害をrunへ記録する ([#823](https://github.com/Yukihide-Mitsuoka/repchat/issues/823)) ([5c7e03f](https://github.com/Yukihide-Mitsuoka/repchat/commit/5c7e03fbb2b826f8c9fe2d27d747b380bee79f9e))
+* **evaluation:** 基盤障害を品質分母から分離する ([#821](https://github.com/Yukihide-Mitsuoka/repchat/issues/821)) ([6e61fef](https://github.com/Yukihide-Mitsuoka/repchat/commit/6e61fefcfb14822304f3b3c0dc1cb4fc26d11141))
+* **evaluation:** 実行manifest作成前に参照記録を検証する ([#828](https://github.com/Yukihide-Mitsuoka/repchat/issues/828)) ([1187794](https://github.com/Yukihide-Mitsuoka/repchat/commit/118779427b9f94d2655d714cc326ad56c4729e86))
+
+
+### Bug Fixes
+
+* **evaluation:** preflightの基盤例外を分離する ([#818](https://github.com/Yukihide-Mitsuoka/repchat/issues/818)) ([ff29083](https://github.com/Yukihide-Mitsuoka/repchat/commit/ff290838c6fec98d5cc15e8255f2177cf01b2b47))
+
 ## [3.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v3.0.0) (2026-09-22)
 
 
