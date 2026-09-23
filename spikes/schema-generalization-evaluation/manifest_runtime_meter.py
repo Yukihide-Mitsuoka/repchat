@@ -43,19 +43,27 @@ class PricingSnapshot:
         try:
             with Path(path).open("rb") as snapshot_file:
                 content = snapshot_file.read(16_385)
-            if len(content) > 16_384:
-                raise RuntimeMeasurementError("pricing snapshot file is too large")
+        except OSError as error:
+            raise RuntimeMeasurementError("pricing snapshot file is unreadable") from error
+        return cls.from_bytes(content)
 
-            def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-                result: dict[str, Any] = {}
-                for name, value in pairs:
-                    if name in result:
-                        raise RuntimeMeasurementError("pricing snapshot has duplicate fields")
-                    result[name] = value
-                return result
+    @classmethod
+    def from_bytes(cls, content: bytes) -> PricingSnapshot:
+        """Parse the same bytes that an execution intent fingerprints."""
+        if not isinstance(content, bytes) or len(content) > 16_384:
+            raise RuntimeMeasurementError("pricing snapshot file is too large or invalid")
 
+        def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for name, value in pairs:
+                if name in result:
+                    raise RuntimeMeasurementError("pricing snapshot has duplicate fields")
+                result[name] = value
+            return result
+
+        try:
             data = json.loads(content.decode("utf-8"), object_pairs_hook=unique_pairs)
-        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        except (UnicodeError, json.JSONDecodeError) as error:
             raise RuntimeMeasurementError("pricing snapshot file is unreadable") from error
         if not isinstance(data, dict):
             raise RuntimeMeasurementError("pricing snapshot must be an object")
