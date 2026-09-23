@@ -342,6 +342,7 @@ planning／SQL生成のprovider呼出し失敗は応答usageを取得できず�
 実行manifest作成前にruntime・prompt・configuration artifactの正確なfile bytesを評価計画へ照合します。
 file一致はprocess-level attestationではありません。回帰テストは修正前に意図どおり失敗し、
 修正後の`make format`、`make lint`、`make test`は成功しました。
+[PR #833](https://github.com/Yukihide-Mitsuoka/repchat/pull/833)を作成済みです。CIとmerge状態はPRを正本とします。
 実provider呼出しは行っていません。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
