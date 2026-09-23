@@ -51,6 +51,9 @@ capabilityをevidenceへ結合します。run記録にはschema ID、case ID、
 `execution_manifest.py`はreview済みfixture、評価計画、認可scopeを照合し、runtime専用manifestを`0600`で新規作成します。
 参照記録の必須field・型・非空値と、作成者とreviewerのIDが異なることも出力前に検証します。
 ID文字列だけでは本人性や実際の独立reviewを証明できず、別途review証跡が必要です。
+schema IDとscope fingerprintが異なる2件以上、各schemaの必須capability網羅、固定下限以上の閾値、
+各caseで閾値以上の計画runも出力前に検証します。これらは実行可能な評価計画の構造検査であり、
+未知schemaの品質やreviewの真正性を証明するものではありません。
 manifestはschema／case ID、質問、run ID、pipeline fingerprint、dataset／tableの認可scopeだけを持ち、参照SQL、期待結果、
 capability、対象別profileや設定を拒否します。runtimeはreview fixtureではなく、このmanifestを入力にします。
 
