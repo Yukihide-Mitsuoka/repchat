@@ -333,7 +333,12 @@ planning／SQL生成のprovider呼出し失敗は応答usageを取得できず�
 実行manifest作成前に参照記録のfield・型・作成者とreviewerの別IDを検証します。本人性は別途review証跡が必要です。
 回帰テストは修正前に意図どおり失敗し、修正後の`make format`、`make lint`、`make test`と
 対象test 5件は成功しています。[PR #828](https://github.com/Yukihide-Mitsuoka/repchat/pull/828)を作成し、
-必須CI checks 13件が成功、merge待ちです。実provider呼出しは行っていません。
+必須CI checks 13件が成功し、2026-09-23にmerge済みです。
+[Issue #829](https://github.com/Yukihide-Mitsuoka/repchat/issues/829)では次のsliceとして、schema数・scope fingerprintの
+差異、capability網羅、閾値、計画run数をmanifest作成前に検証します。回帰テストは修正前に意図どおり失敗し、
+修正後の`make format`、`make lint`、`make test`は成功しました。
+[PR #830](https://github.com/Yukihide-Mitsuoka/repchat/pull/830)は必須CI checks 13件が成功し、merge待ちです。
+実provider呼出しは行っていません。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
@@ -425,7 +430,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、各stageの未知例外伝播、[#820](https://github.com/Yukihide-Mitsuoka/repchat/issues/820)／[PR #821](https://github.com/Yukihide-Mitsuoka/repchat/pull/821)の基盤障害run／bundle契約、[#822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)／[PR #823](https://github.com/Yukihide-Mitsuoka/repchat/pull/823)のrenderer障害、[#824](https://github.com/Yukihide-Mitsuoka/repchat/issues/824)／[PR #825](https://github.com/Yukihide-Mitsuoka/repchat/pull/825)のpreflight障害はmerge済み。計測不能なplanning／SQL生成provider障害とmeter障害は評価を停止し、費用を推測しない。次は[#827](https://github.com/Yukihide-Mitsuoka/repchat/issues/827)でfixture参照記録の事前検証を行い、公式fixtureと費用承認付き実行commandへ進む。attempt状態機械の全面再設計は行わない |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付きSQL診断、case／capability／描画の合格gate、各stageの未知例外伝播、[#820](https://github.com/Yukihide-Mitsuoka/repchat/issues/820)／[PR #821](https://github.com/Yukihide-Mitsuoka/repchat/pull/821)の基盤障害run／bundle契約、[#822](https://github.com/Yukihide-Mitsuoka/repchat/issues/822)／[PR #823](https://github.com/Yukihide-Mitsuoka/repchat/pull/823)のrenderer障害、[#824](https://github.com/Yukihide-Mitsuoka/repchat/issues/824)／[PR #825](https://github.com/Yukihide-Mitsuoka/repchat/pull/825)のpreflight障害、[#827](https://github.com/Yukihide-Mitsuoka/repchat/issues/827)／[PR #828](https://github.com/Yukihide-Mitsuoka/repchat/pull/828)の参照記録検証はmerge済み。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。次は[#829](https://github.com/Yukihide-Mitsuoka/repchat/issues/829)でfixture全体の評価成立条件を事前検証し、公式fixtureと費用承認付き実行commandへ進む。attempt状態機械の全面再設計は行わない |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |

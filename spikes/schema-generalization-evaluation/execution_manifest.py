@@ -19,7 +19,15 @@ from bigquery_scope_discovery import (  # noqa: E402 - sibling spike import
     AuthorizedScope,
     ScopeDiscoveryError,
 )
-from evaluate import EvaluationEvidenceError  # noqa: E402 - local import after path setup
+from evaluate import (  # noqa: E402 - local import after path setup
+    EvaluationEvidenceError,
+    MINIMUM_RESULT_MATCH_RATE,
+    MINIMUM_RUNS_PER_CASE,
+)
+from evaluation_capabilities import (  # noqa: E402 - local import after path setup
+    EvaluationCapabilityError,
+    validate_schema_capabilities,
+)
 from evaluation_plan import validate_evaluation_plan  # noqa: E402 - local import after path setup
 
 
@@ -69,22 +77,45 @@ def _fixture_cases(fixture: Any) -> tuple[list[str], dict[tuple[str, str], str]]
     )
     if type(fixture["version"]) is not int or fixture["version"] != 2:
         raise EvaluationEvidenceError("fixture version must be 2")
+    thresholds = _require_fields(
+        fixture["thresholds"],
+        {"minimum_runs_per_case", "minimum_result_match_rate"},
+        "fixture thresholds are invalid",
+    )
+    minimum_runs = thresholds["minimum_runs_per_case"]
+    match_rate = thresholds["minimum_result_match_rate"]
+    if (
+        type(minimum_runs) is not int
+        or minimum_runs < MINIMUM_RUNS_PER_CASE
+        or isinstance(match_rate, bool)
+        or not isinstance(match_rate, (int, float))
+        or not MINIMUM_RESULT_MATCH_RATE <= match_rate <= 1
+    ):
+        raise EvaluationEvidenceError(
+            "thresholds cannot be lower than the fixed acceptance policy"
+        )
     if not isinstance(fixture["schemas"], list):
         raise EvaluationEvidenceError("fixture schemas must be a list")
     schema_ids: list[str] = []
+    scope_fingerprints: set[str] = set()
     cases: dict[tuple[str, str], str] = {}
     for raw_schema in fixture["schemas"]:
         schema = _require_fields(raw_schema, FIXTURE_SCHEMA_KEYS, "fixture schema fields are invalid")
         schema_id = schema["schema_id"]
+        fingerprint = schema["scope_snapshot_fingerprint"]
         if (
             not isinstance(schema_id, str)
             or not schema_id.strip()
             or schema_id in schema_ids
+            or not isinstance(fingerprint, str)
+            or len(fingerprint) != 64
+            or any(character not in "0123456789abcdef" for character in fingerprint)
             or not isinstance(schema["cases"], list)
             or not schema["cases"]
         ):
             raise EvaluationEvidenceError("fixture schema IDs and cases are invalid")
         schema_ids.append(schema_id)
+        scope_fingerprints.add(fingerprint)
         for raw_case in schema["cases"]:
             case = _require_fields(raw_case, FIXTURE_CASE_KEYS, "fixture case fields are invalid")
             _validate_reference(case["reference"])
@@ -99,6 +130,14 @@ def _fixture_cases(fixture: Any) -> tuple[list[str], dict[tuple[str, str], str]]
             ):
                 raise EvaluationEvidenceError("fixture case IDs and questions are invalid")
             cases[key] = question
+        try:
+            validate_schema_capabilities(schema["cases"])
+        except EvaluationCapabilityError:
+            raise EvaluationEvidenceError(
+                "each fixture schema must cover every required capability"
+            ) from None
+    if len(schema_ids) < 2 or len(scope_fingerprints) != len(schema_ids):
+        raise EvaluationEvidenceError("at least two distinct schemas are required")
     return schema_ids, cases
 
 
@@ -165,6 +204,13 @@ def build_execution_manifest(
             run["run_id"],
         )
         run_ids[(schema_id, case_id)].append(run_id)
+    if any(
+        len(ids) < fixture["thresholds"]["minimum_runs_per_case"]
+        for ids in run_ids.values()
+    ):
+        raise EvaluationEvidenceError(
+            "at least the fixture minimum planned runs per case are required"
+        )
     return {
         "version": 1,
         "evaluation_plan_sha256": evaluation_plan_sha256,

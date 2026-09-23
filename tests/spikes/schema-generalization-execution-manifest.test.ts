@@ -8,36 +8,43 @@ import test from 'node:test';
 import { ROOT } from './report-generation/live-demo-test-helpers.ts';
 
 const BUILDER = path.join(ROOT, 'spikes/schema-generalization-evaluation/execution_manifest.py');
+const CAPABILITIES = [
+  'nested_unnest',
+  'multi_level_nesting',
+  'join',
+  'period_comparison',
+  'window_function',
+  'ordered_behavior',
+];
 
 function sha256(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }
 
 function inputs() {
+  const schema = (id: string, fingerprint: string) => ({
+    schema_id: id,
+    scope_snapshot_fingerprint: fingerprint.repeat(64),
+    cases: [
+      {
+        case_id: 'case-a',
+        question: '認可済みデータを集計して',
+        reference: {
+          sql: 'SELECT 1',
+          expected_rows: [{ value: 1 }],
+          row_order: 'unordered',
+          author_id: 'author-a',
+          reviewer_id: 'reviewer-a',
+          reviewed_at: '2026-09-23T00:00:00Z',
+        },
+        capabilities: [...CAPABILITIES],
+      },
+    ],
+  });
   const fixture = {
     version: 2,
     thresholds: { minimum_runs_per_case: 3, minimum_result_match_rate: 0.9 },
-    schemas: [
-      {
-        schema_id: 'schema-a',
-        scope_snapshot_fingerprint: 'a'.repeat(64),
-        cases: [
-          {
-            case_id: 'case-a',
-            question: '認可済みデータを集計して',
-            reference: {
-              sql: 'SELECT 1',
-              expected_rows: [{ value: 1 }],
-              row_order: 'unordered',
-              author_id: 'author-a',
-              reviewer_id: 'reviewer-a',
-              reviewed_at: '2026-09-23T00:00:00Z',
-            },
-            capabilities: ['join'],
-          },
-        ],
-      },
-    ],
+    schemas: [schema('schema-a', 'a'), schema('schema-b', 'b')],
   };
   const fixtureBytes = JSON.stringify(fixture);
   const pipeline = {
@@ -49,11 +56,9 @@ function inputs() {
     version: 1,
     reviewed_fixture_sha256: sha256(fixtureBytes),
     pipeline,
-    runs: [1, 2, 3].map((number) => ({
-      schema_id: 'schema-a',
-      case_id: 'case-a',
-      run_id: `run-${number}`,
-    })),
+    runs: fixture.schemas.flatMap(({ schema_id }) =>
+      [1, 2, 3].map((number) => ({ schema_id, case_id: 'case-a', run_id: `run-${number}` })),
+    ),
   };
   const authorization = {
     version: 1,
@@ -62,6 +67,11 @@ function inputs() {
         schema_id: 'schema-a',
         datasets: ['project.dataset'],
         tables: ['project.dataset.table'],
+      },
+      {
+        schema_id: 'schema-b',
+        datasets: ['project.other_dataset'],
+        tables: ['project.other_dataset.table'],
       },
     ],
   };
@@ -100,14 +110,20 @@ function runBuilder(
   }
 }
 
-function runWithReference(mutate: (reference: Record<string, unknown>) => void) {
+function runWithFixture(mutate: (value: ReturnType<typeof inputs>) => void) {
   return runBuilder((value) => {
+    mutate(value);
+    value.fixtureBytes = JSON.stringify(value.fixture);
+    value.plan.reviewed_fixture_sha256 = sha256(value.fixtureBytes);
+  });
+}
+
+function runWithReference(mutate: (reference: Record<string, unknown>) => void) {
+  return runWithFixture((value) => {
     const reference = value.fixture.schemas[0]!.cases[0]!.reference as Record<string, unknown>;
     reference.sql = 'SELECT sensitive_marker FROM private_table';
     reference.expected_rows = [{ value: 'private-row-marker' }];
     mutate(reference);
-    value.fixtureBytes = JSON.stringify(value.fixture);
-    value.plan.reviewed_fixture_sha256 = sha256(value.fixtureBytes);
   });
 }
 
@@ -136,6 +152,20 @@ test('execution manifest exposes only authorized runtime inputs and planned runs
           },
         ],
       },
+      {
+        schema_id: 'schema-b',
+        authorized_scope: {
+          datasets: ['project.other_dataset'],
+          tables: ['project.other_dataset.table'],
+        },
+        cases: [
+          {
+            case_id: 'case-a',
+            question: '認可済みデータを集計して',
+            run_ids: ['run-1', 'run-2', 'run-3'],
+          },
+        ],
+      },
     ],
   });
   assert.doesNotMatch(output!, /SELECT 1|expected_rows|capabilities/);
@@ -155,6 +185,81 @@ test('authorization cannot add analysis settings or omit a fixture scope', () =>
   assert.equal(missingScope.result.status, 2);
   assert.match(missingScope.result.stderr, /must match fixture schema IDs exactly/);
   assert.equal(missingScope.output, undefined);
+});
+
+test('execution manifest rejects an incomplete evaluation fixture before output', () => {
+  for (const [label, mutate, expected] of [
+    [
+      'one schema',
+      (value: ReturnType<typeof inputs>) => {
+        value.fixture.schemas.pop();
+        value.authorization.schemas.pop();
+        value.plan.runs = value.plan.runs.filter((run) => run.schema_id === 'schema-a');
+      },
+      /at least two distinct schemas/,
+    ],
+    [
+      'same scope fingerprint',
+      (value: ReturnType<typeof inputs>) => {
+        value.fixture.schemas[1]!.scope_snapshot_fingerprint =
+          value.fixture.schemas[0]!.scope_snapshot_fingerprint;
+      },
+      /at least two distinct schemas/,
+    ],
+    [
+      'missing capability',
+      (value: ReturnType<typeof inputs>) => {
+        value.fixture.schemas[0]!.cases[0]!.capabilities.pop();
+      },
+      /each fixture schema must cover every required capability/,
+    ],
+    [
+      'low match threshold',
+      (value: ReturnType<typeof inputs>) => {
+        value.fixture.thresholds.minimum_result_match_rate = 0.8;
+      },
+      /thresholds cannot be lower than the fixed acceptance policy/,
+    ],
+    [
+      'low repeat threshold',
+      (value: ReturnType<typeof inputs>) => {
+        value.fixture.thresholds.minimum_runs_per_case = 2;
+      },
+      /thresholds cannot be lower than the fixed acceptance policy/,
+    ],
+    [
+      'few repetitions',
+      (value: ReturnType<typeof inputs>) => {
+        value.plan.runs = value.plan.runs.filter(
+          (run) => run.schema_id !== 'schema-a' || run.run_id !== 'run-3',
+        );
+      },
+      /fixture minimum planned runs per case/,
+    ],
+  ] as const) {
+    const { result, output } = runWithFixture(mutate);
+    assert.equal(result.status, 2, `${label}: ${result.stderr}`);
+    assert.match(result.stderr, expected, label);
+    assert.equal(output, undefined, label);
+    assert.doesNotMatch(result.stderr, /SELECT 1|project\.dataset/, label);
+  }
+});
+
+test('execution manifest accepts a higher planned repetition threshold', () => {
+  const { result, output } = runWithFixture((value) => {
+    value.fixture.thresholds.minimum_runs_per_case = 4;
+    for (const schema of value.fixture.schemas) {
+      value.plan.runs.push({ schema_id: schema.schema_id, case_id: 'case-a', run_id: 'run-4' });
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(output!).schemas[0].cases[0].run_ids, [
+    'run-1',
+    'run-2',
+    'run-3',
+    'run-4',
+  ]);
 });
 
 test('execution manifest rejects incomplete or unreviewed reference records before output', () => {
