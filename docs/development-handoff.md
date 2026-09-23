@@ -336,7 +336,9 @@ planning／SQL生成のprovider呼出し失敗は応答usageを取得できず�
 必須CI checks 13件が成功し、2026-09-23にmerge済みです。
 [Issue #829](https://github.com/Yukihide-Mitsuoka/repchat/issues/829)では次のsliceとして、schema数・scope fingerprintの
 差異、capability網羅、閾値、計画run数をmanifest作成前に検証します。回帰テストは修正前に意図どおり失敗し、
-修正後の`make format`、`make lint`、`make test`は成功しました。実provider呼出しは行っていません。
+修正後の`make format`、`make lint`、`make test`は成功しました。
+[PR #830](https://github.com/Yukihide-Mitsuoka/repchat/pull/830)を作成し、CI確認中です。
+実provider呼出しは行っていません。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
