@@ -350,7 +350,7 @@ Issue #832もclose済みです。実provider呼出しは行っていません。
 現在は[Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839)／
 [PR #841](https://github.com/Yukihide-Mitsuoka/repchat/pull/841)で、評価計画・認可scope入りmanifest・
 価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証を実装済みです。
-ローカルの`make format`、`make lint`、`make test`は成功しました。PR CIは確認中です。
+ローカルの`make format`、`make lint`、`make test`と必須CI checks 13件は成功しました。
 次は呼出し前budget gateの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
