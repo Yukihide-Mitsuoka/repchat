@@ -29,6 +29,9 @@ from evaluation_capabilities import (  # noqa: E402 - local import after path se
     validate_schema_capabilities,
 )
 from evaluation_plan import validate_evaluation_plan  # noqa: E402 - local import after path setup
+from pipeline_artifacts import (  # noqa: E402 - local import after path setup
+    fingerprint_pipeline_artifacts,
+)
 
 
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
@@ -181,6 +184,7 @@ def build_execution_manifest(
     authorization: Any,
     reviewed_fixture_sha256: str,
     evaluation_plan_sha256: str,
+    pipeline_fingerprints: dict[str, str],
 ) -> dict[str, Any]:
     """Return only the authorized inputs needed by the evaluation runtime."""
     schema_ids, fixture_cases = _fixture_cases(fixture)
@@ -194,7 +198,7 @@ def build_execution_manifest(
         evaluation_plan,
         set(fixture_cases),
         reviewed_fixture_sha256,
-        pipeline,
+        pipeline_fingerprints,
     )
     run_ids: dict[tuple[str, str], list[str]] = {key: [] for key in fixture_cases}
     for run in evaluation_plan["runs"]:
@@ -238,8 +242,12 @@ def build_execution_manifest(
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 5:
-        print("usage: execution_manifest.py <fixture> <plan> <authorization> <output>", file=sys.stderr)
+    if len(argv) != 8:
+        print(
+            "usage: execution_manifest.py <fixture> <plan> <authorization> "
+            "<runtime-artifact> <prompt-artifact> <configuration-artifact> <output>",
+            file=sys.stderr,
+        )
         return 2
     try:
         fixture_bytes = Path(argv[1]).read_bytes()
@@ -247,15 +255,26 @@ def main(argv: list[str]) -> int:
         fixture = json.loads(fixture_bytes.decode("utf-8"))
         evaluation_plan = json.loads(plan_bytes.decode("utf-8"))
         authorization = json.loads(Path(argv[3]).read_text(encoding="utf-8"))
+        try:
+            pipeline_fingerprints = fingerprint_pipeline_artifacts(
+                {
+                    "runtime": Path(argv[4]),
+                    "prompt": Path(argv[5]),
+                    "configuration": Path(argv[6]),
+                }
+            )
+        except OSError:
+            raise EvaluationEvidenceError("pipeline artifact cannot be read") from None
         manifest = build_execution_manifest(
             fixture,
             evaluation_plan,
             authorization,
             hashlib.sha256(fixture_bytes).hexdigest(),
             hashlib.sha256(plan_bytes).hexdigest(),
+            pipeline_fingerprints,
         )
-        output = Path(argv[4])
-        if output.resolve() in {Path(value).resolve() for value in argv[1:4]}:
+        output = Path(argv[7])
+        if output.resolve() in {Path(value).resolve() for value in argv[1:7]}:
             raise EvaluationEvidenceError("manifest output must not overwrite an input")
         descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as target:
