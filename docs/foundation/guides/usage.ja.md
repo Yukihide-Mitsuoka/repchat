@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-08-30
+updated: 2026-09-23
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -143,11 +143,14 @@ agent profileとproject overlayを保護対象にしてください。
 
 ### 6. Makefile プロファイルを選ぶ
 
-最も近いリファレンス実装をルートにコピーしてスタックに合わせます:
+新規作成したテンプレートに`profiles/`の任意の例が残っている場合は、最も近い
+リファレンス実装をルートにコピーしてスタックに合わせます:
 ```bash
 cp profiles/python-uv/Makefile ./Makefile      # または typescript-node / terraform-gcp
 ```
-正準ターゲット契約は [profiles/README.md](../../../profiles/README.md) を参照。
+利用先が任意の例を削除済みなら、
+[継承されるMakeターゲット契約](../../../.ai/contracts/foundation/make-targets.md)に従って
+ルートのMakefileを実装します。ルートのMakefileを整えた後は、例のコピーは必須ではありません。
 インスタンス化後は、必須ターゲットにテンプレートの `not wired yet` 実装が残っていると
 `make doctor` が失敗します。対象外のターゲットは、たとえば
 `[project] build: not applicable — no deployable artifact` のように、利用先が所有する

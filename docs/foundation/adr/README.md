@@ -48,5 +48,6 @@ broaden the search under ADR-0012 when relevance is uncertain.
 | [0020](0020-enforce-japanese-pull-request-prose.md) | Enforce Japanese pull request prose | pull requests, language policy, CI, template inheritance | accepted | 2026-09-02 |
 | [0021](0021-scope-japanese-pull-request-prose-to-leaf-repositories.md) | Scope Japanese pull request prose to leaf repositories | pull requests, language policy, repository role, template inheritance | accepted | 2026-09-03 |
 | [0022](0022-integrate-documented-discovery-and-conditional-tdd.md) | Integrate documented discovery and conditional TDD into existing task routes | requirements, architecture, domain terminology, testing, AI workflow | accepted | 2026-09-13 |
+| [0023](0023-minimize-consumer-root-with-versioned-foundation.md) | Minimize the consumer root while keeping a versioned Foundation | root ownership, optional capabilities, organization policy, template inheritance | accepted | 2026-09-23 |
 
 <!-- Append new ADRs to this table (newest last). -->

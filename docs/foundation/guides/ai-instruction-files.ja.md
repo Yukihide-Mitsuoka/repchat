@@ -1,7 +1,7 @@
 ---
 id: ai-instruction-files-ja
 title: AI指示ファイル・ガイド（日本語）
-updated: 2026-09-01
+updated: 2026-09-23
 ---
 
 # AIへ指示を出すファイル群ガイド（日本語）
@@ -54,9 +54,9 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 | 自動強制 | [.claude/](../../../.claude/) | Claude Code のフック（即時ブロック/整形）・権限制御・ネイティブSkill |
 | 意思決定 | [docs/foundation/adr/](../adr/)、`docs/adr/` | 基盤と利用先の「なぜ」を所有者別に記録 |
 | 用語 | [docs/foundation/glossary.md](../glossary.md)、`docs/glossary.md` | 基盤と利用先プロジェクトの統一用語 |
-| ソース構造 | [src/README.md](../../../src/README.md), [tests/README.md](../../../tests/README.md) | コード配置規約・MODULE.md雛形 |
+| ソース構造 | [architecture.md](../../../.ai/architecture.md), [testing.md](../../../.ai/testing.md) | コード・テスト配置規約とMODULE.mdの必須項目 |
 | 方向性 | `docs/roadmap.md` | 利用先で何を作る/作らないかの指針 |
-| 契約 | `src/modules/*/MODULE.md`, [profiles/README.md](../../../profiles/README.md) | モジュール/makeターゲットの契約 |
+| 契約 | `src/modules/*/MODULE.md`, [make-targets.md](../../../.ai/contracts/foundation/make-targets.md) | モジュール/makeターゲットの契約 |
 | 構造化入力 | [.github/](../../../.github/) の Issue/PR テンプレート | AIへの指示を型化 |
 | グローバル | `~/.claude/CLAUDE.md`, `~/projects/CLAUDE.md` | 全リポ共通の好み（リポ外・Claude固有） |
 
@@ -245,19 +245,24 @@ CLAUDE.md / AGENTS.md > その他の .ai/*.md > docs/**`。矛盾は黙って解
 - **利用例**：`src/modules/catalog/MODULE.md` が存在するリポジトリでは、公開API
   `AddProduct.handle` と不変条件を把握してから改修。
 
-### [src/README.md](../../../src/README.md) / [tests/README.md](../../../tests/README.md)（配置規約）
+### [architecture.md](../../../.ai/architecture.md) / [testing.md](../../../.ai/testing.md)（配置規約）
 
-- **利用目的**：ソース/テストの配置規約と `MODULE.md` の雛形を示す構造ガイダンス（ARC-001）。
+- **利用目的**：ソース/テストの配置規約と `MODULE.md` の必須項目を示す規範（ARC-001、ARC-003、TST-001）。
 - **利用シーン**：新モジュール作成、ファイルの置き場所を決めるとき、`MODULE.md` を新規作成するとき。
 - **利用しないシーン**：既存モジュール内の局所修正で構造が変わらないとき。
-- **利用例**：新機能の置き場所をレイアウト図で確認し、`tests/` が `src/` を鏡写しにする規約（TST-001）に従う。
+- **利用例**：ARC-001で新機能の配置を確認し、`tests/` が `src/` を鏡写しにするTST-001に従う。
 
-### [profiles/README.md](../../../profiles/README.md)（正準ターゲット契約）
+`src/README.md`と`tests/README.md`はテンプレートからの任意のコピーです。
+利用先では削除できるため、このガイドの必須参照先にはしません。
+
+### [make-targets.md](../../../.ai/contracts/foundation/make-targets.md)（正準ターゲット契約）
 
 - **利用目的**：`make` 正準ターゲット（setup/format/lint/test/…/doctor）の**拘束力ある意味論**を定義。読込済みfoundation契約が参照。
 - **利用シーン**：`make` ターゲットの挙動を確認するとき、スタック別プロファイル（Makefile）を追加/編集するとき。
 - **利用しないシーン**：特定スタックの具体コマンドそのもの（各 Makefile 実装を見る）。
 - **利用例**：`lint` は「チェック専用・自動修正しない」という契約を確認し、lint に fmt を混ぜない。
+
+`profiles/README.md`と各プロファイルは子が削除できる参考例であり、契約の正本ではありません。
 
 ---
 
@@ -332,7 +337,7 @@ Claude Code は起動時に**親ディレクトリを遡って** `CLAUDE.md` を
 
 | グループ | ファイル | 除外理由 |
 |----------|----------|----------|
-| ツール/自動化 | `Makefile`, `profiles/*/Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `scripts/*.sh`, `renovate.json` | 実行インターフェースや強制機構であって挙動の"指示文"ではない（正準ターゲットの契約 = profiles/README.md は §7 に収録） |
+| ツール/自動化 | `Makefile`, `profiles/*/Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `scripts/*.sh`, `renovate.json` | 実行インターフェースや強制機構であって挙動の"指示文"ではない（正準ターゲット契約は §7 の `make-targets.md` に収録） |
 | 設定 | `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`, `.mdformat.toml`, `.templatesyncignore` | 環境・整形・同期の設定 |
 | ガバナンス metadata | `.github/CODEOWNERS`, `labels.yml`, `discussion-categories.md` | レビュー経路・ラベル・カテゴリ定義。AIは使うが指示ではない |
 | 人間向け | `README.md`, `SECURITY.md`, `docs/foundation/guides/usage.md`, `usage.ja.md` | 人間向け。特に `README.md` はAIを「CLAUDE.mdへ」と誘導する側。AI向けセキュリティは `.ai/security.md`（§3収録）が担う |

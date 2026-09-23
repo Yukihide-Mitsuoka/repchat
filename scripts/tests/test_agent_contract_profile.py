@@ -16,6 +16,7 @@ PROJECT = "acme/product"
 COMMIT = "a" * 40
 PROFILE_PATH = ".github/inheritance/agent-profile.json"
 FOUNDATION_ENTRY_PATH = ".ai/contracts/foundation/agent-entry.md"
+MAKE_TARGET_CONTRACT_PATH = ".ai/contracts/foundation/make-targets.md"
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FOUNDATION_README_OWNER = (
     "<!-- repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation -->"
@@ -246,7 +247,7 @@ class FoundationAgentEntryTest(unittest.TestCase):
             ".ai/workflow.md",
             ".ai/review-checklist.md",
             "docs/development-handoff.md",
-            "profiles/README.md",
+            MAKE_TARGET_CONTRACT_PATH,
             ".claude/README.md",
             "AGENTS.md",
             "Conventional Commits",
@@ -277,6 +278,16 @@ class FoundationAgentEntryTest(unittest.TestCase):
         ):
             with self.subTest(required_reference=required_reference):
                 self.assertIn(required_reference, normalized_content)
+        self.assertNotIn("profiles/README.md", content)
+
+    def test_make_target_authority_is_inherited_and_profile_examples_are_optional(self):
+        root = Path(__file__).parents[2]
+        contract = root / MAKE_TARGET_CONTRACT_PATH
+        self.assertTrue(contract.is_file(), f"missing {MAKE_TARGET_CONTRACT_PATH}")
+        content = contract.read_text(encoding="utf-8")
+        for required_semantic in ("`lint`", "`format`", "`doctor`", "No catch-all"):
+            with self.subTest(required_semantic=required_semantic):
+                self.assertIn(required_semantic, content)
 
 
 @unittest.skipUnless(
@@ -284,6 +295,13 @@ class FoundationAgentEntryTest(unittest.TestCase):
     "canonical ai-dev-foundation root assertions",
 )
 class FoundationRootAgentAdapterTest(unittest.TestCase):
+    def test_optional_profile_examples_point_to_the_inherited_authority(self):
+        examples = (REPOSITORY_ROOT / "profiles/README.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(MAKE_TARGET_CONTRACT_PATH, examples)
+        self.assertNotIn("The canonical target contract (binding)", examples)
+
     def test_profile_orders_foundation_then_project(self):
         profile_path = REPOSITORY_ROOT / PROFILE_PATH
         self.assertTrue(profile_path.is_file(), f"missing {PROFILE_PATH}")
@@ -319,6 +337,8 @@ class FoundationRootAgentAdapterTest(unittest.TestCase):
         self.assertIn("strengthen-only", claude)
         self.assertIn("listed order", claude)
         self.assertIn("must not recursively", claude)
+        self.assertIn(MAKE_TARGET_CONTRACT_PATH, claude)
+        self.assertNotIn("profiles/README.md", claude)
         agents = (REPOSITORY_ROOT / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("CLAUDE.md", agents)
 

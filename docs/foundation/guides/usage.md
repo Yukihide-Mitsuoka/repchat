@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-08-30
+updated: 2026-09-23
 ---
 
 # Usage
@@ -149,11 +149,14 @@ compatibility wrapper.
 
 ### 6. Pick a Makefile profile
 
-Copy the closest reference implementation to the repo root and wire it to your stack:
+On a newly instantiated template that still has `profiles/`, copy the closest
+reference implementation to the repo root and wire it to your stack:
 ```bash
 cp profiles/python-uv/Makefile ./Makefile      # or typescript-node / terraform-gcp
 ```
-See [profiles/README.md](../../../profiles/README.md) for the canonical target contract.
+If a repository has removed those optional copies, implement the root Makefile from
+the [inherited Make target contract](../../../.ai/contracts/foundation/make-targets.md)
+instead. The copies are not required after the root Makefile is wired.
 After instantiation, `make doctor` rejects the template `not wired yet` implementation
 for required targets. If a target does not apply, replace it with an explicit
 repository-owned result such as `[project] build: not applicable — no deployable
