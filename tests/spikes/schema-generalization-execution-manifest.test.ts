@@ -47,10 +47,15 @@ function inputs() {
     schemas: [schema('schema-a', 'a'), schema('schema-b', 'b')],
   };
   const fixtureBytes = JSON.stringify(fixture);
+  const artifactBytes = {
+    runtime: 'runtime-bundle-v1',
+    prompt: 'prompt-bundle-v1',
+    configuration: 'configuration-bundle-v1',
+  };
   const pipeline = {
-    runtime: '1'.repeat(64),
-    prompt: '2'.repeat(64),
-    configuration: '3'.repeat(64),
+    runtime: sha256(artifactBytes.runtime),
+    prompt: sha256(artifactBytes.prompt),
+    configuration: sha256(artifactBytes.configuration),
   };
   const plan = {
     version: 1,
@@ -75,12 +80,14 @@ function inputs() {
       },
     ],
   };
-  return { fixture, fixtureBytes, plan, authorization, pipeline };
+  return { fixture, fixtureBytes, plan, authorization, pipeline, artifactBytes };
 }
 
 function runBuilder(
   mutate: (value: ReturnType<typeof inputs>) => void = () => undefined,
   preexistingOutput = false,
+  artifacts: 'all' | 'omit-arguments' | 'missing-runtime' = 'all',
+  outputIsRuntimeArtifact = false,
 ) {
   const directory = mkdtempSync(path.join(tmpdir(), 'execution-manifest-'));
   try {
@@ -89,14 +96,27 @@ function runBuilder(
     const fixturePath = path.join(directory, 'fixture.json');
     const planPath = path.join(directory, 'plan.json');
     const authorizationPath = path.join(directory, 'authorization.json');
-    const outputPath = path.join(directory, 'manifest.json');
+    const artifactPaths = {
+      runtime: path.join(directory, 'runtime.artifact'),
+      prompt: path.join(directory, 'prompt.artifact'),
+      configuration: path.join(directory, 'configuration.artifact'),
+    };
+    const outputPath = outputIsRuntimeArtifact
+      ? artifactPaths.runtime
+      : path.join(directory, 'manifest.json');
     writeFileSync(fixturePath, value.fixtureBytes);
     writeFileSync(planPath, JSON.stringify(value.plan));
     writeFileSync(authorizationPath, JSON.stringify(value.authorization));
+    for (const name of ['runtime', 'prompt', 'configuration'] as const) {
+      if (artifacts !== 'missing-runtime' || name !== 'runtime') {
+        writeFileSync(artifactPaths[name], value.artifactBytes[name]);
+      }
+    }
     if (preexistingOutput) writeFileSync(outputPath, '{"preserved":true}');
+    const artifactArguments = artifacts === 'omit-arguments' ? [] : Object.values(artifactPaths);
     const result = spawnSync(
       'python3',
-      [BUILDER, fixturePath, planPath, authorizationPath, outputPath],
+      [BUILDER, fixturePath, planPath, authorizationPath, ...artifactArguments, outputPath],
       { cwd: ROOT, encoding: 'utf8' },
     );
     return {
@@ -168,7 +188,10 @@ test('execution manifest exposes only authorized runtime inputs and planned runs
       },
     ],
   });
-  assert.doesNotMatch(output!, /SELECT 1|expected_rows|capabilities/);
+  assert.doesNotMatch(
+    output!,
+    /SELECT 1|expected_rows|capabilities|runtime-bundle-v1|prompt-bundle-v1|configuration-bundle-v1/,
+  );
 });
 
 test('authorization cannot add analysis settings or omit a fixture scope', () => {
@@ -346,4 +369,53 @@ test('execution manifest output is private and never overwritten', () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /output already exists/);
   assert.equal(output, '{"preserved":true}');
+});
+
+test('execution manifest requires pipeline artifact files before output', () => {
+  const { result, output } = runBuilder(() => undefined, false, 'omit-arguments');
+
+  assert.equal(result.status, 2);
+  assert.equal(output, undefined);
+});
+
+test('execution manifest rejects missing, empty, or changed pipeline artifact bytes', () => {
+  const cases = [
+    {
+      label: 'missing runtime',
+      run: () => runBuilder(() => undefined, false, 'missing-runtime'),
+      expected: /runtime artifact must be a non-empty regular file/,
+    },
+    {
+      label: 'empty prompt',
+      run: () =>
+        runBuilder((value) => {
+          value.artifactBytes.prompt = '';
+        }),
+      expected: /prompt artifact must be a non-empty regular file/,
+    },
+    {
+      label: 'changed configuration',
+      run: () =>
+        runBuilder((value) => {
+          value.artifactBytes.configuration = 'private-artifact-marker';
+        }),
+      expected: /evaluation plan must bind to the exact pipeline artifacts/,
+    },
+  ];
+
+  for (const { label, run, expected } of cases) {
+    const { result, output } = run();
+    assert.equal(result.status, 2, `${label}: ${result.stderr}`);
+    assert.match(result.stderr, expected, label);
+    assert.equal(output, undefined, label);
+    assert.doesNotMatch(result.stderr, /private-artifact-marker|execution-manifest-/, label);
+  }
+});
+
+test('execution manifest never overwrites a pipeline artifact', () => {
+  const { result, output, value } = runBuilder(() => undefined, false, 'all', true);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /manifest output must not overwrite an input/);
+  assert.equal(output, value.artifactBytes.runtime);
 });

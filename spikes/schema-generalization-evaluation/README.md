@@ -54,6 +54,8 @@ ID文字列だけでは本人性や実際の独立reviewを証明できず、別
 schema IDとscope fingerprintが異なる2件以上、各schemaの必須capability網羅、固定下限以上の閾値、
 各caseで閾値以上の計画runも出力前に検証します。これらは実行可能な評価計画の構造検査であり、
 未知schemaの品質やreviewの真正性を証明するものではありません。
+runtime・prompt・configurationの非空artifact fileも出力前に読み、正確なfile bytesのSHA-256を評価計画へ照合します。
+不一致を拒否しますが、そのfileが実際のprocessで使われたことまでは証明しません。
 manifestはschema／case ID、質問、run ID、pipeline fingerprint、dataset／tableの認可scopeだけを持ち、参照SQL、期待結果、
 capability、対象別profileや設定を拒否します。runtimeはreview fixtureではなく、このmanifestを入力にします。
 
@@ -376,7 +378,9 @@ failureを分母へ残す型付き記録、role別fingerprintを必須にしま�
 ```console
 python3 spikes/schema-generalization-evaluation/execution_manifest.py \
   /path/to/reviewed-fixture.json /path/to/evaluation-plan.json \
-  /path/to/authorization.json /secure/path/execution-manifest.json
+  /path/to/authorization.json /path/to/runtime.artifact \
+  /path/to/prompt.artifact /path/to/configuration.artifact \
+  /secure/path/execution-manifest.json
 python3 spikes/schema-generalization-evaluation/assemble.py \
   /path/to/reviewed-fixture.json /path/to/evaluation-plan.json \
   /path/to/recorded-runs.json \
