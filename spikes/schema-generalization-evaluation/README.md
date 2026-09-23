@@ -49,6 +49,8 @@ capabilityをevidenceへ結合します。run記録にはschema ID、case ID、
 渡しません。fileだけでは作成時刻や作成者を証明しないため、独立review記録と実行前の保全手続きは引き続き別途必要です。
 
 `execution_manifest.py`はreview済みfixture、評価計画、認可scopeを照合し、runtime専用manifestを`0600`で新規作成します。
+参照記録の必須field・型・非空値と、作成者とreviewerのIDが異なることも出力前に検証します。
+ID文字列だけでは本人性や実際の独立reviewを証明できず、別途review証跡が必要です。
 manifestはschema／case ID、質問、run ID、pipeline fingerprint、dataset／tableの認可scopeだけを持ち、参照SQL、期待結果、
 capability、対象別profileや設定を拒否します。runtimeはreview fixtureではなく、このmanifestを入力にします。
 
@@ -247,7 +249,9 @@ Issue #820では、この専用契約をrecordings version 7とevidence version 
 基盤障害を閉じた`failure_kind`で検証し、型付きSQL診断のprovider／infrastructure／cancelled categoryを
 基盤障害へ分類します。基盤障害は品質率の分母から除外して件数を独立集計し、1件でもあれば不合格です。
 rendererの安全な基盤例外はIssue #822、preflightの安全な基盤例外はIssue #824で接続しました。
-planning、SQL生成、meterから伝播する安全な基盤例外の接続は後続sliceです。
+planningとSQL生成のprovider呼出し失敗は応答usageを取得できず、meterが計測不能として評価を停止します。
+meter自身の計測不能エラーもrun費用を推測して記録しません。これらを基盤障害runへ変換するのは、
+完全なusageを観測できる新しい境界が実証された場合だけです。
 
 ### 明示的な非対象
 

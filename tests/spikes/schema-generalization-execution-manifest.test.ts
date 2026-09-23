@@ -25,7 +25,14 @@ function inputs() {
           {
             case_id: 'case-a',
             question: '認可済みデータを集計して',
-            reference: { sql: 'SELECT 1', expected_rows: [{ value: 1 }] },
+            reference: {
+              sql: 'SELECT 1',
+              expected_rows: [{ value: 1 }],
+              row_order: 'unordered',
+              author_id: 'author-a',
+              reviewer_id: 'reviewer-a',
+              reviewed_at: '2026-09-23T00:00:00Z',
+            },
             capabilities: ['join'],
           },
         ],
@@ -93,6 +100,17 @@ function runBuilder(
   }
 }
 
+function runWithReference(mutate: (reference: Record<string, unknown>) => void) {
+  return runBuilder((value) => {
+    const reference = value.fixture.schemas[0]!.cases[0]!.reference as Record<string, unknown>;
+    reference.sql = 'SELECT sensitive_marker FROM private_table';
+    reference.expected_rows = [{ value: 'private-row-marker' }];
+    mutate(reference);
+    value.fixtureBytes = JSON.stringify(value.fixture);
+    value.plan.reviewed_fixture_sha256 = sha256(value.fixtureBytes);
+  });
+}
+
 test('execution manifest exposes only authorized runtime inputs and planned runs', () => {
   const { result, value, output, mode } = runBuilder();
 
@@ -137,6 +155,84 @@ test('authorization cannot add analysis settings or omit a fixture scope', () =>
   assert.equal(missingScope.result.status, 2);
   assert.match(missingScope.result.stderr, /must match fixture schema IDs exactly/);
   assert.equal(missingScope.output, undefined);
+});
+
+test('execution manifest rejects incomplete or unreviewed reference records before output', () => {
+  for (const [label, mutate, expected] of [
+    [
+      'missing reviewer',
+      (reference: Record<string, unknown>) => delete reference.reviewer_id,
+      /fixture reference fields are invalid/,
+    ],
+    [
+      'extra field',
+      (reference: Record<string, unknown>) => {
+        reference.note = 'private-note-marker';
+      },
+      /fixture reference fields are invalid/,
+    ],
+    [
+      'self review',
+      (reference: Record<string, unknown>) => {
+        reference.reviewer_id = ' author-a ';
+      },
+      /fixture reference reviewer must differ from author/,
+    ],
+    [
+      'invalid order',
+      (reference: Record<string, unknown>) => {
+        reference.row_order = 'sometimes';
+      },
+      /fixture reference values are invalid/,
+    ],
+    [
+      'missing rows',
+      (reference: Record<string, unknown>) => {
+        reference.expected_rows = null;
+      },
+      /fixture reference values are invalid/,
+    ],
+    [
+      'blank SQL',
+      (reference: Record<string, unknown>) => {
+        reference.sql = ' ';
+      },
+      /fixture reference values are invalid/,
+    ],
+    [
+      'invalid author',
+      (reference: Record<string, unknown>) => {
+        reference.author_id = null;
+      },
+      /fixture reference values are invalid/,
+    ],
+    [
+      'blank review time',
+      (reference: Record<string, unknown>) => {
+        reference.reviewed_at = ' ';
+      },
+      /fixture reference values are invalid/,
+    ],
+  ] as const) {
+    const { result, output } = runWithReference(mutate);
+
+    assert.equal(result.status, 2, `${label}: ${result.stderr}`);
+    assert.match(result.stderr, expected, label);
+    assert.equal(output, undefined, label);
+    assert.doesNotMatch(
+      result.stderr,
+      /sensitive_marker|private-row-marker|private-note-marker/,
+      label,
+    );
+  }
+});
+
+test('execution manifest does not include a valid private reference', () => {
+  const { result, output } = runWithReference(() => undefined);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(output);
+  assert.doesNotMatch(output, /sensitive_marker|private-row-marker|expected_rows|reference/);
 });
 
 test('execution manifest output is private and never overwritten', () => {

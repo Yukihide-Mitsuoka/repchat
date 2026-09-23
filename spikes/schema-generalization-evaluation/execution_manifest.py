@@ -26,6 +26,14 @@ from evaluation_plan import validate_evaluation_plan  # noqa: E402 - local impor
 FIXTURE_KEYS = {"version", "thresholds", "schemas"}
 FIXTURE_SCHEMA_KEYS = {"schema_id", "scope_snapshot_fingerprint", "cases"}
 FIXTURE_CASE_KEYS = {"case_id", "question", "reference", "capabilities"}
+REFERENCE_KEYS = {
+    "sql",
+    "expected_rows",
+    "row_order",
+    "author_id",
+    "reviewer_id",
+    "reviewed_at",
+}
 AUTHORIZATION_KEYS = {"version", "schemas"}
 AUTHORIZATION_SCHEMA_KEYS = {"schema_id", "datasets", "tables"}
 
@@ -34,6 +42,25 @@ def _require_fields(value: Any, expected: set[str], message: str) -> dict[str, A
     if not isinstance(value, dict) or set(value) != expected:
         raise EvaluationEvidenceError(message)
     return value
+
+
+def _validate_reference(value: Any) -> None:
+    reference = _require_fields(
+        value, REFERENCE_KEYS, "fixture reference fields are invalid"
+    )
+    if (
+        not isinstance(reference["expected_rows"], list)
+        or reference["row_order"] not in ("ordered", "unordered")
+        or any(
+            not isinstance(reference[key], str) or not reference[key].strip()
+            for key in ("sql", "author_id", "reviewer_id", "reviewed_at")
+        )
+    ):
+        raise EvaluationEvidenceError("fixture reference values are invalid")
+    if reference["author_id"].strip() == reference["reviewer_id"].strip():
+        raise EvaluationEvidenceError(
+            "fixture reference reviewer must differ from author"
+        )
 
 
 def _fixture_cases(fixture: Any) -> tuple[list[str], dict[tuple[str, str], str]]:
@@ -60,6 +87,7 @@ def _fixture_cases(fixture: Any) -> tuple[list[str], dict[tuple[str, str], str]]
         schema_ids.append(schema_id)
         for raw_case in schema["cases"]:
             case = _require_fields(raw_case, FIXTURE_CASE_KEYS, "fixture case fields are invalid")
+            _validate_reference(case["reference"])
             key = (schema_id, case["case_id"])
             question = case["question"]
             if (
