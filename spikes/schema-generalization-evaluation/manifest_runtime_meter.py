@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import math
+import json
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit
 
 from manifest_artifacts import RunMeasurement, run_measured_manifest_evaluation
 from manifest_rendering import RenderingAttempt
@@ -17,6 +20,118 @@ TIB = 2**40
 
 class RuntimeMeasurementError(ValueError):
     """A run cannot produce complete, trustworthy provider accounting."""
+
+
+@dataclass(frozen=True)
+class PricingSnapshot:
+    """Reviewed rate provenance and supported billing scope for one evaluation."""
+
+    captured_at: datetime
+    source_url: str
+    currency: str
+    model: str
+    region: str
+    vertex_tier: str
+    bigquery_billing: str
+    vertex_input_jpy_per_million: str
+    vertex_output_jpy_per_million: str
+    bigquery_jpy_per_tib: str
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> PricingSnapshot:
+        """Read a bounded, exact-schema JSON snapshot without accepting duplicate keys."""
+        try:
+            with Path(path).open("rb") as snapshot_file:
+                content = snapshot_file.read(16_385)
+            if len(content) > 16_384:
+                raise RuntimeMeasurementError("pricing snapshot file is too large")
+
+            def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+                result: dict[str, Any] = {}
+                for name, value in pairs:
+                    if name in result:
+                        raise RuntimeMeasurementError("pricing snapshot has duplicate fields")
+                    result[name] = value
+                return result
+
+            data = json.loads(content.decode("utf-8"), object_pairs_hook=unique_pairs)
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise RuntimeMeasurementError("pricing snapshot file is unreadable") from error
+        if not isinstance(data, dict):
+            raise RuntimeMeasurementError("pricing snapshot must be an object")
+        expected = set(cls.__dataclass_fields__)
+        if set(data) != expected:
+            raise RuntimeMeasurementError("pricing snapshot fields are incomplete or unknown")
+        captured = data["captured_at"]
+        if not isinstance(captured, str):
+            raise RuntimeMeasurementError("pricing snapshot capture time is invalid")
+        try:
+            data["captured_at"] = datetime.fromisoformat(captured)
+        except ValueError as error:
+            raise RuntimeMeasurementError("pricing snapshot capture time is invalid") from error
+        return cls(**data)
+
+    def pricing_for(self, model: str, region: str, execution_date: date) -> RuntimePricing:
+        """Reject unsupported rates and mismatched execution inputs before I/O."""
+        if (
+            type(self.captured_at) is not datetime
+            or self.captured_at.tzinfo is None
+            or self.captured_at.utcoffset() is None
+            or type(execution_date) is not date
+            or self.captured_at.date() > execution_date
+        ):
+            raise RuntimeMeasurementError("pricing snapshot capture date is invalid")
+        try:
+            source = urlsplit(self.source_url) if isinstance(self.source_url, str) else None
+        except ValueError as error:
+            raise RuntimeMeasurementError("pricing snapshot source URL is invalid") from error
+        if (
+            source is None
+            or source.scheme != "https"
+            or not source.hostname
+            or source.geturl() != self.source_url
+            or source.username is not None
+            or source.password is not None
+        ):
+            raise RuntimeMeasurementError("pricing snapshot source URL is invalid")
+        if (
+            self.currency != "JPY"
+            or self.vertex_tier != "standard-text"
+            or self.bigquery_billing != "on-demand"
+        ):
+            raise RuntimeMeasurementError("pricing snapshot billing scope is unsupported")
+        if (
+            not isinstance(model, str)
+            or not model.strip()
+            or not isinstance(region, str)
+            or not region.strip()
+            or self.model != model
+            or self.region != region
+        ):
+            raise RuntimeMeasurementError("pricing snapshot model or region does not match")
+        rates = []
+        for field_name in (
+            "vertex_input_jpy_per_million",
+            "vertex_output_jpy_per_million",
+            "bigquery_jpy_per_tib",
+        ):
+            raw = getattr(self, field_name)
+            if not isinstance(raw, str):
+                raise RuntimeMeasurementError("pricing snapshot rate is invalid")
+            try:
+                value = Decimal(raw)
+            except InvalidOperation as error:
+                raise RuntimeMeasurementError("pricing snapshot rate is invalid") from error
+            converted = float(value)
+            if (
+                not value.is_finite()
+                or value <= 0
+                or not math.isfinite(converted)
+                or converted <= 0
+            ):
+                raise RuntimeMeasurementError("pricing snapshot rate is invalid")
+            rates.append(converted)
+        return RuntimePricing(*rates)
 
 
 def _non_negative_number(value: Any, name: str) -> float:
@@ -264,10 +379,15 @@ def run_runtime_metered_manifest_evaluation(
     *,
     as_of: date,
     output_directory: str | Path,
-    pricing: RuntimePricing,
+    pricing_snapshot: PricingSnapshot,
+    region: str,
+    execution_date: date,
     rendering_runner: Callable[..., tuple[RenderingAttempt, ...]] | None = None,
 ) -> dict[str, Path]:
     """Instrument the exact clients used by the measured manifest entry."""
+    if not isinstance(pricing_snapshot, PricingSnapshot):
+        raise RuntimeMeasurementError("pricing snapshot is required")
+    pricing = pricing_snapshot.pricing_for(model, region, execution_date)
     meter = RuntimeMeter(pricing)
     measured_bq, measured_vertex = meter.instrument(bq, vertex)
     options: dict[str, Any] = {}

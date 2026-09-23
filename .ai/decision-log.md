@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-09-23 | ADR-0027 (accepted) | リポジトリオーナーがPR #835をmergeし、実評価の固定計画、価格snapshot、呼出し前予算予約を承認した。これは個別の有料実行承認ではなく、scopeと最大費用を提示して別途承認を得る | [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md), [PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835) |
 | 2026-09-23 | ADR-0027 (proposed) | 未知schemaの実評価では、認可scope・独立review済みfixture・固定計画・価格snapshot・承認上限を結合し、各provider呼出し前に保守的な最大費用を予約する案。上界を証明できない呼出しと不明なusageは停止し、ADR承認前は実装・有料実行しない | [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md), [Issue #834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834) |
 | 2026-09-20 | ADR-0025 preflight failure evidence | 計画済みrunがscope discoveryまたはanalysis contract生成で停止した場合も、未取得fingerprintを捏造せず`null`として分母へ残す。artifactは各stageを完了したrunがあるschema／caseにだけ要求し、不要・重複・必要artifactの欠落とstage不整合を拒否する | [evaluation harness](../spikes/schema-generalization-evaluation/README.md), [ADR-0025](../docs/adr/0025-discover-analysis-contracts-without-source-specific-code.md) |
 | 2026-09-20 | ADR-0025 evaluated run failure stages | 未知schema評価の計画済みrunは途中停止しても除外せず、対象非依存の固定stageと小文字machine codeを記録して成功率・一致率の分母へ残す。raw provider messageを保存せず、stageと生成SQL・実行・結果・描画・bytesの矛盾を拒否し、schema別stage件数だけをreportする | [evaluation harness](../spikes/schema-generalization-evaluation/README.md), [ADR-0025](../docs/adr/0025-discover-analysis-contracts-without-source-specific-code.md) |

@@ -168,6 +168,15 @@ else:raise AssertionError('unmeasured preflight failure was recorded')
 test('metered evaluation instruments the exact clients passed to the renderer', () => {
   assertPython(String.raw`
 ${setup}
+from datetime import date,datetime,timezone
+snapshot=runtime.PricingSnapshot(
+ captured_at=datetime(2026,9,23,tzinfo=timezone.utc),
+ source_url='https://cloud.google.com/vertex-ai/generative-ai/pricing',
+ currency='JPY',model='model',region='asia-northeast1',
+ vertex_tier='standard-text',bigquery_billing='on-demand',
+ vertex_input_jpy_per_million='1000000',
+ vertex_output_jpy_per_million='2000000',bigquery_jpy_per_tib=str(2**40),
+)
 seen=[]
 def evaluation(manifest,bq,vertex,model,**kwargs):
  assert (manifest,model)==({'manifest':True},'model')
@@ -181,8 +190,78 @@ def evaluation(manifest,bq,vertex,model,**kwargs):
 runtime.run_measured_manifest_evaluation=evaluation
 result=runtime.run_runtime_metered_manifest_evaluation(
  {'manifest':True},BQ([Job(5,7)]),Vertex([response(2,3)]),'model',
- as_of=object(),output_directory='out',pricing=pricing,
+ as_of=date(2026,9,1),output_directory='out',pricing_snapshot=snapshot,
+ region='asia-northeast1',execution_date=date(2026,9,23),
 )
 assert result=={'recordings':'path'} and seen==[(5,15)]
+`);
+});
+
+test('pricing snapshot rejects unsupported or mismatched billing before any provider call', () => {
+  assertPython(String.raw`
+${setup}
+from dataclasses import replace
+from datetime import date,datetime,timezone
+snapshot=runtime.PricingSnapshot(
+ captured_at=datetime(2026,9,23,tzinfo=timezone.utc),
+ source_url='https://cloud.google.com/vertex-ai/generative-ai/pricing',
+ currency='JPY',model='model',region='asia-northeast1',
+ vertex_tier='standard-text',bigquery_billing='on-demand',
+ vertex_input_jpy_per_million='100',vertex_output_jpy_per_million='200',
+ bigquery_jpy_per_tib='300',
+)
+class NoCalls:
+ def __getattr__(self,_name):raise AssertionError('provider touched')
+for bad,model,region,day in (
+ (snapshot,'other','asia-northeast1',date(2026,9,23)),
+ (snapshot,'model','us-central1',date(2026,9,23)),
+ (snapshot,'model','asia-northeast1',date(2026,9,22)),
+ (replace(snapshot,currency='USD'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,vertex_tier='grounded'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,bigquery_billing='capacity'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,vertex_input_jpy_per_million='NaN'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,vertex_output_jpy_per_million='1e-9999'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,bigquery_jpy_per_tib='-1'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,source_url='http://example.com/pricing'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,source_url='https://example.com/pricing\n'),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,captured_at=datetime(2026,9,24,tzinfo=timezone.utc)),'model','asia-northeast1',date(2026,9,23)),
+ (replace(snapshot,captured_at=datetime(2026,9,23)),'model','asia-northeast1',date(2026,9,23)),
+):
+ try:runtime.run_runtime_metered_manifest_evaluation(
+  {},NoCalls(),NoCalls(),model,as_of=date(2026,9,1),output_directory='out',
+  pricing_snapshot=bad,region=region,execution_date=day,
+ )
+ except runtime.RuntimeMeasurementError:pass
+ else:raise AssertionError('invalid pricing was accepted')
+`);
+});
+
+test('pricing snapshot file rejects missing, unknown and duplicate fields', () => {
+  assertPython(String.raw`
+${setup}
+import json,tempfile
+from pathlib import Path
+from datetime import date
+data={
+ 'captured_at':'2026-09-23T00:00:00+00:00',
+ 'source_url':'https://cloud.google.com/vertex-ai/generative-ai/pricing',
+ 'currency':'JPY','model':'model','region':'asia-northeast1',
+ 'vertex_tier':'standard-text','bigquery_billing':'on-demand',
+ 'vertex_input_jpy_per_million':'100',
+ 'vertex_output_jpy_per_million':'200','bigquery_jpy_per_tib':'300',
+}
+with tempfile.TemporaryDirectory() as root:
+ path=Path(root)/'pricing.json'
+ path.write_text(json.dumps(data))
+ snapshot=runtime.PricingSnapshot.from_file(path)
+ assert snapshot.pricing_for('model','asia-northeast1',date(2026,9,23)).bigquery_jpy_per_tib==300
+ for content in (json.dumps({k:v for k,v in data.items() if k!='currency'}),
+                 json.dumps(data|{'unknown':'x'}),
+                 json.dumps(data)[:-1]+',"currency":"JPY"}',
+                 ' '*16385):
+  path.write_text(content)
+  try:runtime.PricingSnapshot.from_file(path)
+  except runtime.RuntimeMeasurementError:pass
+  else:raise AssertionError('invalid snapshot file was accepted')
 `);
 });

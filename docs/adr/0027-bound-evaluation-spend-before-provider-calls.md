@@ -1,7 +1,7 @@
 ---
 id: adr-0027
 title: ADR-0027 — 実評価の承認と予算境界をprovider呼出し前に固定する
-status: proposed
+status: accepted
 updated: 2026-09-23
 ---
 
@@ -9,7 +9,7 @@ updated: 2026-09-23
 
 | Field | Value |
 |-------|-------|
-| Status | proposed |
+| Status | accepted — repository owner merged PR #835 on 2026-09-23 |
 | Date | 2026-09-23 |
 | Deciders | repository owner |
 | Author | Codex |
@@ -51,7 +51,8 @@ provider操作では評価を開始しない。実装と回帰テストは増え
 
 ## Decision
 
-Option 3を提案する。人間が本ADRを承認するまで実provider評価commandと予算制御を実装しない。
+Option 3を採用する。リポジトリオーナーは2026-09-23にPR #835をマージして本設計を承認した。
+個別の有料評価実行は、この設計承認とは別に具体的な費用承認を要する。
 
 ### D1. 承認対象を1つの不変な評価計画に結び付ける
 
@@ -111,10 +112,9 @@ usage不明、出力非上書き、計画runの欠落を検証する。公式fix
 
 **Follow-ups:**
 
-1. オーナーが本ADRを承認、修正または却下する。
-2. 承認後、価格snapshot・承認計画のoffline検証、呼出し前budget gate、fake client回帰を小さいPRへ分割する。
-3. 実行条件を満たせるmodel・料金を確認し、公式fixtureと独立review証跡を用意する。
-4. 具体的なscopeと最大費用を提示し、その計画に限る実行承認を得てから有料評価する。
+1. 価格snapshot・承認計画のoffline検証、呼出し前budget gate、fake client回帰を小さいPRへ分割する。
+2. 実行条件を満たせるmodel・料金を確認し、公式fixtureと独立review証跡を用意する。
+3. 具体的なscopeと最大費用を提示し、その計画に限る実行承認を得てから有料評価する。
 
 ## Rollback
 

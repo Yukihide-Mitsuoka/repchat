@@ -48,6 +48,6 @@ title: プロジェクトのアーキテクチャ意思決定記録
 | [0024](0024-build-analysis-context-from-inspected-schema.md) | 承認済み接続先のschemaから共通分析契約を作る | superseded by ADR-0025 | 2026-09-05 |
 | [0025](0025-discover-analysis-contracts-without-source-specific-code.md) | 分析対象固有のコードや設定なしに分析契約を自動生成する | accepted | 2026-09-12 |
 | [0026](0026-prioritize-target-independent-readiness.md) | 分析対象非依存の準備完了を製品機能より先にする | accepted | 2026-09-15 |
-| [0027](0027-bound-evaluation-spend-before-provider-calls.md) | 実評価の承認と予算境界をprovider呼出し前に固定する | proposed | 2026-09-23 |
+| [0027](0027-bound-evaluation-spend-before-provider-calls.md) | 実評価の承認と予算境界をprovider呼出し前に固定する | accepted | 2026-09-23 |
 
 <!-- 新しいプロジェクトADRを末尾に追加する。 -->
