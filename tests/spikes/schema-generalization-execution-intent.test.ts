@@ -112,6 +112,47 @@ test('execution intent binds complete planned runs, scope, pricing and spending 
   assert.equal(result.stderr, '');
 });
 
+test('validated execution intent exposes exact Decimal budget limits to the gate', () => {
+  const value = validInputs(path.join(tmpdir(), 'intent-budget-output'));
+  const large = validInputs(path.join(tmpdir(), 'intent-large-budget-output'));
+  large.intent.vertex_budget_jpy = '10000000000000000000000000000000';
+  large.intent.bigquery_budget_jpy = '1';
+  large.intent.total_budget_jpy = '10000000000000000000000000000001';
+  const script = `
+import json,sys
+from datetime import date
+from decimal import Decimal
+sys.path.insert(0,${JSON.stringify(path.join(ROOT, 'spikes/schema-generalization-evaluation'))})
+from execution_intent import validate_execution_intent
+from execution_budget import BudgetLimits
+for data,expected in json.load(sys.stdin):
+ encoded=lambda name:json.dumps(data[name],ensure_ascii=False,separators=(',',':')).encode()
+ limits=validate_execution_intent(
+  data['intent'],encoded('plan'),data['plan'],encoded('manifest'),data['manifest'],encoded('pricing'),
+  model='model',region='asia-northeast1',as_of=date(2026,9,1),
+  execution_date=date(2026,9,23),output_directory=data['intent']['output_directory'],
+ )
+ assert limits==BudgetLimits(*(Decimal(amount) for amount in expected))
+`;
+  const result = spawnSync('python3', ['-c', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    input: JSON.stringify([
+      [value, ['100', '25', '110']],
+      [
+        large,
+        [
+          large.intent.vertex_budget_jpy,
+          large.intent.bigquery_budget_jpy,
+          large.intent.total_budget_jpy,
+        ],
+      ],
+    ]),
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('execution intent rejects changed artifacts and inconsistent run identities', () => {
   const cases = [
     (value: ReturnType<typeof validInputs>) => {
