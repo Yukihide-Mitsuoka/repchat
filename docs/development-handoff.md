@@ -350,8 +350,10 @@ Issue #832もclose済みです。実provider呼出しは行っていません。
 現在は[Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839)／
 [PR #841](https://github.com/Yukihide-Mitsuoka/repchat/pull/841)で、評価計画・認可scope入りmanifest・
 価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証がmerge済みです。
-現在の[Issue #846](https://github.com/Yukihide-Mitsuoka/repchat/issues/846)では、検証済み上限を受け取る
-逐次budget ledgerをfake操作で回帰します。実providerへの接続、呼出し上界の証明、個別承認は後続です。
+現在の[Issue #846](https://github.com/Yukihide-Mitsuoka/repchat/issues/846)／
+[PR #847](https://github.com/Yukihide-Mitsuoka/repchat/pull/847)では、検証済み上限を受け取る
+逐次budget ledgerをfake操作で回帰済みです。ローカルの`make format`、`make lint`、`make test`は成功しました。
+実providerへの接続、呼出し上界の証明、個別承認は後続です。
 次はprovider adapterの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
