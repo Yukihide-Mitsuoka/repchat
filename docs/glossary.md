@@ -1,7 +1,7 @@
 ---
 id: project-glossary
 title: プロジェクト用語集
-updated: 2026-08-09
+updated: 2026-09-23
 ---
 
 # プロジェクト用語集
@@ -25,6 +25,7 @@ RepChat固有のユビキタス言語を定義します。コード識別子、�
 | 派生ダッシュボード | AI生成または既存dashboardを親に持ち、固定したpanel revisionとlayoutを合成する利用者編集可能な新しいdashboard revision | dashboard編集、公開 | AI生成dashboardの上書き | AI生成原本、空dashboard、panel revision |
 | 施策案（Action Proposal） | AIまたは人間が、分析根拠、目的、KPI、期間、対象、予算案とともに作る未確定の施策候補 | 会議意思決定、施策検討 | 実行指示、広告発注 | 承認済みaction revision、施策パッケージ |
 | 施策パッケージ（Action Package） | 人間が承認した施策案を、tenant・scope、根拠、承認、有効期限、schema versionとともに外部連携用の不変revisionへ固定したprovider非依存の契約 | developer API、外部施策連携 | 支出命令、媒体別入稿データ | 施策案、CSV export profile、execution adapter、external outcome |
+| 価格snapshot（PricingSnapshot） | 評価に適用する料金の取得日時・出典・通貨・model・region・tier・課金方式・単価を固定した入力。承認額や請求額の証明ではない | 未知schema評価 | 実請求額、無料枠 | 実行承認、呼出し前予算予約、事後計測 |
 
 ## 解決済みの曖昧さ
 

@@ -344,11 +344,13 @@ file一致はprocess-level attestationではありません。回帰テストは
 修正後の`make format`、`make lint`、`make test`は成功しました。
 [PR #833](https://github.com/Yukihide-Mitsuoka/repchat/pull/833)は2026-09-23にmerge済みで、
 Issue #832もclose済みです。実provider呼出しは行っていません。
-次は[Issue #834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834)／
-[PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835)で、
-費用承認と呼出し前の予算境界を[ADR-0027（提案中）](adr/0027-bound-evaluation-spend-before-provider-calls.md)へ
-固定します。人間がADRを承認するまでは実評価commandを実装しません。その後、公式fixtureの独立review、
-価格snapshot・認可scope・承認計画のoffline検証、呼出し前budget gateと無料回帰を順に実装します。
+次の[Issue #834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834)／
+[PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835)は2026-09-23にmerge済みです。
+費用承認と呼出し前の予算境界を[ADR-0027（承認済み）](adr/0027-bound-evaluation-spend-before-provider-calls.md)へ
+固定しました。現在は[Issue #837](https://github.com/Yukihide-Mitsuoka/repchat/issues/837)／
+[PR #838](https://github.com/Yukihide-Mitsuoka/repchat/pull/838)で、価格snapshotの形式・適用範囲と
+実行入口のmodel・region・日付照合をofflineで実装中です。
+その後、公式fixtureの独立review、認可scope・承認計画のoffline検証、呼出し前budget gateと無料回帰を順に実装します。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
@@ -439,7 +441,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。次は[#834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834)／ADR-0027で承認対象と呼出し前budget gateを設計する。ADRが人間に承認された後、offline検証と無料回帰を実装してから公式fixtureと有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835で承認済み。現在は[#837](https://github.com/Yukihide-Mitsuoka/repchat/issues/837)の価格snapshot照合を実装し、次に承認計画のoffline検証と呼出し前budget gateを無料回帰で固定する。完了後に公式fixtureと有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |

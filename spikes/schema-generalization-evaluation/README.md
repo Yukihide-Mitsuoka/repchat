@@ -129,7 +129,12 @@ token usage、全BigQuery query jobの実処理bytesと課金bytes、dry runの�
 完了していないjob、欠落・矛盾したprovider metadata、応答を得られないprovider例外は計測不能として拒否します。
 費用は明示的なtoken／TiB単価と実測usageだけから計算し、呼出し回数や成功stageから推測しません。
 `run_runtime_metered_manifest_evaluation`はこのproxyを計測付きmanifest実行入口へ渡し、実行に使うclientと
-計測するclientを同一にします。価格は呼出し側の明示入力が必須で、ここではprovider接続や有料実行を開始しません。
+計測するclientを同一にします。`PricingSnapshot.from_file`は取得日時、出典URL、通貨、model、region、
+Vertex tier、BigQuery課金方式、入力・出力100万tokenとBigQuery 1 TiBの円建て単価を持つJSONを厳密に読みます。
+重複・未知・欠落fieldを拒否し、実行入口は`model`、`region`、`execution_date`をsnapshotへ照合してから
+計測clientを作ります。`as_of`は分析対象データの日付であり、価格取得日や実行日ではありません。
+現時点で受理する範囲はJPY、`standard-text`、BigQuery `on-demand`だけです。snapshot内の単価は
+実行前予算予約ではなく事後計測に使います。provider接続・合計予算制御・有料実行commandは未実装です。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
@@ -225,9 +230,9 @@ CI logやrepositoryへ保存しません。
 実データを集めると、同じrunが実装版によって安全違反、品質失敗、評価無効のどれにもなり得るためです。
 順序4以降では、最初のrun前に固定したfixture、計画、pipeline artifact、価格snapshotを最後まで変更しません。
 
-順序4の費用承認と予算制御の設計は[ADR-0027（提案中）](../../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md)を
+順序4の費用承認と予算制御の設計は[ADR-0027（承認済み）](../../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md)を
 正本とします。現行のmeterは実行後の使用量・費用集計であり、評価全体の上限を強制しません。
-BigQueryのquery単位の`maximum_bytes_billed`だけでも合計上限にはなりません。ADRが人間に承認され、
+BigQueryのquery単位の`maximum_bytes_billed`だけでも合計上限にはなりません。
 呼出し前budget gateと無料回帰が実装されるまで、有料評価commandを実行可能にしません。
 
 順序1の最初のsliceとして、共通SQL validatorは閉じたcode、category、安全な固定messageを返す
