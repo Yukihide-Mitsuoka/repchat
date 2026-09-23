@@ -344,7 +344,8 @@ file一致はprocess-level attestationではありません。回帰テストは
 修正後の`make format`、`make lint`、`make test`は成功しました。
 [PR #833](https://github.com/Yukihide-Mitsuoka/repchat/pull/833)は2026-09-23にmerge済みで、
 Issue #832もclose済みです。実provider呼出しは行っていません。
-次は[Issue #834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834)で、
+次は[Issue #834](https://github.com/Yukihide-Mitsuoka/repchat/issues/834)／
+[PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835)で、
 費用承認と呼出し前の予算境界を[ADR-0027（提案中）](adr/0027-bound-evaluation-spend-before-provider-calls.md)へ
 固定します。人間がADRを承認するまでは実評価commandを実装しません。その後、公式fixtureの独立review、
 価格snapshot・認可scope・承認計画のoffline検証、呼出し前budget gateと無料回帰を順に実装します。
