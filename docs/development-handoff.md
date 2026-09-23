@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-23
+updated: 2026-09-24
 ---
 
 # 開発引き継ぎ
@@ -350,11 +350,14 @@ Issue #832もclose済みです。実provider呼出しは行っていません。
 現在は[Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839)／
 [PR #841](https://github.com/Yukihide-Mitsuoka/repchat/pull/841)で、評価計画・認可scope入りmanifest・
 価格snapshotの正確なbytes、実行条件、provider別・合計上限を結び付けるoffline検証がmerge済みです。
-現在の[Issue #846](https://github.com/Yukihide-Mitsuoka/repchat/issues/846)／
-[PR #847](https://github.com/Yukihide-Mitsuoka/repchat/pull/847)では、検証済み上限を受け取る
-逐次budget ledgerをfake操作で回帰済みです。ローカルの`make format`、`make lint`、`make test`は成功しました。
-実providerへの接続、呼出し上界の証明、個別承認は後続です。
-次はprovider adapterの無料回帰と公式fixtureの独立reviewです。
+検証済み上限を受け取る逐次budget ledgerは
+[PR #847](https://github.com/Yukihide-Mitsuoka/repchat/pull/847)でmerge済み、Issue #846もclose済みです。
+現在の[Issue #849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849)／
+[PR #850](https://github.com/Yukihide-Mitsuoka/repchat/pull/850)では、BigQuery on-demand queryの
+`maximum_bytes_billed`と検証済み価格から、呼出し前予約額を正確なDecimalで算定する無料回帰を追加しました。
+ローカルの`make format`、`make lint`、`make test`は成功しています。
+これは上界の計算だけであり、実providerへの接続、Vertex上界の証明、個別承認は後続です。
+次はBigQuery provider adapterの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
@@ -445,7 +448,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835、価格snapshot照合はPR #838、承認対象offline照合はPR #841でmerge済み。現在は[#846](https://github.com/Yukihide-Mitsuoka/repchat/issues/846)の逐次budget ledgerを無料回帰で固定し、その後provider adapterと呼出し上界を検証する。完了後に公式fixtureと有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835、価格snapshot照合はPR #838、承認対象offline照合はPR #841、逐次budget ledgerはPR #847でmerge済み。現在は[#849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849)でBigQueryの呼出し上界を算定し、後続でprovider adapterとVertex上界を検証する。完了後に公式fixtureと有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
