@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v4.0.0...v4.1.0) (2026-09-23)
+
+
+### Features
+
+* **evaluation:** BigQuery呼出しの費用上界をofflineで算定する ([#850](https://github.com/Yukihide-Mitsuoka/repchat/issues/850)) ([abb6a04](https://github.com/Yukihide-Mitsuoka/repchat/commit/abb6a04f1290366d37150903e387ef44f5d4ab0a))
+* **evaluation:** 実評価の逐次予算予約をofflineで検証する ([#847](https://github.com/Yukihide-Mitsuoka/repchat/issues/847)) ([a8a7772](https://github.com/Yukihide-Mitsuoka/repchat/commit/a8a7772dde79a5df0df7a527eca2026e01a43d94))
+
 ## [4.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v3.0.0...v4.0.0) (2026-09-23)
 
 
