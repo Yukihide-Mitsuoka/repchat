@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-09-24 | ADR-0027 BigQuery bound calculation | on-demand queryの予約額は検証済みJPY/TiB単価と明示的な`maximum_bytes_billed`からDecimalで小数第6位へ切り上げる。未指定上限、dry run、destination・connection設定はこの有料query算定境界で拒否し、算定のみをprovider接続・実行承認とみなさない | [Issue #849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
 | 2026-09-24 | ADR-0027 offline budget ledger | 検証済み実行意図のJPY上限から逐次ledgerを作り、各操作前にprovider別・合計残額を予約する。実測が不明・超過・例外の場合は未解決予約を保持して後続操作を停止する。実provider接続と保守的な呼出し上界の証明は別の境界とし、このledger単独で有料実行を認めない | [Issue #846](https://github.com/Yukihide-Mitsuoka/repchat/issues/846), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
 | 2026-09-23 | ADR-0027 offline intent binding | 実行意図は評価計画・認可scope入りmanifest・価格snapshotの正確なbytesと、model・region・日付・出力先・provider別および合計円建て上限へ固定する。合計上限はprovider別上限の和以下とし、offline一致は承認者本人性または呼出し前の課金制御の証明としない | [evaluation harness](../spikes/schema-generalization-evaluation/README.md), [Issue #839](https://github.com/Yukihide-Mitsuoka/repchat/issues/839) |
 | 2026-09-23 | ADR-0027 (accepted) | リポジトリオーナーがPR #835をmergeし、実評価の固定計画、価格snapshot、呼出し前予算予約を承認した。これは個別の有料実行承認ではなく、scopeと最大費用を提示して別途承認を得る | [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md), [PR #835](https://github.com/Yukihide-Mitsuoka/repchat/pull/835) |
