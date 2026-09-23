@@ -1,3 +1,4 @@
+import re
 import unittest
 from pathlib import Path
 
@@ -17,6 +18,12 @@ PROJECT_DOCUMENTATION_GUIDE = (
     / "foundation"
     / "guides"
     / "project-documentation.md"
+)
+INHERITED_GUIDES = REPOSITORY_ROOT / "docs" / "foundation" / "guides"
+INHERITED_CONTRACTS = REPOSITORY_ROOT / ".ai" / "contracts" / "foundation"
+OPTIONAL_LOCAL_LINK = re.compile(
+    r"\]\([^)]*(?:profiles/README\.md|src/README\.md|tests/README\.md)"
+    r"(?:#[^)]*)?\)"
 )
 
 
@@ -51,6 +58,13 @@ class FoundationDocsPortabilityTest(unittest.TestCase):
             guide,
         )
         self.assertIn("`src/modules/catalog/MODULE.md`", guide)
+
+    def test_inherited_guidance_does_not_link_to_removable_child_readmes(self):
+        for root in (INHERITED_GUIDES, INHERITED_CONTRACTS):
+            for path in root.rglob("*.md"):
+                with self.subTest(path=path.relative_to(REPOSITORY_ROOT)):
+                    content = path.read_text(encoding="utf-8")
+                    self.assertIsNone(OPTIONAL_LOCAL_LINK.search(content))
 
     def test_doc_014_links_to_its_current_authority(self):
         guide = PROJECT_DOCUMENTATION_GUIDE.read_text(encoding="utf-8")

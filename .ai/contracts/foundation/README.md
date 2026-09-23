@@ -25,6 +25,9 @@ without duplicating the rule body. A legacy child may retain its full protected
 moves that path from protected to inherited ownership, and removes the matching
 Template Sync exclusion only after the canonical file is present.
 
+The [Make target contract](make-targets.md) owns binding command semantics. Optional
+stack examples remain outside this inherited directory so descendants may remove them.
+
 The profile is the composition source of truth. It preserves commands, escalation
 conditions, and completion rules while allowing owner-qualified template overlays and
 one project-owned overlay to add facts or strengthen controls without duplicating the
