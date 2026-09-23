@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v3.0.0...v4.0.0) (2026-09-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **evaluation:** 基盤障害を品質分母から分離する ([#821](https://github.com/Yukihide-Mitsuoka/repchat/issues/821))
+
+### Features
+
+* **evaluation:** renderer基盤障害をrunへ記録する ([#823](https://github.com/Yukihide-Mitsuoka/repchat/issues/823)) ([5c7e03f](https://github.com/Yukihide-Mitsuoka/repchat/commit/5c7e03fbb2b826f8c9fe2d27d747b380bee79f9e))
+* **evaluation:** 基盤障害を品質分母から分離する ([#821](https://github.com/Yukihide-Mitsuoka/repchat/issues/821)) ([6e61fef](https://github.com/Yukihide-Mitsuoka/repchat/commit/6e61fefcfb14822304f3b3c0dc1cb4fc26d11141))
+
+
+### Bug Fixes
+
+* **evaluation:** preflightの基盤例外を分離する ([#818](https://github.com/Yukihide-Mitsuoka/repchat/issues/818)) ([ff29083](https://github.com/Yukihide-Mitsuoka/repchat/commit/ff290838c6fec98d5cc15e8255f2177cf01b2b47))
+
 ## [3.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v2.1.0...v3.0.0) (2026-09-22)
 
 
