@@ -142,6 +142,8 @@ Vertex tier、BigQuery課金方式、入力・出力100万tokenとBigQuery 1 TiB
 `python3 spikes/schema-generalization-evaluation/execution_intent.py <intent> <plan> <manifest> <pricing> <model> <region> <as-of> <execution-date> <output-directory>`
 は一致時に`execution intent valid`、不一致時にexit 2を返し、入力値を標準出力へ出しません。このfileとhashは承認者の本人性もprovider呼出し前の予算強制も証明しません。実行commandへの接続は後続です。
 
+Python APIの`validate_execution_intent`は検証済みJPY上限を`BudgetLimits`として返します。`execution_budget.py`の`BudgetGate`は、この上限に対して単一の同期操作を実行前に予約し、provider別・合計残額の不足を拒否します。金額は最大6桁の小数を持つ`Decimal`に限り、将来のadapterは最大費用と実測費用を小数第6位で保守的に切り上げて渡す必要があります。完全な実測費用が予約内なら差額を解放し、不明・超過・例外時は未解決予約を保持して後続操作を停止します。`settled_jpy`は実測が完了した費用だけです。現段階の操作はfake回帰に限り、実provider clientへは接続していません。呼出しごとの保守的な最大費用を証明するadapterと個別の実行承認が揃うまで、有料評価は開始できません。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。

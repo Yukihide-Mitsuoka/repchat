@@ -8,10 +8,11 @@ import json
 import re
 import sys
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
+from execution_budget import BudgetLimits
 from evaluate import EvaluationEvidenceError
 from evaluation_plan import validate_evaluation_plan
 from manifest_preflight import ExecutionManifestError, planned_inputs
@@ -95,7 +96,7 @@ def validate_execution_intent(
     as_of: date,
     execution_date: date,
     output_directory: str | Path,
-) -> None:
+) -> BudgetLimits:
     """Check exact artifacts and caller inputs before any execution is authorized."""
     if (
         not isinstance(intent, dict)
@@ -134,8 +135,11 @@ def validate_execution_intent(
     vertex = _money(intent["vertex_budget_jpy"], "vertex_budget_jpy")
     bigquery = _money(intent["bigquery_budget_jpy"], "bigquery_budget_jpy")
     total = _money(intent["total_budget_jpy"], "total_budget_jpy")
-    if total > vertex + bigquery:
-        raise ExecutionIntentError("total budget exceeds provider budgets")
+    with localcontext() as context:
+        context.prec = 48
+        if total > vertex + bigquery:
+            raise ExecutionIntentError("total budget exceeds provider budgets")
+    limits = BudgetLimits(vertex, bigquery, total)
 
     if not isinstance(plan, dict) or not isinstance(manifest, dict):
         raise ExecutionIntentError("plan and manifest must be objects")
@@ -150,6 +154,7 @@ def validate_execution_intent(
     if planned != manifest_runs:
         raise ExecutionIntentError("plan and manifest run identities differ")
     PricingSnapshot.from_bytes(pricing_bytes).pricing_for(model, region, execution_date)
+    return limits
 
 
 def main(argv: list[str]) -> int:
