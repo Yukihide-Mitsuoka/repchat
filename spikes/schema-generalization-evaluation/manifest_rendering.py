@@ -14,6 +14,7 @@ from manifest_result_validation import (
     ResultValidationAttempt,
     run_manifest_result_validation,
 )
+from run_outcome import RENDERER_INFRASTRUCTURE_FAILURE_CODE
 
 
 RENDERING_FAILURE = "rendering"
@@ -138,7 +139,16 @@ def _render_attempt(
         "columns": list(attempt.columns),
         "rows": [list(row) for row in attempt.rows],
     }
-    if renderer(payload) is not True:
+    try:
+        rendered = renderer(payload)
+    except RendererInfrastructureError:
+        return RenderingAttempt(
+            attempt,
+            False,
+            failure_stage=RENDERING_FAILURE,
+            failure_code=RENDERER_INFRASTRUCTURE_FAILURE_CODE,
+        )
+    if rendered is not True:
         return RenderingAttempt(
             attempt,
             False,

@@ -140,6 +140,22 @@ else:
 `);
 });
 
+test('renderer infrastructure failure is recorded without SQL diagnostics', () => {
+  assertPython(String.raw`
+${setup}
+from dataclasses import replace
+base=make_attempt('run-1')
+failed=replace(base,render_succeeded=False,failure_stage='rendering',failure_code='renderer_infrastructure_failed')
+recording=artifacts.build_manifest_artifacts(
+ manifest,(failed,make_attempt('run-2')),measurements,
+).recordings['runs'][0]['run']
+assert recording['failure_kind']=='infrastructure'
+assert recording['diagnostic'] is None
+assert recording['actual_rows']==[[1]]
+assert recording['bytes_processed']==84
+`);
+});
+
 test('upstream SQL and dry-run diagnostics survive final recording', () => {
   assertPython(String.raw`
 ${setup}

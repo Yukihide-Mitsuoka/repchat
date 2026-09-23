@@ -28,6 +28,7 @@ FAILURE_STAGES = (
     "rendering",
 )
 SAFE_FAILURE_CODE = re.compile(r"[a-z][a-z0-9_]{0,63}")
+RENDERER_INFRASTRUCTURE_FAILURE_CODE = "renderer_infrastructure_failed"
 
 
 class RunOutcomeError(ValueError):
@@ -35,7 +36,7 @@ class RunOutcomeError(ValueError):
 
 
 def failure_kind_for_diagnostic(
-    stage: str, diagnostic: dict[str, Any] | None
+    stage: str, diagnostic: dict[str, Any] | None, code: str | None = None
 ) -> str:
     """Classify only validated run outcomes and closed diagnostic categories."""
     if stage == NO_FAILURE:
@@ -45,6 +46,8 @@ def failure_kind_for_diagnostic(
         "infrastructure_failure",
         "cancelled",
     }:
+        return INFRASTRUCTURE_FAILURE
+    if stage == "rendering" and code == RENDERER_INFRASTRUCTURE_FAILURE_CODE:
         return INFRASTRUCTURE_FAILURE
     return QUALITY_FAILURE
 
@@ -102,8 +105,13 @@ def validate_failure_kind(run: dict[str, Any]) -> None:
         )
     )
     diagnostic = run["diagnostic"]
-    if diagnostic is not None:
-        expected = failure_kind_for_diagnostic(run["failure_stage"], diagnostic)
+    if diagnostic is not None or (
+        run["failure_stage"] == "rendering"
+        and run["failure_code"] == RENDERER_INFRASTRUCTURE_FAILURE_CODE
+    ):
+        expected = failure_kind_for_diagnostic(
+            run["failure_stage"], diagnostic, run["failure_code"]
+        )
         if run["failure_kind"] != expected:
             raise RunOutcomeError("failure kind conflicts with its outcome")
     elif quality_evidence and run["failure_kind"] == INFRASTRUCTURE_FAILURE:
