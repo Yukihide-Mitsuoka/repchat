@@ -29,6 +29,23 @@ FAILURE_STAGES = (
 )
 SAFE_FAILURE_CODE = re.compile(r"[a-z][a-z0-9_]{0,63}")
 RENDERER_INFRASTRUCTURE_FAILURE_CODE = "renderer_infrastructure_failed"
+SCOPE_DISCOVERY_INFRASTRUCTURE_FAILURE_CODE = (
+    "scope_discovery_infrastructure_failed"
+)
+ANALYSIS_CONTRACT_GENERATION_INFRASTRUCTURE_FAILURE_CODE = (
+    "analysis_contract_generation_infrastructure_failed"
+)
+TYPED_INFRASTRUCTURE_FAILURES = frozenset({
+    (SCOPE_DISCOVERY_FAILURE, SCOPE_DISCOVERY_INFRASTRUCTURE_FAILURE_CODE),
+    (
+        ANALYSIS_CONTRACT_GENERATION_FAILURE,
+        ANALYSIS_CONTRACT_GENERATION_INFRASTRUCTURE_FAILURE_CODE,
+    ),
+    ("rendering", RENDERER_INFRASTRUCTURE_FAILURE_CODE),
+})
+TYPED_INFRASTRUCTURE_CODES = frozenset(
+    code for _, code in TYPED_INFRASTRUCTURE_FAILURES
+)
 
 
 class RunOutcomeError(ValueError):
@@ -47,7 +64,7 @@ def failure_kind_for_diagnostic(
         "cancelled",
     }:
         return INFRASTRUCTURE_FAILURE
-    if stage == "rendering" and code == RENDERER_INFRASTRUCTURE_FAILURE_CODE:
+    if (stage, code) in TYPED_INFRASTRUCTURE_FAILURES:
         return INFRASTRUCTURE_FAILURE
     return QUALITY_FAILURE
 
@@ -95,6 +112,12 @@ def validate_run_outcome(run: dict[str, Any]) -> None:
 
 def validate_failure_kind(run: dict[str, Any]) -> None:
     """Require failure kind to agree with typed diagnostics and safety evidence."""
+    if (
+        run["failure_code"] in TYPED_INFRASTRUCTURE_CODES
+        and (run["failure_stage"], run["failure_code"])
+        not in TYPED_INFRASTRUCTURE_FAILURES
+    ):
+        raise RunOutcomeError("infrastructure failure code conflicts with its stage")
     quality_evidence = any(
         run[name]
         for name in (
@@ -106,9 +129,8 @@ def validate_failure_kind(run: dict[str, Any]) -> None:
     )
     diagnostic = run["diagnostic"]
     if diagnostic is not None or (
-        run["failure_stage"] == "rendering"
-        and run["failure_code"] == RENDERER_INFRASTRUCTURE_FAILURE_CODE
-    ):
+        run["failure_stage"], run["failure_code"]
+    ) in TYPED_INFRASTRUCTURE_FAILURES:
         expected = failure_kind_for_diagnostic(
             run["failure_stage"], diagnostic, run["failure_code"]
         )

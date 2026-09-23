@@ -134,6 +134,37 @@ for client_kind in ('bq','vertex'):
 `);
 });
 
+test('typed preflight infrastructure failure is measurable only with complete provider usage', () => {
+  assertPython(String.raw`
+${setup}
+from datetime import date
+import preflight
+from bigquery_scope_discovery import AuthorizedScope,ScopeDiscoveryInfrastructureError
+scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
+def discover(bq,_scope):
+ try:bq.query('scope',job_config=SimpleNamespace(dry_run=False)).result()
+ except runtime.RuntimeMeasurementError:
+  raise ScopeDiscoveryInfrastructureError('safe infrastructure failure') from None
+ raise ScopeDiscoveryInfrastructureError('safe infrastructure failure')
+preflight.discover_scope=discover
+def run():
+ return preflight.run_preflight(
+  bq,vertex,'model',scope,'question',as_of=date(2026,9,23)
+ )
+meter=runtime.RuntimeMeter(pricing)
+bq,vertex=meter.instrument(BQ([Job(9,11)]),Vertex([]))
+measurement=meter(('schema','case','run-1'),run)
+assert (measurement.bytes_processed,measurement.cost_jpy)==(9,11)
+class BrokenBQ:
+ def query(self,*_args,**_kwargs):raise RuntimeError('private provider detail')
+meter=runtime.RuntimeMeter(pricing)
+bq,vertex=meter.instrument(BrokenBQ(),Vertex([]))
+try:meter(('schema','case','run-2'),run)
+except runtime.RuntimeMeasurementError as error:assert 'private provider detail' not in str(error)
+else:raise AssertionError('unmeasured preflight failure was recorded')
+`);
+});
+
 test('metered evaluation instruments the exact clients passed to the renderer', () => {
   assertPython(String.raw`
 ${setup}

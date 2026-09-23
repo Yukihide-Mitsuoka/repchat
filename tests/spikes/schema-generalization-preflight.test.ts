@@ -141,45 +141,74 @@ assert secret not in repr(result)
   assert.equal(result.stdout, '');
 });
 
-test('preflight propagates infrastructure and unknown discovery failures', () => {
+test('preflight records typed discovery infrastructure failure without invented usage', () => {
   const result = python(String.raw`
 from datetime import date
 import preflight
 from bigquery_scope_discovery import AuthorizedScope, ScopeDiscoveryInfrastructureError
 
 scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
-for failure in (ScopeDiscoveryInfrastructureError('schema discovery failed'),RuntimeError('programming defect')):
- def discover(_bq,_scope,failure=failure):raise failure
- preflight.discover_scope=discover
- try:preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
- except type(failure) as error:assert str(error)==str(failure)
- else:raise AssertionError('discovery failure was converted to a quality result')
+secret='private-provider-detail'
+def discover(_bq,_scope):raise ScopeDiscoveryInfrastructureError(secret)
+preflight.discover_scope=discover
+result=preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
+assert (result.failure_stage,result.failure_code)==('scope_discovery','scope_discovery_infrastructure_failed')
+assert result.discovery is None and result.contract is None and result.usage is None
+assert secret not in repr(result)
 `);
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
 });
 
-test('preflight propagates provider, infrastructure and unknown contract failures', () => {
+test('preflight records typed contract infrastructure failure with completed snapshot', () => {
   const result = python(String.raw`
 from datetime import date
 import preflight
 from bigquery_scope_discovery import AuthorizedScope, DiscoverySnapshot, ScopeDiscoveryInfrastructureError
-from vertex_generation import VertexRequestError
 
 snapshot=DiscoverySnapshot('{"version":1}','d'*64,'2026-09-20T00:00:00+00:00')
 preflight.discover_scope=lambda _bq,_scope:snapshot
 scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
+secret='private-provider-detail'
+def generate(*_args,**_kwargs):raise ScopeDiscoveryInfrastructureError(secret)
+preflight.generate_discovered_contract_artifacts=generate
+result=preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
+assert (result.failure_stage,result.failure_code)==(
+ 'analysis_contract_generation','analysis_contract_generation_infrastructure_failed'
+)
+assert result.discovery is snapshot and result.contract is None and result.usage is None
+assert secret not in repr(result)
+`);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
+test('preflight propagates unmeasured provider and unknown failures', () => {
+  const result = python(String.raw`
+from datetime import date
+import preflight
+from bigquery_scope_discovery import AuthorizedScope, DiscoverySnapshot
+from vertex_generation import VertexRequestError
+
+scope=AuthorizedScope(tables=frozenset({'project.dataset.table'}))
+def discover(_bq,_scope):raise RuntimeError('programming defect')
+preflight.discover_scope=discover
+try:preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
+except RuntimeError as error:assert str(error)=='programming defect'
+else:raise AssertionError('unknown discovery failure was recorded')
+snapshot=DiscoverySnapshot('{"version":1}','d'*64,'2026-09-20T00:00:00+00:00')
+preflight.discover_scope=lambda _bq,_scope:snapshot
 for failure in (
  VertexRequestError('Vertex AI request failed'),
- ScopeDiscoveryInfrastructureError('scope discovery failed'),
  RuntimeError('programming defect'),
 ):
  def generate(*_args,failure=failure,**_kwargs):raise failure
  preflight.generate_discovered_contract_artifacts=generate
  try:preflight.run_preflight(object(),object(),'model',scope,'question',as_of=date(2026,9,20))
  except type(failure) as error:assert str(error)==str(failure)
- else:raise AssertionError('contract failure was converted to a quality result')
+ else:raise AssertionError('unmeasured or unknown contract failure was recorded')
 `);
 
   assert.equal(result.status, 0, result.stderr);
