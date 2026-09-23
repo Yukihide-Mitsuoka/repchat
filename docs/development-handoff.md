@@ -333,7 +333,7 @@ planning／SQL生成のprovider呼出し失敗は応答usageを取得できず�
 実行manifest作成前に参照記録のfield・型・作成者とreviewerの別IDを検証します。本人性は別途review証跡が必要です。
 回帰テストは修正前に意図どおり失敗し、修正後の`make format`、`make lint`、`make test`と
 対象test 5件は成功しています。[PR #828](https://github.com/Yukihide-Mitsuoka/repchat/pull/828)を作成し、
-CI確認中です。実provider呼出しは行っていません。
+必須CI checks 13件が成功、merge待ちです。実provider呼出しは行っていません。
 その後、公式fixtureを独立reviewし、価格snapshot、許可scope、予算上限、実行承認を明示する
 評価commandを設計・実装します。有料の実Vertex AI／BigQuery呼出しは費用承認まで行いません。
 
