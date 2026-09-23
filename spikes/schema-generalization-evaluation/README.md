@@ -136,6 +136,12 @@ Vertex tier、BigQuery課金方式、入力・出力100万tokenとBigQuery 1 TiB
 現時点で受理する範囲はJPY、`standard-text`、BigQuery `on-demand`だけです。snapshot内の単価は
 実行前予算予約ではなく事後計測に使います。provider接続・合計予算制御・有料実行commandは未実装です。
 
+`execution_intent.py`はproviderを呼ばずに、実行意図fileを評価計画・認可scope入りmanifest・価格snapshotの正確なfile bytesのSHA-256へ照合します。
+計画とmanifestのpipeline fingerprint・全run ID、model、region、分析用`as_of`、実行日、絶対出力先、Vertex／BigQuery／合計の円建て上限を検査します。
+各上限は正の小数文字列で、合計上限はprovider別上限の和以下です。
+`python3 spikes/schema-generalization-evaluation/execution_intent.py <intent> <plan> <manifest> <pricing> <model> <region> <as-of> <execution-date> <output-directory>`
+は一致時に`execution intent valid`、不一致時にexit 2を返し、入力値を標準出力へ出しません。このfileとhashは承認者の本人性もprovider呼出し前の予算強制も証明しません。実行commandへの接続は後続です。
+
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
 canonical JSON表現であること、そのSHA-256がfixtureとscope discovery完了runのfingerprintに一致することを検証します。
