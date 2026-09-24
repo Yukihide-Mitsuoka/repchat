@@ -364,7 +364,7 @@ PR #852は2026-09-24にmerge済みで、Issue #851はclose済みです。同期`
 完了した[Issue #854](https://github.com/Yukihide-Mitsuoka/repchat/issues/854)／[PR #855](https://github.com/Yukihide-Mitsuoka/repchat/pull/855)では、BigQuery query送信前の
 予算予約とjob完了時の実測精算をfake clientで検証し、2026-09-24にmerge済みです。既存の有料query設定は`dry_run=False`を明示し、
 SDKの自動job再試行を無効にしました。
-現在の[Issue #856](https://github.com/Yukihide-Mitsuoka/repchat/issues/856)は、Vertex text生成の物理token上限と価格snapshotから
+現在の[Issue #856](https://github.com/Yukihide-Mitsuoka/repchat/issues/856)／[PR #857](https://github.com/Yukihide-Mitsuoka/repchat/pull/857)は、Vertex text生成の物理token上限と価格snapshotから
 offlineで保守的な費用上界を計算する作業です。provider送信前予約・応答usage精算と公式fixtureの独立reviewは後続です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
