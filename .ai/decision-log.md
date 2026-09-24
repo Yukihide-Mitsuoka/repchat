@@ -17,6 +17,7 @@ old one. One line per entry. AI agents append entries in the same PR as the chan
 
 | Date | ID | Decision | Link |
 |------|----|----------|------|
+| 2026-09-25 | ADR-0027 Vertex offline bound | `countTokens`の見積値を硬い課金上限に使わず、対応するtext-only単一candidate modelの公開context・出力token上限を全量と検証済みJPY単価から保守的に予約額を算定する。算定はprovider送信・個別の費用承認ではない | [Issue #856](https://github.com/Yukihide-Mitsuoka/repchat/issues/856), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
 | 2026-09-24 | ADR-0027 BigQuery query adapter | BigQuery queryは明示的な有料configと検証済み価格から送信前に予約し、job完了後の課金bytesだけで精算する。client既定のquery設定と自動job再試行を拒否し、取消・送信／待機失敗・計測不能は未解決予約として停止する。fake検証のみで実評価commandへは接続しない | [Issue #854](https://github.com/Yukihide-Mitsuoka/repchat/issues/854), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
 | 2026-09-24 | ADR-0027 BigQuery bound calculation | on-demand queryの予約額は検証済みJPY/TiB単価と明示的な`maximum_bytes_billed`からDecimalで小数第6位へ切り上げる。未指定上限、dry run、destination・connection設定はこの有料query算定境界で拒否し、算定のみをprovider接続・実行承認とみなさない | [Issue #849](https://github.com/Yukihide-Mitsuoka/repchat/issues/849), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
 | 2026-09-24 | ADR-0027 staged budget reservation | 非同期jobの送信と実測値確定を分けるため、`reserve`で保持した予約を`settle`または`fail`で閉じる。重複操作、未精算完了、実測不明・超過は未解決予約として停止する。同期`run`はこの契約のwrapperとして維持する。実provider接続や個別の有料実行承認は含まない | [Issue #851](https://github.com/Yukihide-Mitsuoka/repchat/issues/851), [ADR-0027](../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
