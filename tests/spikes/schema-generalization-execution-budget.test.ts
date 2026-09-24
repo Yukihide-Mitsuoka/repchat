@@ -121,3 +121,65 @@ except BudgetError:pass
 else:raise AssertionError('overlap did not stop the gate')
 `);
 });
+
+test('staged reservation remains open until measured settlement and then releases unused budget', () => {
+  assertPython(String.raw`
+${setup}
+gate=BudgetGate(limits)
+first=gate.reserve('bigquery',D('5'))
+assert gate.settled_jpy['bigquery']==D('0')
+first.settle(D('1'))
+second=gate.reserve('bigquery',D('4'))
+second.settle(D('2'))
+gate.ensure_idle()
+assert gate.settled_jpy['bigquery']==D('3')
+assert gate.unresolved_reservation_jpy['bigquery']==D('0')
+`);
+});
+
+test('staged reservation fails closed on unknown cost, provider failure, or missing settlement', () => {
+  assertPython(String.raw`
+${setup}
+for actual in (None,D('5.01'),D('-1'),D('NaN'),D('0.0000001')):
+ gate=BudgetGate(limits);reservation=gate.reserve('bigquery',D('5'))
+ try:reservation.settle(actual)
+ except BudgetError:pass
+ else:raise AssertionError('uncertain settlement was accepted')
+ assert gate.unresolved_reservation_jpy['bigquery']==D('5')
+ try:gate.reserve('vertex',D('1'))
+ except BudgetError:pass
+ else:raise AssertionError('stopped gate accepted another reservation')
+gate=BudgetGate(limits);reservation=gate.reserve('bigquery',D('4'))
+reservation.fail()
+assert gate.unresolved_reservation_jpy['bigquery']==D('4')
+try:gate.ensure_idle()
+except BudgetError:pass
+else:raise AssertionError('failed gate appeared idle')
+gate=BudgetGate(limits);gate.reserve('bigquery',D('3'))
+try:gate.ensure_idle()
+except BudgetError:pass
+else:raise AssertionError('pending reservation appeared complete')
+assert gate.unresolved_reservation_jpy['bigquery']==D('3')
+`);
+});
+
+test('staged reservation rejects overlapping operations and stale or duplicate settlement', () => {
+  assertPython(String.raw`
+${setup}
+gate=BudgetGate(limits);first=gate.reserve('bigquery',D('4'))
+try:gate.reserve('vertex',D('1'))
+except BudgetError:pass
+else:raise AssertionError('overlap was accepted')
+assert gate.unresolved_reservation_jpy['bigquery']==D('4')
+try:first.settle(D('1'))
+except BudgetError:pass
+else:raise AssertionError('stale reservation settled')
+gate=BudgetGate(limits);reservation=gate.reserve('bigquery',D('4'))
+reservation.settle(D('1'))
+try:reservation.settle(D('1'))
+except BudgetError:pass
+else:raise AssertionError('duplicate settlement was accepted')
+assert gate.settled_jpy['bigquery']==D('1')
+assert gate.unresolved_reservation_jpy['bigquery']==D('0')
+`);
+});
