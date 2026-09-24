@@ -133,7 +133,7 @@ assert all("LIMIT 10000" in sql and "TABLESAMPLE SYSTEM (1 PERCENT)" in sql for 
 partition_filter="WHERE source."+chr(96)+"observed_at"+chr(96)+" IS NOT NULL"
 assert all(partition_filter in sql for _,sql,_ in client.query_calls)
 assert [name for name,_,_ in client.query_calls]==[exact,exact]
-assert [config.get("dry_run",False) for _,_,config in client.query_calls]==[True,False]
+assert [config["dry_run"] for _,_,config in client.query_calls]==[True,False]
 assert all(call=={"timeout":d.QUERY_TIMEOUT_SECONDS,"max_results":2} for call in client.result_calls)
 assert snapshot.fingerprint==d.discover_scope(Client(),d.AuthorizedScope(datasets=frozenset([dataset]),tables=frozenset([exact]))).fingerprint
 print("ok")

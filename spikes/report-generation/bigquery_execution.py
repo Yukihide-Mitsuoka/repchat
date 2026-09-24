@@ -210,6 +210,7 @@ def _execute_bq(
         job = bq.query(
             s,
             job_config=bigquery.QueryJobConfig(
+                dry_run=False,
                 maximum_bytes_billed=policy.maximum_bytes_billed,
                 use_query_cache=True,
             ),

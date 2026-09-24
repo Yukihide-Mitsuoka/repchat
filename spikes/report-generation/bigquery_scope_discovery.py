@@ -329,6 +329,7 @@ def _query_configs():
             use_query_cache=False,
         ),
         bigquery.QueryJobConfig(
+            dry_run=False,
             maximum_bytes_billed=MAX_BYTES_BILLED_PER_QUERY,
             use_query_cache=False,
         ),

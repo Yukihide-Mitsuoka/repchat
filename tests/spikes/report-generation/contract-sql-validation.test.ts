@@ -234,7 +234,7 @@ dry_run=bigquery_execution.inspect_bq_schema(client,sql,policy=policy)
 execution=bigquery_execution.exec_bq(client,sql,policy=policy)
 Job.referenced_tables=[types.SimpleNamespace(project="alpha",dataset_id="dataset",table_id="other")]
 outside_scope=bigquery_execution.inspect_bq_schema(client,sql,policy=policy)
-print(json.dumps({"dry_run":dry_run,"execution":execution,"outside_scope":outside_scope,"limits":[config.maximum_bytes_billed for config in client.configs]}))`,
+print(json.dumps({"dry_run":dry_run,"execution":execution,"outside_scope":outside_scope,"limits":[config.maximum_bytes_billed for config in client.configs],"dry_run_modes":[config.dry_run for config in client.configs]}))`,
     ],
     { cwd: ROOT, encoding: 'utf8', timeout: 10_000 },
   );
@@ -245,5 +245,6 @@ print(json.dumps({"dry_run":dry_run,"execution":execution,"outside_scope":outsid
     execution: [[[['value']], ['record_id']], null],
     outside_scope: [null, 'bq dry-run rejected: table is outside the analysis contract'],
     limits: [1234, 1234, 1234],
+    dry_run_modes: [true, false, true],
   });
 });
