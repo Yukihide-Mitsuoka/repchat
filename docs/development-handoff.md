@@ -366,7 +366,7 @@ PR #852は2026-09-24にmerge済みで、Issue #851はclose済みです。同期`
 SDKの自動job再試行を無効にしました。
 [Issue #856](https://github.com/Yukihide-Mitsuoka/repchat/issues/856)／[PR #857](https://github.com/Yukihide-Mitsuoka/repchat/pull/857)で、Vertex text生成の物理token上限と価格snapshotから
 offlineで保守的な費用上界を計算する作業は2026-09-25にmerge・close済みです。現在の
-[Issue #859](https://github.com/Yukihide-Mitsuoka/repchat/issues/859)では、この上界を生成送信前の予算予約と
+[Issue #859](https://github.com/Yukihide-Mitsuoka/repchat/issues/859)／[PR #860](https://github.com/Yukihide-Mitsuoka/repchat/pull/860)では、この上界を生成送信前の予算予約と
 応答usageによる実測精算へ接続します。fake clientでの検証に限定し、実provider接続と公式fixtureの独立reviewは後続です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
