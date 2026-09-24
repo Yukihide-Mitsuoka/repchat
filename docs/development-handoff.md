@@ -359,7 +359,9 @@ PR #850は2026-09-24にmerge済みで、Issue #849はclose済みです。
 これは上界の計算だけであり、実providerへの接続、Vertex上界の証明、個別承認は後続です。
 現在の[Issue #851](https://github.com/Yukihide-Mitsuoka/repchat/issues/851)では、
 query送信とjob完了の間も予算予約を保持し、実測値で精算、失敗時は未解決予約として停止する
-二段階APIをfake回帰で検証します。同期`run`は維持し、実provider接続はまだ行いません。
+二段階APIを[PR #852](https://github.com/Yukihide-Mitsuoka/repchat/pull/852)でfake回帰として実装しました。
+同期`run`は維持し、実provider接続はまだ行いません。ローカルの`make format`、
+`make lint`、`make test`は成功しています。PR #852はreview・CI確認待ちです。
 次はBigQuery provider adapterの無料回帰と公式fixtureの独立reviewです。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
