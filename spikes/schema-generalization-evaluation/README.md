@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-24
+updated: 2026-09-25
 ---
 
 # 未知schema反復評価の証拠harness
@@ -145,6 +145,8 @@ Vertex tier、BigQuery課金方式、入力・出力100万tokenとBigQuery 1 TiB
 Python APIの`validate_execution_intent`は検証済みJPY上限を`BudgetLimits`として返します。`execution_budget.py`の`BudgetGate`は、この上限に対して操作前の`reserve(provider, maximum_jpy)`から実測後の`reservation.settle(actual_jpy)`まで予約を保持し、provider別・合計残額の不足と操作の重複を拒否します。`reservation.fail()`は失敗・取消・timeoutなどで実測できない予約を未解決として記録します。未精算のまま`ensure_idle()`で完了確認した場合も停止します。従来の同期`run`はこの二段階APIを使う互換wrapperです。金額は最大6桁の小数を持つ`Decimal`に限り、将来のadapterは最大費用と実測費用を小数第6位で保守的に切り上げて渡す必要があります。完全な実測費用が予約内なら差額を解放し、不明・超過・例外時は未解決予約を保持して後続操作を停止します。`settled_jpy`は実測が完了した費用だけです。現段階の操作はfake回帰に限り、実provider clientへは接続していません。呼出しごとの保守的な最大費用を証明するadapterと個別の実行承認が揃うまで、有料評価は開始できません。
 
 `bigquery_budget.py`は、価格snapshotのmodel・region・実行日とJPY／on-demand適合を検証し、明示的に`dry_run=False`かつ正の整数`maximum_bytes_billed`を持つqueryのBigQuery分析料金上界を`Decimal`で計算します。[BigQueryのmaximum bytes billed](https://docs.cloud.google.com/bigquery/docs/best-practices-costs#restrict_the_number_of_bytes_billed_per_query)はqueryごとの課金bytes制限であり、計算結果は小数第6位JPYへ切り上げます。dry run、上限欠落、destinationまたはconnection設定を持つjobはこの関数で拒否します。`bigquery_budget_adapter.py`は、この上界をquery送信前に予約し、jobの`result()`完了後に非負・上限内の`total_bytes_billed`から実測JPYを精算します。送信・待機失敗、取消、計測不能時は未解決予約として停止します。SDKのqueryとjob resultには`retry=None`、`job_retry=None`を指定し、callerによるjob再試行指定を拒否します。無料dry runと認可scope metadata取得は維持します。[BigQuery Python client](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.client.Client#google_cloud_bigquery_client_Client_query)と[QueryJob.result](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJob#google_cloud_bigquery_job_QueryJob_result)のretry契約に従います。SQLのSELECT-only検証、storage・外部service・税などの料金はこのadapterの対象外です。現段階はfake client回帰のみで、実行commandや実provider clientへは未接続です。
+
+`vertex_budget.py`は、`gemini-3.6-flash`のglobal・text-only・単一candidate・structured outputに限り、照合済み円建て価格snapshotからofflineの予約上界を計算します。[モデル仕様](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-3-6-flash)のcontext 1,048,576 tokenと最大出力65,536 tokenを常に全量予約し、[思考tokenを含む出力上限](https://ai.google.dev/gemini-api/docs/thinking)を小さい`max_output_tokens`へ縮めて算定しません。[countTokensは実請求usageと一致しない場合がある](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/get-token-count)ため、見積値を硬い上界に使いません。未知model、複数candidate、tool、cache、非text、未知設定は拒否します。この保守的な額は実請求額の保証でも個別の実行承認でもなく、同一requestの送信前予約・応答usage精算を行うVertex adapterと実provider接続は後続です。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
