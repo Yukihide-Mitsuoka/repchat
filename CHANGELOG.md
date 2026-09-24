@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v4.0.0...v4.1.0) (2026-09-24)
+
+
+### Features
+
+* **evaluation:** BigQuery queryの予算予約と実測精算を接続 ([#855](https://github.com/Yukihide-Mitsuoka/repchat/issues/855)) ([5a87f92](https://github.com/Yukihide-Mitsuoka/repchat/commit/5a87f92d5d1ed24d8c57da3f031562967b76d368))
+* **evaluation:** BigQuery呼出しの費用上界をofflineで算定する ([#850](https://github.com/Yukihide-Mitsuoka/repchat/issues/850)) ([abb6a04](https://github.com/Yukihide-Mitsuoka/repchat/commit/abb6a04f1290366d37150903e387ef44f5d4ab0a))
+* **evaluation:** job完了まで予算予約を保持する ([#852](https://github.com/Yukihide-Mitsuoka/repchat/issues/852)) ([c26d8db](https://github.com/Yukihide-Mitsuoka/repchat/commit/c26d8db4aa3ee0373f9d6b020f4aed2fd2660461))
+* **evaluation:** Vertex text生成の費用上界をofflineで算定 ([#857](https://github.com/Yukihide-Mitsuoka/repchat/issues/857)) ([624c9c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/624c9c8191c1538dd89f6e629bde97b62465dc3d))
+* **evaluation:** 実評価の逐次予算予約をofflineで検証する ([#847](https://github.com/Yukihide-Mitsuoka/repchat/issues/847)) ([a8a7772](https://github.com/Yukihide-Mitsuoka/repchat/commit/a8a7772dde79a5df0df7a527eca2026e01a43d94))
+
 ## [4.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v3.0.0...v4.0.0) (2026-09-23)
 
 
