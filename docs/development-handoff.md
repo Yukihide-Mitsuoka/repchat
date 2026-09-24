@@ -361,7 +361,7 @@ PR #850は2026-09-24にmerge済みで、Issue #849はclose済みです。
 query送信とjob完了の間も予算予約を保持し、実測値で精算、失敗時は未解決予約として停止する
 二段階APIを[PR #852](https://github.com/Yukihide-Mitsuoka/repchat/pull/852)でfake回帰として実装しました。
 PR #852は2026-09-24にmerge済みで、Issue #851はclose済みです。同期`run`は維持しています。
-現在の[Issue #854](https://github.com/Yukihide-Mitsuoka/repchat/issues/854)では、BigQuery query送信前の
+現在の[Issue #854](https://github.com/Yukihide-Mitsuoka/repchat/issues/854)では、[PR #855](https://github.com/Yukihide-Mitsuoka/repchat/pull/855)でBigQuery query送信前の
 予算予約とjob完了時の実測精算をfake clientで検証します。既存の有料query設定は`dry_run=False`を明示し、
 SDKの自動job再試行を無効にします。実provider接続と評価commandは後続です。
 次はVertex呼出し上界の証明と公式fixtureの独立reviewです。
