@@ -134,7 +134,8 @@ Vertex tier、BigQuery課金方式、入力・出力100万tokenとBigQuery 1 TiB
 重複・未知・欠落fieldを拒否し、実行入口は`model`、`region`、`execution_date`をsnapshotへ照合してから
 計測clientを作ります。`as_of`は分析対象データの日付であり、価格取得日や実行日ではありません。
 現時点で受理する範囲はJPY、`standard-text`、BigQuery `on-demand`だけです。snapshot内の単価は
-実行前予算予約ではなく事後計測に使います。provider接続・合計予算制御・有料実行commandは未実装です。
+従来の計測入口では実行前予算予約を行いません。予算付き評価入口は下記の
+`budgeted_manifest_runtime.py`を使います。有料実行commandは未実装です。
 
 `execution_intent.py`はproviderを呼ばずに、実行意図fileを評価計画・認可scope入りmanifest・価格snapshotの正確なfile bytesのSHA-256へ照合します。
 計画とmanifestのpipeline fingerprint・全run ID、model、region、分析用`as_of`、実行日、絶対出力先、Vertex／BigQuery／合計の円建て上限を検査します。
@@ -148,7 +149,14 @@ Python APIの`validate_execution_intent`は検証済みJPY上限を`BudgetLimits
 
 `vertex_budget.py`は、`gemini-3.6-flash`のglobal・text-only・単一candidate・structured outputに限り、照合済み円建て価格snapshotからofflineの予約上界を計算します。[モデル仕様](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/guides/gemini-3-6-flash)のcontext 1,048,576 tokenと最大出力65,536 tokenを常に全量予約し、[思考tokenを含む出力上限](https://ai.google.dev/gemini-api/docs/thinking)を小さい`max_output_tokens`へ縮めて算定しません。[countTokensは実請求usageと一致しない場合がある](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/capabilities/get-token-count)ため、見積値を硬い上界に使いません。未知model、複数candidate、tool、cache、非text、未知設定は拒否します。
 
-`vertex_budget_adapter.py`は同じ制約の生成設定だけから送信payloadを作り、共通`BudgetGate`へ上界を予約してから同期`generate_content`を1回呼びます。固定した`google-genai==2.12.1`では[per-request retry options](https://github.com/googleapis/python-genai/blob/v2.12.1/google/genai/_api_client.py)の`attempts=1`でHTTP再試行を制限します。応答の入力・候補・思考tokenを非負整数として照合し、物理上限内の実測額を小数第6位JPYへ切り上げて精算します。usage欠落・矛盾・上限超過・provider例外は未解決予約として後続呼出しを停止します。追加の課金pathを持つ設定、hidden request body、scope不一致を送信前に拒否します。現段階はfake client回帰のみで、実provider clientと実行commandへは未接続です。この予約額は実請求額の保証でも個別の実行承認でもありません。
+`vertex_budget_adapter.py`は同じ制約の生成設定だけから送信payloadを作り、共通`BudgetGate`へ上界を予約してから同期`generate_content`を1回呼びます。固定した`google-genai==2.12.1`では[per-request retry options](https://github.com/googleapis/python-genai/blob/v2.12.1/google/genai/_api_client.py)の`attempts=1`でHTTP再試行を制限します。応答の入力・候補・思考tokenを非負整数として照合し、物理上限内の実測額を小数第6位JPYへ切り上げて精算します。usage欠落・矛盾・上限超過・provider例外は未解決予約として後続呼出しを停止します。追加の課金pathを持つ設定、hidden request body、scope不一致を送信前に拒否します。この予約額は実請求額の保証でも個別の実行承認でもありません。
+
+`budgeted_manifest_runtime.py`は、同じ`RuntimeMeter`で包んだBigQuery／Vertex clientを両予算adapterへ渡し、
+各計画runの計測完了後に共通`BudgetGate`の未精算・停止状態を検査してから次のrunへ進みます。
+開始時には未使用のgateと価格snapshotのmodel・region・実行日を要求します。予算失敗をruntimeが捕捉しても、
+停止したgateは次のprovider呼出しとartifact作成を拒否します。BigQueryのmetadata取得とdry runも停止後は行いません。
+このPython APIは実行意図fileとオーナー承認記録を照合しないため、有料実行の認可入口ではありません。
+fake clientだけで検証済みであり、公式fixtureの独立review、実provider command、個別費用承認は未完了です。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ

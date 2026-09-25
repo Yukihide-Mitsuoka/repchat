@@ -106,12 +106,15 @@ class BudgetedBigQuery:
         self._execution_date = execution_date
 
     def list_tables(self, *args: Any, **kwargs: Any) -> Any:
+        self._gate.ensure_idle()
         return self._client.list_tables(*args, **kwargs)
 
     def get_table(self, *args: Any, **kwargs: Any) -> Any:
+        self._gate.ensure_idle()
         return self._client.get_table(*args, **kwargs)
 
     def query(self, sql: str, *, job_config: Any) -> Any:
+        self._gate.ensure_idle()
         if getattr(self._client, "default_query_job_config", None) is not None:
             raise BudgetError("client default query configuration is unsupported")
         if getattr(job_config, "dry_run", None) is True:
