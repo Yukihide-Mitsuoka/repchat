@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # 開発引き継ぎ
@@ -374,8 +374,8 @@ offlineで保守的な費用上界を計算する作業は2026-09-25にmerge・c
 対応Issueはclose済みで、必須CI checks 13件が成功しました。現在の
 [Issue #865](https://github.com/Yukihide-Mitsuoka/repchat/issues/865)／
 [PR #866](https://github.com/Yukihide-Mitsuoka/repchat/pull/866)では、fake providerで実際のmanifest runnerと
-成果物writerまで通し、成功・停止時のファイルと計測値を検証します。2026-09-25にローカルの
-`make format`、`make lint`、`make test`とPRの必須CI checks 13件が成功し、レビュー・merge待ちです。
+成果物writerまで通し、成功・停止時のファイルと計測値を検証しました。2026-09-25にmergeされ、
+対応Issueもclose済みです。ローカルの`make format`、`make lint`、`make test`とPRの必須CI checks 13件が成功しました。
 実provider commandと公式fixtureの独立reviewは後続です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
@@ -467,8 +467,8 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835、価格snapshot照合はPR #838、承認対象offline照合はPR #841、逐次budget ledgerはPR #847、BigQuery上界はPR #850、二段階予約はPR #852、BigQuery adapterはPR #855、Vertex上界はPR #857、Vertex adapterはPR #860、両adapter合成はPR #863でmerge済み。現在の[PR #866](https://github.com/Yukihide-Mitsuoka/repchat/pull/866)は実成果物writerまでのfake統合回帰を追加し、レビュー・merge待ち。後続で公式fixtureの独立review、個別承認済みの有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
-| 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、失敗分類、fixture成立条件、pipeline artifact照合、価格・予算境界、実成果物writerまでのfake統合回帰はPR #866までにmerge済み。公式fixtureの独立reviewと実provider commandは未完了。有料評価は対象・最大費用を明示して個別承認後だけ実行する |
+| 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | 現在はpost-runの不一致原因reviewを評価側へ追加中。分類を自動推測せず、evidence bytesへbindし、全不一致runを分類する。続いてreviewed contract ablation、対抗fixture、baselineを固定する。再現した原因に対応する対象非依存の改善だけを比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
 | 5 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |

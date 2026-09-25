@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-25
+updated: 2026-09-26
 ---
 
 # 未知schema反復評価の証拠harness
@@ -319,6 +319,22 @@ meter自身の計測不能エラーもrun費用を推測して記録しません
   正答を決定できなければならず、根拠のない命名変更だけで本質的に解けない問題を作らない。
 - 同じroot causeが独立した2 case以上で再現するか、1 caseの全反復で再現した場合だけruntime改善へ進む。
   一度だけの失敗、`indeterminate`、provider／infrastructure failureから実装方針を決めない。
+
+`root_cause_review.py`は、検証済みevidence内で参照結果と一致しない品質runだけに対し、
+別のprivate JSONに記録したreviewerの分類を検査します。`evidence_sha256`はevidence fileの正確なbytes、
+`reviews`の各項目は`schema_id`、`case_id`、`run_id`、上記の閉じた`cause`、`reviewer_id`、
+`basis`を持ちます。`cause`には判定不能を示す`indeterminate`も許します。`basis`は
+`reviewed_reference`、`generated_sql`、`observed_rows`、`analysis_contract`、
+`scope_snapshot`、`failure_diagnostic`から選び、生のSQL・結果値を複製しません。
+未分類、重複、合致したrunへの分類、未知の値、異なるevidence file、参照記録の同一作成者・reviewer IDを拒否します。
+基盤障害runは品質原因へ分類しません。標準出力は原因別run数と異なるschema／caseの組数だけです。
+この件数は独立caseの証明やruntime変更の自動承認ではなく、reviewer IDも本人性を証明しません。
+実行例は次のとおりです。公式fixtureと実値を使った分類は未実施です。
+
+```console
+python3 spikes/schema-generalization-evaluation/root_cause_review.py \
+  /secure/path/evidence.json /secure/path/root-cause-review.json
+```
 
 ### 観測結果から選ぶ改善
 
