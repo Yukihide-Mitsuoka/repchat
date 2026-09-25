@@ -157,6 +157,8 @@ Python APIの`validate_execution_intent`は検証済みJPY上限を`BudgetLimits
 停止したgateは次のprovider呼出しとartifact作成を拒否します。BigQueryのmetadata取得とdry runも停止後は行いません。
 このPython APIは実行意図fileとオーナー承認記録を照合しないため、有料実行の認可入口ではありません。
 fake clientだけで検証済みであり、公式fixtureの独立review、実provider command、個別費用承認は未完了です。
+評価用のfake統合回帰は2件の計画runを実際のmanifest runner・artifact writerまで通し、記録した処理bytes・
+費用、出力directoryとfileの権限、usage欠落・予算不足・既存出力先での非作成／非上書きを確認します。
 
 scope snapshot artifactは、scope discoveryを完了した計画runがあるschemaと一対一で対応する`schema_id`、対象非依存runtimeが生成した
 `DiscoverySnapshot.content_json`、timezone付き`retrieved_at`だけを持ちます。assemblerは`content_json`がruntimeと同じ
