@@ -368,8 +368,10 @@ SDKの自動job再試行を無効にしました。
 offlineで保守的な費用上界を計算する作業は2026-09-25にmerge・close済みです。
 [Issue #859](https://github.com/Yukihide-Mitsuoka/repchat/issues/859)／[PR #860](https://github.com/Yukihide-Mitsuoka/repchat/pull/860)で、生成送信前の予算予約と
 応答usageによる実測精算も2026-09-25にmerge・close済みです。現在の
-[Issue #862](https://github.com/Yukihide-Mitsuoka/repchat/issues/862)では、BigQueryとVertexのbudget adapterを
-同じruntime meter・manifest runnerに接続し、run間の未精算予約を拒否します。fake clientだけで検証し、
+[Issue #862](https://github.com/Yukihide-Mitsuoka/repchat/issues/862)／
+[PR #863](https://github.com/Yukihide-Mitsuoka/repchat/pull/863)では、BigQueryとVertexのbudget adapterを
+同じruntime meter・manifest runnerに接続し、run間の未精算予約を拒否します。2026-09-25に
+ローカルの`make format`、`make lint`、`make test`が成功し、PR CIを確認中です。fake clientだけで検証し、
 実provider commandと公式fixtureの独立reviewは後続です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
@@ -461,7 +463,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
-| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835、価格snapshot照合はPR #838、承認対象offline照合はPR #841、逐次budget ledgerはPR #847、BigQuery上界はPR #850、二段階予約はPR #852、BigQuery adapterはPR #855、Vertex上界はPR #857、Vertex adapterはPR #860でmerge済み。現在は[#862](https://github.com/Yukihide-Mitsuoka/repchat/issues/862)で両adapterとruntime meterを単一評価入口へ接続する。後続で公式fixtureの独立review、個別承認済みの有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
+| 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、既知失敗・基盤障害・未知例外の分離、参照fixture成立条件、pipeline artifactの実行前照合はPR #821、#823、#825、#828、#830、#833までの個別PRでmerge済み。ADR-0027はPR #835、価格snapshot照合はPR #838、承認対象offline照合はPR #841、逐次budget ledgerはPR #847、BigQuery上界はPR #850、二段階予約はPR #852、BigQuery adapterはPR #855、Vertex上界はPR #857、Vertex adapterはPR #860でmerge済み。現在は[PR #863](https://github.com/Yukihide-Mitsuoka/repchat/pull/863)で両adapterとruntime meterを単一評価入口へ接続し、CIを確認する。後続で公式fixtureの独立review、個別承認済みの有料評価へ進む。計測不能なprovider／meter障害は評価を停止し、費用を推測しない。attempt状態機械の全面再設計は行わない |
 | 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | #788の型付き診断、合否gate、失敗分類が完了した後に工程別root cause、reviewed contract ablation、対抗fixtureを固定し、baselineを取る。再現した原因に対応するJOIN／grain、bounded value lookup、semantic invariant、条件付き複数候補だけを順に比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
