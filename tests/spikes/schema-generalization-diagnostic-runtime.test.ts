@@ -249,6 +249,98 @@ assert len(calls)==1 and callable(calls[0])
   assert.equal(result.stdout, '');
 });
 
+test('reviewed diagnostic runs compose all fake provider stages through the budget gate', () => {
+  const result = python(String.raw`
+import stat,types
+from datetime import datetime,timezone
+from decimal import Decimal
+from types import SimpleNamespace as NS
+from execution_budget import BudgetGate,BudgetLimits
+from manifest_runtime_meter import PricingSnapshot
+
+class Config:
+ def __init__(self,**kwargs):self.settings=kwargs
+ def model_dump(self,**_kwargs):return self.settings
+bigquery=types.ModuleType('google.cloud.bigquery')
+bigquery.QueryJobConfig=lambda **kwargs:NS(**kwargs)
+cloud=types.ModuleType('google.cloud');cloud.bigquery=bigquery
+genai=types.ModuleType('google.genai');genai.types=NS(GenerateContentConfig=Config)
+google=types.ModuleType('google');google.cloud=cloud;google.genai=genai
+sys.modules.update({'google':google,'google.cloud':cloud,'google.cloud.bigquery':bigquery,'google.genai':genai})
+
+sql_text='SELECT COUNT(amount) AS metric_value FROM '+chr(96)+'project.dataset.records'+chr(96)
+plan={'objective_summary':'件数を確認する','audience':'担当者','comparison':'なし','hypotheses':['件数を確認する'],'clarifications':[],'panels':[{'title':'件数','kpi':'値','chart':'scorecard','decision':'件数を判断する','reason':'値の確認','execution_prompt':'値がある行の件数を求める','dimensions':[],'measures':['値'],'layout_row':1,'layout_weight':1}]}
+answer={'sql':sql_text,'reason':'契約の定義に従う','undefined_terms':[],'clarification_question':''}
+class Models:
+ def __init__(self):self.calls=[]
+ def generate_content(self,**kwargs):
+  self.calls.append(kwargs)
+  assert kwargs['config']['http_options']['retry_options']=={'attempts':1}
+  body=plan if len(self.calls)%2 else answer
+  return NS(text=canonical(body),usage_metadata=NS(prompt_token_count=10,candidates_token_count=5,total_token_count=15))
+class Vertex:
+ def __init__(self):
+  self.models=Models()
+  self._api_client=NS(vertexai=True,location='global',project='test-project',api_key=None,custom_base_url=None,_http_options=NS(extra_body=None,base_url_resource_scope=None))
+class Rows(list):
+ schema=[NS(name='metric_value')]
+class Job:
+ total_bytes_processed=42
+ total_bytes_billed=20
+ def result(self,**kwargs):
+  assert kwargs=={'timeout':180,'max_results':2,'retry':None,'job_retry':None}
+  return Rows([{'metric_value':3}])
+class Warehouse:
+ default_query_job_config=None
+ def __init__(self):self.calls=[]
+ def query(self,query,*,job_config,retry,job_retry):
+  assert query==sql_text and retry is None and job_retry is None
+  self.calls.append(job_config)
+  if job_config.dry_run:
+   return NS(statement_type='SELECT',referenced_tables=[NS(project='project',dataset_id='dataset',table_id='records')],schema=[NS(name='metric_value',field_type='INT64',mode='NULLABLE')],total_bytes_processed=21)
+  return Job()
+
+snapshot_price=PricingSnapshot(captured_at=datetime(2026,9,24,tzinfo=timezone.utc),source_url='https://cloud.google.com/vertex-ai/generative-ai/pricing',currency='JPY',model='gemini-3.6-flash',region='global',vertex_tier='standard-text',bigquery_billing='on-demand',vertex_input_jpy_per_million='2',vertex_output_jpy_per_million='3',bigquery_jpy_per_tib='10')
+gate=BudgetGate(BudgetLimits(Decimal('20'),Decimal('1'),Decimal('21')))
+warehouse=Warehouse();vertex=Vertex()
+original=diagnostic_runtime._diagnostic_rendering_runner
+def discover(_bq,_scope):return DiscoverySnapshot(snapshot.content_json,snapshot.fingerprint,retrieved_at)
+diagnostic_runtime._diagnostic_rendering_runner=lambda cases:original(cases,discoverer=discover)
+with TemporaryDirectory() as temp:
+ output=Path(temp)/'artifacts'
+ paths=diagnostic_runtime.run_budgeted_diagnostic_manifest_evaluation(manifest,warehouse,vertex,'gemini-3.6-flash',as_of=date(2026,9,26),output_directory=output,pricing_snapshot=snapshot_price,region='global',execution_date=date(2026,9,26),gate=gate,scope_snapshots_bytes=snapshot_bytes,contracts_bytes=contract_bytes,review_record_bytes=canonical(reviews).encode())
+ runs=[item['run'] for item in json.loads(paths['recordings'].read_text())['runs']]
+ assert [run['run_id'] for run in runs]==['run-1','run-2']
+ assert all(run['failure_stage']=='none' and run['render_succeeded'] for run in runs),[(run['failure_stage'],run['failure_code']) for run in runs]
+ assert all(run['actual_rows']==[[3]] and run['generated_sql']==sql_text for run in runs)
+ assert all(run['bytes_processed']==42 and run['cost_jpy']>0 for run in runs)
+ assert all(run['runtime_input']['analysis_contract_fingerprint']==contract.fingerprint for run in runs)
+ assert json.loads(paths['analysis_contracts'].read_text())==contracts
+ assert json.loads(paths['scope_snapshots'].read_text())==snapshots
+ assert stat.S_IMODE(output.stat().st_mode)==0o700
+ assert all(stat.S_IMODE(path.stat().st_mode)==0o600 for path in paths.values())
+assert len(vertex.models.calls)==4 and len(warehouse.calls)==4
+assert [config.dry_run for config in warehouse.calls]==[True,False,True,False]
+assert all(config.maximum_bytes_billed==100 for config in warehouse.calls)
+assert gate.unresolved_reservation_jpy=={'vertex':Decimal('0'),'bigquery':Decimal('0')}
+assert gate.settled_jpy['vertex']>0 and gate.settled_jpy['bigquery']>0
+from analysis_workflows import AnalysisWorkflowError
+small_gate=BudgetGate(BudgetLimits(Decimal('2'),Decimal('1'),Decimal('3')))
+blocked_warehouse=Warehouse();blocked_vertex=Vertex()
+with TemporaryDirectory() as temp:
+ output=Path(temp)/'artifacts'
+ try:
+  diagnostic_runtime.run_budgeted_diagnostic_manifest_evaluation(manifest,blocked_warehouse,blocked_vertex,'gemini-3.6-flash',as_of=date(2026,9,26),output_directory=output,pricing_snapshot=snapshot_price,region='global',execution_date=date(2026,9,26),gate=small_gate,scope_snapshots_bytes=snapshot_bytes,contracts_bytes=contract_bytes,review_record_bytes=canonical(reviews).encode())
+ except AnalysisWorkflowError as error:
+  assert 'evaluation budget would be exceeded' in str(error)
+ else:raise AssertionError('exhausted budget wrote a diagnostic evaluation')
+ assert not output.exists()
+assert blocked_warehouse.calls==[] and blocked_vertex.models.calls==[]
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('changed authorized scope stops the diagnostic run without artifacts', () => {
   const result = python(String.raw`
 calls=[]
