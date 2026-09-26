@@ -382,7 +382,7 @@ offlineで保守的な費用上界を計算する作業は2026-09-25にmerge・c
 別のprivate review記録へ過不足なく結び付け、対象別の原因を自動推測しません。
 [PR #868](https://github.com/Yukihide-Mitsuoka/repchat/pull/868)は2026-09-26にmerge済みです。通常版と診断版の
 post-run evidenceを別々に採点し、同一scope・参照記録・計画run・pipeline条件を照合します。
-[PR #869](https://github.com/Yukihide-Mitsuoka/repchat/pull/869)は2026-09-26にmerge済みです。診断側の契約artifact・scope snapshot・独立review記録を照合します。[PR #871](https://github.com/Yukihide-Mitsuoka/repchat/pull/871)は2026-09-26にmerge済みです。review記録を両artifact bytesへ固定し、再取得scopeの一致後だけreview済み契約を返す評価専用preflightを追加しました。[PR #873](https://github.com/Yukihide-Mitsuoka/repchat/pull/873)も2026-09-27にmerge済みです。このpreflightを計測・予算付きmanifest runnerへ接続し、planning停止runのprivate artifactまでのfake回帰を追加しました。現在の[PR #875](https://github.com/Yukihide-Mitsuoka/repchat/pull/875)では、planning成功後にreview済み契約由来の共通ルールがSQL生成境界へ渡り、SQL検証停止runへ記録されるfake回帰を追加しました。全段階の成功と実providerでの契約利用証明は未完了です。
+[PR #869](https://github.com/Yukihide-Mitsuoka/repchat/pull/869)は2026-09-26にmerge済みです。診断側の契約artifact・scope snapshot・独立review記録を照合します。[PR #871](https://github.com/Yukihide-Mitsuoka/repchat/pull/871)は2026-09-26にmerge済みです。review記録を両artifact bytesへ固定し、再取得scopeの一致後だけreview済み契約を返す評価専用preflightを追加しました。[PR #873](https://github.com/Yukihide-Mitsuoka/repchat/pull/873)と[PR #875](https://github.com/Yukihide-Mitsuoka/repchat/pull/875)も2026-09-27にmerge済みです。診断preflightを計測・予算付きmanifest runnerへ接続し、planning停止runのprivate artifactと、planning成功後の共通SQLルール・SQL検証停止記録までfakeで確認しました。現在の#791の作業branchでは、認可外テーブルを共通SQL検証器がBigQuery呼出し前に拒否するfake回帰を追加しています。全段階の成功と実providerでの契約利用証明は未完了です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
@@ -474,7 +474,7 @@ merge済みです。また、元のcheckoutにあるchart描画関連の未コ�
 | 順序 | 作業 | 完了条件・次への移行条件 |
 |---:|---|---|
 | 1 | [#788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の実評価前の評価契約強化 | 型付き診断、case／capability／描画の合格gate、失敗分類、fixture成立条件、pipeline artifact照合、価格・予算境界、実成果物writerまでのfake統合回帰はPR #866までにmerge済み。公式fixtureの独立reviewと実provider commandは未完了。有料評価は対象・最大費用を明示して個別承認後だけ実行する |
-| 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | PR #867〜#869、#871、#873はmerge済み。PR #875でreview済み契約のSQL生成境界までのfake利用証明をレビュー中。全段階の成功、対抗fixture、baselineは未完了。再現した原因に対応する対象非依存の改善だけを比較する |
+| 2 | [#791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)のbaseline主導SQL精度改善 | PR #867〜#869、#871、#873、#875はmerge済み。診断runでの認可外SQL拒否をfakeで検証中。全段階の成功、対抗fixture、baselineは未完了。再現した原因に対応する対象非依存の改善だけを比較する |
 | 3 | [#188](https://github.com/Yukihide-Mitsuoka/repchat/issues/188)の未完評価証拠 | 対象名を受け取らない共通pipelineで、対象別コード・設定を追加せず、独立review済みの未知schema最低2種類を同一binary・prompt・設定で反復照合する。有料実行は価格snapshot、認可scope、予算上限、実行承認を固定した後だけ行う |
 | 4 | [#179](https://github.com/Yukihide-Mitsuoka/repchat/issues/179)の閲覧／来歴UX | #188の品質境界とロードマップの製品化開始条件が確定した後、presentation面とSQL・定義・provenance・検証・revision確認面のinteraction、deep link、認可境界を文書化してから製品実装へ進む |
 | 5 | [#180](https://github.com/Yukihide-Mitsuoka/repchat/issues/180)の分析契約 | #179のinteractionと#188のschema品質境界を入力にし、immutable specification revision、明示承認、非同期build、進捗、再開、公開を製品契約として実装する |
