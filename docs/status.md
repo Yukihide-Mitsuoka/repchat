@@ -1,7 +1,7 @@
 ---
 id: status
 title: 実装状況サマリー
-updated: 2026-09-23
+updated: 2026-09-26
 ---
 
 # 実装状況サマリー
@@ -76,8 +76,8 @@ PR #785では実行clientを共通proxyで計測し、全Vertex responseのtoken
 公式fixture、独立review、実値照合、
 全runtime段階を含む同一binary・prompt・設定での反復評価は未完了。
 実評価の前提となる型付きSQL診断はIssue #796／#799／#802／#804で実装済みである。Issue #807では、
-case別結果一致率、安全違反0件、描画成功率100%、必須capability別成功を合格gateへ追加済みである。残る
-infrastructure failureとprogramming errorの分離は[Issue #788](https://github.com/Yukihide-Mitsuoka/repchat/issues/788)の次段階である。
+case別結果一致率、安全違反0件、描画成功率100%、必須capability別成功を合格gateへ追加済みである。
+infrastructure failureとprogramming errorの分離も後続PRで実装済みである。
 [Issue #809](https://github.com/Yukihide-Mitsuoka/repchat/issues/809)／
 [PR #810](https://github.com/Yukihide-Mitsuoka/repchat/pull/810)では最終2 stageの既知品質拒否だけを失敗runへ変換し、
 未知例外と不変条件違反を伝播させ、2026-09-22にmerge済みである。[Issue #812](https://github.com/Yukihide-Mitsuoka/repchat/issues/812)／
@@ -94,9 +94,11 @@ preflightの安全な型付き基盤障害を、完全に計測できたrunだ�
 計測不能なplanning／SQL生成provider障害とmeter障害は、費用を推測せず評価を停止する。
 PR #828で実行manifest作成前の参照記録検証を追加し、merge済みである。
 PR #830でschema数、capability、閾値、計画run数の事前検証を追加し、merge済みである。
-Issue #832でpipeline artifactの実file bytesをmanifest作成前に照合する。
+PR #833でpipeline artifactの実file bytesをmanifest作成前に照合した。PR #835〜#866で価格snapshot、
+逐次予算予約、BigQuery／Vertexの予算adapter、両adapterを通る成果物writerまでのfake統合回帰を追加した。
+実provider commandと公式fixtureの独立reviewは未完了である。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
-[Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)も未着手である。
+[Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)に着手している。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
 
@@ -220,8 +222,8 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 
 **現在は対象非依存runtimeの反復評価が最優先。** 旧デモは対象別profileと固定知識を含むため削除済みで、
 過去の成功を任意schema対応の証拠にはしない。共通preflightと評価harnessは実装済みだが、公式fixtureを使う
-全runtime段階の反復評価は未完了である。先にIssue #788で評価契約を強化し、その後に公式fixture、
-費用承認付き実行command、実反復へ進む。
+全runtime段階の反復評価は未完了である。評価契約と予算付きfake統合回帰はPR #866までにmerge済み。
+公式fixtureの独立review、実provider command、個別の費用承認付き実反復が残る。
 
 **事業方針は2026-07-27に大きく動いた。** 競合調査（LOG-0062）で構想の技術要素が
 ほぼ既存製品にあると判明し、差別化を**日本語・国内対応・代理店経由の流通**に置き直した。
@@ -298,7 +300,7 @@ GitHub publisherとmanaged publisherを接続する。build成功後だけcommit
 | **②行スコープの独立層** | **無い**。構造検証は同一プロセス・同一パーサの自己点検であって独立層ではない | 候補は成果物ベースのみ（他はD6で却下）。**採否は鮮度SLA次第＝パートナー待ち** |
 | **列レベル制御** | 未実装（`DataScope` は `all` / `stores` のみ）。**AI分析機能のマスキングと同一物**（[ai-governance-requirements.md](ai-governance-requirements.md)、LOG-0061） | ADR-0005 §6 の設計をパートナーのスコープ実態に合わせて確定。着手条件は**AI分析レポート機能に着手すると決めたとき** |
 | **NL→SQLの製品組込み** | **スパイクで一本通った**（LOG-0065〜0072）。日本語の記述→SQL→照合→Evidenceページを **15/15 で2回連続**、未定義指標の拒否を含む。**`src/` には未着手** | 定義層の実装（`QUERY_POLICY` の発展形）、executorへの接続 |
-| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤を実装中・品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、全provider usageのrun単位計測、最終run記録、assembler入力artifactの安全な出力境界は実装済み。local SQL validator、BigQuery dry run／executionをIssue #796／#799／#802で型付きcode／categoryへ接続し、Issue #804で生のmessageを除いた診断を保存した。Issue #807でcase別一致率・安全性・描画とcapability別成功を合格gateへ追加。Issue #809で結果検証・描画、Issue #812でlocal SQL validation・dry run・execution、Issue #814でplanning・SQL生成、Issue #817でpreflightの未知例外を通常失敗へ変換しない境界を追加した。Issue #820で成功・品質失敗・provider／infrastructure failureを閉じたrun種別へ分離し、基盤障害を品質率の分母から除外しつつ合格不能にする契約を実装済み。PR #823でrenderer、PR #825で計測可能なpreflight基盤障害、PR #828でfixture参照記録、PR #830でfixture成立条件を接続済み。計測不能なprovider障害は評価を停止する。Issue #832でpipeline artifactの実file bytesを事前照合中 | Issue #788の計画に従い、公式fixtureと費用承認付き実行commandを整える。Issue #791で工程別root cause、ablation、対抗fixture、baselineを固定し、再現した原因に対応する対象非依存の改善だけを比較する。その後、費用承認付きで複数の未知schemaを同一binary・prompt・設定で反復実行する。実値・安全性・費用・描画が合格した後だけ製品runtime境界をADRで決める（ADR-0025、Issue #188） |
+| **未知の独自nested schemaでのNL→SQL品質** | **評価基盤はfake clientで検証済み、実品質は未検証**。対象別runtimeは削除済み。共通preflightから結果検証・描画、provider usage計測、型付き診断、case別合格gate、失敗分類、予算付き成果物writerまでを実装済み。PR #866で2件の計画runを実runnerとwriterへ通した。実provider、未知schemaの公式fixture、独立reviewは未検証 | [評価harness](../spikes/schema-generalization-evaluation/README.md)に従い、公式fixtureと独立review、実provider commandを整える。Issue #791ではpost-run root cause分類から開始し、ablation・対抗fixture・baselineを固定する。実行対象と最大費用を提示し個別承認を得た後だけ有料評価する。全gate合格後に製品runtime境界をADRで決める（ADR-0025） |
 | **適応型分析メモリー** | **未実装・方針承認済み**。要件とADR-0018をIssue #220で文書化。生の会話ではなくscope・権限・revision・期限を持つ方針をPostgresで管理し、AIは候補を作るが自動昇格しない | #188の対象非依存品質境界、#179、#180のanalysis specification revision契約後にPhase 1実装Issueを作る |
 | **Evidenceの本番統合** | **生成物が実データで描画され**（LOG-0073。セッション118,380等、検証済みの値と一致）、**1シェルを2テナントに配れることまで実測**（LOG-0076）。認証は `gcloud-cli` で**鍵不要**。**ただし全てローカルビルド・`spikes/` 内**で、gate も executor の境界注入も経路に無い | `src/` への移植（ビルド起動と成果物配信の主体を決める）、executorが注入する述語での配信 |
 | **生成物と定義の所有**（顧客のGitか、こちらか） | **決定済み**（[ADR-0014](adr/0014-who-owns-the-generated-artifacts.md) / [ADR-0015](adr/0015-publish-artifacts-through-customer-git.md)、LOG-0077/0082）。**ページ・SQL・manifest＝顧客Git／指標定義＝こちら側**。Gitはbuild時だけ使う | 実装は未着手。同じpipelineへGitHub/managed publisherを接続する。初期はApp管理branchへの直接commit、PR modeは実需まで延期 |
@@ -323,8 +325,8 @@ NL→SQLを一般化できるかは未検証**で、Issue #188を製品化gate�
 「小さく黒字」方針、LOG-0021）。
 
 未知schema benchmarkでは対象別コード、設定、手動意味定義を追加せず、同じruntimeによる自動理解を検証する。
-次の最大レバレッジは、Issue #788の評価契約強化を完了し、Issue #791で工程別root causeとablationを含む
-baselineを取得して、再現した原因だけを対象非依存に改善することである。安全な合否契約は
+次の作業は、公式fixtureの独立reviewと実provider commandの準備、およびIssue #791での工程別root causeと
+ablationを含むbaseline設計である。実反復後は、再現した原因だけを対象非依存に改善する。安全な合否契約は
 [実評価前の強化計画](../spikes/schema-generalization-evaluation/README.md#実評価前の強化計画)、精度改善の選択基準は
 [評価契約強化後の精度改善計画](../spikes/schema-generalization-evaluation/README.md#評価契約強化後の精度改善計画)を正本とする。
 

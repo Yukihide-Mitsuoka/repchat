@@ -110,6 +110,18 @@ def _result_matches(reference: dict[str, Any], run: dict[str, Any]) -> bool:
     )
 
 
+def mismatched_quality_run_ids(bundle: dict[str, Any]) -> set[tuple[str, str, str]]:
+    """Identify post-run discrepancies without copying reference rows into diagnostics."""
+    return {
+        (schema["schema_id"], case["case_id"], run["run_id"])
+        for schema in bundle["schemas"]
+        for case in schema["cases"]
+        for run in case["runs"]
+        if run["failure_kind"] != "infrastructure"
+        and not _result_matches(case["reference"], run)
+    }
+
+
 def _run_succeeded_end_to_end(reference: dict[str, Any], run: dict[str, Any]) -> bool:
     return (
         run["failure_stage"] == NO_FAILURE
