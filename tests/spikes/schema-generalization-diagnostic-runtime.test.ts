@@ -17,7 +17,7 @@ from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
 sys.path[:0]=[${JSON.stringify(EVALUATION)},${JSON.stringify(REPORT_GENERATION)}]
-from analysis_contract import compile_contract
+from analysis_contract import compile_contract,expression_for_field
 from bigquery_schema_snapshot import SchemaSnapshot
 from bigquery_scope_discovery import DiscoverySnapshot
 from diagnostic_preflight import DiagnosticPreflightError,prepare_diagnostic_preflights
@@ -36,8 +36,10 @@ schema=SchemaSnapshot(metadata_json,sha(metadata_json.encode()),retrieved_at)
 scope_content={'version':1,'schema':{'fingerprint':schema.fingerprint,'metadata':metadata},'tables':[],'limits':{}}
 scope_json=canonical(scope_content)
 snapshot=DiscoverySnapshot(scope_json,sha(scope_json.encode()),retrieved_at)
-contract=compile_contract(schema,{'grain':{},'metrics':{},'dimensions':{},'relationships':[]},None,{'maximum_bytes_billed':100,'maximum_result_rows':10})
-manifest={'version':1,'evaluation_plan_sha256':'0'*64,'pipeline':{'runtime':'1'*64,'prompt':'2'*64,'configuration':'3'*64},'schemas':[{'schema_id':'schema-a','authorized_scope':{'datasets':['project.dataset'],'tables':['project.dataset.records']},'cases':[{'case_id':'case-a','question':'合計を求める','run_ids':['run-1','run-2']}]}]}
+field={'table':'project.dataset.records','field':'amount'}
+semantics={'grain':{},'metrics':{'値':{'field':field,'aggregation':'count','expr':expression_for_field(field,'count')}},'dimensions':{},'relationships':[]}
+contract=compile_contract(schema,semantics,None,{'maximum_bytes_billed':100,'maximum_result_rows':10})
+manifest={'version':1,'evaluation_plan_sha256':'0'*64,'pipeline':{'runtime':'1'*64,'prompt':'2'*64,'configuration':'3'*64},'schemas':[{'schema_id':'schema-a','authorized_scope':{'datasets':['project.dataset'],'tables':['project.dataset.records']},'cases':[{'case_id':'case-a','question':'値がある行の件数を求める','run_ids':['run-1','run-2']}]}]}
 snapshots={'version':1,'snapshots':[{'schema_id':'schema-a','content_json':scope_json,'retrieved_at':retrieved_at}]}
 contracts={'version':1,'contracts':[{'schema_id':'schema-a','case_id':'case-a','content_json':contract.content_json}]}
 snapshot_bytes=canonical(snapshots).encode();contract_bytes=canonical(contracts).encode()
@@ -171,6 +173,62 @@ with TemporaryDirectory() as temp:
  assert all(run['generated_sql']==sql_text and run['runtime_input']['analysis_contract_fingerprint']==contract.fingerprint for run in runs)
 assert len(warehouse.calls)==2
 assert all(query==sql_text and config.maximum_bytes_billed==100 and config.use_query_cache is False for query,config in warehouse.calls)
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
+test('reviewed SQL completes execution, result validation, and rendering with fake provider', () => {
+  const result = python(String.raw`
+import types
+from types import SimpleNamespace
+import manifest_sql_generation as generation
+bigquery=types.ModuleType('google.cloud.bigquery')
+bigquery.QueryJobConfig=lambda **kwargs:SimpleNamespace(**kwargs)
+cloud=types.ModuleType('google.cloud');cloud.bigquery=bigquery
+google=types.ModuleType('google');google.cloud=cloud
+sys.modules.update({'google':google,'google.cloud':cloud,'google.cloud.bigquery':bigquery})
+sql_text='SELECT COUNT(amount) AS metric_value FROM '+chr(96)+'project.dataset.records'+chr(96)
+class Rows(list):
+ schema=[SimpleNamespace(name='metric_value')]
+class ExecutionJob:
+ total_bytes_processed=42
+ def result(self,**kwargs):
+  assert kwargs=={'timeout':180,'max_results':2}
+  return Rows([{'metric_value':3}])
+class Warehouse:
+ def __init__(self):self.calls=[]
+ def query(self,query,job_config):
+  self.calls.append((query,job_config))
+  if job_config.dry_run:
+   return SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='project',dataset_id='dataset',table_id='records')],schema=[SimpleNamespace(name='metric_value',field_type='INT64',mode='NULLABLE')],total_bytes_processed=21)
+  return ExecutionJob()
+def discover(_bq,_scope):
+ return DiscoverySnapshot(snapshot.content_json,snapshot.fingerprint,retrieved_at)
+def plan(_vertex,_model,_question,_context,emit,**kwargs):
+ panel={'id':'P1','title':'値','execution_prompt':'値がある行の件数を求める','decision':'件数を確認する','chart':'scorecard','dimensions':[],'measures':['値']}
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[panel]},'cost_jpy':0})
+def sql(_vertex,_model,_section,_period,_rules):
+ return ({'sql':sql_text,'reason':'契約fieldの件数','undefined_terms':[],'clarification_question':''},{'input_tokens':1,'output_tokens':1})
+generation.report.vertex_cost_jpy=lambda _model,_usage:0
+warehouse=Warehouse()
+runner=_diagnostic_rendering_runner(cases,discoverer=discover,planning_runner=plan,sql_runner=sql)
+def meter(_identity,execute):
+ execute()
+ return RunMeasurement(42,0)
+with TemporaryDirectory() as temp:
+ paths=run_measured_manifest_evaluation(manifest,warehouse,object(),'model',as_of=date(2026,9,26),output_directory=Path(temp)/'artifacts',meter=meter,rendering_runner=runner)
+ runs=[item['run'] for item in json.loads(paths['recordings'].read_text())['runs']]
+ assert [run['run_id'] for run in runs]==['run-1','run-2']
+ assert all(run['failure_stage']=='none' and run['failure_code']=='' for run in runs),[(run['failure_stage'],run['failure_code']) for run in runs]
+ assert all(run['sql_execution_succeeded'] and run['render_succeeded'] for run in runs)
+ assert all(run['actual_rows']==[[3]] and run['generated_sql']==sql_text for run in runs)
+ assert all(run['bytes_processed']==42 and run['runtime_input']['analysis_contract_fingerprint']==contract.fingerprint for run in runs)
+ assert json.loads(paths['analysis_contracts'].read_text())==contracts
+assert len(warehouse.calls)==4
+assert all(query==sql_text and config.maximum_bytes_billed==100 for query,config in warehouse.calls)
+assert [config.dry_run for _,config in warehouse.calls]==[True,False,True,False]
+assert [config.use_query_cache for _,config in warehouse.calls]==[False,True,False,True]
 `);
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
