@@ -1,5 +1,26 @@
 # Changelog
 
+## [5.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v4.0.0...v5.0.0) (2026-09-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **evaluation:** 診断契約を実行前のscopeへ照合する ([#871](https://github.com/Yukihide-Mitsuoka/repchat/issues/871))
+
+### Features
+
+* **evaluation:** BigQuery queryの予算予約と実測精算を接続 ([#855](https://github.com/Yukihide-Mitsuoka/repchat/issues/855)) ([5a87f92](https://github.com/Yukihide-Mitsuoka/repchat/commit/5a87f92d5d1ed24d8c57da3f031562967b76d368))
+* **evaluation:** BigQuery呼出しの費用上界をofflineで算定する ([#850](https://github.com/Yukihide-Mitsuoka/repchat/issues/850)) ([abb6a04](https://github.com/Yukihide-Mitsuoka/repchat/commit/abb6a04f1290366d37150903e387ef44f5d4ab0a))
+* **evaluation:** job完了まで予算予約を保持する ([#852](https://github.com/Yukihide-Mitsuoka/repchat/issues/852)) ([c26d8db](https://github.com/Yukihide-Mitsuoka/repchat/commit/c26d8db4aa3ee0373f9d6b020f4aed2fd2660461))
+* **evaluation:** Vertex text生成の費用上界をofflineで算定 ([#857](https://github.com/Yukihide-Mitsuoka/repchat/issues/857)) ([624c9c8](https://github.com/Yukihide-Mitsuoka/repchat/commit/624c9c8191c1538dd89f6e629bde97b62465dc3d))
+* **evaluation:** Vertex生成の予算予約と実測精算を追加 ([#860](https://github.com/Yukihide-Mitsuoka/repchat/issues/860)) ([9079ceb](https://github.com/Yukihide-Mitsuoka/repchat/commit/9079cebbdebf5ce52564a23b8b1036709f6f62ce))
+* **evaluation:** 予算付きmanifest評価入口を追加 ([#863](https://github.com/Yukihide-Mitsuoka/repchat/issues/863)) ([8631bc0](https://github.com/Yukihide-Mitsuoka/repchat/commit/8631bc0566362af9cf554a60e66480f4eae203eb))
+* **evaluation:** 実行後の不一致原因レビューを検証する ([#867](https://github.com/Yukihide-Mitsuoka/repchat/issues/867)) ([5f09d80](https://github.com/Yukihide-Mitsuoka/repchat/commit/5f09d8091e0cbc0408a9ef60dc246492af538b0d))
+* **evaluation:** 実評価の逐次予算予約をofflineで検証する ([#847](https://github.com/Yukihide-Mitsuoka/repchat/issues/847)) ([a8a7772](https://github.com/Yukihide-Mitsuoka/repchat/commit/a8a7772dde79a5df0df7a527eca2026e01a43d94))
+* **evaluation:** 診断契約のレビュー記録を成果物へ照合する ([#869](https://github.com/Yukihide-Mitsuoka/repchat/issues/869)) ([426ac0b](https://github.com/Yukihide-Mitsuoka/repchat/commit/426ac0b437c5bc8807422d37ab7a0301e02cf3f4))
+* **evaluation:** 診断契約を実行前のscopeへ照合する ([#871](https://github.com/Yukihide-Mitsuoka/repchat/issues/871)) ([8323bca](https://github.com/Yukihide-Mitsuoka/repchat/commit/8323bcaed69cd3b89ad8115bffa8211b70dae842))
+* **evaluation:** 通常版と診断版の証拠を分離して比較する ([#868](https://github.com/Yukihide-Mitsuoka/repchat/issues/868)) ([9e31724](https://github.com/Yukihide-Mitsuoka/repchat/commit/9e31724064a88bf71cdaa861693c153ced1f370b))
+
 ## [4.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v3.0.0...v4.0.0) (2026-09-23)
 
 
