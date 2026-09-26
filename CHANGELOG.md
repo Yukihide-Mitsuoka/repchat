@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v5.0.0...v5.1.0) (2026-09-26)
+
+
+### Features
+
+* **evaluation:** 診断契約を予算付き評価runnerへ接続 ([#873](https://github.com/Yukihide-Mitsuoka/repchat/issues/873)) ([da6334f](https://github.com/Yukihide-Mitsuoka/repchat/commit/da6334f54192e6dfa7d3698a3f743248a812892e))
+
 ## [5.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v4.0.0...v5.0.0) (2026-09-26)
 
 
