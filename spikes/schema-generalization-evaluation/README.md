@@ -336,6 +336,19 @@ python3 spikes/schema-generalization-evaluation/root_cause_review.py \
   /secure/path/evidence.json /secure/path/root-cause-review.json
 ```
 
+`compare_evidence.py`は通常runと診断runのevidenceを別々に採点したうえで、同一schema・scope・質問・
+参照記録・capability・run ID・runtime／prompt／設定・閾値かを検査します。少なくとも1 caseのcontract
+fingerprintが異なり、診断側にcontract fingerprintが記録され、両bundleに基盤障害がない場合だけ、
+case別の結果一致率とbundle別の処理bytes・費用を出力します。診断側の数値は通常runの合格率へ混ぜません。
+作成者とreviewerのIDが異なることは検査しますが、本人性は証明しません。この比較だけでは、診断側contractが
+独立review済みであること、実行processがそのcontractを使用したこと、基礎データが両run間で不変だったことを
+証明できません。これらの証跡と診断用実行境界は後続作業です。参照SQL・結果行は出力しません。
+
+```console
+python3 spikes/schema-generalization-evaluation/compare_evidence.py \
+  /secure/path/baseline-evidence.json /secure/path/diagnostic-evidence.json
+```
+
 ### 観測結果から選ぶ改善
 
 | 観測した主因 | 実装候補 | 実装境界と完了条件 |
