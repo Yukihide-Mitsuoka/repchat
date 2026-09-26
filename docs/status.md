@@ -98,7 +98,10 @@ PR #833でpipeline artifactの実file bytesをmanifest作成前に照合した�
 逐次予算予約、BigQuery／Vertexの予算adapter、両adapterを通る成果物writerまでのfake統合回帰を追加した。
 実provider commandと公式fixtureの独立reviewは未完了である。
 強化後の評価でsemantic root cause、reviewed contract ablation、対抗fixtureを測り、観測した原因だけを改善する
-[Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)に着手している。
+[Issue #791](https://github.com/Yukihide-Mitsuoka/repchat/issues/791)に着手している。PR #879までmerge済みで、review済みの
+合成契約をfake warehouseの実行・結果検証・ローカル描画まで通した。続くfake統合回帰では、
+fake Vertex／BigQueryを予算adapterと実測meter経由で通し、成功runの精算と予算超過時の
+artifact未作成を検査する。実providerでの品質・未知schemaへの汎用性は未検証である。
 PR #786までの更新ではローカルのvendored EChartsとDOM stubだけを実行し、実Vertex AI・BigQueryを呼び出していない。現在の作業順と詳細は
 [development-handoff](development-handoff.md)を参照する。
 
