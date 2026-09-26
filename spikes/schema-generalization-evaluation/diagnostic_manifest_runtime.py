@@ -23,7 +23,7 @@ from manifest_preflight import planned_inputs
 from manifest_rendering import RenderingAttempt, run_manifest_rendering
 from manifest_result_validation import run_manifest_result_validation
 from manifest_runtime_meter import PricingSnapshot
-from manifest_sql_generation import run_manifest_sql_generation
+from manifest_sql_generation import run_manifest_sql_generation, sql_generation
 from manifest_sql_validation import run_manifest_sql_validation
 
 
@@ -32,6 +32,9 @@ def _diagnostic_rendering_runner(
     *,
     discoverer: Callable[..., DiscoverySnapshot] = discover_scope,
     planning_runner: Callable[..., None] = analysis_workflows.plan_dashboard,
+    sql_runner: Callable[..., tuple[dict[str, Any], dict[str, int]]] = (
+        sql_generation.generate
+    ),
 ) -> Callable[..., tuple[RenderingAttempt, ...]]:
     """Select one reviewed case, then retain it through every existing stage."""
 
@@ -50,7 +53,11 @@ def _diagnostic_rendering_runner(
             preflight_runner=partial(case.run, discoverer=discoverer),
             planning_runner=planning_runner,
         )
-        generation = partial(run_manifest_sql_generation, planning_runner=planning)
+        generation = partial(
+            run_manifest_sql_generation,
+            planning_runner=planning,
+            sql_runner=sql_runner,
+        )
         validation = partial(run_manifest_sql_validation, generation_runner=generation)
         dry_run = partial(run_manifest_dry_runs, validation_runner=validation)
         execution = partial(run_manifest_executions, dry_run_runner=dry_run)
