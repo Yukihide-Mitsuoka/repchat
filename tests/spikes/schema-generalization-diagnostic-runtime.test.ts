@@ -132,6 +132,50 @@ with TemporaryDirectory() as temp:
   assert.equal(result.stdout, '');
 });
 
+test('reviewed SQL reaches only the bounded dry-run boundary', () => {
+  const result = python(String.raw`
+import types
+from types import SimpleNamespace
+import manifest_sql_generation as generation
+bigquery=types.ModuleType('google.cloud.bigquery')
+bigquery.QueryJobConfig=lambda **kwargs:SimpleNamespace(**kwargs)
+cloud=types.ModuleType('google.cloud');cloud.bigquery=bigquery
+google=types.ModuleType('google');google.cloud=cloud
+sys.modules.update({'google':google,'google.cloud':cloud,'google.cloud.bigquery':bigquery})
+sql_text='SELECT COUNT(*) AS metric_value FROM '+chr(96)+'project.dataset.records'+chr(96)
+class DryRunOnlyWarehouse:
+ def __init__(self):self.calls=[]
+ def query(self,query,job_config):
+  assert job_config.dry_run is True
+  self.calls.append((query,job_config))
+  return SimpleNamespace(statement_type='SELECT',referenced_tables=[SimpleNamespace(project='project',dataset_id='dataset',table_id='records')],schema=[SimpleNamespace(name='metric_value',field_type='INT64',mode='NULLABLE')],total_bytes_processed=101)
+def discover(_bq,_scope):
+ return DiscoverySnapshot(snapshot.content_json,snapshot.fingerprint,retrieved_at)
+def plan(_vertex,_model,_question,_context,emit,**kwargs):
+ panel={'id':'P1','title':'値','execution_prompt':'件数を求める','decision':'件数を確認する','chart':'scorecard','dimensions':[],'measures':['値']}
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[panel]},'cost_jpy':0})
+def sql(_vertex,_model,_section,_period,_rules):
+ return ({'sql':sql_text,'reason':'検査','undefined_terms':[],'clarification_question':''},{'input_tokens':1,'output_tokens':1})
+generation.report.vertex_cost_jpy=lambda _model,_usage:0
+warehouse=DryRunOnlyWarehouse()
+runner=_diagnostic_rendering_runner(cases,discoverer=discover,planning_runner=plan,sql_runner=sql)
+def meter(_identity,execute):
+ execute()
+ return RunMeasurement(0,0)
+with TemporaryDirectory() as temp:
+ paths=run_measured_manifest_evaluation(manifest,warehouse,object(),'model',as_of=date(2026,9,26),output_directory=Path(temp)/'artifacts',meter=meter,rendering_runner=runner)
+ runs=[item['run'] for item in json.loads(paths['recordings'].read_text())['runs']]
+ assert len(runs)==2
+ assert all(run['failure_stage']=='dry_run' and run['failure_code']=='dry_run_failed' for run in runs)
+ assert all(run['scan_limit_exceeded'] is True and run['sql_execution_succeeded'] is False for run in runs)
+ assert all(run['generated_sql']==sql_text and run['runtime_input']['analysis_contract_fingerprint']==contract.fingerprint for run in runs)
+assert len(warehouse.calls)==2
+assert all(query==sql_text and config.maximum_bytes_billed==100 and config.use_query_cache is False for query,config in warehouse.calls)
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('valid review is bound to the budgeted runner before any provider call', () => {
   const result = python(String.raw`
 calls=[]
