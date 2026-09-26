@@ -145,19 +145,25 @@ function fixtures() {
   return { evidence, snapshots, contracts, reviews };
 }
 
-function validate(input: ReturnType<typeof fixtures>, contractsSha?: string) {
+function validate(
+  input: ReturnType<typeof fixtures>,
+  contractsSha?: string,
+  snapshotsSha?: string,
+) {
   const directory = mkdtempSync(path.join(tmpdir(), 'contract-review-binding-'));
   const paths = ['evidence.json', 'snapshots.json', 'contracts.json', 'review.json'].map((name) =>
     path.join(directory, name),
   );
   const evidenceBytes = JSON.stringify(input.evidence);
   const contractsBytes = JSON.stringify(input.contracts);
+  const snapshotsBytes = JSON.stringify(input.snapshots);
   const review = {
-    version: 1,
+    version: 2,
+    scope_snapshots_sha256: snapshotsSha ?? sha256(snapshotsBytes),
     analysis_contracts_sha256: contractsSha ?? sha256(contractsBytes),
     reviews: input.reviews,
   };
-  [evidenceBytes, JSON.stringify(input.snapshots), contractsBytes, JSON.stringify(review)].forEach(
+  [evidenceBytes, snapshotsBytes, contractsBytes, JSON.stringify(review)].forEach(
     (content, index) => writeFileSync(paths[index]!, content),
   );
   try {
@@ -177,6 +183,13 @@ test('review records bind each diagnostic contract to evidence and scope', () =>
 test('different contract artifact bytes invalidate a pre-run review record', () => {
   const input = fixtures();
   assert.equal(validate(input, '0'.repeat(64)).status, 2);
+});
+
+test('different scope snapshot bytes invalidate a pre-run review record', () => {
+  const input = fixtures();
+  const originalSha = sha256(JSON.stringify(input.snapshots));
+  input.snapshots.snapshots.reverse();
+  assert.equal(validate(input, undefined, originalSha).status, 2);
 });
 
 test('diagnostic evidence must report the reviewed contract fingerprint', () => {

@@ -48,14 +48,16 @@ def _read_json(path: str) -> tuple[bytes, Any]:
 
 def _validate_review_record(
     record: Any,
+    snapshots_sha256: str,
     contracts_sha256: str,
     contract_fingerprints: dict[tuple[str, str], str],
 ) -> None:
     if (
         not isinstance(record, dict)
-        or set(record) != {"version", "analysis_contracts_sha256", "reviews"}
+        or set(record) != {"version", "scope_snapshots_sha256", "analysis_contracts_sha256", "reviews"}
         or type(record["version"]) is not int
-        or record["version"] != 1
+        or record["version"] != 2
+        or record["scope_snapshots_sha256"] != snapshots_sha256
         or record["analysis_contracts_sha256"] != contracts_sha256
         or not isinstance(record["reviews"], list)
     ):
@@ -97,6 +99,7 @@ def _validate_review_record(
 
 def validate_contract_review_binding(
     evidence: Any,
+    scope_snapshots_bytes: bytes,
     scope_snapshots: Any,
     contracts_bytes: bytes,
     contracts: Any,
@@ -133,6 +136,7 @@ def validate_contract_review_binding(
             raise ContractReviewBindingError("diagnostic run differs from contract artifact")
     _validate_review_record(
         review_record,
+        hashlib.sha256(scope_snapshots_bytes).hexdigest(),
         hashlib.sha256(contracts_bytes).hexdigest(),
         fingerprints,
     )
@@ -149,11 +153,11 @@ def main(argv: list[str]) -> int:
         return 2
     try:
         _, evidence = _read_json(argv[1])
-        _, snapshots = _read_json(argv[2])
+        snapshots_bytes, snapshots = _read_json(argv[2])
         contracts_bytes, contracts = _read_json(argv[3])
         _, review = _read_json(argv[4])
         report = validate_contract_review_binding(
-            evidence, snapshots, contracts_bytes, contracts, review
+            evidence, snapshots_bytes, snapshots, contracts_bytes, contracts, review
         )
     except (
         ContractReviewBindingError, EvaluationEvidenceError, OSError, UnicodeError,
