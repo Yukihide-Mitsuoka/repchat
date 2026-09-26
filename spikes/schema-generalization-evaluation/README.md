@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 # 未知schema反復評価の証拠harness
@@ -361,7 +361,7 @@ python3 spikes/schema-generalization-evaluation/contract_review_binding.py /secu
 
 このfile照合は契約の意味的正確性、reviewerの本人性、実行前のreview、実行processでのcontract利用を証明しません。診断用実行境界と外部のreview証跡は後続作業で、契約本文や参照結果は製品runtimeへ渡しません。
 
-`diagnostic_preflight.py`は実行前にmanifest、scope snapshot、review済みcontractと記録を照合します。評価専用のcase runnerは認可scopeを再取得し、固定したsnapshot内容と一致した場合だけreview済みcontractを含むpreflight結果を返します。取得時刻だけは新旧で異なってよく、評価artifactにはreview対象の取得時刻を保持します。snapshot内容が変わった場合は停止します。既存planning境界へ渡すfake回帰はありますが、全段階の計測付きrunnerへは未接続で、実行process全体でのcontract利用や基礎データ不変性は未証明です。
+`diagnostic_preflight.py`は実行前にmanifest、scope snapshot、review済みcontractと記録を照合します。評価専用のcase runnerは認可scopeを再取得し、固定したsnapshot内容と一致した場合だけreview済みcontractを含むpreflight結果を返します。取得時刻だけは新旧で異なってよく、評価artifactにはreview対象の取得時刻を保持します。snapshot内容が変わった場合は停止します。`diagnostic_manifest_runtime.py`は照合済みcaseを計測・予算付きmanifest runnerの既存stage注入点へ接続します。fake回帰では、同じreview済みcontractがplanning停止runの記録とprivate artifactへ届くこと、review不整合ではproviderを呼ばず、scope変化ではartifactを作らないことを確認します。planning成功後の全stageでの実行時利用、実providerでの反復結果、基礎データ不変性は未証明です。このPython APIも実行意図とオーナーの費用承認を検証しないため、有料実行commandではありません。
 
 ### 観測結果から選ぶ改善
 
