@@ -71,6 +71,35 @@ assert calls==['discover',('plan',contract.fingerprint)]*2
   assert.equal(result.stdout, '');
 });
 
+test('reviewed contract reaches SQL generation through the measured diagnostic runner', () => {
+  const result = python(String.raw`
+import manifest_sql_generation as generation
+calls=[]
+def discover(_bq,_scope):
+ return DiscoverySnapshot(snapshot.content_json,snapshot.fingerprint,retrieved_at)
+def plan(_vertex,_model,_question,_context,emit,**kwargs):
+ panel={'id':'P1','title':'値','execution_prompt':'値を集計する','decision':'値を確認する','chart':'bar','dimensions':['区分'],'measures':['値']}
+ emit({'type':'plan','plan':{'revision':'plan-123456789abc','analysis_contract_fingerprint':kwargs['contract'].fingerprint,'clarifications':[],'panels':[panel]},'cost_jpy':0})
+def sql(_vertex,_model,_section,_period,rules):
+ calls.append(rules)
+ return ({'sql':'SELECT 1 AS metric_value','reason':'検査','undefined_terms':[],'clarification_question':''},{'input_tokens':1,'output_tokens':1})
+generation.report.vertex_cost_jpy=lambda _model,_usage:0
+runner=_diagnostic_rendering_runner(cases,discoverer=discover,planning_runner=plan,sql_runner=sql)
+def meter(_identity,execute):
+ execute()
+ return RunMeasurement(0,0)
+with TemporaryDirectory() as temp:
+ paths=run_measured_manifest_evaluation(manifest,object(),object(),'model',as_of=date(2026,9,26),output_directory=Path(temp)/'artifacts',meter=meter,rendering_runner=runner)
+ runs=[item['run'] for item in json.loads(paths['recordings'].read_text())['runs']]
+ assert [run['failure_stage'] for run in runs]==['sql_validation','sql_validation']
+ assert [run['generated_sql'] for run in runs]==['SELECT 1 AS metric_value']*2
+ assert all(run['runtime_input']['analysis_contract_fingerprint']==contract.fingerprint for run in runs)
+assert len(calls)==2 and all(contract.fingerprint in rules for rules in calls)
+`);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, '');
+});
+
 test('valid review is bound to the budgeted runner before any provider call', () => {
   const result = python(String.raw`
 calls=[]
