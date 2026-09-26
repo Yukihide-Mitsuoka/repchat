@@ -349,6 +349,18 @@ python3 spikes/schema-generalization-evaluation/compare_evidence.py \
   /secure/path/baseline-evidence.json /secure/path/diagnostic-evidence.json
 ```
 
+`contract_review_binding.py`はprivateな診断evidence、scope snapshot、analysis contract、review記録を照合します。
+canonical contractから再計算したfingerprintを全runと照合し、実行前のreview記録をcontract fileの正確なbytesへbindします。
+記録はversion 1、`analysis_contracts_sha256`、`reviews`を持ち、各reviewは
+`schema_id`、`case_id`、`contract_fingerprint`、`author_id`、`reviewer_id`、timezone付き`reviewed_at`を持ち、
+契約未取得のrun、review欠落・重複、同じ作成者／reviewer IDを拒否します。標準出力は検証済み契約件数だけです。
+
+```console
+python3 spikes/schema-generalization-evaluation/contract_review_binding.py /secure/path/diagnostic-evidence.json /secure/path/scope-snapshots.json /secure/path/analysis-contracts.json /secure/path/contract-review.json
+```
+
+このfile照合は契約の意味的正確性、reviewerの本人性、実行前のreview、実行processでのcontract利用を証明しません。診断用実行境界と外部のreview証跡は後続作業で、契約本文や参照結果は製品runtimeへ渡しません。
+
 ### 観測結果から選ぶ改善
 
 | 観測した主因 | 実装候補 | 実装境界と完了条件 |
