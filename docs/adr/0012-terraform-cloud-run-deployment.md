@@ -41,7 +41,7 @@
 ### T1. IaCはTerraform、対象はGCPリソースのみ
 
 2つのNodeサービス（control-plane / executor）を**Cloud Run**へ、Terraformで宣言的に構築する。
-基盤に [terraform-gcp プロファイル](../../profiles/terraform-gcp/) が既にあり、語彙が揃う。
+基盤に `profiles/terraform-gcp/` という参考例が既にあり、語彙が揃う。
 
 **Terraformの管理外**とするもの:
 - **Cloudflare（gate）**: 別プロバイダ・別アカウント境界。`wrangler` が既に宣言的に扱う（ADR-0006）。
@@ -177,5 +177,5 @@ canonical契約の下に project-specific ターゲットとして追加する�
 - [ADR-0006](0006-edge-gate-runtime-cloudflare-workers.md) — ゲートはWorkers（T1の管理境界）
 - [ADR-0010](0010-connection-identity-is-never-a-person.md) — D1・鍵を保存しない（T4の根拠）
 - [docs/deploy.md](../deploy.md) — 手順書（本ADRの実装で自動化される）
-- [profiles/README.md](../../profiles/README.md) — canonical契約とprofiles rule 3（T7）
+- [Makeターゲット契約](../../.ai/contracts/foundation/make-targets.md) — canonical契約と破壊的ターゲットの規則（T7）。旧`profiles/README.md`の規範部分はここへ移された。
 - [.ai/decision-log.md](../../.ai/decision-log.md) — LOG-0052（allowlist実測、T5の根拠）

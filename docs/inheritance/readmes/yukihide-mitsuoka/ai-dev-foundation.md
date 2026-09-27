@@ -26,7 +26,7 @@ direct, decide, and review.
 | Enforcement L2 | [`.pre-commit-config.yaml`](../../../../.pre-commit-config.yaml) | Any committer: secret scan, branch guard, lint, unit tests |
 | Enforcement L3 | [`.github/workflows/`](../../../../.github/workflows/) | CI, CodeQL, secrets/deps/license scan, container, IaC, DAST, Scorecard, release+SBOM |
 | Stable command interface | [`Makefile`](../../../../Makefile) | `make test` etc. — the only entry points automation uses |
-| Stack profiles | [`profiles/`](../../../../profiles/) | Reference Makefile implementations per stack + the canonical target contract |
+| Stack profiles | Foundationの`profiles/` | 作成時の参考例。現行の規範は[Makeターゲット契約](../../../../.ai/contracts/foundation/make-targets.md) |
 | Decisions | [`docs/adr/`](../../../adr/) | ADRs + decision log |
 | Knowledge | [`docs/`](../../../) | Architecture, domain, API, deployment, operations, runbook, troubleshooting, roadmap, glossary |
 | GitHub scaffolding | [`.github/`](../../../../.github/) | Issue forms, PR template, CODEOWNERS, labels-as-code, Dependabot; plus `renovate.json` |
@@ -38,9 +38,9 @@ direct, decide, and review.
 1. **Create the repo** from this template (GitHub → "Use this template").
 2. **Replace placeholders**: search for `{{` — mission, stack, CODEOWNERS teams, issue
    config URLs.
-3. **Wire the Makefile**: copy the closest [`profiles/`](../../../../profiles/) Makefile
-   to the root (or implement `setup/format/lint/test/build` yourself) — everything else
-   (hooks, CI) starts working automatically.
+3. **Wire the Makefile**: この記録の作成当時はFoundationの`profiles/`から近い
+   Makefileをコピーしていた。RepChatでは既に製品用Makefileを管理している。
+   現行の規範は[Makeターゲット契約](../../../../.ai/contracts/foundation/make-targets.md)。
 4. **Inspect GitHub governance**: run `python3 scripts/github_governance.py plan --root .
    --repo OWNER/REPOSITORY` after `gh auth login`. It reports policy drift without
    changing settings. Use `audit` for a CI-suitable nonzero drift result. After reviewing
