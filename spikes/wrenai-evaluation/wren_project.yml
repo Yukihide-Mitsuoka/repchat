@@ -1,6 +1,0 @@
-schema_version: 5
-name: ga4_monthly_report
-version: "1.0"
-catalog: wren
-schema: public
-data_source: bigquery
