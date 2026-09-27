@@ -1,5 +1,6 @@
 # Canonical command interface (CLAUDE.md §11) — TypeScript/Node implementation.
-# Adapted from profiles/typescript-node (contract semantics: profiles/README.md).
+# Adapted from the Foundation TypeScript reference profile.
+# Binding target semantics: .ai/contracts/foundation/make-targets.md.
 # Deliberate deviations, to keep the dependency tree (and its committed lockfile)
 # within GR-020: npm instead of pnpm; node:test instead of Vitest; lint =
 # prettier --check + tsc --noEmit (ESLint added when a rule earns its place).

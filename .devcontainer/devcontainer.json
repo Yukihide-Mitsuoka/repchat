@@ -1,17 +1,16 @@
-// Dev Container for ai-dev-foundation.
+// Dev Container for RepChat.
 //
 // Why this exists: the Claude usage guide requires agents to run *inside* a container,
 // not on the host, so host credentials (~/.ssh, cloud configs) never enter the agent's
-// filesystem. This is a stack-agnostic starting point — pick the toolchain feature for
-// your profile (profiles/python-uv, profiles/typescript-node, profiles/terraform-gcp)
-// and delete the ones you do not need. See .devcontainer/README.md.
+// filesystem. Keep the features required by RepChat and remove unused ones.
+// See .devcontainer/README.md.
 {
-  "name": "ai-dev-foundation",
+  "name": "RepChat",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
 
   "features": {
-    // Node is required only to install Claude Code (npm global). Add your stack's
-    // toolchain feature here — e.g. ghcr.io/devcontainers/features/python,
+    // Node is required by RepChat and Claude Code. Add other toolchain features only
+    // when needed — e.g. ghcr.io/devcontainers/features/python,
     // ghcr.io/devcontainers/features/go, ghcr.io/devcontainers-contrib/features/uv.
     "ghcr.io/devcontainers/features/node:1": { "version": "lts" },
     "ghcr.io/devcontainers/features/github-cli:1": {}
