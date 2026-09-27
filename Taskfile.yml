@@ -1,0 +1,140 @@
+# ADR-0024 expansion: mirror the repository-owned Makefile until callers migrate.
+version: '3'
+silent: true
+
+tasks:
+  default:
+    cmds:
+      - task: help
+
+  help:
+    desc: List available tasks
+    cmds:
+      - task --list-all
+
+  setup:
+    desc: Install locked Node dependencies and local hooks
+    cmds:
+      - npm ci --no-fund --no-audit
+      - >-
+        if command -v pre-commit >/dev/null 2>&1; then
+          pre-commit install --hook-type pre-commit --hook-type pre-push;
+        else
+          echo "pre-commit not installed — local gates skipped (CI still enforces)";
+        fi
+
+  format:
+    desc: Format all code or FILE=<path>
+    env:
+      FILE: '{{.FILE}}'
+    cmds:
+      - >-
+        if [ -n "${FILE:-}" ]; then
+          npx prettier --write --ignore-unknown "$FILE";
+        else
+          npx prettier --write .;
+        fi
+
+  lint:
+    desc: Check formatting and TypeScript (FILE narrows to one file)
+    env:
+      FILE: '{{.FILE}}'
+    cmds:
+      - >-
+        if [ -n "${FILE:-}" ]; then
+          npx prettier --check --ignore-unknown "$FILE";
+        else
+          npx prettier --check . && npx tsc --noEmit;
+        fi
+
+  test:
+    desc: Full Node test suite
+    cmds:
+      - node --test 'tests/**/*.test.ts'
+
+  test-unit:
+    desc: Fast suite without integration and e2e cases
+    cmds:
+      - node --test --test-skip-pattern 'integration|e2e' 'tests/**/*.test.ts'
+
+  test-integration:
+    desc: Integration and e2e cases
+    cmds:
+      - node --test --test-name-pattern 'integration|e2e' 'tests/**/*.test.ts'
+
+  coverage:
+    desc: Run the complete suite with Node coverage
+    cmds:
+      - node --test --experimental-test-coverage 'tests/**/*.test.ts'
+
+  build:
+    desc: Typecheck deployable code
+    cmds:
+      - npm run build
+
+  run:
+    desc: Run locally
+    cmds:
+      - npm run dev
+
+  security-scan:
+    desc: Scan secrets and dependency vulnerabilities
+    cmds:
+      - >-
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks detect --no-banner;
+        else
+          echo "[template] gitleaks not installed — CI still enforces SEC-002";
+        fi
+      - >-
+        if command -v trivy >/dev/null 2>&1; then
+          trivy fs --scanners vuln,misconfig,secret --exit-code 1 .;
+        else
+          echo "[template] trivy not installed — CI still enforces SEC-030";
+        fi
+      - npm audit --audit-level=high
+
+  sbom:
+    desc: Generate SPDX and CycloneDX SBOMs into dist/
+    cmds:
+      - mkdir -p dist
+      - >-
+        if command -v syft >/dev/null 2>&1; then
+          syft . -o spdx-json=dist/sbom.spdx.json -o cyclonedx-json=dist/sbom.cdx.json &&
+          echo "SBOM written to dist/";
+        else
+          echo "[template] syft not installed — release workflow generates the authoritative SBOM";
+        fi
+
+  clean:
+    desc: Remove build artifacts and caches inside the workspace
+    cmds:
+      - rm -rf dist coverage node_modules/.cache
+
+  doctor:
+    desc: Fast Foundation and RepChat boundary checks
+    cmds:
+      - FOUNDATION_TEST_SUITE=fast bash scripts/template-check.sh
+      - bash tests/template-sync-boundary.test.sh
+      - bash scripts/tests/pr-size-policy.test.sh
+      - bash .claude/hooks/tests/guard-bash.test.sh
+
+  doctor-slow:
+    desc: Foundation tests that create temporary Git repositories
+    cmds:
+      - python3 scripts/foundation_test_runner.py --suite slow
+
+  infra-plan:
+    desc: Read-only plan of GCP deployment changes
+    cmds:
+      - bash infra/scripts/plan.sh
+
+  deploy:
+    desc: Deploy after explicit human approval
+    cmds:
+      - bash infra/scripts/deploy.sh
+
+  destroy:
+    desc: DANGEROUS — requires human approval and ALLOW_DESTROY=yes
+    cmds:
+      - bash infra/scripts/destroy.sh
