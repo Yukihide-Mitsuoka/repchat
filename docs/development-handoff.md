@@ -408,7 +408,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 | 手書きschema・意味・期間・SQL補正 | `sql_generation.py`、`sql_contract_validation.py`、`bigquery_execution.py`、`run_report.py` | 対象別profile moduleはPR #722、固定schema・指標promptと手動metric資産はPR #723、固定Evidence出力はPR #725、SQL実行の固定datasetと20GiB fallbackはPR #727、URL関数の特殊補正はPR #728で削除済み |
 | UIと補助実行経路 | `tenant_serve.py` | 旧ライブデモ入口とUI補助module、未参照の固定Evidence成果物出力、固定対象選択・SQLを持つ旧配信実験はPR #730までに削除済み |
 | 中立化が必要な分析表現 | `visualization_contracts.py`、`visualization_sections.py`、`chart_renderer_composition.js` | `event_date`はPR #732で中立な描画役割へ置換済み。PR #733で時系列chartの選択区分軸の型、PR #736で最終SQL式の直接field来歴を共通契約へ照合した。段階付きSankeyのWeb導線前提はPR #734で中立化済み。PR #738で完全経路を証明できない段階付きSankeyを全製品入口から閉じ、一般flowだけを維持する |
-| 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/wrenai-evaluation/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportせず、未知schemaの比較評価に限って保持する |
+| 評価・履歴fixture | `spikes/nl2sql-accuracy/`、`spikes/nl2sql-thelook/`、`spikes/evidence-dynamic/`、`tests/spikes/report-generation/`、過去の`docs/` | 特定datasetを評価するfixture・履歴であり、それ自体は製品runtimeではない。runtimeからimportしない。`spikes/wrenai-evaluation/`は過去の比較結果を記したREADMEだけを保持し、GA4専用の固定SQL・列・指標定義と設定を削除した |
 
 ### 固有処理を削除する実装計画
 

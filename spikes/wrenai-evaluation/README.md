@@ -1,7 +1,7 @@
 ---
 id: spike-wrenai-evaluation
 title: WrenAI を実際に立てて評価する — 作るか、乗るか
-updated: 2026-07-28
+updated: 2026-09-27
 ---
 
 # Spike: WrenAI 評価
@@ -11,6 +11,8 @@ LOG-0066 が「効くのは定義層であって生成ではない」を実測�
 **MDL の劣化版を作り始めている状態**だったためです。
 
 対象は **WrenAI**（Canner、`pip install wrenai`、評価時 0.13.1 / wren-core-py 0.7.2）。
+この文書は過去の比較結果だけを保存します。GA4専用のSQL・列・指標を定義したMDLと
+Wrenプロジェクト設定は削除済みで、このディレクトリから実験を再実行することはできません。
 
 ## 分かったこと（要約）
 
@@ -27,6 +29,7 @@ LOG-0066 が「効くのは定義層であって生成ではない」を実測�
 ## Git 管理は失われない
 
 これが最初の関心事でした。**MDL はプロジェクト配下の YAML です。**
+以下は当時確認したWrenAIの一般的な配置であり、このリポジトリの現存ファイル一覧ではありません。
 
 ```
 wren_project.yml            models/<name>/metadata.yml   relationships.yml
@@ -111,22 +114,6 @@ ADR-0010 D6（**制御はドリフトしたときにどちらへ倒れるかで�
 更新時にパッケージ単位でライセンスを確認する運用が要ります。そして活発に開発中のものを
 大幅改修すれば、更新を諦めるかリベースし続けるかになります。
 **エンジンをフォークせず、依存として使い、周囲に自分の層を置く**のが妥当です。
-
-## 再現手順
-
-```bash
-python3 -m venv .venv && ./.venv/bin/pip install "wrenai[bigquery]"
-./.venv/bin/wren context init          # プロジェクト雛形
-# models/ と knowledge/ を置き換える（このディレクトリの内容）
-./.venv/bin/wren context build         # → target/mdl.json
-./.venv/bin/wren dry-plan -s "SELECT ..." --connection-file conn.json
-```
-
-`conn.json` は `{"datasource":"bigquery","project_id":"…","dataset_id":"…"}`。
-**`dry-plan` はDBに接続しない**ので、パーサの対応可否だけを安く確かめられます。
-
-なお公式手順にある `curl … | bash` でのスキル導入は**行っていません**（外部スクリプトの直接実行を避けたため）。
-CLI だけで評価は成立しました。
 
 ## この spike が答えていないこと
 
