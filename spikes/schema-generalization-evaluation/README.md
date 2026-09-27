@@ -10,6 +10,16 @@ updated: 2026-09-27
 `evaluate.py`は、対象非依存runtimeの実行後に得たJSON evidence bundleを検証し、schema別の品質指標と
 合否を決定論的に返すpost-run scorerです。外部APIや製品runtimeは呼びません。
 
+## 評価対象の選定
+
+オーナーは2026-09-27に、公開GA4データとの比較対象として
+`bigquery-public-data.samples.github_nested`を指定しました。
+[Google Cloudの公開サンプル一覧](https://docs.cloud.google.com/bigquery/public-data#sample_tables)は
+このtableをnested schemaのGitHub活動履歴として掲載しています。選定したtable名は評価専用の
+fixture・計画・認可scopeに限定し、runtimeの対象別code、prompt、SQL、列定義、設定へ追加しません。
+この選定だけでは、必須capabilityの網羅、独立review済み参照値、品質を証明しません。
+実BigQuery／Vertex AI呼出しは、対象範囲と費用上限を示して個別承認を得た後だけ行います。
+
 ## 現行の評価契約
 
 - IDとscope snapshot fingerprintが異なる2件以上のschema evidenceを同じ評価に含め、各caseを3回以上反復する。
