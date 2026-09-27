@@ -56,9 +56,9 @@ make security-scan   make sbom   make clean   make doctor
 ```
 
 The full binding target contract (semantics of each) is in
-[profiles/README.md](profiles/README.md).
+[`.ai/contracts/foundation/make-targets.md`](.ai/contracts/foundation/make-targets.md).
 
-Implementations live in the Makefile; on a fresh template they are no-op placeholders.
+RepChat's root Makefile implements these targets.
 
 ## 12. Claude Code integration
 
