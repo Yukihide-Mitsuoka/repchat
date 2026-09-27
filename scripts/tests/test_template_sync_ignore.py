@@ -1,4 +1,5 @@
 import unittest
+import json
 from pathlib import Path
 
 
@@ -32,6 +33,17 @@ class TemplateSyncIgnoreTest(unittest.TestCase):
 
         self.assertIn(".github/inheritance/agent-profile.json", entries)
         self.assertIn(".ai/project/**", entries)
+
+    def test_taskfile_remains_child_owned_during_migration(self):
+        if not (REPOSITORY_ROOT / "Taskfile.yml").exists():
+            return  # Legacy children acquire their own Taskfile in a reviewed PR.
+        export_path = REPOSITORY_ROOT / ".ai/contracts/foundation/inheritance-export.json"
+        self.assertIn("Taskfile.yml", self.entries())
+        if not export_path.exists():
+            return  # A consumer leaf has no self-owned export contract.
+        export = json.loads(export_path.read_text(encoding="utf-8"))
+        self.assertIn("Taskfile.yml", export["protected_paths"])
+        self.assertNotIn("Taskfile.yml", export["inherited_paths"])
 
     def test_sync_pr_records_the_source_commit_used_by_the_action(self):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
