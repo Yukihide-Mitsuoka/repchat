@@ -42,6 +42,7 @@ class FoundationTestRunnerTest(unittest.TestCase):
             encoding="utf-8"
         )
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+        taskfile = (ROOT / "Taskfile.yml").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertIn("bash scripts/run-foundation-tests.sh", template_check)
@@ -53,8 +54,12 @@ class FoundationTestRunnerTest(unittest.TestCase):
         self.assertIn('runner="scripts/foundation_test_runner.py"', selector)
         self.assertIn("doctor-slow:", makefile)
         self.assertIn("foundation_test_runner.py --suite slow", makefile)
+        self.assertIn("doctor-slow:", taskfile)
+        self.assertIn("foundation_test_runner.py --suite slow", taskfile)
         self.assertIn("doctor-slow:", workflow)
-        self.assertIn("make doctor-slow", workflow)
+        self.assertIn("uses: ./scripts/actions/setup-task", workflow)
+        self.assertIn("task doctor-slow", workflow)
+        self.assertNotIn("make doctor-slow", workflow)
 
 
 if __name__ == "__main__":
