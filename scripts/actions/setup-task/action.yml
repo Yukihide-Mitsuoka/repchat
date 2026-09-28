@@ -1,0 +1,12 @@
+name: Install pinned Task
+description: Install the reviewed Task binary for CI commands
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        curl -fsSL https://github.com/go-task/task/releases/download/v3.53.1/task_linux_amd64.tar.gz -o "$RUNNER_TEMP/task.tar.gz"
+        echo 'a54a408f6861ff921f6e87774180db31bacd8c1e7c944ca696db9fea49a82fc7  '"$RUNNER_TEMP/task.tar.gz" | sha256sum -c -
+        mkdir -p "$RUNNER_TEMP/task-bin"
+        tar -xzf "$RUNNER_TEMP/task.tar.gz" -C "$RUNNER_TEMP/task-bin" task
+        echo "$RUNNER_TEMP/task-bin" >> "$GITHUB_PATH"
