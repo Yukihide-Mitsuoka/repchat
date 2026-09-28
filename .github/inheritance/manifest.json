@@ -72,6 +72,7 @@
     "scripts/tests/test_readme_ownership.py",
     "scripts/tests/test_setup_github_wrapper.py",
     "scripts/tests/test_template_sync_ignore.py",
+    "scripts/tests/test_task_ci.py",
     "scripts/tests/test_template_sync_ignore_portability.py",
     "scripts/tests/test_template_inheritance.py",
     "scripts/tests/test_template_inheritance_plan.py",
