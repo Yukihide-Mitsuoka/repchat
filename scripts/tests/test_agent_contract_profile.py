@@ -16,7 +16,7 @@ PROJECT = "acme/product"
 COMMIT = "a" * 40
 PROFILE_PATH = ".github/inheritance/agent-profile.json"
 FOUNDATION_ENTRY_PATH = ".ai/contracts/foundation/agent-entry.md"
-MAKE_TARGET_CONTRACT_PATH = ".ai/contracts/foundation/make-targets.md"
+TASK_TARGET_CONTRACT_PATH = ".ai/contracts/foundation/task-targets.md"
 REPOSITORY_ROOT = Path(__file__).parents[2]
 FOUNDATION_README_OWNER = (
     "<!-- repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation -->"
@@ -247,7 +247,7 @@ class FoundationAgentEntryTest(unittest.TestCase):
             ".ai/workflow.md",
             ".ai/review-checklist.md",
             "docs/development-handoff.md",
-            MAKE_TARGET_CONTRACT_PATH,
+            TASK_TARGET_CONTRACT_PATH,
             ".claude/README.md",
             "AGENTS.md",
             "Conventional Commits",
@@ -258,19 +258,19 @@ class FoundationAgentEntryTest(unittest.TestCase):
             "data deletion",
             "production configuration",
             "spending money",
-            "make setup",
-            "make format",
-            "make lint",
-            "make test",
-            "make test-unit",
-            "make test-integration",
-            "make coverage",
-            "make build",
-            "make run",
-            "make security-scan",
-            "make sbom",
-            "make clean",
-            "make doctor",
+            "task setup",
+            "task format",
+            "task lint",
+            "task test",
+            "task test-unit",
+            "task test-integration",
+            "task coverage",
+            "task build",
+            "task run",
+            "task security-scan",
+            "task sbom",
+            "task clean",
+            "task doctor",
             "foundation",
             "template",
             "project",
@@ -280,12 +280,12 @@ class FoundationAgentEntryTest(unittest.TestCase):
                 self.assertIn(required_reference, normalized_content)
         self.assertNotIn("profiles/README.md", content)
 
-    def test_make_target_authority_is_inherited_and_profile_examples_are_optional(self):
+    def test_task_target_authority_is_inherited_and_profile_examples_are_optional(self):
         root = Path(__file__).parents[2]
-        contract = root / MAKE_TARGET_CONTRACT_PATH
-        self.assertTrue(contract.is_file(), f"missing {MAKE_TARGET_CONTRACT_PATH}")
+        contract = root / TASK_TARGET_CONTRACT_PATH
+        self.assertTrue(contract.is_file(), f"missing {TASK_TARGET_CONTRACT_PATH}")
         content = contract.read_text(encoding="utf-8")
-        for required_semantic in ("`lint`", "`format`", "`doctor`", "No catch-all"):
+        for required_semantic in ("`lint`", "`format`", "`doctor`", "Unknown tasks fail"):
             with self.subTest(required_semantic=required_semantic):
                 self.assertIn(required_semantic, content)
 
@@ -299,7 +299,7 @@ class FoundationRootAgentAdapterTest(unittest.TestCase):
         examples = (REPOSITORY_ROOT / "profiles/README.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn(MAKE_TARGET_CONTRACT_PATH, examples)
+        self.assertIn(TASK_TARGET_CONTRACT_PATH, examples)
         self.assertNotIn("The canonical target contract (binding)", examples)
 
     def test_profile_orders_foundation_then_project(self):
@@ -337,7 +337,7 @@ class FoundationRootAgentAdapterTest(unittest.TestCase):
         self.assertIn("strengthen-only", claude)
         self.assertIn("listed order", claude)
         self.assertIn("must not recursively", claude)
-        self.assertIn(MAKE_TARGET_CONTRACT_PATH, claude)
+        self.assertIn(TASK_TARGET_CONTRACT_PATH, claude)
         self.assertNotIn("profiles/README.md", claude)
         agents = (REPOSITORY_ROOT / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("CLAUDE.md", agents)

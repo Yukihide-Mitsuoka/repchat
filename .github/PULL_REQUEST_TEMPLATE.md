@@ -44,7 +44,7 @@ Refs: #
 
 ## Self-review (WF-090)
 
-- [ ] make format, make lint, and make test passed; results recorded above
+- [ ] task format, task lint, and task test passed; results recorded above
 - [ ] Diff is within GR-020 limits and contains no unrelated changes
 - [ ] No .ai/guardrails.md violations
 

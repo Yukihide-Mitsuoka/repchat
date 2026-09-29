@@ -1,3 +1,4 @@
+import re
 import sys
 import tempfile
 import unittest
@@ -12,6 +13,35 @@ FOUNDATION_README_MARKER = (
 
 
 class TaskCiTest(unittest.TestCase):
+    def test_foundation_routed_quality_commands_use_task(self):
+        readme = ROOT / "README.md"
+        if not readme.is_file() or FOUNDATION_README_MARKER not in readme.read_text(
+            encoding="utf-8"
+        ):
+            self.skipTest("protected child instructions migrate by reviewed parent hop")
+        paths = (
+            ".ai/coding-rules.md",
+            ".ai/testing.md",
+            ".ai/workflow.md",
+            ".github/PULL_REQUEST_TEMPLATE.md",
+            ".skills/bugfix.skill.md",
+            ".skills/feature.skill.md",
+            ".skills/refactor.skill.md",
+            ".skills/security.skill.md",
+            ".skills/test.skill.md",
+        )
+        old_command = re.compile(
+            r"\bmake (?:format|lint|test|test-unit|coverage|security-scan)\b"
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                content = (ROOT / path).read_text(encoding="utf-8")
+                self.assertIsNone(old_command.search(content))
+                self.assertRegex(
+                    content,
+                    r"\btask (?:format|lint|test|test-unit|coverage|security-scan)\b",
+                )
+
     def test_child_ci_is_not_bound_to_foundation_job_shape(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -61,7 +61,7 @@ BASELINE_CONTRACT_MARKERS = {
         "CLAUDE.md",
         "completely and follow it before acting",
         "explicit agent profile",
-        "make format && make lint",
+        "task format && task lint",
         ".ai/guardrails.md",
         ".skills/*.skill.md",
         "never store secrets",
