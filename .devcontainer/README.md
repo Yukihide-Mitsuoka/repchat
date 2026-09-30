@@ -10,7 +10,8 @@ exfiltrate them even if instructed to.
 - Ubuntu 24.04 base, `vscode` unprivileged user.
 - Node LTS + GitHub CLI (Node also runs RepChat).
 - Claude Code installed on create (`npm install -g @anthropic-ai/claude-code`).
-- `make doctor` runs on create to verify the template's guard hooks and invariants.
+- Task v3.53.1 is installed from the [official npm package](https://taskfile.dev/docs/installation#npm).
+- `task doctor` runs after installation to verify the template's guard hooks and invariants.
 
 ## Customize per stack
 

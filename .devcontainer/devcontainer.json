@@ -16,8 +16,8 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
-  // Install Claude Code in the container (guide: do not install on the host).
-  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && make doctor",
+  // Install Claude Code and pinned Task before checking the repository.
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code @go-task/cli@3.53.1 && task doctor",
 
   // Run as the unprivileged default user; do not add the host SSH agent or cloud
   // credential mounts here — keeping them out of the container is the point.
