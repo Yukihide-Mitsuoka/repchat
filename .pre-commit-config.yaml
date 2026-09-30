@@ -1,6 +1,6 @@
 # Layer 2 of defense in depth (Layer 1: .claude/ hooks, Layer 3: GitHub Actions).
 # Applies to every committer — human or AI, any vendor. Install: `pre-commit install
-# --hook-type pre-commit --hook-type pre-push` (part of `make setup`).
+# --hook-type pre-commit --hook-type pre-push` (part of `task setup`).
 # Bypassing with --no-verify violates GR-012.
 
 repos:
@@ -34,13 +34,13 @@ repos:
   - repo: local
     hooks:
       - id: lint
-        name: lint (make lint)          # COD-001
-        entry: make lint
+        name: lint (task lint)          # COD-001
+        entry: task lint
         language: system
         pass_filenames: false
       - id: unit-tests
-        name: unit tests (make test-unit)  # GR-021 / TST-030
-        entry: make test-unit
+        name: unit tests (task test-unit)  # GR-021 / TST-030
+        entry: task test-unit
         language: system
         pass_filenames: false
         stages: [pre-push]              # fast suite on push; full suite runs in CI

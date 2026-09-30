@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -78,14 +78,13 @@ cd <新プロジェクト>
 6. 定期PR作成を有効にする前にローカル検証します。
 
 ```bash
-make doctor
 python3 scripts/template_inheritance.py validate --root .
 python3 scripts/template_inheritance.py plan \
   --root . --parent-root ../<選択した親のworktree>
 ```
 
-初期化PRがgreenでmergeされた後、workflowから直接親を読み取れるrepositoryだけ、日次の
-レビュー付き同期へopt-inします。
+初期化PRには手順4〜6と`task doctor`の成功も含めます。そのPRがgreenでmergeされた後に限り、
+workflowから直接親を読み取れるrepositoryは日次のレビュー付き同期へopt-inできます。
 
 ```bash
 gh variable set TEMPLATE_SYNC_ENABLED --body true
@@ -141,20 +140,22 @@ agent profileとproject overlayを保護対象にしてください。
 個人リポジトリにチーム記法を残すと、CODEOWNERS が**黙って無効化**されます
 この判定は互換ラッパーの対象外なので、ガバナンス適用前に修正してください。
 
-### 6. Makefile プロファイルを選ぶ
+### 6. Taskfileを実装する
 
-新規作成したテンプレートに`profiles/`の任意の例が残っている場合は、最も近い
-リファレンス実装をルートにコピーしてスタックに合わせます:
-```bash
-cp profiles/python-uv/Makefile ./Makefile      # または typescript-node / terraform-gcp
-```
-利用先が任意の例を削除済みなら、
-[継承されるMakeターゲット契約](../../../.ai/contracts/foundation/make-targets.md)に従って
-ルートのMakefileを実装します。ルートのMakefileを整えた後は、例のコピーは必須ではありません。
-インスタンス化後は、必須ターゲットにテンプレートの `not wired yet` 実装が残っていると
-`make doctor` が失敗します。対象外のターゲットは、たとえば
+利用先が所有するルートの`Taskfile.yml`を
+[継承されるTask契約](../../../.ai/contracts/foundation/task-targets.md)に従って実装します。
+任意の`profiles/`内のMakefileは過去のコマンド例であり、Taskfileへそのままコピーしません。
+`task setup`より先に[公式手順](https://taskfile.dev/docs/installation)でTaskを導入します。
+インスタンス化後は必須taskの欠落や`not wired yet`実装が残っていると`task doctor`が
+失敗します。対象外のtaskは、たとえば
 `[project] build: not applicable — no deployable artifact` のように、利用先が所有する
 明示的な対象外結果へ置き換えてください。テンプレートのプレースホルダーは残しません。
+
+ADR-0024の移行中は、`task doctor`がルートの`Makefile`も検査します。Make検証が
+撤去されるまで互換ターゲットを維持してください。`make doctor`も実行できますが、
+コマンドの意味を定義するのはTask契約です。
+
+利用先のTask定義と暫定Makefileを整えた後、定期同期を有効にする前に`task doctor`を実行します。
 
 ### 7. GitHub ガバナンスを点検
 
@@ -195,7 +196,7 @@ repository overrideで選択できます。setup互換ラッパーは`gh`を直�
 ### 8. ローカルゲート導入 → エージェントに向ける
 
 ```bash
-make setup                             # 依存導入 + pre-commit フック
+task setup                             # 依存導入 + pre-commit フック
 ```
 Claude Codeは薄い`CLAUDE.md`アダプターを自動で読みます。他のエージェントには`AGENTS.md`を
 読ませてください。アダプターは明示的なagent profileを検証し、記載された基盤・テンプレート・
@@ -203,7 +204,7 @@ Claude Codeは薄い`CLAUDE.md`アダプターを自動で読みます。他の�
 
 テンプレートには参照用の例モジュール（`src/modules/catalog/` ＋ `tests/modules/catalog/`）が
 同梱されています。形を真似る（COD-050）か、実コードを書き始めるときに両方削除してください。
-いつでも `make doctor` でテンプレートの自己チェック（frontmatter 整合性 + guard フックのテスト）が
+いつでも `task doctor` でテンプレートの自己チェック（frontmatter 整合性 + guard フックのテスト）が
 できます。
 
 ---
@@ -213,10 +214,10 @@ Claude Codeは薄い`CLAUDE.md`アダプターを自動で読みます。他の�
 ```bash
 git clone https://github.com/Yukihide-Mitsuoka/ai-dev-foundation.git
 cd ai-dev-foundation
-# 素のテンプレートのルート Makefile は no-op なので、ここでは `make setup` は何もしません。
+# 先にTaskを導入します。素のテンプレートの`task setup`はno-opです。
 # git フックを直接入れます（pre-commit が必要 — 前提ツール参照）:
 pre-commit install --hook-type pre-commit --hook-type pre-push
-make doctor                            # テンプレートが壊れていないか検証
+task doctor                            # テンプレートが壊れていないか検証
 ```
 これは文字通り「cloneするだけ」ですが、各マシンで下記の**前提ツール**と**認証**は一度必要です。
 
@@ -226,11 +227,11 @@ Foundation保守者は、明示的にremote refを更新した兄弟worktreeか�
 検証できます。
 
 ```bash
-make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+task fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
 ```
 
 このコマンドはローカル、read-only、credential-freeであり、承認作業を作りません。正準fleet設定は
-`active`、`paused`、`retired`を記録します。子のMakefileはこのtargetを継承しないため、
+`active`、`paused`、`retired`を記録します。子のTaskfileはこのtaskを継承しないため、
 `ai-dev-foundation` worktreeから実行してください。worktree要件と結果の意味は
 [固定fleetの監査](../../../.github/inheritance/README.md#audit-the-fixed-fleet)を参照してください。
 ADR-0016により、private Template Syncを有効化した後もfleetの定期監査は無効のままです。
@@ -243,11 +244,11 @@ ADR-0016により、private Template Syncを有効化した後もfleetの定期�
 
 | ツール | 用途 | 備考 |
 |--------|------|------|
-| `git`, `make` | 全般 | — |
+| `git`, `task` | リポジトリのタスク | `task setup`より先にTaskを導入 |
 | `gh`（GitHub CLI）| ガバナンス`plan`/`audit`/`apply`・互換setup・認証 | `gh auth login` |
-| `pre-commit` | ローカルコミットゲート | `make setup`（プロファイル導入後）または `pre-commit install` |
+| `pre-commit` | ローカルコミットゲート | `task setup`（実装後）または `pre-commit install` |
 | スタックのツールチェーン | build/test | uv(python) / pnpm+node(ts) / terraform(iac) |
-| `gitleaks`, `trivy`, `syft` | ローカルの `make security-scan` / `sbom` | ローカルは任意。**CIは常時強制** |
+| `gitleaks`, `trivy`, `syft` | ローカルの `task security-scan` / `task sbom` | ローカルは任意。**CIは常時強制** |
 
 スキャナはローカル任意です。GitHub Actions が全PRで実行するので、未導入でも「ローカルで結果が
 見えない」だけです。
@@ -280,7 +281,7 @@ gh auth refresh -h github.com -s workflow
 
 ### 改行コード
 `.gitattributes` がリポジトリ全体を LF 強制するので、Windows チェックアウトでもシェルフックと
-Makefile は壊れません。グローバル `core.autocrlf=true` でこれと戦わないこと（`.gitattributes` が
+Taskfile は壊れません。グローバル `core.autocrlf=true` でこれと戦わないこと（`.gitattributes` が
 対象ファイルでは勝ちますが、Git既定は素直にしておく）。
 
 ---
@@ -342,7 +343,7 @@ Claude Code は起動時にディレクトリツリーを遡って `CLAUDE.md` �
 ## クイックリファレンス:「別アカウントで clone だけで足りる？」
 
 - **基盤を開発する**（シナリオB）: はい。`git clone`後にpre-commit hookを直接導入し、
-  `make doctor`を実行します。workflow変更をpushするときは、そのマシンで`workflow` OAuth scopeも
+  `task doctor`を実行します。workflow変更をpushするときは、そのマシンで`workflow` OAuth scopeも
   更新します。
 - **新規プロジェクトを作る**（シナリオA）: いいえ。「Use this template」→ 上の初期化手順。
   cloneでは新規プロジェクトにこの基盤の履歴とプレースホルダが混入します。

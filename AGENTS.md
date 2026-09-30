@@ -5,7 +5,7 @@ agent profile.
 
 | Capability | Runtime equivalent |
 |------------|--------------------|
-| Hooks | Run `make format && make lint` after edits; guard commands with `.ai/guardrails.md` |
+| Hooks | Run `task format && task lint` after edits; guard commands with `.ai/guardrails.md` |
 | Skills | Read matching `.skills/*.skill.md` completely |
 | Memory | Use runtime context; never store secrets |
 

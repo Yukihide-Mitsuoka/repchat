@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-09-23
+updated: 2026-09-29
 ---
 
 # Usage
@@ -79,14 +79,14 @@ Complete these items in one reviewed initialization PR:
 6. Validate locally before enabling scheduled PR creation:
 
 ```bash
-make doctor
 python3 scripts/template_inheritance.py validate --root .
 python3 scripts/template_inheritance.py plan \
   --root . --parent-root ../<selected-parent-worktree>
 ```
 
-After the initialization PR is green and merged, a repository whose direct parent is
-readable by its workflow may opt in to daily reviewed synchronization:
+The initialization PR also completes steps 4–6 and passes `task doctor`. Only after
+that PR is green and merged may a repository whose direct parent is readable by its
+workflow opt in to daily reviewed synchronization:
 
 ```bash
 gh variable set TEMPLATE_SYNC_ENABLED --body true
@@ -147,20 +147,23 @@ Leaving team syntax on a personal repo makes CODEOWNERS silently ineffective —
 fix this file before applying governance because account-type inference is outside the
 compatibility wrapper.
 
-### 6. Pick a Makefile profile
+### 6. Wire the Taskfile
 
-On a newly instantiated template that still has `profiles/`, copy the closest
-reference implementation to the repo root and wire it to your stack:
-```bash
-cp profiles/python-uv/Makefile ./Makefile      # or typescript-node / terraform-gcp
-```
-If a repository has removed those optional copies, implement the root Makefile from
-the [inherited Make target contract](../../../.ai/contracts/foundation/make-targets.md)
-instead. The copies are not required after the root Makefile is wired.
-After instantiation, `make doctor` rejects the template `not wired yet` implementation
-for required targets. If a target does not apply, replace it with an explicit
+Implement the repository-owned root `Taskfile.yml` according to the
+[inherited Task target contract](../../../.ai/contracts/foundation/task-targets.md).
+The optional `profiles/` Makefiles are historical command examples, not active Taskfiles.
+Install Task before `task setup`; see the [official installation guide](https://taskfile.dev/docs/installation).
+After instantiation, `task doctor` rejects `not wired yet` placeholders and missing
+required tasks. If a task does not apply, replace it with an explicit
 repository-owned result such as `[project] build: not applicable — no deployable
 artifact`; do not retain the template placeholder.
+
+During the remaining ADR-0024 transition, `task doctor` also checks the root
+`Makefile`. Keep its compatibility targets wired until the Make check is removed;
+`make doctor` remains available, but Task owns the command semantics.
+
+Run `task doctor` after both local task definitions and the transitional Makefile
+are wired, before enabling scheduled synchronization.
 
 ### 7. Inspect GitHub governance
 
@@ -202,7 +205,7 @@ as shown above and use this guide as the onboarding checklist.
 ### 8. Install local gates and point your agent at it
 
 ```bash
-make setup                             # installs deps + pre-commit hooks
+task setup                             # installs deps + pre-commit hooks
 ```
 Open the repo with Claude Code (it reads the thin `CLAUDE.md` adapter automatically) or
 tell any other agent to read `AGENTS.md`. The adapter validates the explicit agent
@@ -210,7 +213,7 @@ profile and loads every listed foundation, template, and project input in order.
 it an issue and go.
 
 The template ships a worked example module (`src/modules/catalog/` + `tests/modules/catalog/`)
-— imitate its shape (COD-050) or delete both when you start real code. Run `make doctor`
+— imitate its shape (COD-050) or delete both when you start real code. Run `task doctor`
 anytime to self-check the template (frontmatter integrity + guard-hook tests).
 
 ---
@@ -220,10 +223,10 @@ anytime to self-check the template (frontmatter integrity + guard-hook tests).
 ```bash
 git clone https://github.com/Yukihide-Mitsuoka/ai-dev-foundation.git
 cd ai-dev-foundation
-# The bare template's root Makefile is a no-op, so `make setup` does nothing here.
+# Install Task first; the bare template's `task setup` is a no-op.
 # Install the git hooks directly (needs pre-commit — see prerequisites):
 pre-commit install --hook-type pre-commit --hook-type pre-push
-make doctor                            # verify the template is intact
+task doctor                            # verify the template is intact
 ```
 That is genuinely "just clone" — but each new machine still needs the one-time
 **prerequisites** and **auth** below.
@@ -234,12 +237,12 @@ Foundation maintainers can verify every configured active direct-parent relation
 from explicitly refreshed sibling worktrees:
 
 ```bash
-make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+task fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
 ```
 
 The command is local, read-only, credential-free, and does not create approval work.
 The canonical fleet file records `active`, `paused`, and `retired` relationships. Run it
-from the `ai-dev-foundation` worktree; descendant Makefiles do not inherit this target.
+from the `ai-dev-foundation` worktree; descendant Taskfiles do not inherit this task.
 See [Audit the fixed fleet](../../../.github/inheritance/README.md#audit-the-fixed-fleet)
 for workspace requirements and result semantics. A scheduled private fleet audit remains
 disabled under ADR-0016 even after private Template Sync is enabled.
@@ -252,11 +255,11 @@ Install once on each new machine:
 
 | Tool | Needed for | Notes |
 |------|-----------|-------|
-| `git`, `make` | everything | — |
+| `git`, `task` | repository tasks | Install Task before `task setup` |
 | `gh` (GitHub CLI) | Governance `plan`/`audit`/`apply`, compatibility setup, auth | `gh auth login` |
-| `pre-commit` | local commit gates | `make setup` (once a profile is wired) or `pre-commit install` |
+| `pre-commit` | local commit gates | `task setup` (once wired) or `pre-commit install` |
 | Stack toolchain | build/test | uv (python), pnpm+node (ts), terraform (iac) — per your profile |
-| `gitleaks`, `trivy`, `syft` | local `make security-scan` / `sbom` | optional locally; **CI enforces them regardless** |
+| `gitleaks`, `trivy`, `syft` | local `task security-scan` / `task sbom` | optional locally; **CI enforces them regardless** |
 
 The scanners are optional on your laptop — the GitHub Actions workflows run them on every
 PR, so a missing local tool only means you don't see findings until CI.
@@ -289,7 +292,7 @@ Requiring one approval on a repo with no second reviewer prevents self-merge. Ch
 approval count applies equally through the direct CLI and compatibility entry point.
 
 ### Line endings
-`.gitattributes` enforces LF repo-wide, so shell hooks and Makefiles stay valid on
+`.gitattributes` enforces LF repo-wide, so shell hooks and Taskfiles stay valid on
 Windows. Don't override with a global `core.autocrlf=true` that fights it — the
 `.gitattributes` wins for matched files, but keep your Git default sane.
 
@@ -304,7 +307,7 @@ stays inert until you deliberately enable it.
 ## Quick answer: "is `git clone` enough on a different account?"
 
 - **To develop this foundation** (Scenario B): yes — `git clone`, install the
-  pre-commit hooks directly, run `make doctor`, and refresh the `workflow` OAuth scope
+  pre-commit hooks directly, run `task doctor`, and refresh the `workflow` OAuth scope
   on that machine when you need to push workflow changes.
 - **To start a new project** (Scenario A): no — use "Use this template", then the
   initialization steps above. Cloning would give the new project this repo's history and

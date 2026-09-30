@@ -18,11 +18,14 @@ case "$file_path" in
   *.md|*.txt|*.json|*.yml|*.yaml|*.toml|*.lock) exit 0 ;;
 esac
 
-command -v make >/dev/null 2>&1 || exit 0
+command -v task >/dev/null 2>&1 || {
+  echo "Task is required for post-edit quality checks (ADR-0024)." >&2
+  exit 2
+}
 
-make --no-print-directory format FILE="$file_path" >/dev/null 2>&1
+task format FILE="$file_path" >/dev/null 2>&1
 
-lint_output="$(make --no-print-directory lint FILE="$file_path" 2>&1)"
+lint_output="$(task lint FILE="$file_path" 2>&1)"
 if [ $? -ne 0 ]; then
   echo "Lint failed for $file_path (COD-001 — fix before proceeding):" >&2
   echo "$lint_output" | tail -n 30 >&2
