@@ -26,6 +26,16 @@ const targets = [
   'destroy',
 ];
 
+test('Dev Container installs pinned Task before doctor', () => {
+  const config = JSON.parse(
+    readFileSync('.devcontainer/devcontainer.json', 'utf8').replace(/^\s*\/\/.*$/gm, ''),
+  );
+  assert.equal(
+    config.postCreateCommand,
+    'npm install -g @anthropic-ai/claude-code @go-task/cli@3.53.1 && task doctor',
+  );
+});
+
 for (const target of targets) {
   test(`Make ${target} has only one Task command`, () => {
     const result = spawnSync('make', ['--no-print-directory', '-n', target], {
