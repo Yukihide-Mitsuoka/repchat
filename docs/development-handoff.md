@@ -395,10 +395,10 @@ post-run evidenceを別々に採点し、同一scope・参照記録・計画run�
 次の評価対象は、オーナーが指定した`bigquery-public-data.samples.github_nested`です。
 [PR #886](https://github.com/Yukihide-Mitsuoka/repchat/pull/886)で公開資料に基づく成立条件を記録しました。
 選定の範囲と未検証事項は[評価harnessのREADME](../spikes/schema-generalization-evaluation/README.md#評価対象の選定)を正本とします。
-2026-10-01にschema metadataだけを`bq show --schema`で取得しようとしましたが、ローカルの認証トークン再認証が
-対話不可のため失敗し、BigQuery table情報と行は取得していません。次はオーナーがローカルGoogle Cloud認証を
-更新した後、同じtableのmetadata取得を1回だけ再試行します。参照queryと評価runnerは別途、対象と最大費用を
-提示して承認を得るまで実行しません。対象別runtime変更は行いません。
+2026-10-01にオーナーがローカルGoogle Cloud認証を更新した後、承認済みの`bq show --schema`を1回実行して
+実schemaを取得しました。構造と未確認事項は評価harnessのREADMEを正本とします。行やquery結果は取得していません。
+次はデータ期間・case成立・参照値を実値で確認する範囲と最大費用を提示し、別途承認を得ます。
+評価runnerも別承認まで実行しません。対象別runtime変更は行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。
