@@ -392,10 +392,13 @@ offlineで保守的な費用上界を計算する作業は2026-09-25にmerge・c
 post-run evidenceを別々に採点し、同一scope・参照記録・計画run・pipeline条件を照合します。
 [PR #869](https://github.com/Yukihide-Mitsuoka/repchat/pull/869)は2026-09-26にmerge済みです。診断側の契約artifact・scope snapshot・独立review記録を照合します。[PR #871](https://github.com/Yukihide-Mitsuoka/repchat/pull/871)は2026-09-26にmerge済みです。review記録を両artifact bytesへ固定し、再取得scopeの一致後だけreview済み契約を返す評価専用preflightを追加しました。[PR #873](https://github.com/Yukihide-Mitsuoka/repchat/pull/873)と[PR #875](https://github.com/Yukihide-Mitsuoka/repchat/pull/875)も2026-09-27にmerge済みです。診断preflightを計測・予算付きmanifest runnerへ接続し、planning停止runのprivate artifactと、planning成功後の共通SQLルール・SQL検証停止記録までfakeで確認しました。[PR #876](https://github.com/Yukihide-Mitsuoka/repchat/pull/876)もmerge済みで、認可外テーブルを共通SQL検証器がBigQuery呼出し前に拒否するfake回帰を追加しました。[PR #877](https://github.com/Yukihide-Mitsuoka/repchat/pull/877)もmerge済みで、認可済みSQLが共通dry run境界へ到達し、契約由来のscan上限で実行前に停止することをfake warehouseで確認しました。[PR #879](https://github.com/Yukihide-Mitsuoka/repchat/pull/879)は2026-09-27にmerge済みで、review済みの合成契約がfake warehouseのdry run・本実行、共通結果検証、実際のローカル描画probeを通り、成功runをprivate artifactへ記録することを確認しました。[PR #880](https://github.com/Yukihide-Mitsuoka/repchat/pull/880)もmerge済みで、同じ成功経路をfake Vertex／BigQueryの予算adapterと計測器へ通し、予算精算と超過時の停止を検証しました。実providerでの契約利用証明と未知schemaの反復評価は未完了です。
 有料の実Vertex AI／BigQuery呼出しは、具体的な対象と最大費用を提示して別途承認を得るまで行いません。
-次の評価対象は、オーナーが指定した`bigquery-public-data.samples.github_nested`です。選定の範囲と未検証事項は[評価harnessのREADME](../spikes/schema-generalization-evaluation/README.md#評価対象の選定)を正本とします。
-公開資料でnested schemaと`UNNEST`例、`US`所在を確認しましたが、6種類のcase成立、実schema、参照値は未確認です。
-次は評価専用のcase・認可scope・独立reviewを確定し、metadata／参照query／評価runnerの各実サービス操作ごとに対象と
-最大費用を提示して承認を得ます。対象別runtime変更は行いません。
+次の評価対象は、オーナーが指定した`bigquery-public-data.samples.github_nested`です。
+[PR #886](https://github.com/Yukihide-Mitsuoka/repchat/pull/886)で公開資料に基づく成立条件を記録しました。
+選定の範囲と未検証事項は[評価harnessのREADME](../spikes/schema-generalization-evaluation/README.md#評価対象の選定)を正本とします。
+2026-10-01にschema metadataだけを`bq show --schema`で取得しようとしましたが、ローカルの認証トークン再認証が
+対話不可のため失敗し、BigQuery table情報と行は取得していません。次はオーナーがローカルGoogle Cloud認証を
+更新した後、同じtableのmetadata取得を1回だけ再試行します。参照queryと評価runnerは別途、対象と最大費用を
+提示して承認を得るまで実行しません。対象別runtime変更は行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を
 対象非依存の同一pipelineで自動生成することです。
