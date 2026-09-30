@@ -13,7 +13,8 @@
 #      Template Sync protection contract.
 #   5. Foundation-owned project-documentation guides do not occupy project-owned paths.
 #   6. Declared AI context routes remain bounded without omitting mandatory authorities.
-#   7. Downstream required Make targets do not retain template no-op implementations.
+#   7. Downstream required Task and transitional Make targets do not retain template
+#      no-op implementations.
 #   8. Root README ownership is valid when marked; legacy missing markers remain warnings.
 
 set -u
@@ -109,6 +110,14 @@ if [ "$is_foundation_root" = true ] || \
 fi
 python3 scripts/makefile_profile.py "${makefile_profile_args[@]}" || \
   err "Required Make targets retain unresolved template placeholders"
+
+# Validate Task alongside Make during the expand phase. A legacy descendant without
+# Taskfile remains valid until its reviewed local migration. Remove the Make check
+# only after repository-owned compatibility callers have moved.
+if [ -f Taskfile.yml ]; then
+  python3 scripts/taskfile_profile.py "${makefile_profile_args[@]}" || \
+    err "Required Task targets are missing or retain unresolved template placeholders"
+fi
 
 # 7. ADR-0012: route shape is enforced everywhere. Byte and word ceilings fail in the
 # canonical foundation; descendants receive measurements and compatibility warnings

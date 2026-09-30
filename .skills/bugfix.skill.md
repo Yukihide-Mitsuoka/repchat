@@ -34,7 +34,7 @@ prove the fix with a regression test that fails on the old code, and prevent rec
    repeated execution idempotent: it reaches the same intended state without duplicate
    side effects. Test the relevant retry or repeated-execution path. If idempotence is not
    applicable, state why in the PR instead of adding speculative machinery (COD-051).
-6. Run the regression test (now green) + the module's full suite + `make test`.
+6. Run the regression test (now green) + the module's full suite + `task test`.
 7. Sweep for siblings: search for the same pattern elsewhere in the codebase; fix in
    the same PR only if identical and small, otherwise open issues.
 8. Update `docs/troubleshooting/` if users could hit this; runbook if ops action exists.

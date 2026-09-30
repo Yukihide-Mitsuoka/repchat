@@ -32,20 +32,20 @@ Profile order: foundation, owner-qualified templates oldest-to-parent, then proj
 - Read ADR-0021 for PR language; complete PR template. Titles/commits use
   Conventional Commits, releases use SemVer; merges use squash. Self-review with
   `.ai/review-checklist.md`.
-- After every edit run `make format` and `make lint`; use only canonical `make` targets.
+- After edits, run `task format && task lint`; Task is canonical (ADR-0024).
 - Preserve unrelated changes and checks. Never push to protected main, bypass checks,
   fabricate results, or perform destructive work without specific approval.
 
 ## Canonical commands
 
 ```text
-make setup   make format   make lint   make test   make test-unit
-make test-integration   make coverage   make build   make run
-make security-scan   make sbom   make clean   make doctor
+task setup   task format   task lint   task test   task test-unit
+task test-integration   task coverage   task build   task run
+task security-scan   task sbom   task clean   task doctor
 ```
 
-Binding semantics live in `.ai/contracts/foundation/make-targets.md`; documented no-ops
-may remain until wired.
+See `.ai/contracts/foundation/task-targets.md` for semantics and valid no-ops.
+`make doctor` remains a temporary compatibility call (ADR-0024).
 
 ## Runtime integration
 
