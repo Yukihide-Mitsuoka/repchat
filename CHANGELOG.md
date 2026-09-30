@@ -1,5 +1,21 @@
 # Changelog
 
+## [6.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v5.0.0...v6.0.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **taskfile:** complete Task-only migration ([#899](https://github.com/Yukihide-Mitsuoka/repchat/issues/899))
+
+### Features
+
+* **evaluation:** 診断契約を予算付き評価runnerへ接続 ([#873](https://github.com/Yukihide-Mitsuoka/repchat/issues/873)) ([da6334f](https://github.com/Yukihide-Mitsuoka/repchat/commit/da6334f54192e6dfa7d3698a3f743248a812892e))
+
+
+### Build System
+
+* **taskfile:** complete Task-only migration ([#899](https://github.com/Yukihide-Mitsuoka/repchat/issues/899)) ([2313e4e](https://github.com/Yukihide-Mitsuoka/repchat/commit/2313e4ed536626763ddbe4e194137e213159ba5a))
+
 ## [5.0.0](https://github.com/Yukihide-Mitsuoka/repchat/compare/v4.0.0...v5.0.0) (2026-09-26)
 
 
