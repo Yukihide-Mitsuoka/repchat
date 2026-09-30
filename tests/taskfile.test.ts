@@ -28,7 +28,7 @@ test('Dev Container installs pinned Task before doctor', () => {
 });
 
 test('Task lists canonical and project tasks without executing them', () => {
-  const result = spawnSync('task', ['--list-all'], { encoding: 'utf8' });
+  const result = spawnSync('task', ['--color=false', '--list-all'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   for (const task of [
     'help',
