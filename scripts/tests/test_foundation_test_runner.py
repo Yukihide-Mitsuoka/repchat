@@ -41,19 +41,16 @@ class FoundationTestRunnerTest(unittest.TestCase):
         selector = (ROOT / "scripts/run-foundation-tests.sh").read_text(
             encoding="utf-8"
         )
-        makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         taskfile = (ROOT / "Taskfile.yml").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
         self.assertIn("bash scripts/run-foundation-tests.sh", template_check)
         self.assertIn(
             "FOUNDATION_TEST_SUITE=fast bash scripts/template-check.sh",
-            makefile,
+            taskfile,
         )
         self.assertIn('suite="${FOUNDATION_TEST_SUITE:-all}"', selector)
         self.assertIn('runner="scripts/foundation_test_runner.py"', selector)
-        self.assertIn("doctor-slow:", makefile)
-        self.assertIn("foundation_test_runner.py --suite slow", makefile)
         self.assertIn("doctor-slow:", taskfile)
         self.assertIn("foundation_test_runner.py --suite slow", taskfile)
         self.assertIn("doctor-slow:", workflow)

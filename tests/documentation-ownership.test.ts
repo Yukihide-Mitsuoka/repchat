@@ -73,11 +73,11 @@ test('project roadmap and requirements use the project documentation convention'
   assert.doesNotMatch(requirements, /docs\/templates\/requirements\.md/u);
 });
 
-test('RepChat uses the inherited Make contract without optional profile copies', async () => {
+test('RepChat uses the inherited Task contract without optional profile copies', async () => {
   const claude = await readFile(`${repositoryRoot}/CLAUDE.md`, 'utf8');
-  const contractPath = '.ai/contracts/foundation/make-targets.md';
+  const contractPath = '.ai/contracts/foundation/task-targets.md';
 
-  assert.match(claude, /\.ai\/contracts\/foundation\/make-targets\.md/u);
+  assert.match(claude, /\.ai\/contracts\/foundation\/task-targets\.md/u);
   await stat(`${repositoryRoot}/${contractPath}`);
   for (const optionalCopy of [
     'profiles/README.md',

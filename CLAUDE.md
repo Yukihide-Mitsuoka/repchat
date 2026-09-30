@@ -50,15 +50,15 @@ All automation (you, hooks, CI) uses only these entry points — never call proj
 tooling directly, so commands stay stable across stacks:
 
 ```
-make setup   make format   make lint   make test   make test-unit
-make test-integration   make coverage   make build   make run
-make security-scan   make sbom   make clean   make doctor
+task setup   task format   task lint   task test   task test-unit
+task test-integration   task coverage   task build   task run
+task security-scan   task sbom   task clean   task doctor
 ```
 
-The full binding target contract (semantics of each) is in
-[`.ai/contracts/foundation/make-targets.md`](.ai/contracts/foundation/make-targets.md).
+The full binding target contract (semantics of each) is
+[`.ai/contracts/foundation/task-targets.md`](.ai/contracts/foundation/task-targets.md).
 
-RepChat's root Makefile implements these targets.
+RepChat's root `Taskfile.yml` implements these targets; `Makefile` only forwards legacy calls.
 
 ## 12. Claude Code integration
 
