@@ -32,7 +32,7 @@ and verify security properties of changes — without ever lowering the bar (GR-
 4. Add a test that encodes the security property (e.g. "unauthenticated request to X
    returns 401", "path traversal input is rejected").
 5. For dependency CVEs: upgrade > patch > mitigate-and-document, in that order (SEC-030).
-6. Verify with the scanner that flagged it; run `make security-scan`.
+6. Verify with the scanner that flagged it; run `task security-scan`.
 7. Record: decision log entry; `docs/troubleshooting/`/runbook if operational.
 
 ## Decision criteria

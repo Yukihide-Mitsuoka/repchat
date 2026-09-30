@@ -58,7 +58,7 @@ task security-scan   task sbom   task clean   task doctor
 The full binding target contract (semantics of each) is
 [`.ai/contracts/foundation/task-targets.md`](.ai/contracts/foundation/task-targets.md).
 
-RepChat's root `Taskfile.yml` implements these targets; `Makefile` only forwards legacy calls.
+RepChat's root `Taskfile.yml` implements these tasks without a Make compatibility entry.
 
 ## 12. Claude Code integration
 

@@ -5,7 +5,7 @@
 # (see LOG-0006) — this suite pins both. Exercises the jq-absent fallback path (raw hook
 # JSON is grepped) since jq is not guaranteed in every environment.
 #
-# Run: bash .claude/hooks/tests/guard-bash.test.sh   (also: make doctor)
+# Run: bash .claude/hooks/tests/guard-bash.test.sh   (also: task doctor)
 
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -111,7 +111,7 @@ expect 2 'printenv'
 expect 2 'env'
 expect 2 'printenv | grep SECRET'
 expect 0 'printenv PATH'                        # a single named variable is fine
-expect 0 'env FOO=1 make test'                  # command-prefix form runs a program
+expect 0 'env FOO=1 task test'                  # command-prefix form runs a program
 
 # --- neutral commands must be allowed ---
 expect 0 'ls -la'

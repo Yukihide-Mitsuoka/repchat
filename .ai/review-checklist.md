@@ -85,7 +85,7 @@ Used for: reviewing PRs, and mandatory **self-review** before opening a PR (WF-0
 - [ ] New terms in glossary; ADR linked where required
 
 ### REV-DX: Developer & Agent Experience
-- [ ] `make` targets still work; setup instructions still accurate
+- [ ] `task` commands work; no obsolete Make entry remains; setup instructions are accurate
 - [ ] Error messages actionable for the next developer/agent
 - [ ] No increase in permission prompts / manual steps without justification
 - [ ] New patterns documented so agents can imitate them (COD-050 stays possible)

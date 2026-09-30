@@ -13,7 +13,7 @@ configured in this repo (COD-001) — never hand-format against the tool.
 ## Style & structure
 
 ### COD-001: The formatter and linter are the law
-Code MUST pass `make format` and `make lint` with zero warnings. Do not debate style
+Code MUST pass `task format` and `task lint` with zero warnings. Do not debate style
 the tools already decide. Suppressions require justification (GR-041).
 
 ### COD-002: Naming

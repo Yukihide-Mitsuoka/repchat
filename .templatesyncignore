@@ -44,7 +44,6 @@ scripts/tests/test_foundation_test_runner.py
 scripts/tests/test_repchat_template_sync_contract.py
 scripts/tests/test_template_sync_workflow.py
 CLAUDE.md
-Makefile
 Taskfile.yml
 README.md
 docs/**
