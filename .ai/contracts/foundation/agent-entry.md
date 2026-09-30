@@ -45,7 +45,7 @@ task security-scan   task sbom   task clean   task doctor
 ```
 
 See `.ai/contracts/foundation/task-targets.md` for semantics and valid no-ops.
-`make doctor` remains a temporary compatibility call (ADR-0024).
+`task doctor` requires Taskfile; Make compatibility is removed.
 
 ## Runtime integration
 

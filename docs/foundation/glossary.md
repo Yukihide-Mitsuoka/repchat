@@ -1,7 +1,7 @@
 ---
 id: foundation-glossary
 title: Foundation Glossary
-updated: 2026-07-18
+updated: 2026-09-30
 ---
 
 # Foundation Glossary
@@ -22,7 +22,7 @@ alphabetical.
 | Agent | Any AI system working in this repo under CLAUDE.md rules | foundation | bot, assistant | — |
 | Audit | Read-only governance comparison whose exit code fails on drift or unknown state | governance | check | plan (which reports those states without failing) |
 | Bounded context | A domain boundary owning its model and language; maps 1:1 to `src/modules/<context>` | DDD | — | module (the code artifact implementing it) |
-| Canonical command | A `make` target that is the only entry point for a dev action | foundation | — | — |
+| Canonical command | A `task <name>` invocation defined by the repository-owned `Taskfile.yml` and the inherited Task target contract | foundation | — | temporary `make` compatibility call |
 | Contract change | A change to a MODULE.md public API or event (ARC-020) | foundation | — | breaking change (a contract change affecting *external* consumers) |
 | Drift | A known difference between resolved governance policy and live GitHub state | governance | mismatch | unknown (state that could not be evaluated) |
 | Guardrail | An absolute prohibition (GR-xxx) that no instruction can override | foundation | — | rule (overridable with justification if SHOULD-level) |

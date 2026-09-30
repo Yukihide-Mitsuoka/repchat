@@ -1,7 +1,7 @@
 ---
 id: usage
 title: Usage — New Machine, New Account, New Project
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Usage
@@ -151,19 +151,14 @@ compatibility wrapper.
 
 Implement the repository-owned root `Taskfile.yml` according to the
 [inherited Task target contract](../../../.ai/contracts/foundation/task-targets.md).
-The optional `profiles/` Makefiles are historical command examples, not active Taskfiles.
 Install Task before `task setup`; see the [official installation guide](https://taskfile.dev/docs/installation).
 After instantiation, `task doctor` rejects `not wired yet` placeholders and missing
 required tasks. If a task does not apply, replace it with an explicit
 repository-owned result such as `[project] build: not applicable — no deployable
 artifact`; do not retain the template placeholder.
 
-During the remaining ADR-0024 transition, `task doctor` also checks the root
-`Makefile`. Keep its compatibility targets wired until the Make check is removed;
-`make doctor` remains available, but Task owns the command semantics.
-
-Run `task doctor` after both local task definitions and the transitional Makefile
-are wired, before enabling scheduled synchronization.
+`task doctor` requires the root `Taskfile.yml`; Make compatibility is removed.
+Run it after local task definitions are wired, before enabling scheduled synchronization.
 
 ### 7. Inspect GitHub governance
 

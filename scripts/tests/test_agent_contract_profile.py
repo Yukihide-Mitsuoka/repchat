@@ -280,7 +280,7 @@ class FoundationAgentEntryTest(unittest.TestCase):
                 self.assertIn(required_reference, normalized_content)
         self.assertNotIn("profiles/README.md", content)
 
-    def test_task_target_authority_is_inherited_and_profile_examples_are_optional(self):
+    def test_task_target_authority_is_inherited(self):
         root = Path(__file__).parents[2]
         contract = root / TASK_TARGET_CONTRACT_PATH
         self.assertTrue(contract.is_file(), f"missing {TASK_TARGET_CONTRACT_PATH}")
@@ -295,12 +295,13 @@ class FoundationAgentEntryTest(unittest.TestCase):
     "canonical ai-dev-foundation root assertions",
 )
 class FoundationRootAgentAdapterTest(unittest.TestCase):
-    def test_optional_profile_examples_point_to_the_inherited_authority(self):
-        examples = (REPOSITORY_ROOT / "profiles/README.md").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn(TASK_TARGET_CONTRACT_PATH, examples)
-        self.assertNotIn("The canonical target contract (binding)", examples)
+    def test_removed_profile_examples_leave_the_inherited_authority(self):
+        self.assertFalse((REPOSITORY_ROOT / "profiles/README.md").exists())
+        self.assertEqual([], list((REPOSITORY_ROOT / "profiles").rglob("Makefile")))
+        contract = REPOSITORY_ROOT / TASK_TARGET_CONTRACT_PATH
+        self.assertTrue(contract.is_file(), f"missing {TASK_TARGET_CONTRACT_PATH}")
+        entry = (REPOSITORY_ROOT / FOUNDATION_ENTRY_PATH).read_text(encoding="utf-8")
+        self.assertIn(TASK_TARGET_CONTRACT_PATH, entry)
 
     def test_profile_orders_foundation_then_project(self):
         profile_path = REPOSITORY_ROOT / PROFILE_PATH

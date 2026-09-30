@@ -37,7 +37,7 @@ merge the Release PR — release approval is a human decision (mission.md).
 
 | Gate | Tool | Blocking |
 |------|------|----------|
-| Full test suite | `make test` | yes |
+| Full test suite | `task test` | yes |
 | SAST | CodeQL latest run green | yes |
 | Dependency vulnerabilities | Trivy (no CRITICAL/HIGH unfixed) | yes |
 | Secret scan | gitleaks | yes |

@@ -10,8 +10,8 @@ read_when: [taskfile, tooling]
 Every repository owns a root `Taskfile.yml` exposing the tasks below. Install the
 Task CLI before invoking `task setup`; CI pins its version. An inapplicable task MUST
 report an honest repository-owned no-op. Projects MAY add tasks, but inherited
-semantics and safety checks MUST remain intact. The `profiles/` Makefiles are optional
-historical examples, not inherited task definitions.
+semantics and safety checks MUST remain intact. Do not distribute a second executable
+copy of project task definitions as inherited examples.
 
 | Task | Semantics | Mutates files? | Called by |
 |------|-----------|----------------|-----------|

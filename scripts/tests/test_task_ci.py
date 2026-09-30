@@ -13,6 +13,38 @@ FOUNDATION_README_MARKER = (
 
 
 class TaskCiTest(unittest.TestCase):
+    def test_doctor_requires_task_without_a_make_dependency(self):
+        script = (ROOT / "scripts/template-check.sh").read_text(encoding="utf-8")
+        self.assertIn("python3 scripts/taskfile_profile.py", script)
+        self.assertNotIn("scripts/makefile_profile.py", script)
+        self.assertNotIn("if [ -f Taskfile.yml ]; then", script)
+
+    def test_foundation_task_entry_has_no_legacy_shim(self):
+        if FOUNDATION_README_MARKER not in (ROOT / "README.md").read_text(encoding="utf-8"):
+            self.skipTest("root task entry is repository-owned")
+        self.assertFalse((ROOT / "Makefile").exists())
+        taskfile = (ROOT / "Taskfile.yml").read_text(encoding="utf-8")
+        self.assertIn("- task: test-unit", taskfile)
+        self.assertIn("bash .claude/hooks/tests/guard-bash.test.sh", taskfile)
+        self.assertIn("--coverdir coverage", taskfile)
+        self.assertNotIn("[template] test: not wired yet", taskfile)
+        container = (ROOT / ".devcontainer/devcontainer.json").read_text(encoding="utf-8")
+        self.assertIn("@go-task/cli@3.53.1 && task doctor", container)
+        self.assertNotIn("make doctor", container)
+
+    def test_release_gates_install_task_before_running_tasks(self):
+        action = (ROOT / "scripts/actions/release-gates/action.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("uses: ./scripts/actions/setup-task", action)
+        self.assertNotIn("hashFiles('Taskfile.yml')", action)
+        install_index = action.index("uses: ./scripts/actions/setup-task")
+        for command in ("setup", "test", "build"):
+            with self.subTest(command=command):
+                command_index = action.index(f"run: task {command}")
+                self.assertLess(install_index, command_index)
+        self.assertNotIn("run: make ", action)
+
     def test_foundation_routed_quality_commands_use_task(self):
         readme = ROOT / "README.md"
         if not readme.is_file() or FOUNDATION_README_MARKER not in readme.read_text(
