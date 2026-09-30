@@ -56,7 +56,7 @@ task security-scan   task sbom   task clean   task doctor
 ```
 
 The full binding target contract (semantics of each) is
-`.ai/contracts/foundation/task-targets.md` after the pending parent sync.
+[`.ai/contracts/foundation/task-targets.md`](.ai/contracts/foundation/task-targets.md).
 
 RepChat's root `Taskfile.yml` implements these targets; `Makefile` only forwards legacy calls.
 

@@ -38,13 +38,13 @@ for (const target of targets) {
 }
 
 test('Make forwards a quoted FILE as one Task variable', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'repchat-task-shim-'));
+  const directory = mkdtempSync(join(tmpdir(), 'task-compatibility-'));
   try {
     const capture = join(directory, 'capture');
     const fakeTask = join(directory, 'task');
     writeFileSync(fakeTask, '#!/bin/sh\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n');
     chmodSync(fakeTask, 0o755);
-    const filename = "file ' quoted.ts";
+    const filename = 'file "quoted" `printf BAD`.ts';
     for (const target of ['format', 'lint']) {
       const result = spawnSync('make', ['--no-print-directory', target, `FILE=${filename}`], {
         encoding: 'utf8',
@@ -62,7 +62,7 @@ test('Make forwards a quoted FILE as one Task variable', () => {
 });
 
 test('Make propagates Task failures', () => {
-  const directory = mkdtempSync(join(tmpdir(), 'repchat-task-shim-'));
+  const directory = mkdtempSync(join(tmpdir(), 'task-compatibility-'));
   try {
     const fakeTask = join(directory, 'task');
     writeFileSync(fakeTask, '#!/bin/sh\nexit 23\n');

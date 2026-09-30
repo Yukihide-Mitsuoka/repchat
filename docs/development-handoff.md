@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-27
+updated: 2026-09-30
 ---
 
 # 開発引き継ぎ
@@ -27,6 +27,11 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 オーナー指示とみなしてはいけません。
 
 ## 現在の作業
+
+基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
+[PR #893](https://github.com/Yukihide-Mitsuoka/repchat/pull/893)のTask契約同期はマージ済みです。
+現在は保護されたMakefileをTaskへの転送だけに整理し、CLAUDE.mdと文書所有テストの参照先をTask契約へ揃えています。
+製品runtime、課金、クラウド資源は変更しません。互換Makefileの撤去は、ローカル・継承先の呼び出し確認後の別段階です。
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
