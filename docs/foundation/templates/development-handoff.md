@@ -63,7 +63,7 @@ the previous conversation. It reflects the state as of {{YYYY-MM-DD}}.
 
 | Date | Baseline | Command or check | Result | Evidence |
 |------|----------|------------------|--------|----------|
-| {{YYYY-MM-DD}} | `{{ref}}` | `{{canonical make target or CI check}}` | {{pass / fail / not run}} | {{link or concise output}} |
+| {{YYYY-MM-DD}} | `{{ref}}` | `{{canonical task command or CI check}}` | {{pass / fail / not run}} | {{link or concise output}} |
 
 ## Required reading
 

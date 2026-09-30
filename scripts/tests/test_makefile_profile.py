@@ -1,3 +1,7 @@
+import os
+import re
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -71,28 +75,109 @@ class MakefileProfileTest(unittest.TestCase):
             makefile_profile.validate_makefile(self.root)
 
 
-class FoundationMakeTargetsTest(unittest.TestCase):
+class FoundationMakeShimTest(unittest.TestCase):
     def setUp(self):
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
         if FOUNDATION_README_MARKER not in readme:
-            self.skipTest("Foundation-owned root Make targets are not inherited")
+            self.skipTest("Foundation-owned root Make shim is not inherited")
         self.makefile = (REPOSITORY_ROOT / "Makefile").read_text(encoding="utf-8")
+        self.taskfile = (REPOSITORY_ROOT / "Taskfile.yml").read_text(encoding="utf-8")
 
-    def test_foundation_test_targets_execute_regression_suites(self):
-        self.assertIn("test: test-unit", self.makefile)
-        self.assertIn("bash .claude/hooks/tests/guard-bash.test.sh", self.makefile)
+    def run_make_with_fake_task(self, *arguments, task_exit_code=0):
+        with tempfile.TemporaryDirectory() as directory:
+            task = Path(directory) / "task"
+            task.write_text(
+                '#!/bin/sh\nprintf "[%s]\\n" "$@"\nexit "$TASK_EXIT_CODE"\n',
+                encoding="utf-8",
+            )
+            task.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{directory}:{environment['PATH']}"
+            environment["TASK_EXIT_CODE"] = str(task_exit_code)
+            return subprocess.run(
+                [
+                    "make",
+                    "--no-print-directory",
+                    "-f",
+                    str(REPOSITORY_ROOT / "Makefile"),
+                    *arguments,
+                ],
+                cwd=directory,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+    def test_foundation_make_recipes_only_forward_to_task(self):
+        recipes = [line for line in self.makefile.splitlines() if line.startswith("\t")]
+        self.assertTrue(recipes)
+        self.assertTrue(all(re.match(r"\t@task(?:\s|$)", line) for line in recipes))
+
+    def test_required_make_targets_forward_to_matching_tasks(self):
+        for target in (
+            "help", "setup", "test", "test-unit", "test-integration", "coverage",
+            "build", "run", "security-scan", "sbom", "clean", "doctor",
+        ):
+            with self.subTest(target=target):
+                result = self.run_make_with_fake_task(target)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, f"[{target}]\n")
+
+    def test_file_and_fleet_variables_are_forwarded(self):
+        for target in ("format", "lint"):
+            with self.subTest(target=target):
+                result = self.run_make_with_fake_task(target, "FILE=src/example.py")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, f"[{target}]\n[FILE=src/example.py]\n")
+        result = self.run_make_with_fake_task("fleet-audit", "FLEET_WORKSPACE_ROOT=/tmp/fleet")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "[fleet-audit]\n[FLEET_WORKSPACE_ROOT=/tmp/fleet]\n")
+
+    def test_file_variable_with_quotes_is_forwarded_literally(self):
+        value = 'src/odd"file.py'
+        result = self.run_make_with_fake_task("format", f"FILE={value}")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, f"[format]\n[FILE={value}]\n")
+
+    def test_unknown_make_target_is_not_caught(self):
+        result = self.run_make_with_fake_task("unknown-target")
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_task_failure_is_not_masked(self):
+        result = self.run_make_with_fake_task("test", task_exit_code=7)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "[test]\n")
+
+    def test_installed_task_accepts_make_compatibility_calls(self):
+        if shutil.which("task") is None:
+            self.skipTest("Task CLI is not installed locally; CI installs pinned Task")
+        for arguments in (("help",), ("lint", "FILE=src/example.py")):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(
+                    ["make", *arguments],
+                    cwd=REPOSITORY_ROOT,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_taskfile_test_targets_execute_regression_suites(self):
+        self.assertIn("- task: test-unit", self.taskfile)
+        self.assertIn("bash .claude/hooks/tests/guard-bash.test.sh", self.taskfile)
         self.assertIn(
             "python3 -m unittest discover -s scripts/tests -p 'test_*.py'",
-            self.makefile,
+            self.taskfile,
         )
-        self.assertNotIn("[template] test: not wired yet", self.makefile)
-        self.assertNotIn("[template] test-unit: not wired yet", self.makefile)
+        self.assertNotIn("[template] test: not wired yet", self.taskfile)
+        self.assertNotIn("[template] test-unit: not wired yet", self.taskfile)
 
-    def test_foundation_coverage_target_emits_a_local_report(self):
-        self.assertIn("coverage: ## Test with coverage report", self.makefile)
-        self.assertIn("python3 -m trace --count --missing --summary", self.makefile)
-        self.assertIn("--coverdir coverage", self.makefile)
-        self.assertNotIn("[template] coverage: not wired yet", self.makefile)
+    def test_taskfile_coverage_target_emits_a_local_report(self):
+        self.assertIn("  coverage:", self.taskfile)
+        self.assertIn("python3 -m trace --count --missing --summary", self.taskfile)
+        self.assertIn("--coverdir coverage", self.taskfile)
+        self.assertNotIn("[template] coverage: not wired yet", self.taskfile)
 
 
 if __name__ == "__main__":

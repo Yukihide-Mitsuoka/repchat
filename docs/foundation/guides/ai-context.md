@@ -67,7 +67,7 @@ indexes and search instead of declared as directory-wide reads.
 | Any declared task-route bytes | 46,000 |
 | Any declared task-route words | 6,500 |
 
-`make doctor` rejects a directory, glob, missing file, traversal path, redundant
+`task doctor` rejects a directory, glob, missing file, traversal path, redundant
 baseline read, or missing mandatory authority in any skill route. When an agent profile
 exists, it also validates schema version 1, `strengthen-only`, exact input order, bounded
 file paths, and duplicates, then includes the profile and every input in baseline
@@ -83,7 +83,7 @@ The validator also rejects a missing conditional authority, routing reference, o
 required rule marker. It reports each conditional authority separately and does not add
 that measurement to a declared route unless the skill lists the file as unconditional.
 
-At 90% of either ceiling, `make doctor` emits a warning before the hard limit becomes a
+At 90% of either ceiling, `task doctor` emits a warning before the hard limit becomes a
 failure. It also rejects an incomplete or stale foundation ADR/guide index because
 bounded discovery depends on those indexes. A project-owned
 `docs/development-handoff.md` remains outside the hard context budget, but receives a

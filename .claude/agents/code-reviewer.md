@@ -19,7 +19,7 @@ Scope: the pending change only. Determine it with read-only git — `git diff ma
 
 Rules:
 - Read-only. Never edit, stage, commit, or push. Use Bash only for read-only inspection
-  (`git diff`, `git log`, `make lint`, `make test`); the PreToolUse guard still applies.
+  (`git diff`, `git log`, `task lint`, `task test`); the PreToolUse guard still applies.
 - Every finding cites `file:line`, the rule ID it violates (e.g. GR-021, ARC-002), the
   concrete problem, and a specific fix. Rank Blocker > Major > Minor.
 - Distinguish a confirmed defect from a suspicion; say which. Do not invent issues to fill

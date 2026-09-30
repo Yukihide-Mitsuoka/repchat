@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Template self-check ("make doctor"): fast, dependency-free validation that the
+# Template self-check ("task doctor"): fast, dependency-free validation that the
 # foundation's own metadata invariants hold. Automates what a manual/agent audit would
 # otherwise catch. Exits non-zero on any violation. Add checks here as invariants grow.
 #
@@ -99,10 +99,10 @@ if [ "$is_foundation_root" = true ]; then
   fi
 fi
 
-# 6. The canonical Foundation repository intentionally retains its stack-neutral
-# template Makefile. An unpacked Foundation copy without an origin is identified by its
-# immutable README owner marker. Downstream repositories must replace required
-# placeholders; a repository-owned explicit "not applicable" implementation is allowed.
+# 6. The canonical Foundation repository owns the stack-neutral Taskfile and a
+# forwarding-only transitional Makefile. An unpacked Foundation copy without an origin
+# is identified by its immutable README owner marker. Downstream repositories must
+# replace required placeholders; explicit repository-owned "not applicable" is allowed.
 makefile_profile_args=(--root .)
 if [ "$is_foundation_root" = true ] || \
   grep -qx '<!-- repository-readme-owner: Yukihide-Mitsuoka/ai-dev-foundation -->' README.md 2>/dev/null; then
@@ -111,9 +111,9 @@ fi
 python3 scripts/makefile_profile.py "${makefile_profile_args[@]}" || \
   err "Required Make targets retain unresolved template placeholders"
 
-# Validate Task alongside Make during the expand phase. A legacy descendant without
-# Taskfile remains valid until its reviewed local migration. Remove the Make check
-# only after repository-owned compatibility callers have moved.
+# Task is canonical. A legacy descendant without Taskfile remains valid until its
+# reviewed local migration. Remove the Make check only after repository-owned
+# compatibility callers have moved.
 if [ -f Taskfile.yml ]; then
   python3 scripts/taskfile_profile.py "${makefile_profile_args[@]}" || \
     err "Required Task targets are missing or retain unresolved template placeholders"

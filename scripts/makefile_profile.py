@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject unresolved canonical Make target placeholders outside Foundation."""
+"""Reject unresolved transitional Make target placeholders outside Foundation."""
 
 import argparse
 import sys
@@ -55,7 +55,7 @@ def validate_makefile(root, *, allow_template_placeholders=False):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="validate required canonical Make target implementations"
+        description="validate transitional Make target implementations"
     )
     parser.add_argument("--root", default=".", help="repository root")
     parser.add_argument(

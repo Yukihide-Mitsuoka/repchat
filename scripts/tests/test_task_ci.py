@@ -13,6 +13,19 @@ FOUNDATION_README_MARKER = (
 
 
 class TaskCiTest(unittest.TestCase):
+    def test_release_gates_install_task_before_running_tasks(self):
+        action = (ROOT / "scripts/actions/release-gates/action.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("uses: ./scripts/actions/setup-task", action)
+        self.assertNotIn("hashFiles('Taskfile.yml')", action)
+        install_index = action.index("uses: ./scripts/actions/setup-task")
+        for command in ("setup", "test", "build"):
+            with self.subTest(command=command):
+                command_index = action.index(f"run: task {command}")
+                self.assertLess(install_index, command_index)
+        self.assertNotIn("run: make ", action)
+
     def test_foundation_routed_quality_commands_use_task(self):
         readme = ROOT / "README.md"
         if not readme.is_file() or FOUNDATION_README_MARKER not in readme.read_text(
