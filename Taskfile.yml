@@ -1,4 +1,4 @@
-# ADR-0024 expansion: mirror the repository-owned Makefile until callers migrate.
+# Canonical RepChat task implementation (ADR-0024); Makefile only forwards here.
 version: '3'
 silent: true
 

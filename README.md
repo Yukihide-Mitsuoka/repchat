@@ -77,18 +77,17 @@ SQL generatorへ渡し、生成拒否や不正出力を安全な失敗として�
 ビルド、テスト、静的解析はリポジトリの正規インターフェースから実行します。
 
 ```bash
-make setup
-make format
-make lint
-make test
-make doctor
+task setup
+task format
+task lint
+task test
+task doctor
 ```
 
-[基盤のTaskfile移行](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/237)中は、
-[`Taskfile.yml`](Taskfile.yml)でも同名タスクを検証できます。Taskは
+[`Taskfile.yml`](Taskfile.yml)が正規の実装です。Taskは
 [公式手順](https://taskfile.dev/docs/installation)で先に導入してください。
-CIは固定版のTaskで実行します。ローカルのAI指示とフックは、レビュー付きの切り替えまで
-上記の`make`を正規の経路として使います。
+CIは固定版のTaskで実行します。[基盤のTaskfile移行](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/237)中、
+`make`は旧呼び出しをTaskへ転送するだけです。
 
 対象別profileと固定例を使う旧ライブデモ入口は削除済みです。認可済みscopeから分析契約を自動生成する
 対象非依存runtimeが完成するまで、代替のデモコマンドは提供しません。現在の作業順は
