@@ -1,7 +1,7 @@
 ---
 id: usage-ja
 title: 使い方（日本語）— 新しいPC / 別アカウント / 新規プロジェクト
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # 使い方（日本語セットアップ手順書）
@@ -144,18 +144,14 @@ agent profileとproject overlayを保護対象にしてください。
 
 利用先が所有するルートの`Taskfile.yml`を
 [継承されるTask契約](../../../.ai/contracts/foundation/task-targets.md)に従って実装します。
-任意の`profiles/`内のMakefileは過去のコマンド例であり、Taskfileへそのままコピーしません。
 `task setup`より先に[公式手順](https://taskfile.dev/docs/installation)でTaskを導入します。
 インスタンス化後は必須taskの欠落や`not wired yet`実装が残っていると`task doctor`が
 失敗します。対象外のtaskは、たとえば
 `[project] build: not applicable — no deployable artifact` のように、利用先が所有する
 明示的な対象外結果へ置き換えてください。テンプレートのプレースホルダーは残しません。
 
-ADR-0024の移行中は、`task doctor`がルートの`Makefile`も検査します。Make検証が
-撤去されるまで互換ターゲットを維持してください。`make doctor`も実行できますが、
-コマンドの意味を定義するのはTask契約です。
-
-利用先のTask定義と暫定Makefileを整えた後、定期同期を有効にする前に`task doctor`を実行します。
+`task doctor`はルートの`Taskfile.yml`を必須として検査します。Make互換入口は撤去済みです。
+利用先のTask定義を整えた後、定期同期を有効にする前に`task doctor`を実行します。
 
 ### 7. GitHub ガバナンスを点検
 

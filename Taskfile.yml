@@ -1,4 +1,4 @@
-# Canonical RepChat task implementation (ADR-0024); Makefile only forwards here.
+# Canonical RepChat task implementation (ADR-0024); no Make compatibility entry.
 version: '3'
 silent: true
 

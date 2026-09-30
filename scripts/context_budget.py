@@ -90,7 +90,7 @@ BASELINE_CONTRACT_MARKERS = {
         ".ai/review-checklist.md",
         "Conventional Commits",
         "SemVer",
-        "make doctor",
+        "task doctor",
         ".claude/README.md",
         "Claude Code reads",
         "authentication, payments",

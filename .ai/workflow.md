@@ -90,8 +90,8 @@ Multiple AI agents may work simultaneously. To avoid collisions:
 
 A task is done only when ALL hold:
 - [ ] Acceptance criteria of the issue met
-- [ ] Tests added/updated and `make test` green (TST rules)
-- [ ] `make lint` and `make format` clean
+- [ ] Tests added/updated and `task test` green (TST rules)
+- [ ] `task lint` and `task format` clean
 - [ ] Docs updated per doc-update matrix (DOC-030)
 - [ ] Maintained `docs/development-handoff.md` updated when active state changed (DOC-012)
 - [ ] Self-review against `.ai/review-checklist.md` done

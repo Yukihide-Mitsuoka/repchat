@@ -33,5 +33,5 @@ Use `contents: write` only when the job must change repository content. A job th
 `actions/checkout` or a repository-local `./` action needs read access because local
 actions are loaded from the checked-out repository.
 
-**Verification:** rerun the affected workflow in a private repository. `make doctor`
+**Verification:** rerun the affected workflow in a private repository. `task doctor`
 also checks every Foundation workflow for this effective-permission requirement.

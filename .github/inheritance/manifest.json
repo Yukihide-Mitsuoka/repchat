@@ -38,7 +38,6 @@
     "scripts/actions/",
     "scripts/context_budget.py",
     "scripts/github_governance.py",
-    "scripts/makefile_profile.py",
     "scripts/taskfile_profile.py",
     "scripts/pr_language_policy.py",
     "scripts/pr_repository_role.py",
@@ -63,7 +62,6 @@
     "scripts/tests/test_github_governance_comparison.py",
     "scripts/tests/test_github_governance_discovery.py",
     "scripts/tests/test_local_workflow_actions.py",
-    "scripts/tests/test_makefile_profile.py",
     "scripts/tests/test_post_edit_quality_hook.py",
     "scripts/tests/test_taskfile_profile.py",
     "scripts/tests/test_objective_prose_policy.py",
@@ -81,7 +79,8 @@
     "scripts/tests/test_template_inheritance_plan.py",
     "scripts/tests/test_template_sync_auth.py",
     "scripts/tests/test_workflow_dependency_pins.py",
-    "docs/foundation/"
+    "docs/foundation/",
+    "scripts/tests/test_parent_selection_guide.py"
   ],
   "protected_paths": [
     ".ai/architecture.md",
@@ -116,7 +115,6 @@
     ".templatesyncignore",
     "CHANGELOG.md",
     "CLAUDE.md",
-    "Makefile",
     "Taskfile.yml",
     "README.md",
     "profiles/",
@@ -132,6 +130,7 @@
     "tests/",
     "docs/adr/",
     "docs/discovery-log.md",
+    "docs/development-handoff.md",
     "docs/glossary.md",
     "docs/requirements.md",
     "docs/roadmap.md",

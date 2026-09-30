@@ -177,5 +177,5 @@ canonical契約の下に project-specific ターゲットとして追加する�
 - [ADR-0006](0006-edge-gate-runtime-cloudflare-workers.md) — ゲートはWorkers（T1の管理境界）
 - [ADR-0010](0010-connection-identity-is-never-a-person.md) — D1・鍵を保存しない（T4の根拠）
 - [docs/deploy.md](../deploy.md) — 手順書（本ADRの実装で自動化される）
-- [Makeターゲット契約](../../.ai/contracts/foundation/make-targets.md) — canonical契約と破壊的ターゲットの規則（T7）。旧`profiles/README.md`の規範部分はここへ移された。
+- [当時のMakeターゲット契約](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/blob/ee4650971ab0fae0640601492a0629e6f15172c5/.ai/contracts/foundation/make-targets.md) — canonical契約と破壊的ターゲットの規則（T7）。Make撤去後も当時の参照を保持するため、最後のMake互換checkpointへ固定した。現行の実行入口は[Task契約](../../.ai/contracts/foundation/task-targets.md)。
 - [.ai/decision-log.md](../../.ai/decision-log.md) — LOG-0052（allowlist実測、T5の根拠）

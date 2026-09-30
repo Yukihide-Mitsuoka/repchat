@@ -97,16 +97,18 @@ python3 scripts/template_inheritance.py validate --root .
 
 Exit `0` prints deterministic JSON; exit `2` reports invalid input on stderr. The command
 performs no network request, file write, deletion, Git operation, or GitHub API call.
-`make doctor` runs this validation automatically when the repository contains a child
+`task doctor` runs this validation automatically when the repository contains a child
 manifest; the foundation root has no manifest and skips only this child-specific check.
-It also rejects the exact template `not wired yet` implementation for required Make
-targets outside the canonical Foundation repository. A target that does not apply must
+During ADR-0024 migration it checks required Task definitions when `Taskfile.yml`
+exists and also checks transitional Make targets, rejecting the exact template
+`not wired yet` implementation outside the canonical Foundation repository. A task
+that does not apply must
 use an explicit repository-owned `not applicable` implementation; silent template
 no-ops are not valid downstream checks.
 
 `scripts/template-check.sh` runs the complete Foundation regression suite by default.
 A descendant that owns a reviewed `scripts/foundation_test_runner.py` may set
-`FOUNDATION_TEST_SUITE=fast` or `slow` from its protected Makefile or workflow. The
+`FOUNDATION_TEST_SUITE=fast` or `slow` from its protected Taskfile or workflow. The
 inherited selector accepts only `all`, `fast`, or `slow`, requires the local runner for
 a non-default value, and never evaluates a command supplied through the environment.
 The descendant must execute every excluded slow test through another required check; a
@@ -344,10 +346,10 @@ Place the configured repositories as sibling Git worktrees under one directory, 
 their remote refs explicitly, then run from the `ai-dev-foundation` worktree:
 
 ```bash
-make fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
+task fleet-audit FLEET_WORKSPACE_ROOT=/path/to/worktrees
 ```
 
-Descendant Makefiles are protected repository-owned files and do not receive this target.
+Descendant Taskfiles are protected repository-owned files and do not receive this target.
 Use the Foundation worktree as the fleet-wide audit entry point.
 
 The target audits every active relationship exactly once and labels repository identity

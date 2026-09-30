@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-09-30
+updated: 2026-10-01
 ---
 
 # 開発引き継ぎ
@@ -29,9 +29,12 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 ## 現在の作業
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
-[PR #893](https://github.com/Yukihide-Mitsuoka/repchat/pull/893)のTask契約同期はマージ済みです。
-現在は保護されたMakefileをTaskへの転送だけに整理し、CLAUDE.mdと文書所有テストの参照先をTask契約へ揃えています。
-製品runtime、課金、クラウド資源は変更しません。互換Makefileの撤去は、ローカル・継承先の呼び出し確認後の別段階です。
+[Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
+[PR #255](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/255)はマージ済みです。
+[RepChat PR #899](https://github.com/Yukihide-Mitsuoka/repchat/pull/899)に同期とTask専用化をまとめています。
+互換Makefileと旧Make検査を撤去し、保護されたAI指示・スキル・権限設定をTaskへ揃え、
+引用付きファイル名・終了コード・未知タスクをTask自体で検証します。検証結果と残作業はIssue #238を正本とします。
+製品runtime、課金、クラウド資源は変更しません。過去のMake実行結果は履歴として保持します。
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
@@ -421,7 +424,7 @@ import経路と実行時分岐を確認しました。製品本体の`src/`に�
 
 ### 固有処理を削除する実装計画
 
-以下を順番に小さいPRへ分割します。各PRは`make format`、`make lint`、`make test`を通し、前段の共通境界を
+以下を順番に小さいPRへ分割します。各PRは`task format`、`task lint`、`task test`を通し、前段の共通境界を
 後段が利用します。対象別の新経路、設定、fallbackを並行して作ってはいけません。
 
 段階0は[PR #677](https://github.com/Yukihide-Mitsuoka/repchat/pull/677)、段階1は

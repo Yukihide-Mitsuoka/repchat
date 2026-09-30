@@ -7,6 +7,10 @@ source-commit: unknown
 
 # ai-dev-foundation
 
+<!-- Historical snapshot: source-commit remains unknown. Retired Make references
+     below point to the verified last Make-compatible Foundation checkpoint, not
+     to the snapshot's unproven source commit. Current commands use Task. -->
+
 **AI-native development foundation** — a template repository for projects where AI
 agents (Claude Code, ChatGPT, Gemini, Codex, ...) are the primary developers and humans
 direct, decide, and review.
@@ -25,8 +29,8 @@ direct, decide, and review.
 | Enforcement L1 | [`.claude/`](../../../../.claude/) | Claude Code hooks (command guard + auto format/lint), a read-only command allow-list, native skill wrappers, and a read-only `code-reviewer` subagent |
 | Enforcement L2 | [`.pre-commit-config.yaml`](../../../../.pre-commit-config.yaml) | Any committer: secret scan, branch guard, lint, unit tests |
 | Enforcement L3 | [`.github/workflows/`](../../../../.github/workflows/) | CI, CodeQL, secrets/deps/license scan, container, IaC, DAST, Scorecard, release+SBOM |
-| Stable command interface | [`Makefile`](../../../../Makefile) | `make test` etc. — the only entry points automation uses |
-| Stack profiles | Foundationの`profiles/` | 作成時の参考例。現行の規範は[Makeターゲット契約](../../../../.ai/contracts/foundation/make-targets.md) |
+| Stable command interface | [`Makefile`](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/blob/ee4650971ab0fae0640601492a0629e6f15172c5/Makefile) | `make test` etc. — the only entry points automation uses |
+| Stack profiles | Foundationの`profiles/` | 作成時の参考例。この記録当時の規範は[Makeターゲット契約](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/blob/ee4650971ab0fae0640601492a0629e6f15172c5/.ai/contracts/foundation/make-targets.md) |
 | Decisions | [`docs/adr/`](../../../adr/) | ADRs + decision log |
 | Knowledge | [`docs/`](../../../) | Architecture, domain, API, deployment, operations, runbook, troubleshooting, roadmap, glossary |
 | GitHub scaffolding | [`.github/`](../../../../.github/) | Issue forms, PR template, CODEOWNERS, labels-as-code, Dependabot; plus `renovate.json` |
@@ -40,7 +44,7 @@ direct, decide, and review.
    config URLs.
 3. **Wire the Makefile**: この記録の作成当時はFoundationの`profiles/`から近い
    Makefileをコピーしていた。RepChatでは既に製品用Makefileを管理している。
-   現行の規範は[Makeターゲット契約](../../../../.ai/contracts/foundation/make-targets.md)。
+   この記録当時の規範は[Makeターゲット契約](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/blob/ee4650971ab0fae0640601492a0629e6f15172c5/.ai/contracts/foundation/make-targets.md)。
 4. **Inspect GitHub governance**: run `python3 scripts/github_governance.py plan --root .
    --repo OWNER/REPOSITORY` after `gh auth login`. It reports policy drift without
    changing settings. Use `audit` for a CI-suitable nonzero drift result. After reviewing

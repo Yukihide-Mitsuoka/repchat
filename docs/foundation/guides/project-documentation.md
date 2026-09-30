@@ -127,7 +127,7 @@ language and substantive content, then repair links relative to the archive loca
 Review an existing archive before replacing it. Multiple ancestors coexist because the
 owner-qualified paths do not collide.
 
-Run `make doctor` after changing the README or inheritance configuration. For
+Run `task doctor` after changing the README or inheritance configuration. For
 compatibility with existing repositories, a missing marker produces a migration warning.
 A present marker that names another repository is an error. The audit never moves,
 rewrites, or deletes files.

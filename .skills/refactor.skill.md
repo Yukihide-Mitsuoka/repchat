@@ -25,11 +25,11 @@ unchanged behavior**.
    independent test surface first (MNT-001). Reject extractions that only lower line
    count, scatter one responsibility, or add pass-through wrappers (MNT-002/GR-025).
 4. Refactor in small mechanical steps: rename → move → extract → inline. Run
-   `make test-unit` after each step; commit each step separately.
+   `task test-unit` after each step; commit each step separately.
 5. Keep public contracts frozen: MODULE.md APIs, wire formats, CLI flags, persisted
    data. If a contract must change, that is not a refactor — use architecture.skill.md.
 6. Delete what the refactor obsoleted (old helpers, dead branches, stale comments).
-7. Run `make test` + `make lint`; confirm coverage did not drop (TST-003).
+7. Run `task test` + `task lint`; confirm coverage did not drop (TST-003).
 8. PR titled `refactor(scope): ...`, description states "no behavior change" and the
    structural goal achieved.
 
