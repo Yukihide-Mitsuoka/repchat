@@ -99,12 +99,11 @@ Exit `0` prints deterministic JSON; exit `2` reports invalid input on stderr. Th
 performs no network request, file write, deletion, Git operation, or GitHub API call.
 `task doctor` runs this validation automatically when the repository contains a child
 manifest; the foundation root has no manifest and skips only this child-specific check.
-During ADR-0024 migration it checks required Task definitions when `Taskfile.yml`
-exists and also checks transitional Make targets, rejecting the exact template
-`not wired yet` implementation outside the canonical Foundation repository. A task
-that does not apply must
-use an explicit repository-owned `not applicable` implementation; silent template
-no-ops are not valid downstream checks.
+It requires the repository-owned root `Taskfile.yml` and checks required Task
+definitions, rejecting the exact template `not wired yet` implementation outside the
+canonical Foundation repository. Make compatibility is removed (ADR-0024). A task
+that does not apply must use an explicit repository-owned `not applicable`
+implementation; silent template no-ops are not valid downstream checks.
 
 `scripts/template-check.sh` runs the complete Foundation regression suite by default.
 A descendant that owns a reviewed `scripts/foundation_test_runner.py` may set
