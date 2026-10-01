@@ -1,4 +1,4 @@
-# Pinned environment used by the one-command demo, refreshed on 2026-08-20.
+# Pinned environment used by the one-command demo, refreshed on 2026-10-01.
 # Direct dependencies are google-genai, google-cloud-bigquery, and sqlparse;
 # the rest are pinned transitives so a fresh checkout does not silently resolve
 # a new stack.
@@ -37,5 +37,5 @@ sqlparse==0.6.0
 tenacity==9.1.4
 typing-extensions==4.16.0
 typing-inspection==0.4.2
-urllib3==2.7.0
+urllib3==2.8.0
 websockets==16.1
