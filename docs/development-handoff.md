@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # 開発引き継ぎ
@@ -398,6 +398,11 @@ post-run evidenceを別々に採点し、同一scope・参照記録・計画run�
 2026-10-01にオーナーがローカルGoogle Cloud認証を更新した後、承認済みの`bq show --schema`を1回実行して
 実schemaを取得しました。構造と未確認事項は評価harnessのREADMEを正本とします。行やquery結果は取得していません。
 次はデータ期間・case成立・参照値を実値で確認する範囲と最大費用を提示し、別途承認を得ます。
+2026-10-01にオーナーが認証を更新し、実値確認SQLの無料dry runはPython SDKで成功しました。
+2026-10-02の追加承認後、予約overrideを外し、512 MiB上限の参照準備queryを1回実行して集計1行を取得しました。
+配列・多階層の値は確認しましたが、参照用の標準日時変換は成功せず、データ期間とcase成立は未確認です。
+次は日時表現の最小参照確認とcase案をofflineで準備します。追加queryは別途の費用承認後だけ実行します。
+実処理量・課金対象量・計算費用、private artifact境界、未確認事項は評価harnessのREADMEを正本とします。
 評価runnerも別承認まで実行しません。対象別runtime変更は行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を

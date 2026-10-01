@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # 未知schema反復評価の証拠harness
@@ -45,7 +45,41 @@ top-levelの`created_at`は`STRING`であり、型付き日時列として扱え
 
 schema metadata取得は完了しました。データ期間・参照値作成と評価runnerの実BigQuery／Vertex AI呼出しは
 別々に対象と最大費用を提示し、それぞれの個別承認後に行います。現時点では上記のcase成立、参照値、
-料金snapshot、実行承認は未確認または未取得です。
+評価runner用の料金snapshot、実行承認は未確認または未取得です。
+
+2026-10-01に、期間・日時変換失敗数、repeated配列の存在件数、深いnested fieldの非NULL件数を
+1行の集計だけで確認する評価専用SQLをrepository外へ準備しました。生のactor、owner、URL、email、messageは
+出力せず、製品runtimeにも渡しません。日時の`SAFE_CAST`は参照確認用であり、製品の期間parserではありません。
+当初の無料dry runは再認証要求で停止しましたが、オーナーの認証更新後、Python SDKで成功しました。
+BigQueryは単一`SELECT`、指定tableだけの参照、12列の集計出力、推定処理量391,393,389 bytes
+（約373.26 MiB）を返しました。dry runは行を取得しておらず、データ期間とcase成立は未検証です。
+
+参照準備queryの承認範囲は1回、集計1行、`maximum_bytes_billed=536870912`（512 MiB）、分析料金1 JPYです。
+2026-10-01に[Google CloudのJPY SKU一覧](https://cloud.google.com/skus?currency=JPY&filter=BigQuery%20Analysis)で
+USのAnalysis（SKU `1DF5-1F98-1DD1`）を996.093749988 JPY/TiBと確認しました。
+無料枠を引かない分析料金上界は小数第6位切上げで0.486374 JPYです。
+初回は[job reservation](https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/Job#JobConfiguration)を
+`none`に指定してon-demandを要求しました。承認範囲に自動再試行、上限拡大、Vertex AI送信、評価runner実行は含みません。
+この上界は参照準備queryの分析料金だけであり、税、別SKU、他process、請求書総額を保証しません。
+オーナーは2026-10-01にこの1回の実行を承認しました。送信は`BadRequest`で拒否され、指定job IDの
+metadata取得は`NotFound`でした。行と課金bytesは取得しておらず、実測費用を0と記録しません。
+同じ予約指定の無料dry runも`invalid`を返し、`reservation="none"`が拒否されることを確認しました。
+この拒否の後は再承認まで停止しました。
+
+[予約割当の検索API](https://docs.cloud.google.com/bigquery/docs/reference/reservations/rest/v1/projects.locations/searchAllAssignments)で
+課金projectのUS割当を読み取り確認し、継承元を含む結果は空、追加pageもありませんでした。
+2026-10-02にオーナーが、同じSQL・512 MiB・1回・1 JPYの上限で予約overrideを外す再送を明示承認しました。
+新しい試行IDでqueryを1回実行し、集計1行を取得しました。クラウド設定・IAMは変更せず、元の送信記録も保持しています。
+実処理量は391,393,389 bytes、課金対象量は392,167,424 bytesです。確認済み単価で計算した分析料金は
+小数第6位切上げで0.355281 JPYでした。これは無料枠・税等を反映した請求額ではありません。
+SQL・送信記録・集計結果はrepository外のprivate artifactに限定し、結果行をrepositoryへ保存しません。
+
+実値では両repeated配列と深いnested fieldに値があることを確認しました。一方、非NULLの`created_at`を
+参照用の標準`SAFE_CAST(... AS TIMESTAMP)`で変換できた値はありませんでした。元の文字列形式は取得していないため、
+日時の欠落、単位、書式を推測しません。期間比較・順序付き分析のcase成立は未確認であり、この予備確認だけで
+6種類のcapabilityや同一runtimeの品質を実証済みとしません。次は日時表現を調べる最小の参照確認と
+case案をofflineで準備し、追加queryが必要なら対象・費用上限を別途承認してもらいます。
+対象別の期間parserやruntime設定は追加せず、評価runnerもまだ実行しません。
 
 ## 現行の評価契約
 
