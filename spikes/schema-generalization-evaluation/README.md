@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-09-27
+updated: 2026-10-01
 ---
 
 # 未知schema反復評価の証拠harness
@@ -22,15 +22,19 @@ fixture・計画・認可scopeに限定し、runtimeの対象別code、prompt、
 
 ### `github_nested`の評価成立条件
 
-2026-09-27時点で、[Google Cloudの公開サンプル一覧](https://docs.cloud.google.com/bigquery/public-data#sample_tables)は
-このtableをnested schemaと説明し、サンプルtableの所在を`US`としています。
-[GoogleSQL移行資料](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/migrating-from-legacy-sql)には、
-同tableの`payload.pages`を`UNNEST`する例があります。これはnested／repeated fieldの存在を示す公開資料であり、
-評価caseの実値一致や、必須capabilityを満たす参照fixtureの完成を示すものではありません。
+2026-10-01に承認済みの`bq show --schema`を1回実行し、実tableのschema metadataを取得しました。
+`payload.pages`と`payload.shas`は`REPEATED RECORD`で、
+`payload.pull_request.base.repo.owner`まで複数階層の`RECORD`があります。
+top-levelの`created_at`は`STRING`であり、型付き日時列として扱えません。
+[Google Cloudの公開サンプル一覧](https://docs.cloud.google.com/bigquery/public-data#sample_tables)は
+サンプルtableの所在を`US`と説明し、
+[GoogleSQL移行資料](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/migrating-from-legacy-sql)には
+`payload.pages`を`UNNEST`する例があります。今回の取得は列・型・modeのみで、行、期間、値、query結果、
+評価caseの成立条件、所在の実metadataは確認していません。
 
 実行前に以下を確定します。いずれも評価専用fixture・計画・認可scopeで扱い、runtimeへ対象別情報を追加しません。
 
-1. 認可済みscopeの実schemaとデータ期間を確認し、`nested_unnest`、`multi_level_nesting`、`join`、
+1. 取得済みschemaを踏まえ、認可済みscopeのデータ期間と`nested_unnest`、`multi_level_nesting`、`join`、
    `period_comparison`、`window_function`、`ordered_behavior`の各caseが実データで成立するか確認する。
    公開資料だけでは6種類のcase成立と参照結果を確認できていません。`join`が別tableを要する場合は、
    scopeを黙って拡張せず、追加対象をオーナーへ提示する。
@@ -39,8 +43,9 @@ fixture・計画・認可scopeに限定し、runtimeの対象別code、prompt、
 3. GA4側とこのtable側で異なるschema ID・scope fingerprint、各case最低3 run、同一runtime・prompt・設定を
    計画へ固定する。公開サンプル2件の評価結果を、任意の顧客schemaでの品質実証へ拡大解釈しない。
 
-metadata確認、参照値作成、評価runnerの実BigQuery／Vertex AI呼出しは別々に対象と最大費用を提示し、
-それぞれの個別承認後に行います。現時点では上記の実schema、参照値、料金snapshot、実行承認は未取得です。
+schema metadata取得は完了しました。データ期間・参照値作成と評価runnerの実BigQuery／Vertex AI呼出しは
+別々に対象と最大費用を提示し、それぞれの個別承認後に行います。現時点では上記のcase成立、参照値、
+料金snapshot、実行承認は未確認または未取得です。
 
 ## 現行の評価契約
 
