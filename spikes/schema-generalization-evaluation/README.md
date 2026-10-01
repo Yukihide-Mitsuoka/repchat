@@ -81,6 +81,25 @@ SQL・送信記録・集計結果はrepository外のprivate artifactに限定し
 case案をofflineで準備し、追加queryが必要なら対象・費用上限を別途承認してもらいます。
 対象別の期間parserやruntime設定は追加せず、評価runnerもまだ実行しません。
 
+2026-10-02に、変換できなかった非NULLの日時文字列を最大5種類確認する別の参照専用SQLを
+repository外へ準備し、無料dry runを1回行いました。指定tableだけの単一SELECT、出力1列のSTRING、
+推定処理量68,623,821 bytes（約65.44 MiB）を確認し、結果行は取得していません。
+同日にオーナーが1回、128 MiB上限、分析料金0.2 JPY上限、再試行なしの実取得を承認しました。
+公式JPY SKUの単価を再確認し、課金projectのUS予約割当が継承元を含め空であることも読み取り確認して、
+予約overrideなしでqueryを1回実行しました。実処理量68,623,821 bytes、課金対象量69,206,016 bytes、
+計算した分析料金0.062697 JPYで、承認上限内でした。無料枠・税等を反映した請求額ではありません。
+SQL・承認範囲・送信記録・結果5行はrepository外のprivate artifactに限定し、生の値をlogへ出していません。
+
+取得した5種類は25文字の`YYYY/MM/DD HH:MM:SS ±HHMM`形で、Python標準の日時変換を
+ローカルの参照確認として行い、5件とも数値timezone offsetを持つ日時へ変換できました。
+[Google Cloudの2018年のIbis例](https://cloud.google.com/blog/products/data-analytics/ibis-and-bigquery-scalable-analytics-comfort-python)も
+このtableの文字列に書式付き日時変換を用いていますが、過去の例を現在の全行の根拠とは扱いません。
+今回の5種類は標準cast失敗値の辞書順先頭であり、無作為標本ではありません。
+列全体の変換成功率、データ期間、期間比較・順序付き分析のcase成立は引き続き未確認です。
+[GoogleSQLの書式付き日時変換](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#parse_timestamp)を
+使う参照専用SQLとcase案はrepository外で準備済みです。次は無料見積りを行い、追加queryの承認を今回の承認と分離します。
+対象専用parser、固定書式・SQL・設定を製品runtimeへ追加せず、同一runtimeの実反復評価もまだ行いません。
+
 ## 現行の評価契約
 
 - IDとscope snapshot fingerprintが異なる2件以上のschema evidenceを同じ評価に含め、各caseを3回以上反復する。
