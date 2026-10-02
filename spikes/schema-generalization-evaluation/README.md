@@ -76,9 +76,8 @@ SQL・送信記録・集計結果はrepository外のprivate artifactに限定し
 
 実値では両repeated配列と深いnested fieldに値があることを確認しました。一方、非NULLの`created_at`を
 参照用の標準`SAFE_CAST(... AS TIMESTAMP)`で変換できた値はありませんでした。元の文字列形式は取得していないため、
-日時の欠落、単位、書式を推測しません。期間比較・順序付き分析のcase成立は未確認であり、この予備確認だけで
-6種類のcapabilityや同一runtimeの品質を実証済みとしません。次は日時表現を調べる最小の参照確認と
-case案をofflineで準備し、追加queryが必要なら対象・費用上限を別途承認してもらいます。
+当時は日時の単位・書式とデータ期間を確認できませんでした。この予備確認だけで
+6種類のcapabilityや同一runtimeの品質を実証済みとしません。後続の日時確認は下記に記録します。
 対象別の期間parserやruntime設定は追加せず、評価runnerもまだ実行しません。
 
 2026-10-02に、変換できなかった非NULLの日時文字列を最大5種類確認する別の参照専用SQLを
@@ -95,10 +94,28 @@ SQL・承認範囲・送信記録・結果5行はrepository外のprivate artifac
 [Google Cloudの2018年のIbis例](https://cloud.google.com/blog/products/data-analytics/ibis-and-bigquery-scalable-analytics-comfort-python)も
 このtableの文字列に書式付き日時変換を用いていますが、過去の例を現在の全行の根拠とは扱いません。
 今回の5種類は標準cast失敗値の辞書順先頭であり、無作為標本ではありません。
-列全体の変換成功率、データ期間、期間比較・順序付き分析のcase成立は引き続き未確認です。
+この5種類の確認だけでは列全体の変換成功率、データ期間、期間比較・順序付き分析のcase成立は未確認でした。
 [GoogleSQLの書式付き日時変換](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#parse_timestamp)を
-使う参照専用SQLとcase案はrepository外で準備済みです。次は無料見積りを行い、追加queryの承認を今回の承認と分離します。
+使う参照専用SQLとcase案はrepository外で準備済みです。追加queryの承認は今回の承認と分離します。
 対象専用parser、固定書式・SQL・設定を製品runtimeへ追加せず、同一runtimeの実反復評価もまだ行いません。
+
+列全体の確認SQLは2026-10-02の無料dry runに成功しました。指定tableだけの単一SELECT、
+日時の欠落数・変換失敗数・成功数・最小最大日時・UTC日月の種類数を含む8列、
+推定処理量68,623,821 bytes（約65.44 MiB）を確認しました。結果行は取得していません。
+同日にオーナーが1回・集計1行・128 MiB・分析料金0.2 JPY上限・再試行なしを別途承認しました。
+課金projectのUS予約割当が継承元を含め空であることを読み取り確認し、予約overrideなしで1回実行しました。
+実処理量68,623,821 bytes、課金対象量69,206,016 bytes、確認済み単価による分析料金0.062697 JPYで、
+承認上限内でした。これは無料枠・税等を反映した請求額ではありません。結果行と実際の期間境界は
+repository外のprivate artifactへ限定し、生の行・日時をlogやrepositoryへ複製しません。
+
+列全体では、非NULLの日時がすべて参照用の書式付き変換に成功しました。NULLの日時も存在します。
+取得した最小・最大日時とUTC日月の種類数から、複数の日・月にまたがる期間を確認しました。
+期間比較に利用できる日時はありますが、質問・期間境界・欠落値の扱い・参照SQL・期待結果の固定と
+独立reviewは未完了です。`ordered_behavior`には主体と時刻の同時存在、同時刻の順序根拠の確認も必要です。
+6種類のcapabilityのcase案と、未確認のjoin・順序条件を調べる最小の参照確認案はrepository外で整理済みです。
+次は同一table内のjoin案が共通契約と評価条件を満たすか確認し、主体と日時の同時存在・同時刻の重複を
+生の主体IDを出力せず調べる集計SQLを準備します。別tableが必要なら認可scopeを黙って広げません。
+追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
 ## 現行の評価契約
 
