@@ -36,6 +36,12 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 引用付きファイル名・終了コード・未知タスクをTask自体で検証します。検証結果と残作業はIssue #238を正本とします。
 製品runtime、課金、クラウド資源は変更しません。過去のMake実行結果は履歴として保持します。
 
+[PR #905](https://github.com/Yukihide-Mitsuoka/repchat/pull/905)は継承手順書のTask専用化を同期するPRです。
+2026-10-02の読み取り調査では、親のaccepted lockから同期sourceまでの変更は1コミット・2ファイルで、
+保護されたguard testの変更はmainへ反映済みです。同期PRはmainより遅れ、lock未更新、CI結果なしのため、
+まだマージしません。次は同じPRを最新mainへ更新し、継承状態を確認してlockを確定し、CIを通します。
+この調査ではPR branchやlockを変更していません。評価文書のPRとは別pathで、完了したPRからマージできます。
+
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
 マージ済みです。実Vertex AI・BigQueryを使う公開GA4経路でも6パネルbuildまで完了しました。検証範囲と
@@ -412,8 +418,10 @@ join契約の生成正規化は同一table内のrelationshipを拒否します�
 主体・日時の同時存在、主体ごとの複数日時・UTC日、主体と同時刻の重複を調べる集計SQLをrepository外へ
 準備しました。2026-10-02に別承認を得て、1回・集計1行・128 MiB・分析料金0.2 JPY上限で実行済みです。
 主体と日時の同時存在、同一主体の複数日時・UTC日を確認しました。NULL主体と主体・同時刻の重複もあります。
-次は欠落値・同時刻の扱いと出力grainを明示して6種類のcase質問と参照SQL案をofflineで整理します。
-日時だけで活動の完全順序を証明せず、joinの成立と追加取得の範囲も確認してから次の費用承認へ進みます。
+欠落値・同時刻の扱いと出力grainを明示した6種類のcase質問と参照SQL案はrepository外で作成済みです。
+追加取得SQLの無料dry runは成功しました。次は1回・集計6行・128 MiB・分析料金0.2 JPY上限の
+別承認後に参照値を取得し、joinの評価範囲と同時刻group単位の順序caseをオーナーが独立reviewします。
+日時だけで活動の完全順序を証明しません。期待結果・実期間境界を固定する前の案であり、case成立は未確定です。
 計測値と確認範囲は評価harnessのREADMEを正本とします。scope拡張・製品変更・評価runner実行は行っていません。
 参照SQL・期待結果の固定と独立reviewは未完了です。参照確認をruntime品質の証明にしません。
 実処理量・課金対象量・計算費用、private artifact境界、未確認事項は評価harnessのREADMEを正本とします。
