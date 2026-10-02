@@ -86,8 +86,8 @@ task doctor
 
 [`Taskfile.yml`](Taskfile.yml)が正規の実装です。Taskは
 [公式手順](https://taskfile.dev/docs/installation)で先に導入してください。
-CIは固定版のTaskで実行します。[基盤のTaskfile移行](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/237)中、
-`make`は旧呼び出しをTaskへ転送するだけです。
+CIは固定版のTaskで実行します。[PR #899](https://github.com/Yukihide-Mitsuoka/repchat/pull/899)で
+Task専用化と互換Makefileの削除を完了しました。`make`の互換入口は提供しません。
 
 対象別profileと固定例を使う旧ライブデモ入口は削除済みです。認可済みscopeから分析契約を自動生成する
 対象非依存runtimeが完成するまで、代替のデモコマンドは提供しません。現在の作業順は
