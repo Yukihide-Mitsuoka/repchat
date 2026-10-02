@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # 未知schema反復評価の証拠harness
@@ -166,9 +166,11 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 
 参照結果には配列要素、深いfieldの非NULL行、最古・最新UTC日に共通する主体、複数の観測日、
 主体ごとの異なる時刻間の区間が存在しました。6行の取得だけで必須capabilityの網羅や製品品質を証明しません。
-次はrepository外の質問・SQL・結果をオーナーが独立reviewし、joinと同時刻groupの評価範囲、
-UTC境界と欠落値の扱い、期待列・行順序を確認します。実取得の承認をreviewの承認とみなしません。
-参照SQL・期待結果の固定とオーナーの独立reviewは未完了です。
+オーナーによる個別reviewでは、ケース1〜5を基本・補助ケースとして限定採用し、各不足を補強する判断を
+確認しました。ケース6は未判断です。限定採用を必須capabilityの網羅や全fixtureの独立review完了とみなしません。
+現在は[参照ケースの検出力補強計画](reference-coverage-plan.md)に従い、実データを追加取得する前に
+合成例の質問・期待各行・想定誤答を具体化します。新しい補強案は未承認です。
+参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
 ## 現行の評価契約
