@@ -37,10 +37,12 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 製品runtime、課金、クラウド資源は変更しません。過去のMake実行結果は履歴として保持します。
 
 [PR #905](https://github.com/Yukihide-Mitsuoka/repchat/pull/905)は継承手順書のTask専用化を同期するPRです。
-2026-10-02の読み取り調査では、親のaccepted lockから同期sourceまでの変更は1コミット・2ファイルで、
-保護されたguard testの変更はmainへ反映済みです。同期PRはmainより遅れ、lock未更新、CI結果なしのため、
-まだマージしません。次は同じPRを最新mainへ更新し、継承状態を確認してlockを確定し、CIを通します。
-この調査ではPR branchやlockを変更していません。評価文書のPRとは別pathで、完了したPRからマージできます。
+2026-10-02にオーナー承認後、同じPR branchへPR #910を含む最新mainをmergeしました。
+親のaccepted lockから同期sourceまでの変更は1コミット・2ファイルで、保護されたguard testの変更は
+mainへ反映済みです。`finalize-sync`で継承ファイル149件の一致と未同期・手動移植・削除対象がないことを
+確認し、lockを親の`c991191789eb00d57fb3b2a016df3e405e2337ab`へ確定しました。
+commit後の同じapplyは`already_finalized`で変更なしでした。製品runtimeとworkflowは変更していません。
+CI結果はPRを正本とし、必須check成功と競合なしを確認後、オーナーがマージします。自動マージは行いません。
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
@@ -423,6 +425,8 @@ join契約の生成正規化は同一table内のrelationshipを拒否します�
 実行済みです。実行後のjob metadataにschemaがなくローカル検査は停止しましたが、queryは成功していました。
 同じ完了jobの結果側schemaで検証して既存結果を取得し、queryは再実行していません。
 次はrepository外の質問・参照SQL・集計結果をオーナーが独立reviewします。
+参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
+2026-10-02にマージ済みで、最新`origin/main`への取り込みを確認しました。文書のマージは独立reviewの完了ではありません。
 joinの評価範囲と同時刻group単位の順序caseも明示的に確認し、参照内容と期待結果を固定します。
 日時だけで活動の完全順序を証明しません。期待結果・実期間境界を固定する前の案であり、case成立は未確定です。
 計測値と確認範囲は評価harnessのREADMEを正本とします。scope拡張・製品変更・評価runner実行は行っていません。
