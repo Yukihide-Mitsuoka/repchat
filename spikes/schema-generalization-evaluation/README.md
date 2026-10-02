@@ -113,8 +113,38 @@ repository外のprivate artifactへ限定し、生の行・日時をlogやreposi
 期間比較に利用できる日時はありますが、質問・期間境界・欠落値の扱い・参照SQL・期待結果の固定と
 独立reviewは未完了です。`ordered_behavior`には主体と時刻の同時存在、同時刻の順序根拠の確認も必要です。
 6種類のcapabilityのcase案と、未確認のjoin・順序条件を調べる最小の参照確認案はrepository外で整理済みです。
-次は同一table内のjoin案が共通契約と評価条件を満たすか確認し、主体と日時の同時存在・同時刻の重複を
-生の主体IDを出力せず調べる集計SQLを準備します。別tableが必要なら認可scopeを黙って広げません。
+2026-10-02に共通契約のjoin境界をcode inspectionで確認しました。
+[`analysis_contract_response.py`](../report-generation/analysis_contract_response.py)の生成正規化は、
+同一table tokenのfield同士をrelationshipにする応答を拒否します。
+既存の[`analysis-contract-compiler.test.ts`](../../tests/spikes/report-generation/analysis-contract-compiler.test.ts)にも
+この拒否を検査するcaseがありますが、今回のローカル調査ではテストを実行していません。
+一方、[`analysis_contract.py`](../report-generation/analysis_contract.py)の構造化relationship検査には
+同一tableの明示拒否がなく、[`contract_sql_validation.py`](../report-generation/contract_sql_validation.py)の
+物理field検査は同じ認可tableを別aliasへ束縛できます。この差から、自己joinが全経路で禁止または
+対応済みとは断定しません。実際のcaseとend-to-end評価は未確認で、製品側の制約は変更していません。
+評価のcapability検査は閉じたlabelと網羅を検査するだけで、参照SQLのjoin意味を証明しません。
+join caseが成立するかは独立reviewで確認し、別tableが必要なら認可scopeを黙って広げません。
+
+同日に主体と日時の同時存在、主体ごとの複数日時・UTC日、主体と同時刻の重複を調べる参照専用SQLを
+repository外へ準備し、無料dry runを1回行いました。指定tableだけの単一SELECT、INTEGERの集計9列、
+推定処理量94,710,622 bytes（約90.32 MiB）を確認しました。dry runでは結果行を取得していません。
+
+同日にオーナーがこのSQLの1回実行、集計1行、
+`maximum_bytes_billed=134217728`（128 MiB）、分析料金0.2 JPY上限を承認しました。
+2026-10-02に確認済みの公式JPY SKU単価から、無料枠を引かない分析料金上界は小数第6位切上げで
+0.121594 JPYです。実行直前のUS予約割当は継承元を含め空で追加pageもなく、予約overrideなしで1回実行しました。
+この費用は税・別SKU・他process・請求書総額を保証しません。
+実処理量94,710,622 bytes、課金対象量95,420,416 bytes、確認済み単価による分析料金0.086446 JPYで、
+承認上限内でした。これは無料枠・税等を反映した請求額ではありません。
+SQL・承認範囲・送信記録・結果1行はrepository外のprivate artifactに限定し、結果行をlogへ出していません。
+自動再試行、上限拡大、scope拡張、Vertex AI送信、評価runner実行は行っていません。
+
+実値では主体と日時が同時に存在し、同じ主体に複数日時・複数UTC日の活動があることを確認しました。
+NULL主体と、同じ主体・同時刻の活動重複も存在します。日時だけでは活動の完全順序を一意に決められません。
+同時刻を恣意的なID順で並べ替えて順序根拠を補いません。主体の業務上の意味、eventの定義、join caseや
+順序付きcaseの成立は、この集計だけで証明しません。
+次は6種類のcase質問と参照SQL案をofflineで整理し、欠落値・同時刻の扱い、出力grain、joinの意味、
+追加取得の対象と最大費用を明示します。参照SQL・期待結果の固定とオーナーの独立reviewは未完了です。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
 ## 現行の評価契約
