@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # 開発引き継ぎ
@@ -35,6 +35,12 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 互換Makefileと旧Make検査を撤去し、保護されたAI指示・スキル・権限設定をTaskへ揃え、
 引用付きファイル名・終了コード・未知タスクをTask自体で検証します。検証結果と残作業はIssue #238を正本とします。
 製品runtime、課金、クラウド資源は変更しません。過去のMake実行結果は履歴として保持します。
+
+[PR #905](https://github.com/Yukihide-Mitsuoka/repchat/pull/905)は継承手順書のTask専用化を同期するPRです。
+2026-10-02の読み取り調査では、親のaccepted lockから同期sourceまでの変更は1コミット・2ファイルで、
+保護されたguard testの変更はmainへ反映済みです。同期PRはmainより遅れ、lock未更新、CI結果なしのため、
+まだマージしません。次は同じPRを最新mainへ更新し、継承状態を確認してlockを確定し、CIを通します。
+この調査ではPR branchやlockを変更していません。評価文書のPRとは別pathで、完了したPRからマージできます。
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
@@ -398,6 +404,30 @@ post-run evidenceを別々に採点し、同一scope・参照記録・計画run�
 2026-10-01にオーナーがローカルGoogle Cloud認証を更新した後、承認済みの`bq show --schema`を1回実行して
 実schemaを取得しました。構造と未確認事項は評価harnessのREADMEを正本とします。行やquery結果は取得していません。
 次はデータ期間・case成立・参照値を実値で確認する範囲と最大費用を提示し、別途承認を得ます。
+2026-10-01にオーナーが認証を更新し、実値確認SQLの無料dry runはPython SDKで成功しました。
+2026-10-02の追加承認後、予約overrideを外し、512 MiB上限の参照準備queryを1回実行して集計1行を取得しました。
+配列・多階層の値は確認しましたが、参照用の標準日時変換は成功せず、データ期間とcase成立は未確認です。
+日時文字列を最大5種類確認する参照専用SQLは準備済みで、2026-10-02の無料dry runは成功しました。
+同日のオーナー承認後、1回・128 MiB・分析料金0.2 JPY上限で5種類を取得し、ローカルで日時変換を確認しました。
+列全体の参照確認も2026-10-02の別承認後、1回・集計1行・128 MiB・分析料金0.2 JPY上限で完了しました。
+非NULLの日時はすべて参照変換に成功し、複数UTC日・月の期間を確認しました。NULLの日時も存在します。
+6種類のcapabilityのcase案と、join・順序条件の最小参照確認案はofflineで整理済みです。
+PR #908は2026-10-02にマージ済みで、最新`origin/main`への取り込みも確認しました。
+join契約の生成正規化は同一table内のrelationshipを拒否しますが、SQLの列検査だけでは自己join全体の
+可否を確定できません。製品側の制約は変更していません。
+主体・日時の同時存在、主体ごとの複数日時・UTC日、主体と同時刻の重複を調べる集計SQLをrepository外へ
+準備しました。2026-10-02に別承認を得て、1回・集計1行・128 MiB・分析料金0.2 JPY上限で実行済みです。
+主体と日時の同時存在、同一主体の複数日時・UTC日を確認しました。NULL主体と主体・同時刻の重複もあります。
+欠落値・同時刻の扱いと出力grainを明示した6種類のcase質問と参照SQL案はrepository外で作成済みです。
+追加取得SQLは無料dry run後、2026-10-02の別承認により1回・集計6行・128 MiB・分析料金0.2 JPY上限で
+実行済みです。実行後のjob metadataにschemaがなくローカル検査は停止しましたが、queryは成功していました。
+同じ完了jobの結果側schemaで検証して既存結果を取得し、queryは再実行していません。
+次はrepository外の質問・参照SQL・集計結果をオーナーが独立reviewします。
+joinの評価範囲と同時刻group単位の順序caseも明示的に確認し、参照内容と期待結果を固定します。
+日時だけで活動の完全順序を証明しません。期待結果・実期間境界を固定する前の案であり、case成立は未確定です。
+計測値と確認範囲は評価harnessのREADMEを正本とします。scope拡張・製品変更・評価runner実行は行っていません。
+参照SQL・期待結果の固定と独立reviewは未完了です。参照確認をruntime品質の証明にしません。
+実処理量・課金対象量・計算費用、private artifact境界、未確認事項は評価harnessのREADMEを正本とします。
 評価runnerも別承認まで実行しません。対象別runtime変更は行いません。
 
 引き続き重要なのは、認可済み接続scopeからtable、schema、値profile、期間・partition、join・grain・metric候補を

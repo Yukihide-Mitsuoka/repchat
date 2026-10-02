@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-01
+updated: 2026-10-02
 ---
 
 # 未知schema反復評価の証拠harness
@@ -45,7 +45,131 @@ top-levelの`created_at`は`STRING`であり、型付き日時列として扱え
 
 schema metadata取得は完了しました。データ期間・参照値作成と評価runnerの実BigQuery／Vertex AI呼出しは
 別々に対象と最大費用を提示し、それぞれの個別承認後に行います。現時点では上記のcase成立、参照値、
-料金snapshot、実行承認は未確認または未取得です。
+評価runner用の料金snapshot、実行承認は未確認または未取得です。
+
+2026-10-01に、期間・日時変換失敗数、repeated配列の存在件数、深いnested fieldの非NULL件数を
+1行の集計だけで確認する評価専用SQLをrepository外へ準備しました。生のactor、owner、URL、email、messageは
+出力せず、製品runtimeにも渡しません。日時の`SAFE_CAST`は参照確認用であり、製品の期間parserではありません。
+当初の無料dry runは再認証要求で停止しましたが、オーナーの認証更新後、Python SDKで成功しました。
+BigQueryは単一`SELECT`、指定tableだけの参照、12列の集計出力、推定処理量391,393,389 bytes
+（約373.26 MiB）を返しました。dry runは行を取得しておらず、データ期間とcase成立は未検証です。
+
+参照準備queryの承認範囲は1回、集計1行、`maximum_bytes_billed=536870912`（512 MiB）、分析料金1 JPYです。
+2026-10-01に[Google CloudのJPY SKU一覧](https://cloud.google.com/skus?currency=JPY&filter=BigQuery%20Analysis)で
+USのAnalysis（SKU `1DF5-1F98-1DD1`）を996.093749988 JPY/TiBと確認しました。
+無料枠を引かない分析料金上界は小数第6位切上げで0.486374 JPYです。
+初回は[job reservation](https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/Job#JobConfiguration)を
+`none`に指定してon-demandを要求しました。承認範囲に自動再試行、上限拡大、Vertex AI送信、評価runner実行は含みません。
+この上界は参照準備queryの分析料金だけであり、税、別SKU、他process、請求書総額を保証しません。
+オーナーは2026-10-01にこの1回の実行を承認しました。送信は`BadRequest`で拒否され、指定job IDの
+metadata取得は`NotFound`でした。行と課金bytesは取得しておらず、実測費用を0と記録しません。
+同じ予約指定の無料dry runも`invalid`を返し、`reservation="none"`が拒否されることを確認しました。
+この拒否の後は再承認まで停止しました。
+
+[予約割当の検索API](https://docs.cloud.google.com/bigquery/docs/reference/reservations/rest/v1/projects.locations/searchAllAssignments)で
+課金projectのUS割当を読み取り確認し、継承元を含む結果は空、追加pageもありませんでした。
+2026-10-02にオーナーが、同じSQL・512 MiB・1回・1 JPYの上限で予約overrideを外す再送を明示承認しました。
+新しい試行IDでqueryを1回実行し、集計1行を取得しました。クラウド設定・IAMは変更せず、元の送信記録も保持しています。
+実処理量は391,393,389 bytes、課金対象量は392,167,424 bytesです。確認済み単価で計算した分析料金は
+小数第6位切上げで0.355281 JPYでした。これは無料枠・税等を反映した請求額ではありません。
+SQL・送信記録・集計結果はrepository外のprivate artifactに限定し、結果行をrepositoryへ保存しません。
+
+実値では両repeated配列と深いnested fieldに値があることを確認しました。一方、非NULLの`created_at`を
+参照用の標準`SAFE_CAST(... AS TIMESTAMP)`で変換できた値はありませんでした。元の文字列形式は取得していないため、
+当時は日時の単位・書式とデータ期間を確認できませんでした。この予備確認だけで
+6種類のcapabilityや同一runtimeの品質を実証済みとしません。後続の日時確認は下記に記録します。
+対象別の期間parserやruntime設定は追加せず、評価runnerもまだ実行しません。
+
+2026-10-02に、変換できなかった非NULLの日時文字列を最大5種類確認する別の参照専用SQLを
+repository外へ準備し、無料dry runを1回行いました。指定tableだけの単一SELECT、出力1列のSTRING、
+推定処理量68,623,821 bytes（約65.44 MiB）を確認し、結果行は取得していません。
+同日にオーナーが1回、128 MiB上限、分析料金0.2 JPY上限、再試行なしの実取得を承認しました。
+公式JPY SKUの単価を再確認し、課金projectのUS予約割当が継承元を含め空であることも読み取り確認して、
+予約overrideなしでqueryを1回実行しました。実処理量68,623,821 bytes、課金対象量69,206,016 bytes、
+計算した分析料金0.062697 JPYで、承認上限内でした。無料枠・税等を反映した請求額ではありません。
+SQL・承認範囲・送信記録・結果5行はrepository外のprivate artifactに限定し、生の値をlogへ出していません。
+
+取得した5種類は25文字の`YYYY/MM/DD HH:MM:SS ±HHMM`形で、Python標準の日時変換を
+ローカルの参照確認として行い、5件とも数値timezone offsetを持つ日時へ変換できました。
+[Google Cloudの2018年のIbis例](https://cloud.google.com/blog/products/data-analytics/ibis-and-bigquery-scalable-analytics-comfort-python)も
+このtableの文字列に書式付き日時変換を用いていますが、過去の例を現在の全行の根拠とは扱いません。
+今回の5種類は標準cast失敗値の辞書順先頭であり、無作為標本ではありません。
+この5種類の確認だけでは列全体の変換成功率、データ期間、期間比較・順序付き分析のcase成立は未確認でした。
+[GoogleSQLの書式付き日時変換](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions#parse_timestamp)を
+使う参照専用SQLとcase案はrepository外で準備済みです。追加queryの承認は今回の承認と分離します。
+対象専用parser、固定書式・SQL・設定を製品runtimeへ追加せず、同一runtimeの実反復評価もまだ行いません。
+
+列全体の確認SQLは2026-10-02の無料dry runに成功しました。指定tableだけの単一SELECT、
+日時の欠落数・変換失敗数・成功数・最小最大日時・UTC日月の種類数を含む8列、
+推定処理量68,623,821 bytes（約65.44 MiB）を確認しました。結果行は取得していません。
+同日にオーナーが1回・集計1行・128 MiB・分析料金0.2 JPY上限・再試行なしを別途承認しました。
+課金projectのUS予約割当が継承元を含め空であることを読み取り確認し、予約overrideなしで1回実行しました。
+実処理量68,623,821 bytes、課金対象量69,206,016 bytes、確認済み単価による分析料金0.062697 JPYで、
+承認上限内でした。これは無料枠・税等を反映した請求額ではありません。結果行と実際の期間境界は
+repository外のprivate artifactへ限定し、生の行・日時をlogやrepositoryへ複製しません。
+
+列全体では、非NULLの日時がすべて参照用の書式付き変換に成功しました。NULLの日時も存在します。
+取得した最小・最大日時とUTC日月の種類数から、複数の日・月にまたがる期間を確認しました。
+期間比較に利用できる日時はありますが、質問・期間境界・欠落値の扱い・参照SQL・期待結果の固定と
+独立reviewは未完了です。`ordered_behavior`には主体と時刻の同時存在、同時刻の順序根拠の確認も必要です。
+6種類のcapabilityのcase案と、未確認のjoin・順序条件を調べる最小の参照確認案はrepository外で整理済みです。
+2026-10-02に共通契約のjoin境界をcode inspectionで確認しました。
+[`analysis_contract_response.py`](../report-generation/analysis_contract_response.py)の生成正規化は、
+同一table tokenのfield同士をrelationshipにする応答を拒否します。
+既存の[`analysis-contract-compiler.test.ts`](../../tests/spikes/report-generation/analysis-contract-compiler.test.ts)にも
+この拒否を検査するcaseがありますが、今回のローカル調査ではテストを実行していません。
+一方、[`analysis_contract.py`](../report-generation/analysis_contract.py)の構造化relationship検査には
+同一tableの明示拒否がなく、[`contract_sql_validation.py`](../report-generation/contract_sql_validation.py)の
+物理field検査は同じ認可tableを別aliasへ束縛できます。この差から、自己joinが全経路で禁止または
+対応済みとは断定しません。実際のcaseとend-to-end評価は未確認で、製品側の制約は変更していません。
+評価のcapability検査は閉じたlabelと網羅を検査するだけで、参照SQLのjoin意味を証明しません。
+join caseが成立するかは独立reviewで確認し、別tableが必要なら認可scopeを黙って広げません。
+
+同日に主体と日時の同時存在、主体ごとの複数日時・UTC日、主体と同時刻の重複を調べる参照専用SQLを
+repository外へ準備し、無料dry runを1回行いました。指定tableだけの単一SELECT、INTEGERの集計9列、
+推定処理量94,710,622 bytes（約90.32 MiB）を確認しました。dry runでは結果行を取得していません。
+
+同日にオーナーがこのSQLの1回実行、集計1行、
+`maximum_bytes_billed=134217728`（128 MiB）、分析料金0.2 JPY上限を承認しました。
+2026-10-02に確認済みの公式JPY SKU単価から、無料枠を引かない分析料金上界は小数第6位切上げで
+0.121594 JPYです。実行直前のUS予約割当は継承元を含め空で追加pageもなく、予約overrideなしで1回実行しました。
+この費用は税・別SKU・他process・請求書総額を保証しません。
+実処理量94,710,622 bytes、課金対象量95,420,416 bytes、確認済み単価による分析料金0.086446 JPYで、
+承認上限内でした。これは無料枠・税等を反映した請求額ではありません。
+SQL・承認範囲・送信記録・結果1行はrepository外のprivate artifactに限定し、結果行をlogへ出していません。
+自動再試行、上限拡大、scope拡張、Vertex AI送信、評価runner実行は行っていません。
+
+実値では主体と日時が同時に存在し、同じ主体に複数日時・複数UTC日の活動があることを確認しました。
+NULL主体と、同じ主体・同時刻の活動重複も存在します。日時だけでは活動の完全順序を一意に決められません。
+同時刻を恣意的なID順で並べ替えて順序根拠を補いません。主体の業務上の意味、eventの定義、join caseや
+順序付きcaseの成立は、この集計だけで証明しません。
+同日に6種類のcase質問・参照SQL案をrepository外へ作成しました。参照結果は配列要素数、深いfieldの
+非NULL行数、最古・最新UTC日の主体別集約集合の内部join、両日の活動件数差、日別累積件数の合計、
+主体別の異なる活動時刻間の総秒数と区間数です。欠落日時・主体の除外範囲とgrainはcaseごとに明示します。
+順序caseは同時刻の活動を一群へまとめてから隣接する異なる時刻を比較し、活動単位の完全順序は仮定しません。
+join案は集約集合間の実際のjoinであり、異なる物理tableのrelationship発見を評価するものではありません。
+この案で必須joinの評価範囲を満たすかは独立reviewで確認し、labelだけで網羅済みにしません。
+最古・最新日の実境界は参照値取得と独立reviewで固定する必要があります。
+
+参照SQL案の無料dry runは指定tableだけの単一SELECT、case IDのSTRINGと整数2列、
+推定処理量101,371,954 bytes（約96.68 MiB）を返しました。dry runでは結果行を取得していません。
+同日にオーナーが1回・集計6行・128 MiB・分析料金0.2 JPY上限を別途承認しました。
+確認済み単価による分析料金上界は0.121594 JPYです。実行前のUS予約割当が継承元を含め空で追加pageもなく、
+予約overrideなしでqueryを1回実行しました。実処理量101,371,954 bytes、課金対象量101,711,872 bytes、
+確認済み単価による分析料金0.092146 JPYで、承認上限内でした。無料枠・税等を反映した請求額ではありません。
+
+実行後のjob metadataに出力schemaがなく、ローカルの必須schema検査は`ValueError`で停止しました。
+その後の読み取り確認で同じjobの成功と実usageを確認し、queryを再実行せず、既存の結果iteratorのschema・
+6件のcase ID・行順序・整数とNULLの型を照合しました。参照結果はprivate artifactへ取得済みです。
+SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体ID・日時・活動内容も出力していません。
+自動再試行、上限拡大、scope拡張、Vertex AI送信、評価runner実行は行っていません。
+
+参照結果には配列要素、深いfieldの非NULL行、最古・最新UTC日に共通する主体、複数の観測日、
+主体ごとの異なる時刻間の区間が存在しました。6行の取得だけで必須capabilityの網羅や製品品質を証明しません。
+次はrepository外の質問・SQL・結果をオーナーが独立reviewし、joinと同時刻groupの評価範囲、
+UTC境界と欠落値の扱い、期待列・行順序を確認します。実取得の承認をreviewの承認とみなしません。
+参照SQL・期待結果の固定とオーナーの独立reviewは未完了です。
+追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
 ## 現行の評価契約
 
