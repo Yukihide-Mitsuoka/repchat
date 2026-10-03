@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-02
+updated: 2026-10-03
 ---
 
 # 開発引き継ぎ
@@ -36,13 +36,9 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 引用付きファイル名・終了コード・未知タスクをTask自体で検証します。検証結果と残作業はIssue #238を正本とします。
 製品runtime、課金、クラウド資源は変更しません。過去のMake実行結果は履歴として保持します。
 
-[PR #905](https://github.com/Yukihide-Mitsuoka/repchat/pull/905)は継承手順書のTask専用化を同期するPRです。
-2026-10-02にオーナー承認後、同じPR branchへPR #910を含む最新mainをmergeしました。
-親のaccepted lockから同期sourceまでの変更は1コミット・2ファイルで、保護されたguard testの変更は
-mainへ反映済みです。`finalize-sync`で継承ファイル149件の一致と未同期・手動移植・削除対象がないことを
-確認し、lockを親の`c991191789eb00d57fb3b2a016df3e405e2337ab`へ確定しました。
-commit後の同じapplyは`already_finalized`で変更なしでした。製品runtimeとworkflowは変更していません。
-CI結果はPRを正本とし、必須check成功と競合なしを確認後、オーナーがマージします。自動マージは行いません。
+[PR #905](https://github.com/Yukihide-Mitsuoka/repchat/pull/905)は2026-10-02にマージ済みで、最新mainへの
+取り込みを確認しました。継承ファイル149件の一致を確認して確定した親lockも反映済みです。
+製品runtime・workflow・クラウド資源は変更していません。継承同期の完了を評価fixtureのreview完了とみなしません。
 
 [Issue #654](https://github.com/Yukihide-Mitsuoka/repchat/issues/654)の初回dashboard計画
 `400 INVALID_ARGUMENT`修正は、[PR #655](https://github.com/Yukihide-Mitsuoka/repchat/pull/655)で
@@ -424,13 +420,16 @@ join契約の生成正規化は同一table内のrelationshipを拒否します�
 追加取得SQLは無料dry run後、2026-10-02の別承認により1回・集計6行・128 MiB・分析料金0.2 JPY上限で
 実行済みです。実行後のjob metadataにschemaがなくローカル検査は停止しましたが、queryは成功していました。
 同じ完了jobの結果側schemaで検証して既存結果を取得し、queryは再実行していません。
-次はrepository外の質問・参照SQL・集計結果をオーナーが独立reviewします。
+オーナーの個別reviewと2026-10-03の6件承認により、既存6ケースを基本・補助ケースとして限定採用し、
+不足を補強する判断を確認しました。[PR #911](https://github.com/Yukihide-Mitsuoka/repchat/pull/911)で
+[参照ケースの検出力補強計画](../spikes/schema-generalization-evaluation/reference-coverage-plan.md)を文書化しています。
+次は未承認の最初の合成案をreviewし、承認後に評価専用fixtureへ具体化します。製品runtimeへの対象固有処理は追加しません。
 参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
 2026-10-02にマージ済みで、最新`origin/main`への取り込みを確認しました。文書のマージは独立reviewの完了ではありません。
 joinの評価範囲と同時刻group単位の順序caseも明示的に確認し、参照内容と期待結果を固定します。
 日時だけで活動の完全順序を証明しません。期待結果・実期間境界を固定する前の案であり、case成立は未確定です。
 計測値と確認範囲は評価harnessのREADMEを正本とします。scope拡張・製品変更・評価runner実行は行っていません。
-参照SQL・期待結果の固定と独立reviewは未完了です。参照確認をruntime品質の証明にしません。
+全参照fixtureの固定と独立reviewは未完了です。限定採用や合成例の計算確認をruntime品質の証明にしません。
 実処理量・課金対象量・計算費用、private artifact境界、未確認事項は評価harnessのREADMEを正本とします。
 評価runnerも別承認まで実行しません。対象別runtime変更は行いません。
 
