@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-03
+updated: 2026-10-04
 ---
 
 # 未知schema反復評価の証拠harness
@@ -171,6 +171,8 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 現在は[参照ケースの検出力補強計画](reference-coverage-plan.md)に従い、実データを追加取得する前に
 合成例の質問・期待各行・想定誤答を具体化します。最初の配列内条件付き集計案は2026-10-03に採用され、
 テスト専用fixtureとローカルSQL・別手法集計・誤答検出へ具体化しました。検証範囲と次の補強案は計画を正本とします。
+深いfieldの補強案も2026-10-04に、指定pathの読み取り・欠落処理の補助テストとして採用されました。
+製品の固有処理にはせず、field自動発見や汎用分析能力を証明しない範囲は同計画に記録します。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
