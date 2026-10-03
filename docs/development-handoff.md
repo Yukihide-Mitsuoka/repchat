@@ -424,7 +424,8 @@ join契約の生成正規化は同一table内のrelationshipを拒否します�
 不足を補強する判断を確認しました。[PR #911](https://github.com/Yukihide-Mitsuoka/repchat/pull/911)は2026-10-03に
 マージ済みで、最新mainへの取り込みを確認しました。
 [参照ケースの検出力補強計画](../spikes/schema-generalization-evaluation/reference-coverage-plan.md)の最初の配列案も
-同日にオーナーが採用し、テスト専用fixtureへ具体化しました。PythonとローカルSQLで期待行を照合し、
+同日にオーナーが採用し、[PR #912](https://github.com/Yukihide-Mitsuoka/repchat/pull/912)でテスト専用fixtureへ
+具体化しました。PythonとローカルSQLで期待行を照合し、
 7種類の誤答と行順序の誤りを検出する11検査を含む`task test`は557件成功しました。
 次は深いfieldの補強案を1件reviewします。製品runtimeへの対象固有処理、クラウド配置、有料実行は行いません。
 参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
