@@ -19,6 +19,9 @@ updated: 2026-10-03
 固定・独立review完了、製品品質、有料評価の承認ではありません。新しい補強案は別途レビューします。
 詳細な回答と実値はrepository外のprivateレビュー記録を正本とします。
 
+2026-10-03にオーナーは最初の配列内条件付き集計案へ「採用します。次に進めて」と回答しました。
+合成入力・期待結果・誤答検出のローカルテスト化を承認したもので、クラウド配置や有料実行の承認ではありません。
+
 | 順序 | ケース | オーナー判断 | 残す補強条件 |
 |---:|---|---|---|
 | 1 | 配列要素数 | 基本ケースとして限定採用 | 要素内の値を使う条件付き集計、重複、空・欠落、無関係な配列による増幅を確認する。配列長の合計だけでは要素分析能力を証明しない |
@@ -30,9 +33,9 @@ updated: 2026-10-03
 
 ## 補強の実施順序
 
-1. 以下の配列内条件付き集計案を1件ずつオーナーがレビューする。今回の案自体は未承認。
-2. 承認後、合成データ・参照SQL・期待各行を評価専用fixtureへ具体化する。異なる計算方法と意図的な
-   誤答を使い、正しい結果は一致し、想定する誤答は必ず不一致になることを無料で確認する。
+1. 最初の配列内条件付き集計案は採用済み。以下のローカル検証で、合成入力と期待各行をテスト専用fixtureへ固定する。
+2. 異なる計算方法と意図的な誤答を使い、正しい結果は一致し、想定する誤答は必ず不一致になることを
+   無料で確認する。warehouse用参照SQLや型・modeの確認は別の後続作業とする。
 3. 同じ手順でケース2・4・5・6の境界例を設計し、各補強案をレビューする。ケース3の異なる物理tableは
    認可scopeを別途決定する。新しいSQLや質問に元の期待値を流用しない。
 4. 実データの補強案は参照SQL、期間、欠落値、出力粒度・列・順序を固定し、無料dry runの後、
@@ -44,11 +47,11 @@ SQLの字面や`UNNEST`・window関数の使用だけを正解条件にせず、
 正しい同値SQLは許容します。合成データでの検査は誤答の検出力を確認するもので、実BigQueryの方言適合や
 未知schemaの実runtime品質を証明しません。
 
-## 最初の補強案：配列内の条件付き集計
+## 採用済みの補強ケース：配列内の条件付き集計
 
 これは実顧客・選定datasetとは無関係な合成例です。人工schemaを製品へ登録する設定でもありません。
 runtimeには、評価環境の認可済みscopeから共通pipelineが取得したschema・metadata・値profileと質問だけを渡し、
-以下の期待知識やfixture本文は渡しません。合成例の提示は、データ作成・クラウドへのuploadの承認ではありません。
+以下の期待知識やfixture本文は渡しません。今回の採用はローカルのテストデータ作成に限り、クラウドへのuploadを含みません。
 
 ### 質問案
 
@@ -61,30 +64,15 @@ runtimeには、評価環境の認可済みscopeから共通pipelineが取得し
 子要素の条件を満たさない区分を削除しないことが必要です。fieldの役割は人工schemaのdescriptionに記録する
 評価環境metadataであり、製品の手動指標定義にはしません。
 
-### 合成入力
+### 合成入力・期待行
 
 `detail=null`は親RECORD欠落の人工表現です。実BigQueryへ配置する場合の型・mode・欠落表現の検証は後続です。
 
-```json
-[
-  {"record_id": 101, "group_key": "A", "detail": {"items": [{"eligible": true, "quantity": 2}, {"eligible": false, "quantity": 50}, {"eligible": true, "quantity": 2}]}, "audit_items": [{"eligible": true, "quantity": 100}, {"eligible": true, "quantity": 100}]},
-  {"record_id": 102, "group_key": "A", "detail": {"items": [{"eligible": true, "quantity": 3}, {"eligible": true, "quantity": null}]}, "audit_items": []},
-  {"record_id": 103, "group_key": "B", "detail": {"items": []}, "audit_items": [{"eligible": true, "quantity": 100}]},
-  {"record_id": 104, "group_key": "B", "detail": null, "audit_items": [{"eligible": true, "quantity": 100}, {"eligible": true, "quantity": 100}]},
-  {"record_id": 105, "group_key": "C", "detail": {"items": [{"eligible": false, "quantity": 7}, {"eligible": null, "quantity": 9}]}, "audit_items": [{"eligible": true, "quantity": 100}]}
-]
-```
-
-### 期待行と根拠
-
-| group_key | record_count | eligible_item_count | quantity_total | 根拠 |
-|---|---:|---:|---:|---|
-| A | 2 | 4 | 7 | true要素は数量2・2・3・NULLの4個。数量合計は2+2+3+0 |
-| B | 2 | 0 | 0 | 空配列と欠落RECORDの親2行を残す |
-| C | 1 | 0 | 0 | false・NULL条件の要素を除外しても親1行を残す |
+入力と期待行の正本は[テスト専用JSON](../../tests/fixtures/schema-generalization/array-conditional.json)です。
+Aは同値の別要素とNULL数量を含み、Bは空配列・欠落RECORD、Cはfalse・NULL条件だけの区分です。
 
 データは親5行・対象配列内7要素・出力3行です。件数の大きさではなく、各誤りを区別できる構成で選びました。
-この3行は説明用期待値であって、オーナーが独立review済みの正式fixtureではありません。
+これは採用済みのローカル検査用fixtureであり、warehouse参照SQL・認可scope・全capabilityを固定した正式fixtureではありません。
 
 ### 検出する誤答
 
@@ -100,6 +88,16 @@ runtimeには、評価環境の認可済みscopeから共通pipelineが取得し
 
 総数だけでなく3行の全列・順序を照合します。なお、正解結果と一致してもそのSQLの全来歴や
 任意schema対応が証明されたとは扱いません。
+
+### ローカル検証の範囲
+
+[回帰テスト](../../tests/spikes/schema-generalization-array-reference.test.ts)は、Pythonの親行ごとの反復集計と
+標準ライブラリSQLiteのJSON展開・SQL集計を、固定期待行へ独立に照合します。7種類の誤ったSQLも実行し、
+各誤答値と既存post-run不一致検出の両方を確認します。行順序だけの誤りも総数で隠れないことを確認します。
+SQLite SQLはローカル検算用であり、BigQuery用参照SQLではありません。テストは不一致検出器のunit入力だけを
+使い、正式evidence、reviewer ID、実AI run、認可scope、品質合格を捏造しません。
+製品・評価runtime、scorer、閾値、安全gateは変更せず、クラウド配置・provider呼出しも行いません。
+次はケース2の深いfieldについて、別構造・区分別集計・欠落を区別する補強案を1件レビューします。
 
 ## 件数・反復数の解釈
 
