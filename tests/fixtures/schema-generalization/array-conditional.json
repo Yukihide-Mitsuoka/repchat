@@ -1,0 +1,61 @@
+{
+  "records": [
+    {
+      "record_id": 101,
+      "group_key": "A",
+      "detail": {
+        "items": [
+          { "eligible": true, "quantity": 2 },
+          { "eligible": false, "quantity": 50 },
+          { "eligible": true, "quantity": 2 }
+        ]
+      },
+      "audit_items": [
+        { "eligible": true, "quantity": 100 },
+        { "eligible": true, "quantity": 100 }
+      ]
+    },
+    {
+      "record_id": 102,
+      "group_key": "A",
+      "detail": {
+        "items": [
+          { "eligible": true, "quantity": 3 },
+          { "eligible": true, "quantity": null }
+        ]
+      },
+      "audit_items": []
+    },
+    {
+      "record_id": 103,
+      "group_key": "B",
+      "detail": { "items": [] },
+      "audit_items": [{ "eligible": true, "quantity": 100 }]
+    },
+    {
+      "record_id": 104,
+      "group_key": "B",
+      "detail": null,
+      "audit_items": [
+        { "eligible": true, "quantity": 100 },
+        { "eligible": true, "quantity": 100 }
+      ]
+    },
+    {
+      "record_id": 105,
+      "group_key": "C",
+      "detail": {
+        "items": [
+          { "eligible": false, "quantity": 7 },
+          { "eligible": null, "quantity": 9 }
+        ]
+      },
+      "audit_items": [{ "eligible": true, "quantity": 100 }]
+    }
+  ],
+  "expected_rows": [
+    { "group_key": "A", "record_count": 2, "eligible_item_count": 4, "quantity_total": 7 },
+    { "group_key": "B", "record_count": 2, "eligible_item_count": 0, "quantity_total": 0 },
+    { "group_key": "C", "record_count": 1, "eligible_item_count": 0, "quantity_total": 0 }
+  ]
+}

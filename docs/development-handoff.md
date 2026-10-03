@@ -421,9 +421,12 @@ join契約の生成正規化は同一table内のrelationshipを拒否します�
 実行済みです。実行後のjob metadataにschemaがなくローカル検査は停止しましたが、queryは成功していました。
 同じ完了jobの結果側schemaで検証して既存結果を取得し、queryは再実行していません。
 オーナーの個別reviewと2026-10-03の6件承認により、既存6ケースを基本・補助ケースとして限定採用し、
-不足を補強する判断を確認しました。[PR #911](https://github.com/Yukihide-Mitsuoka/repchat/pull/911)で
-[参照ケースの検出力補強計画](../spikes/schema-generalization-evaluation/reference-coverage-plan.md)を文書化しています。
-次は未承認の最初の合成案をreviewし、承認後に評価専用fixtureへ具体化します。製品runtimeへの対象固有処理は追加しません。
+不足を補強する判断を確認しました。[PR #911](https://github.com/Yukihide-Mitsuoka/repchat/pull/911)は2026-10-03に
+マージ済みで、最新mainへの取り込みを確認しました。
+[参照ケースの検出力補強計画](../spikes/schema-generalization-evaluation/reference-coverage-plan.md)の最初の配列案も
+同日にオーナーが採用し、テスト専用fixtureへ具体化しました。PythonとローカルSQLで期待行を照合し、
+7種類の誤答と行順序の誤りを検出する11検査を含む`task test`は557件成功しました。
+次は深いfieldの補強案を1件reviewします。製品runtimeへの対象固有処理、クラウド配置、有料実行は行いません。
 参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
 2026-10-02にマージ済みで、最新`origin/main`への取り込みを確認しました。文書のマージは独立reviewの完了ではありません。
 joinの評価範囲と同時刻group単位の順序caseも明示的に確認し、参照内容と期待結果を固定します。
