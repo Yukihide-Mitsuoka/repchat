@@ -1,0 +1,57 @@
+{
+  "records": [
+    {
+      "record_id": 201,
+      "group_key": "A",
+      "detail": { "context": { "owner": { "label": "alpha" } }, "owner": { "label": null } },
+      "audit": { "context": { "owner": { "label": null } } }
+    },
+    {
+      "record_id": 202,
+      "group_key": "A",
+      "detail": { "context": { "owner": { "label": "" } }, "owner": { "label": "decoy" } },
+      "audit": { "context": { "owner": { "label": "decoy" } } }
+    },
+    {
+      "record_id": 203,
+      "group_key": "A",
+      "detail": { "context": { "owner": { "label": null } }, "owner": { "label": "decoy" } },
+      "audit": { "context": { "owner": { "label": "decoy" } } }
+    },
+    {
+      "record_id": 204,
+      "group_key": "B",
+      "detail": null,
+      "audit": { "context": { "owner": { "label": "decoy" } } }
+    },
+    {
+      "record_id": 205,
+      "group_key": "B",
+      "detail": { "context": null, "owner": { "label": "decoy" } },
+      "audit": { "context": { "owner": { "label": "decoy" } } }
+    },
+    {
+      "record_id": 206,
+      "group_key": "B",
+      "detail": { "context": { "owner": null }, "owner": { "label": "decoy" } },
+      "audit": { "context": { "owner": { "label": null } } }
+    },
+    {
+      "record_id": 207,
+      "group_key": "C",
+      "detail": { "context": { "owner": { "label": "beta" } }, "owner": { "label": null } },
+      "audit": { "context": { "owner": { "label": null } } }
+    },
+    {
+      "record_id": 208,
+      "group_key": "C",
+      "detail": { "context": { "owner": {} }, "owner": { "label": "decoy" } },
+      "audit": { "context": { "owner": { "label": null } } }
+    }
+  ],
+  "expected_rows": [
+    { "group_key": "A", "record_count": 3, "non_null_count": 2, "non_empty_count": 1 },
+    { "group_key": "B", "record_count": 3, "non_null_count": 0, "non_empty_count": 0 },
+    { "group_key": "C", "record_count": 2, "non_null_count": 1, "non_empty_count": 1 }
+  ]
+}
