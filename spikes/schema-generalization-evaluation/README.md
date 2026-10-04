@@ -183,7 +183,9 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 検査する誤答と、自動発見・JOIN網羅・実AI品質を証明しない限界は同計画を正本とします。追加scopeの承認ではありません。
 ローカル検査のマージ後、同じ12行を評価専用BigQuery datasetの2つのnative tableへ置く案を整理しました。
 標準type・mode・description、2tableだけの認可scope、書込み主体と読取り主体の分離、段階ごとの別承認は
-同計画を正本とします。配置先、IAM、作成、upload、metadata取得、query実行は未承認・未実施です。
+同計画を正本とします。2026-10-04の別承認後、datasetと2tableの作成・各6行の投入は完了しました。
+資源ID・期限・費用根拠・確認範囲と次の停止点は[配置結果](reference-coverage-plan.md#2026-10-04の承認と配置結果)を参照します。
+配置後の独立metadata取得、query実行、実AI評価、IAM変更は未承認・未実施です。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 

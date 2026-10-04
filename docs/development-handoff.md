@@ -460,14 +460,17 @@ PythonとローカルSQLで各間隔を照合しました。PR #918は2026-10-04
 最新mainへの取り込みを確認しました。続く文書作業では、同じ12行を評価専用BigQuery datasetの2つの
 native tableへ置く案として、標準type・mode・description、完全修飾table 2件だけの認可scope、
 配置・metadata確認・dry run・実値取得・独立review・実AI反復の停止点を
-[PR #922](https://github.com/Yukihide-Mitsuoka/repchat/pull/922)へ整理しました。現在はレビュー・マージ待ちで、
-配置先、IAM変更、table作成、行upload、metadata取得、query、追加scopeは未承認・未実施です。
-次はこの配置案をオーナーが判断します。CI結果はPRのchecksを正本とし、マージをクラウド操作の承認とはみなしません。
-採用後も各クラウド操作の対象、回数、費用上限を提示して別承認を得ます。
-型・方言適合、table・keyの自動発見、全fixtureの固定・独立reviewは未完了です。
-追加取得・クラウド配置・有料評価へ自動的に進みません。
-検査範囲と未検証事項は補強計画を正本とします。
-製品runtimeへの対象固有処理、クラウド配置、有料実行は行いません。
+[PR #922](https://github.com/Yukihide-Mitsuoka/repchat/pull/922)へ整理しました。PR #922は2026-10-04に
+マージ済みで、最新mainへの取り込みを確認しました。同日にオーナーは配置先`repchat-dev`を指定し、
+dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自動削除、保存予算1 JPYを別途承認しました。
+承認どおり5操作を各1回実行し、両load jobの成功と各6行の投入を確認しました。
+資源ID、期限、費用の計算根拠、確認範囲は
+[補強計画の配置結果](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-04の承認と配置結果)を正本とします。
+次は2tableの行を取得しないschema metadata確認について、取得回数と対象を提示して別承認を得ます。
+作成応答の照合は完了しましたが、配置後の独立metadata取得、query、実AI評価、IAM変更は未実施です。
+runtime読取り主体の選定と権限確認、型・方言適合、table・keyの自動発見、全fixtureの固定・独立reviewも未完了です。
+追加取得・追加配置・有料評価へ自動的に進みません。製品・評価runtime、scorer・閾値・安全gateは変更せず、
+分析対象固有処理は追加していません。CI結果は各PRのchecksを正本とし、マージをクラウド操作の承認とはみなしません。
 参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
 2026-10-02にマージ済みで、最新`origin/main`への取り込みを確認しました。文書のマージは独立reviewの完了ではありません。
 joinの評価範囲と同時刻group単位の順序caseも明示的に確認し、参照内容と期待結果を固定します。
