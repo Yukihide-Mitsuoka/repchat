@@ -464,6 +464,7 @@ native tableへ置く案として、標準type・mode・description、完全修�
 マージ済みで、最新mainへの取り込みを確認しました。同日にオーナーは配置先`repchat-dev`を指定し、
 dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自動削除、保存予算1 JPYを別途承認しました。
 承認どおり5操作を各1回実行し、両load jobの成功と各6行の投入を確認しました。
+配置完了の記録は[PR #924](https://github.com/Yukihide-Mitsuoka/repchat/pull/924)でレビュー・マージ待ちです。
 資源ID、期限、費用の計算根拠、確認範囲は
 [補強計画の配置結果](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-04の承認と配置結果)を正本とします。
 次は2tableの行を取得しないschema metadata確認について、取得回数と対象を提示して別承認を得ます。
