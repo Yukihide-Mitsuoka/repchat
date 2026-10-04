@@ -1,0 +1,41 @@
+{
+  "records": [
+    { "record_id": 501, "group_key": "A", "occurred_at": "2026-01-10T00:30:00Z" },
+    { "record_id": 502, "group_key": "B", "occurred_at": "2026-01-10T01:00:00Z" },
+    { "record_id": 503, "group_key": "A", "occurred_at": "2026-01-10T00:10:00Z" },
+    { "record_id": 504, "group_key": "C", "occurred_at": "2026-01-10T00:12:00Z" },
+    { "record_id": 505, "group_key": "A", "occurred_at": "2026-01-10T00:00:00Z" },
+    { "record_id": 506, "group_key": "B", "occurred_at": "2026-01-10T00:05:00Z" },
+    { "record_id": 507, "group_key": "A", "occurred_at": "2026-01-10T00:10:00Z" },
+    { "record_id": 508, "group_key": "A", "occurred_at": null },
+    { "record_id": 509, "group_key": "B", "occurred_at": "2026-01-10T00:20:00Z" },
+    { "record_id": 510, "group_key": null, "occurred_at": "2026-01-10T00:08:00Z" },
+    { "record_id": 511, "group_key": null, "occurred_at": "2026-01-10T00:25:00Z" }
+  ],
+  "expected_rows": [
+    {
+      "group_key": "A",
+      "previous_at": "2026-01-10T00:00:00Z",
+      "current_at": "2026-01-10T00:10:00Z",
+      "interval_seconds": 600
+    },
+    {
+      "group_key": "A",
+      "previous_at": "2026-01-10T00:10:00Z",
+      "current_at": "2026-01-10T00:30:00Z",
+      "interval_seconds": 1200
+    },
+    {
+      "group_key": "B",
+      "previous_at": "2026-01-10T00:05:00Z",
+      "current_at": "2026-01-10T00:20:00Z",
+      "interval_seconds": 900
+    },
+    {
+      "group_key": "B",
+      "previous_at": "2026-01-10T00:20:00Z",
+      "current_at": "2026-01-10T01:00:00Z",
+      "interval_seconds": 2400
+    }
+  ]
+}
