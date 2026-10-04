@@ -486,6 +486,7 @@ dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自�
 最新mainへの取り込みを確認しました。正式fixtureへの不足はofflineで照合済みです。
 各schemaの6必須capability条件に対し、今回の2tableはJOIN補助だけで、単独の追加schemaとして組み込めません。
 調査範囲・不足条件・実施順序は[正式fixture組込み前の確認](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05の正式fixture組込み前の確認)を正本とします。
+不足整理の文書記録は[PR #928](https://github.com/Yukihide-Mitsuoka/repchat/pull/928)でレビュー・マージ待ちです。
 次は既存のJOIN参照SQL全文・期待3行・照合hashをprivateな1件のreview資料へまとめ、未確認の参照内容を個別reviewします。
 限定採用をSQL fileの全内容確認や正式fixture全体の独立review完了へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
