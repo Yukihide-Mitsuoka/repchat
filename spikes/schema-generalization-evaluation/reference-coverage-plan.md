@@ -569,6 +569,39 @@ PR #926のマージ報告後、オーナーは、このJOINケースを「重複
 次は既存private artifactと実際のreview証跡をofflineで照合し、正式fixtureへの組込みに不足する確認を整理します。
 今回の承認記録では製品・評価runtime、scorer・閾値・安全gate、認可scopeを変更せず、クラウド操作も行いません。
 
+### 2026-10-05の正式fixture組込み前の確認
+
+オーナーの「はい、進めて」により、既存の参照準備用private directory 2件と現行評価コードをローカルで照合しました。
+今回のJOIN補助ケースだけでは正式評価fixtureを構成できません。参照値の一致と限定採用は確認済みですが、
+schemaごとの必須capability網羅、全参照の独立review、実行前artifactの固定が残っています。
+クラウド取得・有料実行・IAM変更・期限延長は行っていません。
+
+| 条件 | 確認結果と不足 | 根拠 |
+|---|---|---|
+| JOIN参照の計算 | private参照SQLとテスト用fixtureのSHA-256は既存記録と一致。private検証結果の3行がfixtureの全期待行・順序と一致した。SQLと結果fileは`0600`。これはreview完了ではない | [実値照合](#2026-10-05の参照結果の実値照合)、[テスト用fixture](../../tests/fixtures/schema-generalization/two-table-join.json) |
+| 人間によるreview | 補助ケースとしての限定採用は完了。SQL全文・期待各行を確認した回答と、確認対象bytesを結び付ける正式review証跡は未確定。ID・日時・review済みhashを推測で埋めない | [限定採用](#2026-10-05のjoin補助ケースの限定採用)、[`execution_manifest.py`](execution_manifest.py)の参照記録検査 |
+| schema別の評価範囲 | 各schemaが6必須capabilityを網羅する必要がある。時間列・nested/repeated構造を持たない今回の2tableの1件はJOIN補助だけで、独立した追加schemaとしてそのまま入れられない。JOINだけの入力を現行validatorが拒否することをofflineで確認した | [`evaluation_capabilities.py`](evaluation_capabilities.py)、[物理schema案](#物理schema案) |
+| 正式fixtureと認可scope | 調べた2directoryのJSON 23件には、正式fixture version 2・authorization・評価計画のtop-level field集合に一致するfileはなかった。全ローカル領域を調べた不在証明ではなく、構造の一致がreview済みの証明になるわけでもない。最低2つの異なるschema ID・実scope fingerprintと、schema IDに一対一対応する認可scopeが必要 | [`execution_manifest.py`](execution_manifest.py) |
+| scope snapshot | 既存の2table metadata応答や参照SQL hashを、共通discoveryが生成するcanonical snapshot fingerprintの代わりにできない。runtime読取り主体・権限と、実snapshotの取得・固定は未完了 | [評価READMEのsnapshot契約](README.md#参照fixtureとrun記録の分離) |
+| 計画・pipeline・実行承認 | 全case最低3回の予定runと、fixture・runtime・prompt・configurationの正確なbytesを固定する。AIを含む価格snapshot・実行意図・具体的な費用承認と実provider commandは未完了。参照取得の承認・BigQuery単価だけをAI評価へ流用しない | [`evaluation_plan.py`](evaluation_plan.py)、[`pipeline_artifacts.py`](pipeline_artifacts.py)、[`execution_intent.py`](execution_intent.py)、[ADR-0027](../../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md) |
+
+各schemaの網羅条件はfixture全体で6種類を合算する条件ではありません。JOINだけのschemaへ未検証の
+capability labelを付けず、既存公開tableのscopeへ今回の2tableを黙って混ぜず、scorer・閾値・安全gateも緩めません。
+今回の合成補強群をローカルテストとして保持することと、正式評価用schemaを構成することを分けます。
+
+次の作業は以下の順序です。これは評価準備の順序であり、製品への対象別設定追加やクラウド操作の承認ではありません。
+
+1. 既存JOIN参照SQL全文・期待3行・列と行順序・照合hashを、repository外の1件のreview資料へまとめる。
+   オーナーには限定採用済みの判断を再要求せず、未確認の正確な参照内容だけを個別確認してもらう。
+2. 既存の公開schema評価とJOIN補助評価の位置付けを整理し、各schemaの6必須capabilityを満たす
+   質問・参照・scopeの不足案をofflineで提示する。追加table・配置・scope変更が必要なら実施前に別承認を得る。
+3. scopeとreview対象が確定した後、runtime読取り主体、共通discoveryの取得範囲・回数・最大費用を提示する。
+   承認後に取得する実snapshotへ参照fixtureを結び付け、全fixtureの独立reviewと計画・pipeline固定へ進む。
+4. 実provider commandの無料回帰と、AIを含む価格・全run予算・具体的な実行承認が揃うまで実AI評価を開始しない。
+
+保持期限は[配置結果](#2026-10-04の承認と配置結果)のままです。準備が期限を超えた場合も自動で延長・再配置せず、
+必要な配置と保持費用を再提示します。SQL・期待行・review証跡はprivate領域だけに保持し、runtime入力へ渡しません。
+
 ## 件数・反復数の解釈
 
 データ行・要素・出力行の数と、異なるcase数・AI反復数を分けて記録します。

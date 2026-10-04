@@ -193,7 +193,9 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 実処理量・課金対象量・費用の計算値と次の停止点は[参照結果の実値照合](reference-coverage-plan.md#2026-10-05の参照結果の実値照合)を参照します。
 同日にオーナーは、このJOINケースを重複・NULL・対応先なしの集計を検査する補助ケースとして限定採用しました。
 承認範囲と残る確認事項は[JOIN補助ケースの限定採用](reference-coverage-plan.md#2026-10-05のjoin補助ケースの限定採用)を参照します。
-参照artifactの正確なbytesとreview証跡の照合、正式fixture全体の独立review、実AI評価は未完了で、IAM変更も行っていません。
+参照artifactの正確なbytesへのreview証跡の結び付け、正式fixture全体の独立review、実AI評価は未完了で、IAM変更も行っていません。
+2026-10-05に既存private artifactと現行検査をofflineで照合しました。JOIN補助だけのschemaは現行の網羅条件を満たしません。
+不足条件と次の順序は[正式fixture組込み前の確認](reference-coverage-plan.md#2026-10-05の正式fixture組込み前の確認)を正本とします。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
