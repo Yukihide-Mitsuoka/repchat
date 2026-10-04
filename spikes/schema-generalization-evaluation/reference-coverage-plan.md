@@ -2,7 +2,7 @@
 id: reference-coverage-plan
 title: 参照ケースの検出力補強計画
 status: proposed
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # 参照ケースの検出力補強計画
@@ -455,8 +455,33 @@ tableのmetadata・data読取りと実行projectのjob作成を分けて提示�
 
 query job、Vertex呼出し、IAM更新は0件です。製品・評価runtime、scorer・閾値・安全gate、
 既存公開tableの認可scopeは変更していません。配置用主体へruntime読取り主体を統合しません。
-次は停止点3の独立metadata取得について、2tableだけの取得範囲・回数を提示して別承認を得ます。
-runtime読取り主体・権限の確認、BigQuery参照SQLの方言適合・実値照合、独立review、実AI反復は未完了です。
+配置完了時点では、停止点3の独立metadata取得前に停止しました。後続の承認・確認結果は次節を参照します。
+
+### 2026-10-05のmetadata確認結果
+
+オーナーは、配置した2tableのmetadataを各1回、計2回取得して照合する提示へ「承認します」と回答しました。
+承認範囲は再試行・行取得・SQL実行・AI呼出し・IAM変更なしのmetadata確認です。
+[公式`tables.get` API](https://docs.cloud.google.com/bigquery/docs/reference/rest/v2/tables/get)の`view=BASIC`を
+各1回呼び、両方のHTTP 200と以下の一致を確認しました。HTTP再試行とリダイレクトは無効にしました。
+
+- 取得したtable IDは前節の2件と一致し、左は4列、右は3列で、列順・名前・`INTEGER`／`STRING`・mode・descriptionが物理schema案と一致した。
+- 両方ともnative `TABLE`、所在`US`、前節の期限とtable descriptionに一致した。
+- 取得応答にpartition、clustering、primary／foreign key制約の設定はなかった。
+- `BASIC`応答は行数・bytesの保存統計を含まず、行データも取得していない。各6行の投入確認は前節のload job metadataだけを根拠にする。
+
+取得metadataと操作記録はrepository外の`0600` private fileへ保存しました。既存認証を使って配置用主体から
+読み取りましたが、評価runtimeの読取り主体・権限が確定した証拠にはしません。IAM変更とruntimeへの接続は行っていません。
+query job、行取得、Vertex呼出し、IAM更新は0件です。製品・評価runtime、scorer・閾値・安全gate、既存scopeは変更していません。
+
+同じ2tableを参照する評価専用の単一SELECTをrepository外へ準備しました。右側を非NULLキー単位に集約してから
+左側へLEFT JOINし、左の元記録数・数量と右の対応組数・数量を区分ごとに集計します。期待SQL・期待行を
+製品runtimeへ渡しません。物理table IDだけをローカルtable名へ置換したSQLite検算は、固定fixtureの期待3行・5列・順序へ一致しました。
+これはローカル計算の照合であり、BigQueryの構文・型・参照table・実値を確認した結果ではありません。
+
+次は停止点4の最初として、この参照SQLの無料dry run 1回を別承認後だけ行います。参照table 2件、出力schema、
+推定処理bytesを確認し、再試行・結果行取得・実query・共通scope discovery・AI呼出し・IAM変更は行いません。
+dry runの承認を期待値の実取得や実AI反復の承認へ読み替えません。runtime読取り主体・権限の確認、
+BigQuery参照SQLの方言適合・実値照合、独立review、実AI反復は未完了です。
 
 ## 件数・反復数の解釈
 
