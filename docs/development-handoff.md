@@ -455,9 +455,11 @@ PythonとローカルSQLで各間隔を照合しました。PR #918は2026-10-04
 マージ済みで、最新mainへの取り込みを確認しました。同日の採用・テスト化確認へオーナーが「進めて」と回答し、
 ローカルの評価専用fixtureへ具体化しました。Pythonの左記録ごとの計算とSQLiteの2つの実tableで期待各行を照合し、
 9種類の誤ったSQLと行順序を検査する13テストを追加しました。`task test`は617件成功しました。
-製品・評価runtime、scorer・閾値・安全gateは変更せず、実AIの実行回数は0回です。追加PRは作成準備中です。
-次は追加PRのCI・レビューを完了し、そのマージ後にwarehouse配置時の型・mode・metadataと、
-必要な追加scope・確認案を整理します。型・方言適合、table・keyの自動発見、全fixtureの固定・独立reviewは未完了です。
+製品・評価runtime、scorer・閾値・安全gateは変更せず、実AIの実行回数は0回です。
+追加実装の[PR #921](https://github.com/Yukihide-Mitsuoka/repchat/pull/921)はレビュー・マージ待ちです。
+次はPR #921をレビュー・マージします。CI結果はPRのchecksを正本とし、マージ後にwarehouse配置時の
+型・mode・metadataと必要な追加scope・確認案を整理します。型・方言適合、table・keyの自動発見、
+全fixtureの固定・独立reviewは未完了です。
 追加取得・クラウド配置・有料評価へ自動的に進みません。
 検査範囲と未検証事項は補強計画を正本とします。
 製品runtimeへの対象固有処理、クラウド配置、有料実行は行いません。
