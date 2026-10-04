@@ -482,6 +482,7 @@ dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自�
 事前検査と実値照合の文書記録は[PR #926](https://github.com/Yukihide-Mitsuoka/repchat/pull/926)で2026-10-05にマージ済みで、
 最新mainへの取り込みを確認しました。同日にオーナーが、このJOINケースを補助ケースとして限定採用する判断を承認しました。
 承認範囲と残る確認事項は[JOIN補助ケースの限定採用](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05のjoin補助ケースの限定採用)を正本とします。
+限定採用の文書記録は[PR #927](https://github.com/Yukihide-Mitsuoka/repchat/pull/927)でレビュー・マージ待ちです。
 次は参照SQL・期待各行の正確なartifact bytesとreview証跡を照合し、正式fixtureへ組み込むための不足をofflineで整理します。
 限定採用をSQL fileの全内容確認や正式fixture全体の独立review完了へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
