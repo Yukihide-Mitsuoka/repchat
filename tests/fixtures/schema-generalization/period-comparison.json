@@ -1,0 +1,25 @@
+{
+  "periods": {
+    "previous": { "start": "2026-01-10T00:00:00Z", "end": "2026-01-11T00:00:00Z" },
+    "current": { "start": "2026-01-11T00:00:00Z", "end": "2026-01-12T00:00:00Z" }
+  },
+  "records": [
+    { "record_id": 301, "group_key": "A", "occurred_at": "2026-01-09T23:59:59Z" },
+    { "record_id": 302, "group_key": "A", "occurred_at": "2026-01-10T00:00:00Z" },
+    { "record_id": 303, "group_key": "A", "occurred_at": "2026-01-10T12:00:00Z" },
+    { "record_id": 304, "group_key": "A", "occurred_at": "2026-01-11T00:30:00+09:00" },
+    { "record_id": 305, "group_key": "A", "occurred_at": "2026-01-11T00:00:00Z" },
+    { "record_id": 306, "group_key": "A", "occurred_at": "2026-01-11T12:00:00Z" },
+    { "record_id": 307, "group_key": "A", "occurred_at": "2026-01-12T00:00:00Z" },
+    { "record_id": 308, "group_key": "B", "occurred_at": "2026-01-10T20:30:00-04:00" },
+    { "record_id": 309, "group_key": "B", "occurred_at": "2026-01-11T23:00:00Z" },
+    { "record_id": 310, "group_key": "C", "occurred_at": "2026-01-10T01:00:00Z" },
+    { "record_id": 311, "group_key": "C", "occurred_at": "2026-01-10T23:00:00Z" },
+    { "record_id": 312, "group_key": "C", "occurred_at": null }
+  ],
+  "expected_rows": [
+    { "group_key": "A", "previous_count": 3, "current_count": 2, "count_difference": -1 },
+    { "group_key": "B", "previous_count": 0, "current_count": 2, "count_difference": 2 },
+    { "group_key": "C", "previous_count": 2, "current_count": 0, "count_difference": -2 }
+  ]
+}
