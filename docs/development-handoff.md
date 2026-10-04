@@ -471,11 +471,17 @@ dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自�
 2026-10-05にオーナーは2tableのmetadata取得を各1回、計2回、再試行・行取得・SQL・AI・IAM変更なしで承認しました。
 `tables.get`の`BASIC`指定を各1回実行し、列・型・mode・description・table種別・所在・期限の一致を確認しました。
 確認範囲と未検証事項は[metadata確認結果](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05のmetadata確認結果)を正本とします。
-確認結果の記録は[PR #925](https://github.com/Yukihide-Mitsuoka/repchat/pull/925)でレビュー・マージ待ちです。
+確認結果の記録は[PR #925](https://github.com/Yukihide-Mitsuoka/repchat/pull/925)で2026-10-05にマージ済みで、
+最新mainへの取り込みを確認しました。
 参照SQLをrepository外へ準備し、物理table IDだけを置換したローカルSQLite検算で期待3行へ照合しました。
-次は同じ2tableだけを参照するSQLの無料dry run 1回について別承認を得ます。結果行を得る実行と実AI評価はさらに別承認です。
-配置後の独立metadata照合は完了しましたが、BigQuery query、実AI評価、IAM変更は未実施です。
-runtime読取り主体の選定と権限確認、型・方言適合、table・keyの自動発見、全fixtureの固定・独立reviewも未完了です。
+同日にオーナーが無料dry run 1回を別途承認し、参照table・出力schema・推定bytesの照合まで完了しました。
+事前検査結果は[参照SQL dry run結果](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05の参照sql-dry-run結果)を正本とします。
+続いてオーナーが1回・128 MiB・分析料金0.2 JPY上限の実値取得へ「実行して良い」と回答し、
+同じ参照SQLを1回実行して期待3行・全5列・行順序へ一致しました。
+実処理量・課金対象量・費用の計算値・確認範囲は[参照結果の実値照合](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05の参照結果の実値照合)を正本とします。
+次はこのJOIN参照SQL・期待各行・評価範囲を作成者と異なるオーナーがreviewします。実取得の承認をreview完了扱いにしません。
+runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
+IAM変更は行っていません。
 追加取得・追加配置・有料評価へ自動的に進みません。製品・評価runtime、scorer・閾値・安全gateは変更せず、
 分析対象固有処理は追加していません。CI結果は各PRのchecksを正本とし、マージをクラウド操作の承認とはみなしません。
 参照取得結果を記録した[PR #910](https://github.com/Yukihide-Mitsuoka/repchat/pull/910)は
