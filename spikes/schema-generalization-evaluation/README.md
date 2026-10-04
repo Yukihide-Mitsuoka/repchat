@@ -196,6 +196,8 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 参照artifactの正確なbytesへのreview証跡の結び付け、正式fixture全体の独立review、実AI評価は未完了で、IAM変更も行っていません。
 2026-10-05に既存private artifactと現行検査をofflineで照合しました。JOIN補助だけのschemaは現行の網羅条件を満たしません。
 不足条件と次の順序は[正式fixture組込み前の確認](reference-coverage-plan.md#2026-10-05の正式fixture組込み前の確認)を正本とします。
+同日にSQL全文・期待各行を確認できるprivateな1件の資料を準備し、オーナーreview待ちです。
+資料の確認範囲は[JOIN参照レビュー資料の準備](reference-coverage-plan.md#2026-10-05のjoin参照レビュー資料の準備)を参照します。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
