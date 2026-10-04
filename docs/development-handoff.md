@@ -459,9 +459,11 @@ PythonとローカルSQLで各間隔を照合しました。PR #918は2026-10-04
 追加実装の[PR #921](https://github.com/Yukihide-Mitsuoka/repchat/pull/921)は2026-10-04にマージ済みで、
 最新mainへの取り込みを確認しました。続く文書作業では、同じ12行を評価専用BigQuery datasetの2つの
 native tableへ置く案として、標準type・mode・description、完全修飾table 2件だけの認可scope、
-配置・metadata確認・dry run・実値取得・独立review・実AI反復の停止点を整理しています。現在はレビュー待ちで、
+配置・metadata確認・dry run・実値取得・独立review・実AI反復の停止点を
+[PR #922](https://github.com/Yukihide-Mitsuoka/repchat/pull/922)へ整理しました。現在はレビュー・マージ待ちで、
 配置先、IAM変更、table作成、行upload、metadata取得、query、追加scopeは未承認・未実施です。
-次はこの配置案をオーナーが判断します。採用後も各クラウド操作の対象、回数、費用上限を提示して別承認を得ます。
+次はこの配置案をオーナーが判断します。CI結果はPRのchecksを正本とし、マージをクラウド操作の承認とはみなしません。
+採用後も各クラウド操作の対象、回数、費用上限を提示して別承認を得ます。
 型・方言適合、table・keyの自動発見、全fixtureの固定・独立reviewは未完了です。
 追加取得・クラウド配置・有料評価へ自動的に進みません。
 検査範囲と未検証事項は補強計画を正本とします。
