@@ -478,10 +478,78 @@ query job、行取得、Vertex呼出し、IAM更新は0件です。製品・評�
 製品runtimeへ渡しません。物理table IDだけをローカルtable名へ置換したSQLite検算は、固定fixtureの期待3行・5列・順序へ一致しました。
 これはローカル計算の照合であり、BigQueryの構文・型・参照table・実値を確認した結果ではありません。
 
-次は停止点4の最初として、この参照SQLの無料dry run 1回を別承認後だけ行います。参照table 2件、出力schema、
-推定処理bytesを確認し、再試行・結果行取得・実query・共通scope discovery・AI呼出し・IAM変更は行いません。
-dry runの承認を期待値の実取得や実AI反復の承認へ読み替えません。runtime読取り主体・権限の確認、
-BigQuery参照SQLの方言適合・実値照合、独立review、実AI反復は未完了です。
+metadata確認完了時点では停止点4の無料dry runの承認前に停止しました。後続の承認・確認結果は次節を参照します。
+
+### 2026-10-05の参照SQL dry run結果
+
+オーナーは、前節で準備した参照SQLの無料dry run 1回の提示へ「承認します」と回答しました。
+承認範囲は同じ2tableの事前検査だけで、結果行取得、有料query実行、共通scope discovery、AI呼出し、IAM変更を含みません。
+SQL fileの正確なbytesのSHA-256を送信前に照合し、`jobs.insert`へ`dryRun=true`、
+`useLegacySql=false`、`useQueryCache=false`を指定したPOSTを1回だけ行いました。HTTP再試行とリダイレクトは無効にしました。
+
+HTTP 200の応答にprovider errorがなく、以下を照合しました。
+
+- `dryRun=true`が応答へ反映され、statement typeは`SELECT`だった。
+- 参照tableは配置結果の2件だけだった。
+- 出力schemaは質問の5列・列順と一致し、`group_key`は`STRING`、残る4列は`INTEGER`だった。
+- `totalBytesProcessed`は282 bytesだった。これはdry runの推定処理量で、実処理量・課金対象量ではない。
+- 結果行は取得していない。期待3行の実値一致、正式fixtureの独立review、実AI品質を確認したことにはしない。
+
+応答とSQL hash・1回の操作記録はrepository外の`0600` private fileへ保存しました。
+追加のtable取得・job取得・結果取得・予約検索は行っていません。有料query job、Vertex呼出し、IAM更新は0件です。
+製品・評価runtime、scorer・閾値・安全gateは変更せず、参照SQL・期待行をruntimeへ渡していません。
+構文・型・参照tableの事前検査は完了しましたが、runtime読取り主体・権限、実値照合、table・keyの自動発見、
+全fixtureの固定・独立review、実AI反復は未完了です。dry run完了時点では次の実取得承認前に停止しました。
+
+### 2026-10-05の参照結果の実値照合
+
+オーナーは、1回・128 MiB・分析料金0.2 JPY上限の実値取得案へ「実行して良い」と回答しました。
+これは評価専用参照値の準備で、評価runnerの実行ではありません。承認対象は次の1計画だけです。
+
+| 項目 | 承認範囲 |
+|---|---|
+| 対象 | 配置済みの2table、project `repchat-dev`、所在`US`。dry run済みSQLの正確なbytesを維持し、scope・SQLを変更しない |
+| 実行回数 | 有料SELECT 1回だけ。自動・手動再試行なし |
+| 課金bytes上限 | `maximum_bytes_billed=134217728`（128 MiB） |
+| 結果取得 | 集計3行を期待し、余分な行を検出するため最大4行まで取得する。4行・列不一致・値不一致なら停止する |
+| 事前確認 | USの継承元を含む予約割当検索1回。割当あり、追加pageあり、取得失敗ならqueryを送らず停止する。予約overrideは指定しない |
+| 完了確認 | 同じjobの状態取得は最大6回、完了後の結果取得は1回だけ。未完了・応答不明なら再送せず停止し、費用0を仮定しない |
+| 分析料金予算 | 0.2 JPY。次段落の価格と上界を送信前に照合する |
+| 明示的な非対象 | 追加dry run、共通scope discovery、実AI、IAM・資源・期限変更、正式fixtureのreview完了扱い |
+
+2026-10-05に[公式JPY SKU一覧](https://cloud.google.com/skus?currency=JPY&filter=1DF5-1F98-1DD1)で、
+US Analysis（SKU `1DF5-1F98-1DD1`）のon-demand単価を982.468749971 JPY/TiBと確認しました。
+無料枠を引かず、128 MiB ÷ 1 TiB × 同単価を小数第6位へ切り上げた分析料金上界は0.119931 JPYです。
+282 bytesのdry run推定量から無料と推測しません。価格の適用日・課金方式が一致しない場合は上界を再確認して停止します。
+[課金bytes上限](https://docs.cloud.google.com/bigquery/docs/best-practices-costs#restrict_the_number_of_bytes_billed_per_query)は
+このqueryの境界であり、0.2 JPYは税、保存費用、別SKU、他process、請求書総額の停止設定ではありません。
+保存費用は既存の配置承認と保持期限に従い、結果はrepository外のprivate artifactへ限定します。
+配置用の既存主体で参照値を準備しても、評価runtimeの読取り主体・権限を確定したことにはしません。
+
+送信前のoffline検査はfake HTTPで12通りの成功・停止条件を確認しました。既存操作記録による再送拒否、
+予約・追加pageによる送信前停止、job未完了・失敗、usage欠落・上限超過、認可外table、
+結果の行数・値・順序不一致、POST失敗での停止を含みます。provider呼出しは0件でした。
+実操作はUSの継承元を含む予約検索1回で割当なし・追加pageなしを確認し、予約overrideなしで同じSQLを1回送信しました。
+送信応答が既に`DONE`だったため追加job取得は0回で、同じjobの結果を1回だけ取得しました。HTTP再試行とリダイレクトは無効にしました。
+
+| 確認項目 | 実取得結果 |
+|---|---|
+| query | 単一SELECT、参照tableは配置済みの2件だけ、課金bytes上限は承認値と一致 |
+| 集計結果 | 3行・5列。型・全列値・行順序がテスト専用fixtureの期待行と一致。追加pageなし |
+| 実処理量 | 282 bytes。dry run推定量とは別の実行metadataから取得 |
+| 課金対象量 | 20,971,520 bytes（20 MiB）、128 MiB上限内 |
+| 計算した分析料金 | 同じ価格snapshotで小数第6位切上げの0.018740 JPY、0.2 JPY予算内 |
+
+この費用は実測した課金bytesからの計算値で、無料枠・税・請求調整等を反映した実請求額ではありません。
+SQL・承認条件・送信と予約応答・結果行はrepository外の`0600` private artifactだけに保持し、結果行をlogへ出していません。
+有料queryは1回で再送なし、結果取得は1回、Vertex呼出し・IAM更新は0件です。追加のtable取得、
+共通scope discovery、配置・期限変更、製品・評価runtime、scorer・閾値・安全gateの変更は行っていません。
+
+確認したのは1件の人工JOIN参照SQLと固定期待3行のBigQueryでの一致だけです。table・keyの自動発見、
+未知schemaの実AI品質、統計的成功率、全必須capabilityの網羅を証明しません。
+次はこの参照SQL・期待各行・評価範囲を作成者と異なるオーナーが独立reviewします。実取得の承認や文書のマージは
+review完了の証拠にしません。全fixtureの固定・独立review、runtime読取り主体・権限の確認、実AI反復は後続の別作業です。
+追加の有料query・AI評価へ自動的に進みません。
 
 ## 件数・反復数の解釈
 

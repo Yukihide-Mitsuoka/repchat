@@ -187,7 +187,11 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 資源ID・期限・費用根拠・確認範囲と次の停止点は[配置結果](reference-coverage-plan.md#2026-10-04の承認と配置結果)を参照します。
 2026-10-05の別承認後、2tableのmetadata取得を各1回実行し、承認済みschema・所在・期限へ一致しました。
 確認範囲と次の停止点は[metadata確認結果](reference-coverage-plan.md#2026-10-05のmetadata確認結果)を参照します。
-BigQuery query、実AI評価、IAM変更は未承認・未実施です。
+同日の別承認後、参照SQLの無料dry runを1回実行し、参照table・出力schema・推定bytesを照合しました。
+事前検査結果は[参照SQL dry run結果](reference-coverage-plan.md#2026-10-05の参照sql-dry-run結果)を参照します。
+続いて同日の別承認後、参照SQLを1回実行し、期待3行・全5列・行順序へ一致しました。
+実処理量・課金対象量・費用の計算値と次の停止点は[参照結果の実値照合](reference-coverage-plan.md#2026-10-05の参照結果の実値照合)を参照します。
+このJOIN fixtureの参照内容の独立review、実AI評価は未完了で、IAM変更も行っていません。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
