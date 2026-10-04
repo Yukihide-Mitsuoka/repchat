@@ -490,6 +490,7 @@ dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自�
 最新mainへの取り込みを確認しました。同日に既存JOIN参照SQL全文・人工入力12行・期待3行・照合hashを
 repository外の`0600`の1件のreview資料へまとめました。内容と確認範囲は
 [JOIN参照レビュー資料の準備](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05のjoin参照レビュー資料の準備)を正本とします。
+準備状況の文書記録は[PR #929](https://github.com/Yukihide-Mitsuoka/repchat/pull/929)でレビュー・マージ待ちです。
 次はオーナーが資料のSQL全文・期待各行を個別reviewします。未回答のreview結果は記録せず、追加クラウド操作へ進みません。
 限定採用をSQL fileの全内容確認や正式fixture全体の独立review完了へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
