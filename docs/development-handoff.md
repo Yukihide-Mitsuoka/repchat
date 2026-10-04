@@ -471,6 +471,7 @@ dataset作成1回・table作成2回・各6行の投入2回、7日後のtable自�
 2026-10-05にオーナーは2tableのmetadata取得を各1回、計2回、再試行・行取得・SQL・AI・IAM変更なしで承認しました。
 `tables.get`の`BASIC`指定を各1回実行し、列・型・mode・description・table種別・所在・期限の一致を確認しました。
 確認範囲と未検証事項は[metadata確認結果](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05のmetadata確認結果)を正本とします。
+確認結果の記録は[PR #925](https://github.com/Yukihide-Mitsuoka/repchat/pull/925)でレビュー・マージ待ちです。
 参照SQLをrepository外へ準備し、物理table IDだけを置換したローカルSQLite検算で期待3行へ照合しました。
 次は同じ2tableだけを参照するSQLの無料dry run 1回について別承認を得ます。結果行を得る実行と実AI評価はさらに別承認です。
 配置後の独立metadata照合は完了しましたが、BigQuery query、実AI評価、IAM変更は未実施です。
