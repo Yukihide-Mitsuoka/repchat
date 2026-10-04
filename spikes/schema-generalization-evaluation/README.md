@@ -2,7 +2,7 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-04
+updated: 2026-10-05
 ---
 
 # 未知schema反復評価の証拠harness
@@ -185,7 +185,9 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 標準type・mode・description、2tableだけの認可scope、書込み主体と読取り主体の分離、段階ごとの別承認は
 同計画を正本とします。2026-10-04の別承認後、datasetと2tableの作成・各6行の投入は完了しました。
 資源ID・期限・費用根拠・確認範囲と次の停止点は[配置結果](reference-coverage-plan.md#2026-10-04の承認と配置結果)を参照します。
-配置後の独立metadata取得、query実行、実AI評価、IAM変更は未承認・未実施です。
+2026-10-05の別承認後、2tableのmetadata取得を各1回実行し、承認済みschema・所在・期限へ一致しました。
+確認範囲と次の停止点は[metadata確認結果](reference-coverage-plan.md#2026-10-05のmetadata確認結果)を参照します。
+BigQuery query、実AI評価、IAM変更は未承認・未実施です。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
