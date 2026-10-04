@@ -365,6 +365,69 @@ SQLite SQLはローカル検算用で、BigQuery用参照SQLではありませ�
 warehouse用のtable・型・mode・description、認可scope、参照SQL・期待値の独立reviewは後続です。
 追加データ取得、クラウド配置、有料評価には、それぞれ具体的な範囲と必要な費用の別承認を要求します。
 
+## レビュー待ちの配置案：2テーブルJOIN用warehouse fixture
+
+前節のローカル検査を実BigQuery方言でも再現する場合は、公開データの既存scopeへ別tableを混ぜず、
+評価専用dataset内の2つのnative tableへ同じ12行を配置する案を推奨します。この節は配置条件の提案であり、
+dataset・tableの作成、行のupload、IAM変更、metadata取得、query実行を承認または実施した記録ではありません。
+
+### 物理schema案
+
+完全修飾table IDは配置先の承認後に決めます。table名は`join_left_records`と`join_right_records`を候補とし、
+次のBigQuery標準schemaだけを持たせます。
+型・mode・descriptionの仕様は[BigQuery公式schema資料](https://docs.cloud.google.com/bigquery/docs/schemas)を
+根拠とします。取得metadataでは[標準同義表記の`INT64`と`INTEGER`](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-types#integer_type)を
+区別して不一致にせず、実際の表記を記録します。
+
+| table | field | type | mode | descriptionの事実範囲 |
+|---|---|---|---|---|
+| `join_left_records` | `record_id` | `INT64` | `REQUIRED` | このtable内の1記録を識別する。別tableの`record_id`との対応は表さない |
+| `join_left_records` | `link_key` | `INT64` | `NULLABLE` | 別tableとの関連に使用できる。非NULL値は重複しうる |
+| `join_left_records` | `group_key` | `STRING` | `REQUIRED` | 左記録を区分する値 |
+| `join_left_records` | `quantity` | `INT64` | `REQUIRED` | 左記録に属する整数値。同じ値の別記録を区別する |
+| `join_right_records` | `record_id` | `INT64` | `REQUIRED` | このtable内の1記録を識別する。別tableの`record_id`との対応は表さない |
+| `join_right_records` | `link_key` | `INT64` | `NULLABLE` | 別tableとの関連に使用できる。非NULL値は重複しうる |
+| `join_right_records` | `quantity` | `INT64` | `NULLABLE` | 右記録に属する整数値。値が欠落する場合がある |
+
+partition、clustering、primary／foreign key制約、view、事前集計、policy tagは追加しません。
+時間fieldを持たないため、共通契約は標準規則どおり`period=null`でなければなりません。
+descriptionはschema metadataとして共通pipelineが読む未信頼入力であり、固定relationship、期待SQL、期待値を
+製品runtimeへ登録する設定にはしません。質問が`link_key`とNULL・対応組の規則を明示し、runtimeは
+認可scope内のschema、description、bounded value profileからrelationshipとgrainを生成する必要があります。
+
+### 認可scope案
+
+評価manifestのscopeは、承認済みの完全修飾table ID 2件だけを`tables`へ列挙し、dataset列挙用の
+`datasets`は空にします。これにより同じdatasetの別tableを自動追加せず、2件以外の参照を共通SQL検査と
+BigQuery job metadataの両方で拒否します。配置用の書込み主体と評価runtimeの読取り主体を分離し、
+runtimeへdataset作成・table作成・更新・削除権限を渡しません。
+具体的な権限は[BigQuery公式IAM資料](https://docs.cloud.google.com/bigquery/docs/access-control)に照らし、
+tableのmetadata・data読取りと実行projectのjob作成を分けて提示します。IAM設定はこの文書だけでは変更しません。
+
+このscopeはrelationshipとgrainの評価には使えますが、多数の候補から2tableを選ぶ能力は検査しません。
+選択能力を検査するためだけにdecoy tableを黙って追加せず、必要なら別ケースとして質問・期待結果・費用・scopeを
+独立reviewします。現在の公開`github_nested`評価scopeも、この配置承認から自動的には変更しません。
+
+### 実施を分ける停止点
+
+1. 本節の採否だけをreviewする。ここまではローカル文書変更で、クラウド操作0件・クラウド利用費用0 JPYとする。
+2. 採用後、配置先project、dataset、location、table ID、保持期限、作成・削除主体を提示し、
+   2table・12行の作成と保存費用の上限を別途承認する。
+3. 配置後、行を取得しないschema metadata確認でtype、mode、description、table type、locationを照合する。
+   認可scopeと取得回数を提示して事前承認を得る。この確認の承認はquery実行承認と分ける。
+4. 参照SQLと共通scope discoveryの各queryを無料dry runし、参照table、出力schema、推定bytesを確認する。
+   結果行を得るqueryは、回数、行数、`maximum_bytes_billed`、価格snapshot、最大JPYを提示して別承認を得る。
+5. 実値の期待3行を作成者と異なるオーナーがreviewし、正式fixtureへ固定する。文書のマージやschema一致だけを
+   独立review完了としない。
+6. 実AIの反復評価は、公式fixture、計画、pipeline artifact、価格、全run予算を固定した後にさらに別承認を得る。
+
+[無料dry runの公式仕様](https://docs.cloud.google.com/bigquery/docs/running-queries#dry-run)は、
+結果行を取得するqueryや保存費用を無料とする根拠ではありません。12行でも実行費用を0と推測しません。
+
+この案は質問で対応キーを指定する1件のJOIN補助評価です。配置や実値一致だけでは、適切なtable・keyの
+自動発見、実AI品質、各schemaの全必須capability網羅の証明にはしません。正式fixture全体の固定・独立reviewと
+実反復評価は未完了です。固定SQL、固定relationship、期待行はpost-runの評価側だけに保持します。
+
 ## 件数・反復数の解釈
 
 データ行・要素・出力行の数と、異なるcase数・AI反復数を分けて記録します。

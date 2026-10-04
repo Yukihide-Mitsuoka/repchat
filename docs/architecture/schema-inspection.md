@@ -1,14 +1,15 @@
 ---
 id: schema-inspection
 title: BigQuery schema取得境界
-updated: 2026-09-13
+updated: 2026-10-04
 ---
 
 # BigQuery schema取得境界
 
 [ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)へ置き換えられた
 [ADR-0024](../adr/0024-build-analysis-context-from-inspected-schema.md)の初期実装は
-`spikes/report-generation/bigquery_schema_snapshot.py`です。生成経路にはまだ接続していません。
+`spikes/report-generation/bigquery_schema_snapshot.py`です。現在は共通scope discoveryを経由して、
+[評価preflight](../../spikes/schema-generalization-evaluation/preflight.py)の分析契約生成へ接続しています。
 本番認可や接続主体を置き換える処理ではありません。
 
 ## 入出力と責任
@@ -136,12 +137,15 @@ SELECT式、コメント、無関係な文字列は制約を満たさず、契�
 ## 次の接続点
 
 [ADR-0025](../adr/0025-discover-analysis-contracts-without-source-specific-code.md)に従い、共通runtimeから未参照になった
-対象別profile moduleと手動metric資産は削除済みです。残る特殊補正は共通契約経路で使用されていないことを
-確認してから除去します。対象固有のfactory、profile、設定は追加しません。
+対象別profile moduleと手動metric資産は削除済みです。固有処理の撤去状況は
+[開発引き継ぎ](../development-handoff.md#固有処理を削除する実装計画)を正本とし、
+対象固有のfactory、profile、設定は追加しません。
 未知schema評価も同じ共通契約経路を使い、評価用知識をruntimeへ渡しません。
 [未知schema反復評価harness](../../spikes/schema-generalization-evaluation/README.md)は、runtime実行後の
 evidence bundleだけを読み、参照SQL・期待結果との一致、安全違反、費用、描画、反復fingerprintを集計します。
 参照SQLと期待結果はpost-run scorerの入力に限定し、分析契約生成、planner、SQL生成の入力には含めません。
 参照fixtureとrun記録も別fileで管理し、runtime実行後にIDだけで結合してからscorerへ渡します。
 
-現在のテストはfake BigQuery clientを用いた取得境界の検証で、実API・分析品質の実証ではありません。
+取得境界の回帰テストはfake BigQuery clientを用います。実schemaの取得・参照値確認の範囲は
+[評価harnessの記録](../../spikes/schema-generalization-evaluation/README.md#評価対象の選定)を正本とし、
+これらを共通pipelineの実反復評価や未知schema品質の実証とは扱いません。
