@@ -191,7 +191,9 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 事前検査結果は[参照SQL dry run結果](reference-coverage-plan.md#2026-10-05の参照sql-dry-run結果)を参照します。
 続いて同日の別承認後、参照SQLを1回実行し、期待3行・全5列・行順序へ一致しました。
 実処理量・課金対象量・費用の計算値と次の停止点は[参照結果の実値照合](reference-coverage-plan.md#2026-10-05の参照結果の実値照合)を参照します。
-このJOIN fixtureの参照内容の独立review、実AI評価は未完了で、IAM変更も行っていません。
+同日にオーナーは、このJOINケースを重複・NULL・対応先なしの集計を検査する補助ケースとして限定採用しました。
+承認範囲と残る確認事項は[JOIN補助ケースの限定採用](reference-coverage-plan.md#2026-10-05のjoin補助ケースの限定採用)を参照します。
+参照artifactの正確なbytesとreview証跡の照合、正式fixture全体の独立review、実AI評価は未完了で、IAM変更も行っていません。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
