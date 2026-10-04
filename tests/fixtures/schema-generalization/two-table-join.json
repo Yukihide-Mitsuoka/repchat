@@ -1,0 +1,41 @@
+{
+  "left_records": [
+    { "record_id": 1, "link_key": 10, "group_key": "A", "quantity": 5 },
+    { "record_id": 2, "link_key": 10, "group_key": "A", "quantity": 5 },
+    { "record_id": 3, "link_key": 20, "group_key": "A", "quantity": 8 },
+    { "record_id": 4, "link_key": 30, "group_key": "B", "quantity": 4 },
+    { "record_id": 5, "link_key": null, "group_key": "B", "quantity": 6 },
+    { "record_id": 6, "link_key": 40, "group_key": "C", "quantity": 9 }
+  ],
+  "right_records": [
+    { "record_id": 1, "link_key": 10, "quantity": 3 },
+    { "record_id": 2, "link_key": 10, "quantity": 3 },
+    { "record_id": 3, "link_key": 20, "quantity": 4 },
+    { "record_id": 4, "link_key": 30, "quantity": null },
+    { "record_id": 5, "link_key": null, "quantity": 99 },
+    { "record_id": 6, "link_key": 99, "quantity": 100 }
+  ],
+  "expected_rows": [
+    {
+      "group_key": "A",
+      "left_count": 3,
+      "left_quantity": 18,
+      "right_match_count": 5,
+      "right_quantity": 16
+    },
+    {
+      "group_key": "B",
+      "left_count": 2,
+      "left_quantity": 10,
+      "right_match_count": 1,
+      "right_quantity": 0
+    },
+    {
+      "group_key": "C",
+      "left_count": 1,
+      "left_quantity": 9,
+      "right_match_count": 0,
+      "right_quantity": 0
+    }
+  ]
+}
