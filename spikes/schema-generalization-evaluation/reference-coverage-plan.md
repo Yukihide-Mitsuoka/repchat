@@ -365,15 +365,15 @@ SQLite SQLはローカル検算用で、BigQuery用参照SQLではありませ�
 warehouse用のtable・型・mode・description、認可scope、参照SQL・期待値の独立reviewは後続です。
 追加データ取得、クラウド配置、有料評価には、それぞれ具体的な範囲と必要な費用の別承認を要求します。
 
-## レビュー待ちの配置案：2テーブルJOIN用warehouse fixture
+## 承認済みの配置条件：2テーブルJOIN用warehouse fixture
 
 前節のローカル検査を実BigQuery方言でも再現する場合は、公開データの既存scopeへ別tableを混ぜず、
-評価専用dataset内の2つのnative tableへ同じ12行を配置する案を推奨します。この節は配置条件の提案であり、
-dataset・tableの作成、行のupload、IAM変更、metadata取得、query実行を承認または実施した記録ではありません。
+評価専用dataset内の2つのnative tableへ同じ12行を配置します。オーナー承認後の配置結果は下記に記録します。
+配置の承認をIAM変更、配置後のmetadata取得、query実行、実AI評価の承認へ読み替えません。
 
 ### 物理schema案
 
-完全修飾table IDは配置先の承認後に決めます。table名は`join_left_records`と`join_right_records`を候補とし、
+完全修飾table IDは下記の配置結果を正本とします。table名は`join_left_records`と`join_right_records`とし、
 次のBigQuery標準schemaだけを持たせます。
 型・mode・descriptionの仕様は[BigQuery公式schema資料](https://docs.cloud.google.com/bigquery/docs/schemas)を
 根拠とします。取得metadataでは[標準同義表記の`INT64`と`INTEGER`](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/data-types#integer_type)を
@@ -427,6 +427,36 @@ tableのmetadata・data読取りと実行projectのjob作成を分けて提示�
 この案は質問で対応キーを指定する1件のJOIN補助評価です。配置や実値一致だけでは、適切なtable・keyの
 自動発見、実AI品質、各schemaの全必須capability網羅の証明にはしません。正式fixture全体の固定・独立reviewと
 実反復評価は未完了です。固定SQL、固定relationship、期待行はpost-runの評価側だけに保持します。
+
+### 2026-10-04の承認と配置結果
+
+オーナーはproject IDを`repchat-dev`と指定し、dataset作成1回、table作成2回、各6行の投入2回、
+7日後のtable自動削除、保存予算1 JPYの提示へ「はい、進めて」と回答しました。
+同名datasetがないことと、USの予約割当検索で有料`PIPELINE`割当がないことを読み取り確認してから、
+5操作を各1回実行しました。作成・uploadの自動再試行は無効にし、既存資源の上書きは行いませんでした。
+
+| 資源 | 配置結果 |
+|---|---|
+| dataset | `repchat-dev.repchat_eval_join_20261004`、US、`LOGICAL`保存課金、既定table期限7日 |
+| 左table | `repchat-dev.repchat_eval_join_20261004.join_left_records`、load job成功、投入6行 |
+| 右table | `repchat-dev.repchat_eval_join_20261004.join_right_records`、load job成功、投入6行 |
+| 両tableの期限 | `2026-10-11T11:33:05.310Z`（日本時間20:33:05.310）、期限延長なし。空datasetは自動削除しない |
+
+投入はローカルfixtureの左右入力だけをJSONL化し、`CREATE_NEVER`・`WRITE_EMPTY`で実行しました。
+`expected_rows`、参照SQL、固定relationshipはuploadしていません。schemaの作成応答は標準同義表記の
+`INTEGER`で返り、type・mode・description、native table種別、期限を照合しました。
+投入件数は両load jobの完了metadataで確認し、配置後のtable再取得や行取得は行っていません。
+実行ID・fixture bytesのSHA-256・作成応答・load job完了記録はrepository外のprivate作業記録に保存しました。
+
+両load jobのreservation IDは`default-pipeline`でした。[共有枠のbatch loadは無料](https://docs.cloud.google.com/bigquery/docs/batch-loading-data#pricing)です。
+保存費用は無料枠を使わず、[確認時のUS論理保存単価3.1439 JPY/GiB月](https://cloud.google.com/skus?currency=JPY&filter=947D-3B46-7781)を用い、
+実入力282 logical bytesより大きい2 MiBを丸1か月保存する保守的な計算でも`0.0061404296875 JPY`です。
+これは計算値であり、実請求の計測値ではありません。1 JPYは今回の保存予算で、project全体の請求停止設定ではありません。
+
+query job、Vertex呼出し、IAM更新は0件です。製品・評価runtime、scorer・閾値・安全gate、
+既存公開tableの認可scopeは変更していません。配置用主体へruntime読取り主体を統合しません。
+次は停止点3の独立metadata取得について、2tableだけの取得範囲・回数を提示して別承認を得ます。
+runtime読取り主体・権限の確認、BigQuery参照SQLの方言適合・実値照合、独立review、実AI反復は未完了です。
 
 ## 件数・反復数の解釈
 
