@@ -515,6 +515,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 準備範囲は[主体候補集計の準備](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の主体候補集計の準備)を正本とします。
 同日の個別承認後、同じSQLのdry run 1回が成功し、2table・11整数列・推定bytesを照合しました。
 結果と次の停止点は[dry run結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の主体候補sql-dry-run結果)を正本とします。
+準備とdry run結果の文書更新は[PR #936](https://github.com/Yukihide-Mitsuoka/repchat/pull/936)でレビュー・マージ待ちです。
 次は本実行1回・集計1行・128 MiB上限の価格・最大JPY・課金方式確認の具体案です。現在の適用単価は未確認で、本実行・追加の認証付き確認・正式scope追加・配置・AIへ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
