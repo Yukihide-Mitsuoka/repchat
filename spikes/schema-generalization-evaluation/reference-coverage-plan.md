@@ -579,7 +579,7 @@ schemaごとの必須capability網羅、全参照の独立review、実行前arti
 | 条件 | 確認結果と不足 | 根拠 |
 |---|---|---|
 | JOIN参照の計算 | private参照SQLとテスト用fixtureのSHA-256は既存記録と一致。private検証結果の3行がfixtureの全期待行・順序と一致した。SQLと結果fileは`0600`。これはreview完了ではない | [実値照合](#2026-10-05の参照結果の実値照合)、[テスト用fixture](../../tests/fixtures/schema-generalization/two-table-join.json) |
-| 人間によるreview | 補助ケースとしての限定採用は完了。SQL全文・期待各行を確認した回答と、確認対象bytesを結び付ける正式review証跡は未確定。ID・日時・review済みhashを推測で埋めない | [限定採用](#2026-10-05のjoin補助ケースの限定採用)、[`execution_manifest.py`](execution_manifest.py)の参照記録検査 |
+| 人間によるreview | この調査時点では限定採用だけが完了し、SQL全文・期待各行の確認と対象bytesへの回答の結び付けは未完了だった。後続の1件の内容確認は個別承認節を参照。正式fixture用ID・日時を推測で埋めない | [JOIN参照内容の個別承認](#2026-10-05のjoin参照内容の個別承認)、[`execution_manifest.py`](execution_manifest.py)の参照記録検査 |
 | schema別の評価範囲 | 各schemaが6必須capabilityを網羅する必要がある。時間列・nested/repeated構造を持たない今回の2tableの1件はJOIN補助だけで、独立した追加schemaとしてそのまま入れられない。JOINだけの入力を現行validatorが拒否することをofflineで確認した | [`evaluation_capabilities.py`](evaluation_capabilities.py)、[物理schema案](#物理schema案) |
 | 正式fixtureと認可scope | 調べた2directoryのJSON 23件には、正式fixture version 2・authorization・評価計画のtop-level field集合に一致するfileはなかった。全ローカル領域を調べた不在証明ではなく、構造の一致がreview済みの証明になるわけでもない。最低2つの異なるschema ID・実scope fingerprintと、schema IDに一対一対応する認可scopeが必要 | [`execution_manifest.py`](execution_manifest.py) |
 | scope snapshot | 既存の2table metadata応答や参照SQL hashを、共通discoveryが生成するcanonical snapshot fingerprintの代わりにできない。runtime読取り主体・権限と、実snapshotの取得・固定は未完了 | [評価READMEのsnapshot契約](README.md#参照fixtureとrun記録の分離) |
@@ -615,8 +615,31 @@ review待ちであり、SQL全文と期待各行の承認回答、reviewer ID、
 回答を得た後に、資料fileの正確なbytesと実際の回答をprivate記録へ結び付けます。
 資料やhashだけで本人性・全fixtureの独立review完了・実AI品質を証明したとは扱いません。
 
-次はオーナーによるこの1件の内容reviewです。後続のschema別網羅・scope検討は前節の順序に従います。
+資料準備時点ではオーナーによるこの1件の内容review前に停止しました。後続の回答は次節を参照します。
+schema別網羅・scope検討は前節の順序に従います。
 クラウド取得・有料query・AI呼出し・IAM変更・期限延長は行わず、製品・評価runtimeと評価条件も変更していません。
+
+### 2026-10-05のJOIN参照内容の個別承認
+
+PR #929のマージ報告後、オーナーへprivate資料のSQL全文・期待3行を、JOIN補助1ケースの正しい参照内容として
+承認するか個別確認し、オーナーは「承認します」と回答しました。PRのマージからreview完了を推測していません。
+この回答により、当該1件の参照SQL・期待3行・全5列・行順序の内容確認を完了とします。
+既に承認済みの補助ケース採用判断とは別の、正確な参照内容への承認です。
+
+回答記録の作成前に、review資料・参照SQL・fixtureのSHA-256が準備時の値と一致し、既存の実結果全行・順序が
+fixtureに一致することをローカルで再確認しました。資料・SQL・fixture・検証済み結果のhashと今回の質問・回答、
+承認範囲・非対象・記録作成時刻をrepository外の新規`0600` fileへ保存しました。既存fileは上書きしていません。
+記録作成時刻を回答の正確な発生時刻と偽らず、会話上のオーナー回答から本人性を技術的に認証したとは扱いません。
+正式fixture用のreviewer ID・review完了日時を推測で埋めていません。
+
+承認はJOIN補助1件の参照内容だけです。正式fixture全体の独立review、各schemaの6必須capability網羅、
+table・keyの自動発見、runtime品質・実AI反復、scope拡張・有料実行・IAM変更・期限延長を含みません。
+人工誤答9種類と実AI反復数を混同せず、1ケース・実AI0回という限界は維持します。
+
+次は[組込み前の確認](#2026-10-05の正式fixture組込み前の確認)の順序2として、既存公開schema評価とJOIN補助評価の
+位置付け、schemaごとの質問・参照・scope不足案をofflineで整理します。今回の承認だけでJOINを必須capabilityの
+網羅済みとせず、scopeを黙って混ぜず、評価条件を緩めません。クラウド取得・query再送・AI呼出し・IAM変更・
+期限延長は行っていません。製品・評価runtime、scorer・閾値・安全gateも変更していません。
 
 ## 件数・反復数の解釈
 
