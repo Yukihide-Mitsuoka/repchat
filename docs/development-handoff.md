@@ -507,8 +507,10 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 この停止状態の文書更新は[PR #933](https://github.com/Yukihide-Mitsuoka/repchat/pull/933)で2026-10-05にマージ済みで、mainへの取り込みを確認しました。
 同日の認証更新・再開指示後、metadata取得1回が成功しました。結果と非対象は
 [認証更新後の取得結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の認証更新後の取得結果)を正本とします。
-取得結果の文書更新は[PR #934](https://github.com/Yukihide-Mitsuoka/repchat/pull/934)でレビュー・マージ待ちです。
-次は既存schema記録とのoffline比較です。再送・正式scope追加・配置・有料実行は行いません。
+取得結果の文書更新は[PR #934](https://github.com/Yukihide-Mitsuoka/repchat/pull/934)で2026-10-05にマージ済みで、mainへの取り込みを確認しました。
+既存全schema fileを特定できない停止点について、同日にオーナーが元table metadataの1回取得を承認し、取得成功後に両schemaの構造をoffline比較しました。
+範囲・候補の根拠・限界は[再取得と全schema構造比較](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の再取得と全schema構造比較)を正本とします。
+次は主体候補の欠落・値重なりを集計で確認する案を準備します。queryの事前検査と実取得はそれぞれ別承認まで行わず、正式scope追加・配置・有料実行へ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。

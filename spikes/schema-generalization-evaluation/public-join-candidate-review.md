@@ -91,3 +91,42 @@ metadata API送信1回、行取得・query・dry run・Vertex呼出し・IAM変�
 確定できる状態ではなく、文字列の内容、欠落・一意性、実値の重なり、期間、JOIN成立は未確認です。
 次は既存`github_nested`のschema記録とのoffline比較です。値の確認は具体的な範囲・上限を提示して
 別途承認を得るまで行いません。対象固有runtime・固定SQL・設定は追加していません。
+
+## 2026-10-05の既存記録との部分比較
+
+[既存schema要約](README.md#github_nestedの評価成立条件)に明記された`created_at`は、取得済み候補にもSTRINGで存在します。
+候補に子field・repeated fieldはなく、元tableの`payload.pages`・`payload.shas`というnested構造と異なります。
+これは文書の要約との部分比較であり、全field対応や同一entity・期間・JOIN関係の証明ではありません。
+
+確認したrepositoryとprivate一時領域では、元tableの全schema取得fileを特定できませんでした。
+検索の一部にはOSの読取り拒否があり、fileが存在しないと断定しません。既存要約から欠けた列定義を復元・推測せず、
+次は既存fileの所在確認、またはオーナーの別承認による元tableのmetadataだけの1回取得が必要です。
+この比較ではAPI・query・行取得・AI・scope変更は0件です。候補の同名列だけをJOIN keyへ採用しません。
+
+## 2026-10-05の再取得と全schema構造比較
+
+前節の停止点についてオーナーが「取得して」と指示した後、`github_nested`の`tables.get view=BASIC`を
+1回実行しました。identity、`TABLE`種別、所在`US`、schemaを確認し、前回取得した候補metadataとの
+構造比較をofflineで行いました。前の取得fileが見つかった、または過去とschemaが不変だったという意味ではありません。
+
+元tableは最上位8列、RECORDを含む全field pathが222件、repeatedの祖先または自身を持つpathが12件です。
+この12件は配列数ではありません。両tableとも列descriptionは0件でした。
+完全pathの一致、または元pathの`.`を`_`へ置いた表記一致だけで187組を列挙し、175組は型も一致しました。
+残る12組は型不一致です。表記一致はentityや値の対応を証明せず、この変換規則をruntimeへ追加しません。
+
+| 候補・確認範囲 | 構造の事実 | 未確認条件と扱い |
+|---|---|---|
+| 主体候補 | 両tableに`actor` STRING、元の`actor_attributes.login`と候補の`actor_attributes_login`もSTRING | どちらが安定した主体keyか、両tableで同じ意味か、NULL・空文字・値重なりは未確認。自動採用しない |
+| repository候補 | 元の`repository.owner`・`repository.name`と候補の対応表記はSTRING | name単独の一意性、ownerとの組、改名・欠落・対応粒度は未確認。列名から複合keyを確定しない |
+| 時間候補 | 両方の`created_at`はSTRING | 候補側の書式・timezone・変換成功率・収録期間は未確認。元tableの参照用変換を候補へ流用しない |
+| 型不一致 | BOOLEAN対STRINGが11組、RECORD対STRINGが1組 | 値の表現・情報欠落は未確認。黙ってcastや対象専用補正を加えない |
+
+構造だけではJOIN参照caseを確定できません。次の推奨は、主体候補を最初の1件として、各側の
+欠落・異なる値の件数・重なりを生IDなしの集計で確認する案を作ることです。実値確認が成功しても、
+両側の活動を直接結合して多対多の件数増幅を起こさないよう、出力grainと各側の集約条件を別にreviewします。
+repository候補や時間の確認を同時に承認されたものとしません。
+
+取得metadataと比較記録は新規`0700` directory内の`0600` fileへ保存し、比較入力の正確なbytesのSHA-256へ
+結び付けました。今回のmetadata API送信は1回、行取得・query・dry run・Vertex・IAM変更は0件です。
+正式scope追加・再送・期限延長は行っていません。次のqueryはSQL・取得集計・回数・上限・最大費用を提示し、
+事前検査と実値取得をそれぞれ別承認後に行います。runtime・scorer・閾値・対象固有処理は変更していません。
