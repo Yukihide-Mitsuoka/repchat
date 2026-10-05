@@ -2,7 +2,7 @@
 id: public-join-candidate-review
 title: 公開schemaのJOIN候補調査と最初の確認案
 status: proposed
-updated: 2026-10-05
+updated: 2026-10-06
 ---
 
 # 公開schemaのJOIN候補調査と最初の確認案
@@ -130,3 +130,30 @@ repository候補や時間の確認を同時に承認されたものとしませ�
 結び付けました。今回のmetadata API送信は1回、行取得・query・dry run・Vertex・IAM変更は0件です。
 正式scope追加・再送・期限延長は行っていません。次のqueryはSQL・取得集計・回数・上限・最大費用を提示し、
 事前検査と実値取得をそれぞれ別承認後に行います。runtime・scorer・閾値・対象固有処理は変更していません。
+
+## 2026-10-06の主体候補集計の準備
+
+参照確認専用SQLをrepository外の新規`0700` directory内の`0600` fileへ準備しました。
+各tableの`actor`だけを集約し、行数・NULL行数・空文字行数・非欠落distinct数を各4列、
+両側の共通・左のみ・右のみdistinct数を3列、計11整数列・1行を予定します。生IDは返しません。
+値の大小文字・空白は補正せず、活動行同士の多対多JOINもしません。
+人工入力4ケースをローカルSQLiteで検算しました。準備段階ではBigQuery構文・推定処理量・実値は未確認でした。
+
+準備時の承認対象案は`repchat-dev`／`US`で同じSQLのdry runだけを1回行い、単一SELECT、指定2tableだけ、
+出力11列の型、推定処理bytesを確認する範囲です。行取得・SQL本実行・AI・IAM変更・再試行は含みません。
+query料金の事前検査は[公式手順](https://docs.cloud.google.com/bigquery/docs/best-practices-costs#estimate_query_costs)に従います。
+実値取得は結果を受けて回数・行数・課金bytes上限・確認済み単価・最大JPYを別途提示してから承認を得ます。
+今回の準備への承認を、未提示の有料実行上限への承認とみなしません。準備段階の認証付きクラウド操作は0件でした。
+
+## 2026-10-06の主体候補SQL dry run結果
+
+上記の1回だけの事前確認へオーナーが「はい」と回答した後、同じSQL bytesをSHA-256で照合し、
+`repchat-dev`／`US`で`dryRun=true`の送信を1回行いました。BigQueryは単一SELECT、指定した2tableだけ、
+出力11列の整数型、推定処理量90,429,641 bytes（約86.24 MiB）を返し、すべて照合しました。
+SQL・送信記録・応答・完了記録はrepository外の新規`0700` directory内の`0600` fileへ保存しました。
+
+query本実行・結果行取得・AI・IAM変更・scope追加・再試行は0件です。推定bytesを実処理量・課金bytes・
+実測費用へ加算しません。NULL数・distinct数・値重なり・JOIN成立はまだ未確認です。
+次は本実行1回・集計1行・128 MiB上限の案について、適用価格と最大JPY、必要な課金方式確認を提示します。
+公式JPY SKU一覧は今回の公開web取得で読めず、以前の単価を現在も有効と推測して実行しません。
+実値取得と追加の認証付き確認は、その具体的な範囲を別途承認後に行います。
