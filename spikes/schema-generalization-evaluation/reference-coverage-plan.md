@@ -636,8 +636,9 @@ fixtureに一致することをローカルで再確認しました。資料・S
 table・keyの自動発見、runtime品質・実AI反復、scope拡張・有料実行・IAM変更・期限延長を含みません。
 人工誤答9種類と実AI反復数を混同せず、1ケース・実AI0回という限界は維持します。
 
-次は[組込み前の確認](#2026-10-05の正式fixture組込み前の確認)の順序2として、既存公開schema評価とJOIN補助評価の
-位置付け、schemaごとの質問・参照・scope不足案をofflineで整理します。今回の承認だけでJOINを必須capabilityの
+後続の[組込み前の確認](#2026-10-05の正式fixture組込み前の確認)の順序2では、既存公開schema評価とJOIN補助評価の
+位置付け、schemaごとの質問・参照・scope不足案を[正式評価の準備計画](schema-coverage-gap-plan.md)へ整理しました。
+今回の承認だけでJOINを必須capabilityの
 網羅済みとせず、scopeを黙って混ぜず、評価条件を緩めません。クラウド取得・query再送・AI呼出し・IAM変更・
 期限延長は行っていません。製品・評価runtime、scorer・閾値・安全gateも変更していません。
 
