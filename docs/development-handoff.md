@@ -520,6 +520,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 価格・条件と次の個別確認は[価格確認と実行上限案](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の価格確認と実行上限案)を正本とします。
 同日の個別承認後、予約割当APIを1回読み取り、継承元を含む空結果と追加pageなしを確認しました。
 結果と次の具体案は[予約割当確認結果と本実行の停止点](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の予約割当確認結果と本実行の停止点)を正本とします。
+価格と予約割当の確認記録は[PR #937](https://github.com/Yukihide-Mitsuoka/repchat/pull/937)でレビュー・マージ待ちです。
 次は直前の予約確認1回と本実行1回・集計1行・128 MiB・分析料金0.2 JPY上限の費用承認です。承認前に本実行・追加の認証付き確認・正式scope追加・配置・AIへ進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
