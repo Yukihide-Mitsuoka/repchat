@@ -497,9 +497,11 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 承認記録の文書更新は[PR #930](https://github.com/Yukihide-Mitsuoka/repchat/pull/930)で2026-10-05にマージ済みで、
 最新mainへの取り込みを確認しました。公開2schemaと人工JOIN補助を分け、schemaごとの参照・scope不足と
 実施順序を[正式評価のschema別不足とscope準備計画](../spikes/schema-generalization-evaluation/schema-coverage-gap-plan.md)へ整理済みです。
-この不足整理は[PR #931](https://github.com/Yukihide-Mitsuoka/repchat/pull/931)でレビュー・マージ待ちです。
-次は公開資料と既存参照から、各公開schemaの別物理table候補・関連根拠・未確認条件を調査します。
-認証付き取得・追加scope・配置・有料実行は行わず、具体案を提示して必要な承認を分けます。
+この不足整理は[PR #931](https://github.com/Yukihide-Mitsuoka/repchat/pull/931)で2026-10-05にマージ済みで、
+最新mainへの取り込みを確認しました。後続の[公開JOIN候補調査](../spikes/schema-generalization-evaluation/public-join-candidate-review.md)で、
+一次資料の候補・関連根拠の限界と、`github_timeline`のmetadataだけを1回確認する案を整理しました。
+次はこの1件の取得案をオーナーへ提示します。承認前は認証付き取得を行わず、正式scope追加・配置・有料実行にも進みません。
+GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
 IAM変更は行っていません。
