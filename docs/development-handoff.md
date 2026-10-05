@@ -494,6 +494,7 @@ repository外の`0600`の1件のreview資料へまとめました。内容と確
 最新mainへの取り込みを確認しました。同日にオーナーは資料のSQL全文・期待3行・全列・行順序を
 JOIN補助1ケースの正しい参照内容として承認しました。確認対象bytesと実際の回答をprivate記録へ結び付けています。
 承認範囲と残作業は[JOIN参照内容の個別承認](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#2026-10-05のjoin参照内容の個別承認)を正本とします。
+承認記録の文書更新は[PR #930](https://github.com/Yukihide-Mitsuoka/repchat/pull/930)でレビュー・マージ待ちです。
 次は既存公開schema評価とJOIN補助評価の位置付けを整理し、schemaごとの質問・参照・scope不足案をofflineで提示します。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
