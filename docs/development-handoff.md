@@ -507,6 +507,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 この停止状態の文書更新は[PR #933](https://github.com/Yukihide-Mitsuoka/repchat/pull/933)で2026-10-05にマージ済みで、mainへの取り込みを確認しました。
 同日の認証更新・再開指示後、metadata取得1回が成功しました。結果と非対象は
 [認証更新後の取得結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の認証更新後の取得結果)を正本とします。
+取得結果の文書更新は[PR #934](https://github.com/Yukihide-Mitsuoka/repchat/pull/934)でレビュー・マージ待ちです。
 次は既存schema記録とのoffline比較です。再送・正式scope追加・配置・有料実行は行いません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
