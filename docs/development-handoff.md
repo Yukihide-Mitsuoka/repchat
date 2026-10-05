@@ -500,6 +500,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 この不足整理は[PR #931](https://github.com/Yukihide-Mitsuoka/repchat/pull/931)で2026-10-05にマージ済みで、
 最新mainへの取り込みを確認しました。後続の[公開JOIN候補調査](../spikes/schema-generalization-evaluation/public-join-candidate-review.md)で、
 一次資料の候補・関連根拠の限界と、`github_timeline`のmetadataだけを1回確認する案を整理しました。
+この候補調査は[PR #932](https://github.com/Yukihide-Mitsuoka/repchat/pull/932)でレビュー・マージ待ちです。
 次はこの1件の取得案をオーナーへ提示します。承認前は認証付き取得を行わず、正式scope追加・配置・有料実行にも進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
