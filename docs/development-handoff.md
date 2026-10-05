@@ -500,8 +500,11 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 この不足整理は[PR #931](https://github.com/Yukihide-Mitsuoka/repchat/pull/931)で2026-10-05にマージ済みで、
 最新mainへの取り込みを確認しました。後続の[公開JOIN候補調査](../spikes/schema-generalization-evaluation/public-join-candidate-review.md)で、
 一次資料の候補・関連根拠の限界と、`github_timeline`のmetadataだけを1回確認する案を整理しました。
-この候補調査は[PR #932](https://github.com/Yukihide-Mitsuoka/repchat/pull/932)でレビュー・マージ待ちです。
-次はこの1件の取得案をオーナーへ提示します。承認前は認証付き取得を行わず、正式scope追加・配置・有料実行にも進みません。
+この候補調査は[PR #932](https://github.com/Yukihide-Mitsuoka/repchat/pull/932)で2026-10-05にマージ済みで、
+最新mainへの取り込みを確認しました。同日にオーナーが1件のmetadata取得を個別承認しましたが、
+既存認証のtoken取得で停止し、BigQuery metadata APIの送信は0回でした。
+停止記録と残作業は[候補調査の認証停止](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の承認と認証段階での停止)を正本とします。
+次は認証更新と同じ1回取得の再開指示を待ちます。再試行・正式scope追加・配置・有料実行は行いません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
