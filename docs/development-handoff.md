@@ -510,6 +510,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 取得結果の文書更新は[PR #934](https://github.com/Yukihide-Mitsuoka/repchat/pull/934)で2026-10-05にマージ済みで、mainへの取り込みを確認しました。
 既存全schema fileを特定できない停止点について、同日にオーナーが元table metadataの1回取得を承認し、取得成功後に両schemaの構造をoffline比較しました。
 範囲・候補の根拠・限界は[再取得と全schema構造比較](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の再取得と全schema構造比較)を正本とします。
+構造比較の文書更新は[PR #935](https://github.com/Yukihide-Mitsuoka/repchat/pull/935)でレビュー・マージ待ちです。
 次は主体候補の欠落・値重なりを集計で確認する案を準備します。queryの事前検査と実取得はそれぞれ別承認まで行わず、正式scope追加・配置・有料実行へ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
