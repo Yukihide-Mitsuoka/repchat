@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-05
+updated: 2026-10-06
 ---
 
 # 開発引き継ぎ
@@ -510,8 +510,12 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 取得結果の文書更新は[PR #934](https://github.com/Yukihide-Mitsuoka/repchat/pull/934)で2026-10-05にマージ済みで、mainへの取り込みを確認しました。
 既存全schema fileを特定できない停止点について、同日にオーナーが元table metadataの1回取得を承認し、取得成功後に両schemaの構造をoffline比較しました。
 範囲・候補の根拠・限界は[再取得と全schema構造比較](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-05の再取得と全schema構造比較)を正本とします。
-構造比較の文書更新は[PR #935](https://github.com/Yukihide-Mitsuoka/repchat/pull/935)でレビュー・マージ待ちです。
-次は主体候補の欠落・値重なりを集計で確認する案を準備します。queryの事前検査と実取得はそれぞれ別承認まで行わず、正式scope追加・配置・有料実行へ自動的に進みません。
+構造比較の文書更新は[PR #935](https://github.com/Yukihide-Mitsuoka/repchat/pull/935)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
+主体候補の欠落・値重なりを集計するSQLと人工入力4ケースのoffline検算は準備済みです。
+準備範囲は[主体候補集計の準備](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の主体候補集計の準備)を正本とします。
+同日の個別承認後、同じSQLのdry run 1回が成功し、2table・11整数列・推定bytesを照合しました。
+結果と次の停止点は[dry run結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の主体候補sql-dry-run結果)を正本とします。
+次は本実行1回・集計1行・128 MiB上限の価格・最大JPY・課金方式確認の具体案です。現在の適用単価は未確認で、本実行・追加の認証付き確認・正式scope追加・配置・AIへ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
