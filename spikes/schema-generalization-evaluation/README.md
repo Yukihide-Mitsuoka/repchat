@@ -200,6 +200,7 @@ SQL・送信記録・集計6行をrepositoryやlogへ複製せず、生の主体
 資料の確認範囲は[JOIN参照レビュー資料の準備](reference-coverage-plan.md#2026-10-05のjoin参照レビュー資料の準備)を参照します。
 同日にオーナーがこの1件の参照内容を個別承認し、資料bytesと回答をprivate記録へ結び付けました。
 承認範囲と残作業は[JOIN参照内容の個別承認](reference-coverage-plan.md#2026-10-05のjoin参照内容の個別承認)を参照します。
+公開2schemaと人工JOIN補助の位置付け、schema別の不足と次のscope検討は[準備計画](schema-coverage-gap-plan.md)を正本とします。
 参照SQL・期待結果の固定と全fixtureの独立reviewは未完了です。実取得の承認をreviewの承認とみなしません。
 追加queryと評価runnerは別承認後だけ実行し、参照変換を製品の対象専用parserへ移植しません。
 
