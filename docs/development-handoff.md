@@ -45,10 +45,12 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 次は残る4質問の順序指定の改訂、BigQuery検算、1ケースずつのオーナー内容reviewです。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)でレビュー・マージ待ちです。
-PR #944、PR #945の順にマージし、どちらのマージも参照内容の採用回答とはみなしません。
+対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。
+マージ順はPR #944 → PR #945 → PR #946とし、いずれのマージも参照内容の採用回答とはみなしません。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
-各5秒以内で成功しました。全suiteは再実行せず、テスト・timeoutは変更していません。CI確認前に全体成功としません。
+各5秒以内で成功しました。全suiteはローカルで再実行せず、テスト・timeoutは変更していません。
+PR #946のcommit `3ec9bd3`では必須CI 13件が成功しました。CIの成功をローカル失敗の解消や正解データ全体の完了としません。
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
 [Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
