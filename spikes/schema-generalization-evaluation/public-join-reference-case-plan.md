@@ -55,9 +55,9 @@ INNER JOIN、LEFT JOIN、distinctの誤集計、大小文字補正、空白補�
 これは参照案の局所検算であり、共通runtime・BigQuery構文・実AIの評価ではありません。
 新しい製品code・評価runtime・scorer・閾値・fixture登録は変更せず、この準備のprovider呼出しは0回です。
 
-## 次の個別確認と停止点
+## 事前確認の範囲と停止点
 
-次の提案は、このSQL bytesの無料dry runだけを`repchat-dev`／`US`で1回行うことです。
+事前確認の提案は、このSQL bytesの無料dry runだけを`repchat-dev`／`US`で1回行う範囲でした。
 単一SELECT、指定2tableだけ、4列の型、推定処理bytesを確認します。結果行・query本実行・AI・IAM変更・
 正式scope追加・再試行は含みません。オーナーの直接承認前には実行しません。
 
@@ -66,3 +66,27 @@ dry run成功後に、最大6行・1回・課金bytes上限・適用価格・最
 取得後に出力契約と各行を照合し、SQL全文・期待値をprivate資料へまとめてオーナーの独立reviewを求めます。
 その後も[schema別不足計画](schema-coverage-gap-plan.md)の全capability・正式scope・fixture・予定run固定は別作業です。
 参照知識をruntimeへ渡さず、無関係なtableのJOINで網羅済みとしません。GA4側の別table不足も解消しません。
+
+## 2026-10-06の参照SQL dry run結果と本実行案
+
+PR #940のマージ確認後、無料dry runだけの具体的な1回案へオーナーが「続きのタスク進めて」と回答しました。
+この直接指示を同案の再開に限定し、本実行の承認とはみなしません。SQL bytesを上記SHA-256へ照合し、
+応答検査の正常・拒否6通りをofflineで確認後、`repchat-dev`／`US`へ`dryRun=true`を1回送信しました。
+BigQueryは単一SELECT、指定2tableだけ、予定4列（STRING 1列・INTEGER 3列）、
+推定処理量90,429,641 bytes（約86.24 MiB）を返し、すべて照合しました。
+
+本実行・行取得・AI・IAM変更・正式scope追加・再試行は0件です。推定bytesを実処理・課金bytes・実測費用へ混ぜません。
+参照SQL、直接承認・送信・応答・完了記録はrepository外の新規`0700` directory内の`0600` fileへ保存しました。
+実際の6行、区分内順位、左右の記録件数は未取得で、参照の独立reviewと共通runtimeの実AI評価も未完了です。
+
+次の本実行案は同じSQL bytes・`repchat-dev`／`US`・1回・最大6行4列・128 MiB（134,217,728 bytes）・
+分析料金0.2 JPY上限です。[同日確認済みのUS Analysis単価](public-join-candidate-review.md#2026-10-06の価格確認と実行上限案)
+982.468749971 JPY/TiBから、無料枠・割引なしの上界は小数第6位切上げで0.119931 JPYです。
+税・別SKU・他process・請求書総額は対象外で、実際の請求額の保証ではありません。
+
+費用承認後に予約割当を同じproject・USで1回だけ直前確認し、継承元を含む全job種別で空結果・追加pageなしの場合だけ
+queryを1回送信します。今回のdry runでは予約APIを再取得しておらず、以前の空結果を現在も不変と仮定しません。
+同じjobの結果を1回（`maxResults=6`・完了待機20秒）、完了metadataを1回読み取り、型・行数・区分・順位・
+実処理・課金bytes・上限内の計算額を照合します。追加page・未完了・失敗・usage不明・価格不一致では再送せず停止します。
+別日の実行では価格を再確認します。AI・IAM変更・正式scope追加・期限延長は含みません。
+この具体的な本実行案は未承認です。無料dry runや文書マージを有料実値取得の承認へ読み替えません。
