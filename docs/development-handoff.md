@@ -523,8 +523,10 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 価格と予約割当の確認記録は[PR #937](https://github.com/Yukihide-Mitsuoka/repchat/pull/937)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
 同日のオーナーによる個別費用承認後、既存tokenの取得でAPI送信前に停止しました。予約確認・本実行・行取得は各0回です。
 停止段階と再開条件は[本実行承認と認証停止](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の本実行承認と認証停止)を正本とします。
-承認と認証停止の文書記録は[PR #938](https://github.com/Yukihide-Mitsuoka/repchat/pull/938)でレビュー・マージ待ちです。
-次はオーナーによる既存認証の更新と同じ範囲の直接再開指示です。SQL再送・追加読取り・正式scope追加・配置・AIへ自動的に進みません。
+承認と認証停止の文書記録は[PR #938](https://github.com/Yukihide-Mitsuoka/repchat/pull/938)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
+同日の認証更新と直接再開指示後、直前の予約確認1回・同じSQLの本実行1回・集計1行取得が成功しました。
+集計件数、値重なり、実処理・課金bytesと費用計算の結果は[認証更新後の主体候補集計結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の認証更新後の主体候補集計結果)を正本とします。
+次はofflineで左右記録数を比較する参照ケース案のgrain・欠落・重複・出力条件を整理します。文字列の重なりを実主体の同一性と断定せず、SQL再送・追加読取り・正式scope追加・配置・AIへ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。
