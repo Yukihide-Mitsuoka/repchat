@@ -532,6 +532,7 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 同日の直接指示後、新しいSQLの無料dry run 1回に成功しました。結果と次の上限案は[参照SQL dry run結果と本実行案](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-06の参照sql-dry-run結果と本実行案)を正本とします。
 事前確認結果と本実行案の文書記録は[PR #941](https://github.com/Yukihide-Mitsuoka/repchat/pull/941)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
 同日の個別費用承認後、予約の直前確認1回＋同じSQLの本実行1回に成功し、最大6行・128 MiB・分析料金0.2 JPY上限内で6行を取得しました。出力検査と実処理・課金bytes・費用計算は[参照SQL本実行結果](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-06の参照sql本実行結果)を正本とします。
+本実行結果の文書記録は[PR #942](https://github.com/Yukihide-Mitsuoka/repchat/pull/942)でレビュー・マージ待ちです。
 次はSQL全文と6行をprivateレビュー資料へまとめ、オーナーの独立reviewを求めます。実行承認を参照内容・正式fixture採用の承認へ流用せず、文字列の重なりを実主体の同一性と断定しません。追加読取り・query・正式scope追加・配置・AIへ自動的に進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
