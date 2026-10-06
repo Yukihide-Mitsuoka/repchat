@@ -701,7 +701,8 @@ SQL・2計画・価格・応答・照合hashはrepository外の`0700` directory�
 結果行や参照SQLをGit・runtime・promptへ追加していません。新しいBigQuery参照SQLの正確なbytesへの独立review、
 公開schemaごとの意味的網羅、実snapshotへのbind、全fixture固定は未完了です。
 後続の[公開参照補強](public-reference-strengthening.md)でGitHub側の5能力の各行参照を2計算法で照合しました。
-実値で区別不能な条件の直接対抗検算・独立reviewは残り、全体の完了条件は
+実値で区別不能な条件の直接対抗検算も完了し、[検算と出力契約の確認](public-reference-strengthening.md)へ記録しました。
+独立review・正式質問とSQLの準備は残り、全体の完了条件は
 [不足監査](schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)に従います。
 
 ## 件数・反復数の解釈

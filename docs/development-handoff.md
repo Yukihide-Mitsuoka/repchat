@@ -38,10 +38,17 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 照合結果と不足監査の文書記録は[PR #944](https://github.com/Yukihide-Mitsuoka/repchat/pull/944)でレビュー・マージ待ちです。
 後続の[公開GitHubの参照補強](../spikes/schema-generalization-evaluation/public-reference-strengthening.md)では、
 5能力の全30行を2計算法で照合し、各private review資料を準備しました。
-次は実値で区別不能な条件の直接対抗検算と、1ケースずつのオーナー内容reviewです。
+実値で区別不能な2条件の直接対抗検算も完了し、結果と確認範囲は
+[人工対抗入力の検算記録](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の人工対抗入力による直接検算)を正本とします。
+正式出力契約との不一致は[offline確認](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の正式出力契約のoffline確認)で
+特定しました。全元値を保持する物理参照SQL案6件・配列質問案2件はprivate artifactへ準備済みです。
+次は残る4質問の順序指定の改訂、BigQuery検算、1ケースずつのオーナー内容reviewです。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)でレビュー・マージ待ちです。
 PR #944、PR #945の順にマージし、どちらのマージも参照内容の採用回答とはみなしません。
+後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
+既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
+各5秒以内で成功しました。全suiteは再実行せず、テスト・timeoutは変更していません。CI確認前に全体成功としません。
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
 [Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
