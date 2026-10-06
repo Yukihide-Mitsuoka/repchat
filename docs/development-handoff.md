@@ -528,8 +528,10 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 集計件数、値重なり、実処理・課金bytesと費用計算の結果は[認証更新後の主体候補集計結果](../spikes/schema-generalization-evaluation/public-join-candidate-review.md#2026-10-06の認証更新後の主体候補集計結果)を正本とします。
 再開後の集計結果の文書記録は[PR #939](https://github.com/Yukihide-Mitsuoka/repchat/pull/939)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
 主体文字列別の左右記録数を最大6行で比較する参照SQL案とoffline検算を準備しました。契約・検出力・限界は[JOIN参照ケース案](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md)を正本とします。
-参照ケース案の文書記録は[PR #940](https://github.com/Yukihide-Mitsuoka/repchat/pull/940)でレビュー・マージ待ちです。
-次は新しいSQLの無料dry run 1回の個別承認です。前の集計承認を流用せず、文字列の重なりを実主体の同一性と断定しません。query本実行・追加読取り・正式scope追加・配置・AIへ自動的に進みません。
+参照ケース案の文書記録は[PR #940](https://github.com/Yukihide-Mitsuoka/repchat/pull/940)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
+同日の直接指示後、新しいSQLの無料dry run 1回に成功しました。結果と次の上限案は[参照SQL dry run結果と本実行案](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-06の参照sql-dry-run結果と本実行案)を正本とします。
+事前確認結果と本実行案の文書記録は[PR #941](https://github.com/Yukihide-Mitsuoka/repchat/pull/941)でレビュー・マージ待ちです。
+次は予約の直前確認1回＋query本実行1回・最大6行・128 MiB・分析料金0.2 JPY上限の個別費用承認です。前の集計承認を流用せず、文字列の重なりを実主体の同一性と断定しません。費用承認前にquery本実行・追加読取り・正式scope追加・配置・AIへ進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。

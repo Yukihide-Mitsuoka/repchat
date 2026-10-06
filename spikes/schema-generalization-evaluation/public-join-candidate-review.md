@@ -242,5 +242,6 @@ repository外の新規`0700` directory内の`0600` fileへ保存し、以前の�
 製品・評価runtime、scorer、閾値、安全gateに対象固有処理や参照知識を追加していません。
 
 後続の[主体文字列別JOIN参照ケース案](public-join-reference-case-plan.md)でgrain・欠落・重複・出力条件とoffline検算を整理しました。
-次は同案のSQLの無料dry run 1回の個別承認です。同じ文字列を同じ実主体と断定せず、参照SQLと期待値はruntimeへ渡しません。
+同案のSQLは個別指示後に無料dry run 1回へ成功しました。[事前確認結果と本実行案](public-join-reference-case-plan.md#2026-10-06の参照sql-dry-run結果と本実行案)を正本とし、次は有料実値取得の個別承認です。
+同じ文字列を同じ実主体と断定せず、参照SQLと期待値はruntimeへ渡しません。
 追加のquery・日時確認・正式scope・fixture採用・独立review・実AI反復は別判断であり、自動実行しません。
