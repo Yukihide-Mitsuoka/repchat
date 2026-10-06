@@ -241,6 +241,6 @@ credential・token・生の認証診断をlogへ出していません。過去�
 repository外の新規`0700` directory内の`0600` fileへ保存し、以前の停止記録を保持しました。
 製品・評価runtime、scorer、閾値、安全gateに対象固有処理や参照知識を追加していません。
 
-次はofflineで主体文字列ごとの左右記録数を比較する参照ケース案のgrain・欠落・重複・出力条件を整理します。
-同じ文字列を同じ実主体と断定する質問にはせず、参照SQLと期待値はruntimeへ渡しません。
+後続の[主体文字列別JOIN参照ケース案](public-join-reference-case-plan.md)でgrain・欠落・重複・出力条件とoffline検算を整理しました。
+次は同案のSQLの無料dry run 1回の個別承認です。同じ文字列を同じ実主体と断定せず、参照SQLと期待値はruntimeへ渡しません。
 追加のquery・日時確認・正式scope・fixture採用・独立review・実AI反復は別判断であり、自動実行しません。
