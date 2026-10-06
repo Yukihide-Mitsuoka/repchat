@@ -36,6 +36,10 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 人工6ケースのBigQuery照合は完了しましたが、公開2schemaの参照補強と全独立reviewは未完了です。
 次の順序と完了条件は[正解データ充足性監査](../spikes/schema-generalization-evaluation/schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)を参照します。
 照合結果と不足監査の文書記録は[PR #944](https://github.com/Yukihide-Mitsuoka/repchat/pull/944)でレビュー・マージ待ちです。
+後続の[公開GitHubの参照補強](../spikes/schema-generalization-evaluation/public-reference-strengthening.md)では、
+5能力の全30行を2計算法で照合し、各private review資料を準備しました。
+次は実値で区別不能な条件の直接対抗検算と、1ケースずつのオーナー内容reviewです。
+公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
 [Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
