@@ -2,7 +2,7 @@
 id: schema-coverage-gap-plan
 title: 正式評価のschema別不足とscope準備計画
 status: proposed
-updated: 2026-10-05
+updated: 2026-10-07
 ---
 
 # 正式評価のschema別不足とscope準備計画
@@ -79,3 +79,30 @@ relationship生成を拒否します。ただし、これだけでSQL全経路�
 正式scopeへの追加は未承認です。
 既存tableの期限は[配置結果](reference-coverage-plan.md#2026-10-04の承認と配置結果)のままです。
 期限が切れても自動で延長・再配置しません。正式fixture、全schemaの網羅、実AI品質は未完了です。
+
+## 2026-10-07の正解データ充足性監査
+
+正解データ作りはまだ十分とは判定できません。人工6ケースの計算はBigQueryでも一致しましたが、
+公開2schemaの各行参照・意味的網羅・全参照の独立review・実snapshotへの固定が残っています。
+以下を完了条件として分け、人工ケースの成功やPRマージを不足条件の代替証拠にしません。
+
+| 条件 | 現在の証拠 | 残る確認 |
+|---|---|---|
+| 人工参照の計算・方言 | Python・SQLiteの局所検算に加え、BigQueryで6ケース・24出力行の全列・順序が一致 | 新しいBigQuery SQL bytesへの独立review。inline入力の確認を物理table metadataの確認へ拡張しない |
+| 誤答の検出力 | 各人工ケースでキー・粒度・NULL・欠落・期間・順序の誤答検査を保持 | 公開schemaの補強参照でも、単一合計の相殺や同じ値の別主体を区別できる範囲を確認する |
+| 公開GitHubの6能力 | 基本6ケースは限定採用済み。別物理2tableのJOIN参照SQLと6行のreview資料は準備済み | JOIN資料のオーナー判断。配列条件・深いfield・期間別件数・日別累積・各時刻間隔の各行参照を補強する |
+| 公開GA4の6能力 | 対象選定はオーナー指示。旧専用経路は今回の証拠にしない | 現行汎用harness用の質問・参照・全行・独立review。別entity tableの関係・scopeは未確定 |
+| schemaと認可 | 異なるschema ID・scope fingerprint最低2件、各schema全6能力という現行検査を維持 | 正式scopeとruntime読取り主体・権限を確定し、実共通discoveryのcanonical snapshotへ参照をbindする |
+| 独立review・不変な参照 | 人工JOIN補助1件の内容承認は記録済み。残りの承認は推測しない | 全SQL・期待各行・列・順序・評価範囲の回答を正確なbytesへbindし、正式fixtureを固定する |
+| runtimeからの正解分離 | 今回は製品・評価runtimeを変更せず、参照SQL・期待行はprivate artifactだけ | 正式manifestに正解・capabilityを含めず、同一runtime・prompt・設定と全予定runを実行前に固定する |
+
+人工計算確認の回数・費用・失敗記録・確認範囲は[BigQuery照合結果](reference-coverage-plan.md#2026-10-07の人工6ケースのbigquery照合)、
+現在の1回100円以内の直接実行権限は[費用境界](reference-coverage-plan.md#現在の実行権限と費用境界)を正本とします。
+独立reviewや正式scopeの判断が必要でも、認可済み対象の参照補強・局所検算は継続します。
+過去の「次の費用承認待ち」を現在も一律の停止条件にせず、上界を証明できない呼出しは送信しません。
+
+次はGitHub側の5つの補強参照を、既存取得schema・日時の確認記録・人工対抗例を根拠に準備します。
+質問・期間・NULL・粒度・全列・行順序とSQLを先に固定し、各queryのdry run後に有限batch予算内で期待行を取得します。
+生の主体IDや活動内容をGit・logへ出さず、必要なprivate内容だけを1ケースずつオーナーへ提示します。
+公開GA4側の参照準備と別table・scopeの未決事項も別に解消し、人工JOINの重複登録で網羅件数を増やしません。
+参照準備の完了と、その後の実AI反復・品質合格は別の判定です。

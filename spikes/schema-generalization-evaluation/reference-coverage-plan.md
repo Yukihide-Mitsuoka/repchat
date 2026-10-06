@@ -2,7 +2,7 @@
 id: reference-coverage-plan
 title: 参照ケースの検出力補強計画
 status: proposed
-updated: 2026-10-05
+updated: 2026-10-07
 ---
 
 # 参照ケースの検出力補強計画
@@ -18,6 +18,10 @@ updated: 2026-10-05
 承認したのは基本・補助ケースとしての限定採用と補強の必要性です。必須capabilityの網羅、全fixtureの
 固定・独立review完了、製品品質、有料評価の承認ではありません。新しい補強案は別途レビューします。
 詳細な回答と実値はrepository外のprivateレビュー記録を正本とします。
+
+2026-10-07時点の現在地は、下記の[人工6ケースのBigQuery照合](#2026-10-07の人工6ケースのbigquery照合)と
+[正式評価の不足監査](schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)を正本とします。
+ローカル補助ケースの採用、参照計算の実値一致、正式fixtureの独立reviewを区別します。
 
 2026-10-03にオーナーは最初の配列内条件付き集計案へ「採用します。次に進めて」と回答しました。
 合成入力・期待結果・誤答検出のローカルテスト化を承認したもので、クラウド配置や有料実行の承認ではありません。
@@ -641,6 +645,62 @@ table・keyの自動発見、runtime品質・実AI反復、scope拡張・有料�
 今回の承認だけでJOINを必須capabilityの
 網羅済みとせず、scopeを黙って混ぜず、評価条件を緩めません。クラウド取得・query再送・AI呼出し・IAM変更・
 期限延長は行っていません。製品・評価runtime、scorer・閾値・安全gateも変更していません。
+
+## 現在の実行権限と費用境界
+
+オーナーの現在の直接指示は、対象固有処理なしでAIの分析を検証するための正解データ作りを十分になるまで検証し、
+生成AIまたはqueryの1回の実行費用が100円以内なら追加の費用承認なしで進めてよい、というものです。
+この目標内で現在価格による保守的な上界を100 JPY以下と証明できる呼出しは、過去の段階ごとの
+費用確認待ちよりこの指示を優先します。安価と推測して送信せず、対象・SQL bytes・回数・行数・課金方式・
+価格snapshot・各呼出し上限と有限batch予算を実行前に固定し、実usageを照合します。
+[ADR-0027](../../docs/adr/0027-bound-evaluation-spend-before-provider-calls.md)の予算制御、usage不明時の停止、
+自動retry禁止は維持します。1回100円はproject全体・請求書総額の停止設定ではありません。
+
+この費用指示を、参照内容の独立review、正式fixture採用、scope拡張、IAM・資源・期限変更、
+製品への対象専用実装の承認へ読み替えません。正式AI評価は参照・計画・pipeline固定が揃うまで開始しません。
+上界を証明できないAI呼出しにも使いません。既存のtable保持期限は変更しません。
+
+## 2026-10-07の人工6ケースのBigQuery照合
+
+採用済みの人工入力を、repository外で単一SELECT内の型付き`STRUCT`・`ARRAY`・`TIMESTAMP`へ変換しました。
+table作成・投入をせず、native BigQuery型・方言による参照計算を固定期待行へ照合する補助確認です。
+物理tableのmode・description・discovery・AI生成は検査しません。欠落fieldは型付きNULLとして表現しました。
+
+| ケース | 入力記録数 | 出力行数 | 全列・行順序の照合 | 実処理／課金bytes |
+|---|---:|---:|---|---:|
+| 配列内条件付き集計 | 5 | 3 | 一致 | 0 / 0 |
+| 深いfield・欠落処理 | 8 | 3 | 一致 | 0 / 0 |
+| 等長UTC期間比較 | 12（対象9） | 3 | 一致 | 0 / 0 |
+| 日別累積・欠落日 | 13 | 8 | 一致 | 0 / 0 |
+| 主体別時刻間隔 | 11 | 4 | 一致 | 0 / 0 |
+| 2つの入力集合のJOIN・粒度 | 左右各6 | 3 | 一致 | 0 / 0 |
+
+6ケース・計24出力行の各セルと順序を、元の結果応答・検証済み行・現在のテスト専用fixtureの正確なbytesへ
+再照合しました。Python・SQLiteの既存の別手法検算にBigQueryの計算確認を追加したもので、
+6独立schema・6回のAI評価・統計的精度の証拠ではありません。製品・評価runtime、scorer・閾値・安全gateは変更していません。
+
+最初の計画は10月6日確認の価格で準備し、配列・深いfield・期間比較の3件が成功しました。
+次の日別累積のdry runがHTTP 400で停止し、残りは送信しませんでした。private参照SQLに
+引用なしのCTE名`groups`があり、[GoogleSQLの予約語](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#reserved_keywords)
+と一致する不備を確認しました。HTTP診断本文は保存しておらず、providerが返した具体的な原因文は未確認です。
+失敗記録は保持し、期待値を変えずCTE名だけ`group_values`へ修正しました。
+
+日付変更後に[公式JPY単価](https://cloud.google.com/skus?currency=JPY&filter=1DF5-1F98-1DD1)を再確認し、
+US Analysis SKU `1DF5-1F98-1DD1`は982.468749971 JPY/TiBでした。無料枠・割引を差し引かず、
+各queryの`maximumBytesBilled=33554432`（32 MiB）の上界は小数第6位切上げで0.029983 JPYです。
+残り3件だけの新計画は上界0.089949 JPY・batch予算1 JPYとし、修正SQL1件と未実行SQL2件の各dry run・実行が成功しました。
+成功済み3件は再実行せず、停止した旧batchも再起動していません。
+
+実操作は全体で予約検索2回、dry run 7回（うちHTTP 400が1回）、本実行6回、結果取得6回、完了job取得6回です。
+各batch開始時の継承元を含む予約結果は空・追加pageなしでした。全成功jobは単一SELECT・物理table参照なし・
+cache未使用・明示的な実処理bytes 0／課金bytes 0でした。同単価による分析料金計算は合計0 JPYです。
+これは観測usageからの計算で、税・別SKU・他process・請求書総額の保証ではありません。
+AI・IAM・scope変更・資源作成・期限変更・自動retryは0件です。
+
+SQL・2計画・価格・応答・照合hashはrepository外の`0700` directory内の`0600` fileに保持しました。
+結果行や参照SQLをGit・runtime・promptへ追加していません。新しいBigQuery参照SQLの正確なbytesへの独立review、
+公開schemaごとの意味的網羅、実snapshotへのbind、全fixture固定は未完了です。
+次は[不足監査](schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)に従い、公開データの各行参照を補強します。
 
 ## 件数・反復数の解釈
 
