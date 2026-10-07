@@ -48,7 +48,8 @@ GA4側は[認証更新後の実値照合](../spikes/schema-generalization-evalua
 実値で区別できない空文字等の境界、独立内容review、正式scope・snapshotの固定は残っています。
 後続の[期間・累積・時刻間隔の実値照合](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md#2026-10-08の期間累積時刻間隔とファネルの実値照合)も完了し、3候補25行・110セルの2計算法が一致しました。
 同じ9query計画の[GA4ファネル案は最終段階0件で不足](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#2026-10-08の公開ga4実値と不足判定)と判定し、採用提案しません。
-完了した9件も再実行せず、次は未実行のGitHubファネルnative参照を別計画へ固定します。内容reviewと費用権限は分けます。
+完了した9件も再実行しません。別計画の[GitHubファネル実値・誤SQL検算](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#2026-10-08の公開github実値と誤sqlの検算)も完了しました。
+次はGA4ファネルの不足解消と業務意味の確認、残る参照の内容reviewです。内容reviewと費用権限は分けます。
 要件が明示するfunnelの不足も維持し、時刻間隔の参照で代替しません。
 [人工ファネル参照](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md)の順序・重複・欠落・境界の無料検算は完了しました。
 次は既存の未回答reviewを先に完了し、人工案の内容reviewと公開schemaの参照を別々に進めます。BigQuery・実AIの証明にはしません。
@@ -95,11 +96,11 @@ PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分
 alias変更後も人工期待各行・追加1,918集合が一致しました。修正版のnative確認と元の静的確認を分け、旧SQLをそのまま実行しません。
 追加記録後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（29.035秒）。
 公開GitHub向けの[funnel参照別案](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#公開githubへ適用する参照案の無料検算)も日時文字列を含む人工検算まで完了しました。
-公開実値・業務意味・native解析・独立reviewは未確認で、対象専用parserを製品へ追加していません。GA4配列・多階層の既存5件と分けて保持します。
+公開実値・native解析は上記の別計画で確認しました。業務意味・独立reviewは未確認で、対象専用parserを製品へ追加していません。GA4配列・多階層の既存5件と分けて保持します。
 追加記録後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（31.404秒）。
 認証更新後の実値照合・review資料準備を記録した2026-10-08の`task format`・`task lint`・`task test`も成功し、
 全617件通過・失敗0・skip0でした（31.831秒）。PR #948はdraftを維持し、参照採用・実AI評価の完了とは扱いません。
-後続9queryの照合記録後も2026-10-08の`task format`・`task lint`・`task test`が成功し、全617件通過・失敗0・skip0でした（41.134秒）。
+GitHubファネルの実値・誤SQL照合記録後も2026-10-08の`task format`・`task lint`・`task test`が成功し、全617件通過・失敗0・skip0でした（39.317秒）。
 今回の差分は文書6件のみで、製品・評価runtime・テスト・timeout・安全gateは変更していません。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
