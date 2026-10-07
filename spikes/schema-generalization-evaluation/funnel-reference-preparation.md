@@ -2,13 +2,14 @@
 id: funnel-reference-preparation
 title: 順序付きファネル参照の人工検算
 status: proposed
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # 順序付きファネル参照の人工検算
 
 要件定義書§9のfunnel不足を補う参照案について、人工入力で段階到達人数の計算と誤答の検出力を確認しました。
-正式採用・公開schemaの参照・独立review・実AI品質は未確認です。時刻間隔の計算や
+公開GA4案は実値の2計算も一致しましたが、最終段階0件で十分な参照としては採用提案しません。
+`github_nested`案は実値の2計算が一致し、2種類の誤SQLを区別できました。両案の業務意味・正式採用・独立review・実AI品質は未確認です。時刻間隔の計算や
 `ordered_behavior`のlabelをfunnel検証の代替にしません。
 
 ## 評価専用の参照案
@@ -60,6 +61,96 @@ typed inline入力だけを使用する未実行の案です。認証・request�
 検算・新SQL・旧SQL hash・新出力の記録は`/private/tmp/reference-prepared-output-LAau1cJ7/`に保持します。
 旧資料は上書きせず、改訂native SQL2件は未実行です。番号付き表示や描画成功は、
 段階の意味、公開schemaの参照、canonical分析契約、独立内容review、実AI品質の証明ではありません。
+
+## 公開GA4へ適用する参照案の無料検算
+
+[取得済みmetadata](ga4-reference-preparation.md#metadataと参照案の確認)の4tableには、STRINGの主体候補・種類とINTEGERの時刻が存在します。
+[公式schema説明](https://support.google.com/analytics/answer/7029846?hl=en)は時刻をUTCのmicrosecondsによる受信時刻と説明します。
+端末での発生順序や同時刻内の順序、主体文字列と実在人物の同一性は証明しません。外部説明は参照側の根拠で、製品runtimeへ専用知識を追加しません。
+
+参照質問の別案は選定済み4tableのUTC`[2020-11-01,2020-11-05)`へ限定し、NULL・空の主体と種類、NULL時刻を除外します。
+この有効母集団に存在する種類を文字列昇順で3種類選び、その順に同一主体の厳密な時刻増加によるprefix到達を数えます。
+業務上の閲覧・購入等の段階は決め打ちせず、任意の観測値に対する計算検証案とします。業務funnelの意味や目的からの自動発見を証明する案ではありません。
+重複、空白、段階間の別記録は人工案と同じ規則を保ち、出力は番号付き`stage`と`metric_value`、stage昇順・最大3行です。
+
+人工71記録の期待人数15・11・7へ、Pythonの全組合せとSQLiteの最早有効時刻／組合せ計算が一致しました。
+母集団外の種類による段階選択の汚染、逆順、同時刻許容、境界、trim、別主体混在、組合せ数の過大集計、別field、出力逆順等の12誤SQLを区別しました。
+追加1,918入力集合の2SQL・3,836照合も一致しました。この有限集合・人工件数を独立schema数や実AI反復数へ加算しません。
+
+元metadata・旧人工fixture・旧停止計画のhash、質問、2つの未実行BigQuery SQL、全人工入力・誤答結果は
+`/private/tmp/reference-public-funnel-TyR5Qyt9/`の新規private artifactへ保持します。既存資料は上書きしていません。
+その後の[GoogleSQL予約語確認](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#reserved_keywords)で、
+新案のprimary SQLに未引用のalias `at`があると判明しました。SQLite成功をnative実行可能性の証拠にせず、元SQLは実行候補から除外します。
+新しい`/private/tmp/reference-public-funnel-revised-YKD2QIuH/`へaliasだけを`first_time`へ変更した別案を保存し、
+人工71記録の期待各行と追加1,918集合・3,836照合の一致を再確認しました。alternate SQLは不変で、元資料・hashを保持します。
+予約語違反は公式仕様による静的確認であり、実BigQueryのエラー応答ではありません。修正版のnative解析・実値は下記で確認しました。
+人工検算時点ではprovider・実AI呼出しは0回でした。内容reviewは未回答です。
+3種類未満、0人のprefix、人数が減らず誤答を区別しにくい場合は、参照成立・検出力の不足として停止します。黙って種類や母集団を変更しません。
+実取得には別の有限計画・価格・SQL hash・費用上界を固定し、GA4配列・多階層の既存5件へ混在させません。
+現在の[時間契約の不足](temporal-reference-contract-audit.md)も残っており、参照SQLを作れたことを汎用AI対応の証明にしません。
+
+### 2026-10-08の公開GA4実値と不足判定
+
+別の有限計画で修正版2SQLを各1回実行し、全3行・2列・順序が一致しました。到達人数は185→62→0でした。
+有効母集団の種類は16種類ありますが、実行前に固定した「全prefixが正で、段階ごとに減少する」条件を満たしません。
+最終段階の正しい到達を確認できないため、全段階の検出力を持つ参照としては採用提案せず、不足結果を保持します。
+0件になる計算自体の誤りと断定せず、ゼロ到達の補助検算と十分なfunnel参照を分けます。
+種類の文字列順は業務funnelの意味を証明しません。結果を見て段階・母集団を黙って変更しません。
+
+回数・上界・実usage・料金・再照合は[GA4の9query実値照合](ga4-reference-preparation.md#2026-10-08の期間累積時刻間隔とファネルの実値照合)を正本とします。
+元SQL・旧人工記録は保持し、新計画の`reference-quality-stop.json`と`review-funnel.md`へ不足判定を記録しました。
+共通funnelの描画成功は、業務意味・canonical時間契約・独立review・正式fixture成立・実AI品質の証明ではありません。
+既存未回答の個別reviewを維持し、別の参照を作る場合は質問・段階の根拠・期待条件を新しい提案として固定します。
+
+## 公開GitHubへ適用する参照案の無料検算
+
+取得済みの全metadataと日時coverageを既存実行計画のhashへ照合し、top-levelの`actor`・`type`・`created_at`が
+NULLABLEのSTRINGであることを確認しました。同名のnested fieldとは分けます。観測範囲は確認済み最古UTC日の開始から4暦日の半開区間です。
+主体文字列・種類・日時の指定は評価専用の参照質問であり、canonical discoveryや製品の専用設定ではありません。
+
+段階選択とprefix計算は公開GA4案と同じ規則を使います。参照SQLだけで既存の確認済み日時書式を変換し、
+変換不能な日時を除外します。人工71記録の数値時刻を3種類のUTC offset付き文字列へ変換し、不正日時1記録を追加しました。
+数値時刻のPython全組合せ検算と、文字列を変換する2つのSQLite SQLが期待人数15・11・7へ一致しました。
+同時刻許容、逆順、別主体field、別種類field、出力逆順、組合せ過大集計、timezone offset無視の7誤答を区別しました。
+追加1,918入力集合・3,836照合も一致しました。既存人工入力と同じ計算を再利用しており、独立したschema評価・AI反復の件数にはしません。
+
+人工検算時の質問・元資料のhash・当時未実行のBigQuery SQL2件・全人工入力・誤答結果・完了記録は
+`/private/tmp/reference-nested-funnel-tFn0HXrp/`の新規`0600` artifactへ保持します。元資料は上書きしていません。
+ローカルの日時変換だけではBigQueryの解析成功を証明しません。種類値・到達人数・native解析は下記で確認しましたが、業務funnelの意味・内容reviewは未確認です。
+人工検算時のprovider・実AI呼出しは0回で、製品parser・runtime・正式scopeは変更していません。
+種類不足・検出力不足の停止条件と、別の有限計画・価格・SQL hash・費用上界を固定する条件は公開GA4案と同じです。
+既存5件へ追加せず、参照作成の成功を対象非依存の自動分析の証明にしません。
+
+### 2026-10-08の公開GitHub実値と誤SQLの検算
+
+元の質問・UTC区間`[2012-03-11,2012-03-15)`・2SQLを保ち、母集団監査1件と2計算を別の3query計画で各1回実行しました。
+全3行・6セル・行順序が一致し、到達人数は1,985→395→60でした。全prefixが正で減少する事前条件を満たしました。
+選ばれた種類は文字列順の`CommitCommentEvent`・`CreateEvent`・`DeleteEvent`です。計算検証用の段階であり、業務上の目的に沿うfunnelを証明しません。
+有効母集団は417,324記録・78,798主体文字列・17種類で、同じ主体・種類・時刻の重複余剰は25,732件でした。
+開始境界ちょうどは0件、終了境界は3件でした。開始を含む規則の誤りはこの実値だけでは区別できません。
+
+続く別の2query計画で、元の正解SQLの2か所の時刻比較だけを変えた誤SQLを各1回実行しました。
+
+| 計算 | 実際の到達人数 | 正解と区別できた範囲 |
+|---|---|---|
+| 正しい厳密な時刻増加 | 1,985→395→60 | 2計算法の全行一致 |
+| 時刻の順序を無視 | 1,985→663→123 | 順序条件の欠落 |
+| 同時刻を許容 | 1,985→395→61 | 厳密な時刻比較の誤り |
+
+今回固定した2誤SQLの2件を区別しただけで、全誤答の検出や統計的AI一致率は証明しません。
+主体補正・重複・終了境界等の誤SQLは追加実行していません。母集団件数を独立case数やAI反復数へ加算しません。
+各queryは512 MiB上限・自動再試行なしで、事前の分析料金上界は各0.479722 JPYでした。
+[公式JPY/US Analysis単価](https://cloud.google.com/skus?currency=JPY&filter=1DF5-1F98-1DD1)の当日確認値982.468749971 JPY/TiBに実課金bytesを掛け、
+正解側3件は383,778,816 bytes・0.342927 JPY、誤SQL側2件は255,852,544 bytes・0.228618 JPYと計算しました。
+無料枠・割引を控除せず、税・別SKU・請求書総額の保証にはしません。
+
+正解側の計画・応答・job・全SQL・描画probe1件は`/private/tmp/reference-nested-funnel-native-MZOie8Jt/`、
+誤SQL側は`/private/tmp/reference-funnel-counter-native-M1nSQ4KO/`の新規private artifactへ保持します。
+古い日時結果fileが不在のため、後日の完了済みnative日時監査の応答・job・SQLを新計画へbindしました。旧bytes・hashの復元や既存queryの再実行はしていません。
+全5件の保存済み応答・job・SQL・設定・usageを無料で再照合しました。参照資料中の根拠がない「受信時刻」という説明は別revisionで訂正し、元資料は保持しています。
+現在の内容資料は`reference-review-revised.md`と、誤SQL側の`review-supplement.md`です。SHA-256と改訂関係をprivate記録へ結び付けています。
+資料作成は内容承認ではありません。日時は完全なevent順序を証明せず、主体文字列は実在人物の同一性を証明しません。
+正解SQL・期待値はruntime入力へ渡さず、製品parser・正式scope・資源・IAM・期限は変更していません。実AI呼出しは0回です。
 
 ## 次の確認と停止点
 
