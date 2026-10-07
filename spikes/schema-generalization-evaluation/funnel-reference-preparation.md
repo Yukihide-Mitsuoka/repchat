@@ -78,6 +78,11 @@ typed inline入力だけを使用する未実行の案です。認証・request�
 
 元metadata・旧人工fixture・旧停止計画のhash、質問、2つの未実行BigQuery SQL、全人工入力・誤答結果は
 `/private/tmp/reference-public-funnel-TyR5Qyt9/`の新規private artifactへ保持します。既存資料は上書きしていません。
+その後の[GoogleSQL予約語確認](https://docs.cloud.google.com/bigquery/docs/reference/standard-sql/lexical#reserved_keywords)で、
+新案のprimary SQLに未引用のalias `at`があると判明しました。SQLite成功をnative実行可能性の証拠にせず、元SQLは実行候補から除外します。
+新しい`/private/tmp/reference-public-funnel-revised-YKD2QIuH/`へaliasだけを`first_time`へ変更した別案を保存し、
+人工71記録の期待各行と追加1,918集合・3,836照合の一致を再確認しました。alternate SQLは不変で、元資料・hashを保持します。
+予約語違反は公式仕様による静的確認であり、実BigQueryのエラー応答ではありません。修正版を使う場合もnative解析・実値・reviewを別途確認します。
 BigQuery方言・公開実値・内容reviewは未確認で、provider・実AI呼出しは0回です。
 3種類未満、0人のprefix、人数が減らず誤答を区別しにくい場合は、参照成立・検出力の不足として停止します。黙って種類や母集団を変更しません。
 実取得には別の有限計画・価格・SQL hash・費用上界を固定し、認証停止した5件へ混在させません。

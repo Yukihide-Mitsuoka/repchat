@@ -87,6 +87,9 @@ PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分
 公開GA4向けの[funnel参照別案](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#公開ga4へ適用する参照案の無料検算)は人工71記録・期待3行の検算まで完了しました。
 段階は有効母集団の観測値から選ぶ計算検証案で、業務意味・公開実値・正式採用は未確認です。種類不足・検出力不足は停止し、認証停止計画へ追加しません。
 この文書更新後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（41.053秒）。
+同参照案のprimary SQLにBigQueryの予約語aliasを確認し、元資料を保持して別のprivate修正版へ切り替えました。
+alias変更後も人工期待各行・追加1,918集合が一致しました。公式仕様の静的確認とnative未実行を分け、旧SQLをそのまま実行しません。
+追加記録後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（29.035秒）。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
