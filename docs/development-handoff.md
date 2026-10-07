@@ -46,6 +46,10 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md)まで進み、
 実値queryは認証取得で停止しました。再認証連絡後、未送信の有限5件だけを新しい操作記録で再開します。
 要件が明示するfunnelの不足も維持し、時刻間隔の参照で代替しません。
+[人工ファネル参照](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md)の順序・重複・欠落・境界の無料検算は完了しました。
+次は既存の未回答reviewを先に完了し、人工案の内容reviewと公開schemaの参照を別々に進めます。BigQuery・実AIの証明にはしません。
+ファネル参照の文書更新後は2026-10-07の`task format`・`task lint`・`task test`が成功し、617件すべて通過しました。
+前回の描画probe失敗の原因修正を証明するものではなく、テスト・timeoutは変更していません。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)でレビュー・マージ待ちです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。

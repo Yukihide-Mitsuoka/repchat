@@ -24,7 +24,8 @@ updated: 2026-10-07
 [`evaluation_capabilities.py`](evaluation_capabilities.py)のlabel検査は参照SQLの意味や網羅性を証明しません。
 合成ケースの行数や誤答数を、独立case数・AI反復数へ加算しません。
 要件§9が明示するfunnelは、`ordered_behavior`というlabelや異なる時刻群の間隔計算で代替しません。
-順序・母集団・段階到達を根拠付きで確認する参照は未完了です。
+順序・母集団・段階到達の[人工ファネル検算](funnel-reference-preparation.md)は完了しましたが、
+公開schemaの参照と独立reviewは未完了です。
 既存の選定、取得・承認範囲は[評価README](README.md#評価対象の選定)を正本とします。
 
 ## 対象別の不足
