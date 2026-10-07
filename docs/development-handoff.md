@@ -56,6 +56,10 @@ GA4の期間・日別累積参照も[人工検算まで完了](../spikes/schema-
 GA4の主体別時刻間隔も人工23記録・期待7行の検算まで完了しました。実値・内容review・完全event順序は未確認で、funnelと別に保持します。
 GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階名へ改訂し、人工40行・161セルの保持、
 8計算の一致・4描画probeの成功を確認しました。詳細と行上限の停止条件は各参照準備文書を正本とします。
+公開JOIN参照も[共通出力ルールへ合わせる別案](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-07の共通出力ルールへの適合確認)を検算しました。
+元の未回答review資料は不変で、既存6行・24セルを保持しました。改訂2SQLのnative実値・独立review・正式scopeは未完了です。
+開始時の`task test-unit`はsandboxのlocalhost待受け拒否で6件失敗し、localhost利用可能な環境では617件すべて成功しました（49.607秒）。
+今回の文書更新後も`task format`・`task lint`・`task test`が成功し、全617件通過・失敗0・skip0でした（49.102秒）。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)で2026-10-07にマージ済みです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。

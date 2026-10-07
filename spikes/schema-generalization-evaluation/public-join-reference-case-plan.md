@@ -2,7 +2,7 @@
 id: public-join-reference-case-plan
 title: 公開2tableの主体文字列別JOIN参照ケース案
 status: proposed
-updated: 2026-10-06
+updated: 2026-10-07
 ---
 
 # 公開2tableの主体文字列別JOIN参照ケース案
@@ -137,3 +137,32 @@ hash照合は本人性・意味的正確性・独立review完了を証明しま�
 正しい内容として限定採用してよいか判断する1件の個別確認です。採用時も、その回答を確認対象bytesへ結び付け、
 正式fixture・全6capabilityの網羅・実AI評価・追加クラウド操作の承認へ読み替えません。
 実主体・活動・期間の同一性や共通runtimeの品質は未検証のままです。
+
+## 2026-10-07の共通出力ルールへの適合確認
+
+元の4列名と区分順表示は、現在の共通table出力ルールと一致しません。
+[`visualization_sections.py`](../report-generation/visualization_sections.py)から、区分2列・指標2列の役割は
+`dimension_1`・`dimension_2`・`metric_1`・`metric_2`、最終表示は最後の指標降順・`LIMIT 100`と確認しました。
+元の未回答review資料・質問・SQL・結果を上書きせず、新しい参照案をprivate artifactへ別bytesで準備しました。
+これは製品側の対象別alias変換ではありません。正式scope・fixture・runtime・scorerは変更していません。
+
+新しい案は、各区分の主体文字列昇順で先頭2件を選ぶ規則と左右の各件数を保持します。
+最終表示だけを右件数降順、同値時は区分文字列昇順・区分内順位昇順へ変え、質問にも明記しました。
+3区分×最大2行という行選択は維持するため、`LIMIT 100`で選択結果を切り捨てません。
+元の成功job・結果応答・SQL・review資料を正確なhashへ再照合し、既存6行・24セルは改訂表示から
+元の区分順・順位順へすべて復元できることを確認しました。改訂SQLの実値取得とは区別します。
+
+参照SQLは事前集約後のFULL OUTER JOINと、LEFT JOIN＋右側未一致集合のUNION ALLという2方式で準備しました。
+PythonのCounter・集合計算と、物理table名だけを置換したSQLiteで、元の人工5入力条件と
+小さい入力の有限784組、計789組・1,578 SQL比較が全列・順序へ一致しました。
+有限組はNULL・空文字・空白・大小文字違いを含む6値から各側0〜2記録のmultisetを列挙した範囲です。
+元の人工主入力は左右20・23記録で、各区分の3番目以降が除外される条件も保持します。
+INNER／LEFTへの縮退、distinct誤集計、文字補正、行選択・欠落・最終順序の誤りなど11種類の誤SQLを区別しました。
+既存6行を使う実ローカルtable renderer probeも成功しました。
+
+この確認は参照の出力案・人工入力による局所検算です。789組を独立公開schema・無作為標本・AI反復へ数えません。
+provider・AI呼出しは0回で、新しい2SQLのBigQuery構文・実値・実請求は未確認です。
+共通discovery・自動field選択・canonical contractとの意味的適合、正式scope、全fixture固定、独立reviewも未完了です。
+元資料への未回答判断は引き続き1件の個別確認として扱い、新しい案へ回答を流用しません。
+次は認証更新の直接連絡後に、改訂質問・2SQL・全期待行・現行価格・呼出し上限を別の有限計画へ固定して
+native検算します。以前のSQLの実行承認・usage・結果を、新しいSQLの成功証拠にしません。
