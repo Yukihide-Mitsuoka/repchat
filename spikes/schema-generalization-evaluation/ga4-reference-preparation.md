@@ -57,7 +57,31 @@ SQL NULLへ修正して再検算し、元の期待値とBigQuery SQL bytesは変
 実行する場合は別の計画で価格・hash・上界・回数・出力上限を固定し、実値とBigQuery方言を検証します。
 正式採用・独立review・field自動発見の証明は未完了です。
 
-実値全行の2計算法照合、区別不能条件の確認、2質問・SQL全文・期待行の独立reviewは未完了です。
+順序分析の補助案は、同じ4tableの`user_pseudo_id`・`event_timestamp`を使い、同じ4日のUTC区間へ限定します。
+NULL・空主体とNULL時刻を除外し、主体・同時刻を一群にします。異なる時刻群が2件以上ある主体の文字列順で
+先頭3件、各先頭4間隔までの前後microseconds・差を全行で照合する案です。
+出力には生の主体IDを含めず、選択順位・間隔順位の2区分と3指標の共通table役割を使います。
+人工23記録の期待7行へ、Pythonの主体別隣接時刻計算とSQLiteのLAG／直前時刻のMAXの2SQLが一致しました。
+12種類の誤SQL、合計が同じ個別間隔の誤答、追加12入力集合の24照合を確認しました。
+資料・未実行BigQuery SQL2件は`/private/tmp/reference-ga4-order-offline-u4lyiUvz/`に保持し、provider・実AI各0回です。
+この案も既存5件の停止計画へ追加せず、native方言・実値・内容reviewは未完了とします。
+主体文字列の一致を実在人物の同一性、日時群の順序を完全event順序とせず、funnelの参照にも数えません。
+
+### 共通出力ルールへの適合確認
+
+期間・window・時刻間隔の旧案は区分順で出力し、[共通tableのSQL生成条件](../report-generation/visualization_sections.py)
+「最後の指標降順・LIMIT 100」に一致しませんでした。製品ルールを変更せず、参照案の最終ORDER BYとLIMITだけを改訂しました。
+同値時は区分列の昇順とし、集計、母集団、主体選択、期間、累積の計算順序は維持します。
+人工入力の37行・155セルを行の並べ替え以外は変えず、2計算法ずつのSQLite全6照合が一致しました。
+windowの整数日offsetは、既存のnative案どおりISO日付文字列で描画し、共通rendererの3probeも成功しました。
+旧案・旧質問bytesは上書きせず、新案は`/private/tmp/reference-prepared-output-LAau1cJ7/`へ保持しました。
+
+実データで期間区分が100件、windowが25区分×4日を超える場合は、この全行参照案は成立しません。
+取得前の有限計画で件数を監査し、LIMITによる切り捨てを全値照合と記録しません。時刻間隔は選択3主体×4間隔の最大12行です。
+改訂したnative SQL6件は未実行です。SQL生成条件・人工結果・描画の局所確認を、canonical分析契約、
+SQL来歴、field自動発見、正式fixture成立、内容review、実AI品質の証明へ拡張しません。
+
+実値全行の2計算法照合、区別不能条件の確認、全質問・SQL全文・期待行の独立reviewは未完了です。
 今回の質問はfieldを明示する計算補助であり、目的からのfield自動発見を証明しません。
 [公式sampleの説明](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset)は難読化による内部整合性の限界を明記しています。
 [公式順序例](https://developers.google.com/analytics/bigquery/basic-queries)のbatch順序列はこのsampleに存在せず、取得したschemaにもありません。

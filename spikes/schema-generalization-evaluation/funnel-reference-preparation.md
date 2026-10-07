@@ -51,6 +51,16 @@ BigQuery方言、公開データの正しさや実主体の同一性を証明し
 同じ固定人工入力を使うBigQuery SQLも、正しい2計算法と誤った2計算法の計4件をprivate領域へ準備しました。
 typed inline入力だけを使用する未実行の案です。認証・request・価格bindingはまだ行わず、native照合完了とは扱いません。
 
+### 共通funnel出力ルールへの適合確認
+
+旧参照の段階名A・B・Cは、[共通SQL生成条件](../report-generation/visualization_sections.py)の番号接頭辞を満たしていませんでした。
+段階名を`1 A`・`2 B`・`3 C`に改め、最終出力をstage昇順・LIMIT 12・人数のCOALESCE付きにした別案を準備しました。
+母集団・段階到達の計算は変更せず、元の3行・6セルを逆変換で完全に復元できることを確認しました。
+改訂した2つのSQLite SQLは期待人数15・11・7へ一致し、共通rendererの1probeも成功しました。
+検算・新SQL・旧SQL hash・新出力の記録は`/private/tmp/reference-prepared-output-LAau1cJ7/`に保持します。
+旧資料は上書きせず、改訂native SQL2件は未実行です。番号付き表示や描画成功は、
+段階の意味、公開schemaの参照、canonical分析契約、独立内容review、実AI品質の証明ではありません。
+
 ## 次の確認と停止点
 
 1. 現在の未回答の個別内容reviewを先に完了する。今回の案を承認済みとは記録しない。
