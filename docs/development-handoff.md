@@ -46,11 +46,26 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md)まで進み、
 実値queryは認証取得で停止しました。再認証連絡後、未送信の有限5件だけを新しい操作記録で再開します。
 要件が明示するfunnelの不足も維持し、時刻間隔の参照で代替しません。
+[人工ファネル参照](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md)の順序・重複・欠落・境界の無料検算は完了しました。
+次は既存の未回答reviewを先に完了し、人工案の内容reviewと公開schemaの参照を別々に進めます。BigQuery・実AIの証明にはしません。
+参照準備の追加記録後は2026-10-07の`task format`・`task lint`・`task test`が成功し、617件すべて通過しました（34.697秒）。
+前回の描画probe失敗の原因修正を証明するものではなく、テスト・timeoutは変更していません。
+検算記録は[PR #947](https://github.com/Yukihide-Mitsuoka/repchat/pull/947)へ分割し、マージ済みPR #946を含むmainとの競合を解消しました。
+GA4の期間・日別累積参照も[人工検算まで完了](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md#残る評価条件)しました。
+追加の未実行SQLを既存5件の認証停止計画へ混在させず、実値取得の前に別の有限計画と上界を固定します。
+GA4の主体別時刻間隔も人工23記録・期待7行の検算まで完了しました。実値・内容review・完全event順序は未確認で、funnelと別に保持します。
+GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階名へ改訂し、人工40行・161セルの保持、
+8計算の一致・4描画probeの成功を確認しました。詳細と行上限の停止条件は各参照準備文書を正本とします。
+公開JOIN参照も[共通出力ルールへ合わせる別案](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-07の共通出力ルールへの適合確認)を検算しました。
+元の未回答review資料は不変で、既存6行・24セルを保持しました。改訂2SQLのnative実値・独立review・正式scopeは未完了です。
+開始時の`task test-unit`はsandboxのlocalhost待受け拒否で6件失敗し、localhost利用可能な環境では617件すべて成功しました（49.607秒）。
+今回の文書更新後も`task format`・`task lint`・`task test`が成功し、全617件通過・失敗0・skip0でした（49.102秒）。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)で2026-10-07にマージ済みです。
-対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。
-PR #945までを取り込んでPR #946の文書競合を解消しました。次はPR #946 → PR #947の順で差分・baseを確認し、
-いずれのマージも参照内容の採用回答とはみなしません。
+対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)で2026-10-07にマージ済みです。
+PR #947はmainをbaseとし、PR #946の取り込み済み変更を除いた文書差分だけを保持します。
+次はPR #947の更新後CIと差分を確認します。文書のマージを参照内容の採用回答とはみなしません。
+PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
 各5秒以内で成功しました。全suiteはローカルで再実行せず、テスト・timeoutは変更していません。
