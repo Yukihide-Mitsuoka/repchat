@@ -71,7 +71,7 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 次は参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。認証停止した5件を自動再試行しません。
 この監査後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（30.770秒）。
 監査の文書記録は[PR #948](https://github.com/Yukihide-Mitsuoka/repchat/pull/948)のdraftです。
-PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分は監査文書4件だけで、次は最新CIとオーナーのレビュー判断です。
+PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分は監査・参照準備の文書5件だけで、次は最新CIとオーナーのレビュー判断です。
 取り込み後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（57.743秒）。内容reviewや実AI評価の完了には数えません。
 追加の[日時付きJOIN監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md#日時型を含む2tableのjoin確認)では、人工4型条件と公開参照2SQLのgateを確認しました。
 期間契約付き2tableの拒否と、期間なしJOINの通過を分け、日時fieldを隠して評価範囲を縮小しません。
@@ -90,6 +90,9 @@ PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分
 同参照案のprimary SQLにBigQueryの予約語aliasを確認し、元資料を保持して別のprivate修正版へ切り替えました。
 alias変更後も人工期待各行・追加1,918集合が一致しました。公式仕様の静的確認とnative未実行を分け、旧SQLをそのまま実行しません。
 追加記録後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（29.035秒）。
+公開GitHub向けの[funnel参照別案](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#公開githubへ適用する参照案の無料検算)も日時文字列を含む人工検算まで完了しました。
+公開実値・業務意味・native解析・独立reviewは未確認で、対象専用parserを製品へ追加していません。既存の認証停止計画と分けて保持します。
+追加記録後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（31.404秒）。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
