@@ -23,6 +23,8 @@ updated: 2026-10-07
 各schemaの全6必須capability、各case最低3 run、結果一致率90%以上の下限を要求します。
 [`evaluation_capabilities.py`](evaluation_capabilities.py)のlabel検査は参照SQLの意味や網羅性を証明しません。
 合成ケースの行数や誤答数を、独立case数・AI反復数へ加算しません。
+要件§9が明示するfunnelは、`ordered_behavior`というlabelや異なる時刻群の間隔計算で代替しません。
+順序・母集団・段階到達を根拠付きで確認する参照は未完了です。
 既存の選定、取得・承認範囲は[評価README](README.md#評価対象の選定)を正本とします。
 
 ## 対象別の不足
@@ -111,6 +113,7 @@ GitHub側の5つの補強参照は、既存schema・日時記録を根拠に質�
 新しい質問6件の順序改訂と物理参照SQLのBigQuery検算を完了しました。
 全33行・元135セルの再照合と未確認事項は[共通役割の参照検算](public-reference-strengthening.md#2026-10-07の共通出力役割を使う参照sqlのbigquery検算)を正本とします。
 次はオーナーの個別内容reviewと、残るschemaの参照準備へ進みます。
+GA4側のmetadata・2ケースの人工検算と、実値query送信前の認証停止は[GA4参照準備](ga4-reference-preparation.md)を正本とします。
 生の主体IDや活動内容をGit・logへ出さず、必要なprivate内容だけを1ケースずつオーナーへ提示します。
 公開GA4側の参照準備と別table・scopeの未決事項も別に解消し、人工JOINの重複登録で網羅件数を増やしません。
 参照準備の完了と、その後の実AI反復・品質合格は別の判定です。

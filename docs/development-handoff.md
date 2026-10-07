@@ -43,6 +43,9 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 正式出力契約との不一致は[offline確認](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の正式出力契約のoffline確認)で
 特定し、新しい質問6件の順序改訂と[共通出力役割のBigQuery検算](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の共通出力役割を使う参照sqlのbigquery検算)まで完了しました。
 次は1ケースずつのオーナー内容reviewと、残るschemaの参照準備です。6件の新しいprivate review資料も準備済みです。
+GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md)まで進み、
+実値queryは認証取得で停止しました。再認証連絡後、未送信の有限5件だけを新しい操作記録で再開します。
+要件が明示するfunnelの不足も維持し、時刻間隔の参照で代替しません。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)でレビュー・マージ待ちです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。
