@@ -59,11 +59,14 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)で2026-10-07にマージ済みです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。
-次はPR #946のmain差分・競合を確認してからPR #947へ進み、いずれのマージも参照内容の採用回答とはみなしません。
+PR #945までを取り込み、PR #946と後続PR #947の文書競合を解消しました。次はPR #946 → PR #947の順で差分・baseを確認し、
+いずれのマージも参照内容の採用回答とはみなしません。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
 各5秒以内で成功しました。全suiteはローカルで再実行せず、テスト・timeoutは変更していません。
 PR #946のcommit `3ec9bd3`では必須CI 13件が成功しました。CIの成功をローカル失敗の解消や正解データ全体の完了としません。
+PR #945までの競合解消後の状態では`task format`・`task lint`・`task test`が成功し、617件すべて通過しました（40.847秒）。
+過去の失敗記録は保持し、製品・評価runtimeやテスト・timeoutの変更による原因修正とは扱いません。
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
 [Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
