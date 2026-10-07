@@ -2,7 +2,7 @@
 id: schema-coverage-gap-plan
 title: 正式評価のschema別不足とscope準備計画
 status: proposed
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # 正式評価のschema別不足とscope準備計画
@@ -114,7 +114,8 @@ GitHub側の5つの補強参照は、既存schema・日時記録を根拠に質�
 新しい質問6件の順序改訂と物理参照SQLのBigQuery検算を完了しました。
 全33行・元135セルの再照合と未確認事項は[共通役割の参照検算](public-reference-strengthening.md#2026-10-07の共通出力役割を使う参照sqlのbigquery検算)を正本とします。
 次はオーナーの個別内容reviewと、残るschemaの参照準備へ進みます。
-GA4側のmetadata・2ケースの人工検算と、実値query送信前の認証停止は[GA4参照準備](ga4-reference-preparation.md)を正本とします。
+GA4側は認証更新後、配列・多階層と期間・累積・時刻間隔の実値照合を完了しました。
+ファネルの不足判定・境界検出力・未回答reviewは[GA4参照準備](ga4-reference-preparation.md)を正本とします。
 生の主体IDや活動内容をGit・logへ出さず、必要なprivate内容だけを1ケースずつオーナーへ提示します。
 公開GA4側の参照準備と別table・scopeの未決事項も別に解消し、人工JOINの重複登録で網羅件数を増やしません。
 参照準備の完了と、その後の実AI反復・品質合格は別の判定です。
