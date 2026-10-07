@@ -50,6 +50,9 @@ GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generaliz
 次は既存の未回答reviewを先に完了し、人工案の内容reviewと公開schemaの参照を別々に進めます。BigQuery・実AIの証明にはしません。
 ファネル参照の文書更新後は2026-10-07の`task format`・`task lint`・`task test`が成功し、617件すべて通過しました。
 前回の描画probe失敗の原因修正を証明するものではなく、テスト・timeoutは変更していません。
+検算記録は[PR #947](https://github.com/Yukihide-Mitsuoka/repchat/pull/947)へ分割し、PR #946の後に差分・baseを再確認します。
+GA4の期間・日別累積参照も[人工検算まで完了](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md#残る評価条件)しました。
+追加の未実行SQLを既存5件の認証停止計画へ混在させず、実値取得の前に別の有限計画と上界を固定します。
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)でレビュー・マージ待ちです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)でレビュー・マージ待ちです。

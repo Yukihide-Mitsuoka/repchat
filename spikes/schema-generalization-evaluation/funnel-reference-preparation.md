@@ -48,11 +48,14 @@ BigQuery方言、公開データの正しさや実主体の同一性を証明し
 `/private/tmp/reference-funnel-offline-URa21PXL/`に保持しています。
 出力artifactは新規`0600`で作成し、repository・標準出力へ生の公開データや主体IDを出していません。
 再開時は既存完了記録を確認し、上書きや同じ操作の自動再実行をしません。
+同じ固定人工入力を使うBigQuery SQLも、正しい2計算法と誤った2計算法の計4件をprivate領域へ準備しました。
+typed inline入力だけを使用する未実行の案です。認証・request・価格bindingはまだ行わず、native照合完了とは扱いません。
 
 ## 次の確認と停止点
 
 1. 現在の未回答の個別内容reviewを先に完了する。今回の案を承認済みとは記録しない。
-2. この人工参照の意味と期待各行を1件としてreviewし、BigQuery方言の検算は別の有限計画で行う。
+2. この人工参照の意味と期待各行を1件としてreviewする。BigQuery方言の検算は別の有限計画で進め、
+   費用権限や計算成功を内容reviewの回答として記録しない。
 3. 公開schemaに存在する主体・段階・時刻の根拠、同時刻の不確実性、観測範囲を確認して参照を準備する。
    人工計算の成功を公開schemaへの適用証明にせず、同時刻の完全順序を架空のtie-breakで補わない。
 4. 全schemaの網羅、独立review、正式scope・canonical snapshot・fixture固定を揃えてから実AI反復へ進む。
