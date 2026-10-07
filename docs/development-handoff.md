@@ -63,15 +63,15 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 公開参照の一致を全schema網羅・独立review・実AI品質の証明とせず、GA4側・正式scope・snapshot固定も継続します。
 公開参照補強の文書記録は[PR #945](https://github.com/Yukihide-Mitsuoka/repchat/pull/945)で2026-10-07にマージ済みです。
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)で2026-10-07にマージ済みです。
-PR #947はmainをbaseとし、PR #946の取り込み済み変更を除いた文書差分だけを保持します。
-PR #947の更新後差分と必須CI 9件の成功を確認済みです。次はオーナーのマージ判断で、参照内容の採用回答とは分けます。
+参照準備の文書記録は[PR #947](https://github.com/Yukihide-Mitsuoka/repchat/pull/947)で2026-10-07にマージ済みです。
+最新mainへの取り込みを確認しました。文書のマージを参照内容の採用回答とはみなしません。
 続く[時刻契約の適合監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md)では、取得済みmetadataの
 ローカル再生から整数時刻の時間契約への未対応と、shardのscan制約ではイベント時刻条件を証明できない境界を確認しました。
 整数の通常集計・shard日時は利用可能であり、全SQL経路の実行不能とは断定しません。専用処理・手動定義は追加していません。
 次は参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。認証停止した5件を自動再試行しません。
 この監査後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（30.770秒）。
 監査の文書記録は[PR #948](https://github.com/Yukihide-Mitsuoka/repchat/pull/948)のdraftです。
-PR #947を先にマージした後、PR #948のbase・差分・CIを確認します。内容reviewや実AI評価の完了には数えません。
+PR #947マージ後のmainをPR #948へ取り込み、baseをmainへ切り替えて差分・CIを確認します。内容reviewや実AI評価の完了には数えません。
 追加の[日時付きJOIN監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md#日時型を含む2tableのjoin確認)では、人工4型条件と公開参照2SQLのgateを確認しました。
 期間契約付き2tableの拒否と、期間なしJOINの通過を分け、日時fieldを隠して評価範囲を縮小しません。
 追加調査前の`task test-unit`は617件中616件成功・1件失敗・skip0でした（303.335秒）。
