@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-07
+updated: 2026-10-08
 ---
 
 # 開発引き継ぎ
@@ -43,8 +43,10 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 正式出力契約との不一致は[offline確認](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の正式出力契約のoffline確認)で
 特定し、新しい質問6件の順序改訂と[共通出力役割のBigQuery検算](../spikes/schema-generalization-evaluation/public-reference-strengthening.md#2026-10-07の共通出力役割を使う参照sqlのbigquery検算)まで完了しました。
 次は1ケースずつのオーナー内容reviewと、残るschemaの参照準備です。6件の新しいprivate review資料も準備済みです。
-GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md)まで進み、
-実値queryは認証取得で停止しました。再認証連絡後、未送信の有限5件だけを新しい操作記録で再開します。
+GA4側は[認証更新後の実値照合](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md#2026-10-07の認証更新後の実値照合)で、
+配列・多階層の2ケース各3行を2SQLずつ照合できました。既存5queryは完了済みで、再実行しません。
+実値で区別できない空文字等の境界、独立内容review、正式scope・snapshotの固定は残っています。
+次の期間・window・時刻間隔・funnelのnative参照は別の有限計画へ固定し、参照内容の採用回答と費用権限を分けます。
 要件が明示するfunnelの不足も維持し、時刻間隔の参照で代替しません。
 [人工ファネル参照](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md)の順序・重複・欠落・境界の無料検算は完了しました。
 次は既存の未回答reviewを先に完了し、人工案の内容reviewと公開schemaの参照を別々に進めます。BigQuery・実AIの証明にはしません。
@@ -52,7 +54,7 @@ GA4側は[metadata確認と2ケースの無料検算](../spikes/schema-generaliz
 前回の描画probe失敗の原因修正を証明するものではなく、テスト・timeoutは変更していません。
 検算記録は[PR #947](https://github.com/Yukihide-Mitsuoka/repchat/pull/947)へ分割し、マージ済みPR #946を含むmainとの競合を解消しました。
 GA4の期間・日別累積参照も[人工検算まで完了](../spikes/schema-generalization-evaluation/ga4-reference-preparation.md#残る評価条件)しました。
-追加の未実行SQLを既存5件の認証停止計画へ混在させず、実値取得の前に別の有限計画と上界を固定します。
+追加の未実行SQLを完了した既存5件へ混在させず、実値取得の前に別の有限計画と上界を固定します。
 GA4の主体別時刻間隔も人工23記録・期待7行の検算まで完了しました。実値・内容review・完全event順序は未確認で、funnelと別に保持します。
 GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階名へ改訂し、人工40行・161セルの保持、
 8計算の一致・4描画probeの成功を確認しました。詳細と行上限の停止条件は各参照準備文書を正本とします。
@@ -68,7 +70,7 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 続く[時刻契約の適合監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md)では、取得済みmetadataの
 ローカル再生から整数時刻の時間契約への未対応と、shardのscan制約ではイベント時刻条件を証明できない境界を確認しました。
 整数の通常集計・shard日時は利用可能であり、全SQL経路の実行不能とは断定しません。専用処理・手動定義は追加していません。
-次は参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。認証停止した5件を自動再試行しません。
+次は残る参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。完了した5件を自動再実行しません。
 この監査後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（30.770秒）。
 監査の文書記録は[PR #948](https://github.com/Yukihide-Mitsuoka/repchat/pull/948)のdraftです。
 PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分は監査・参照準備の文書5件だけで、次は最新CIとオーナーのレビュー判断です。
@@ -91,8 +93,10 @@ PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分
 alias変更後も人工期待各行・追加1,918集合が一致しました。公式仕様の静的確認とnative未実行を分け、旧SQLをそのまま実行しません。
 追加記録後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（29.035秒）。
 公開GitHub向けの[funnel参照別案](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#公開githubへ適用する参照案の無料検算)も日時文字列を含む人工検算まで完了しました。
-公開実値・業務意味・native解析・独立reviewは未確認で、対象専用parserを製品へ追加していません。既存の認証停止計画と分けて保持します。
+公開実値・業務意味・native解析・独立reviewは未確認で、対象専用parserを製品へ追加していません。GA4配列・多階層の既存5件と分けて保持します。
 追加記録後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（31.404秒）。
+認証更新後の実値照合・review資料準備を記録した2026-10-08の`task format`・`task lint`・`task test`も成功し、
+全617件通過・失敗0・skip0でした（31.831秒）。PR #948は文書5件のdraftを維持し、参照採用・実AI評価の完了とは扱いません。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
