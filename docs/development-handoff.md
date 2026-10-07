@@ -79,6 +79,10 @@ PR #947を先にマージした後、PR #948のbase・差分・CIを確認しま
 原因修正や全suite成功の証明にはせず、テスト・timeout・runtimeは変更していません。
 追加文書更新後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（44.807秒）。
 先の単独診断・全suite成功をtimeout原因の解消とは扱わず、失敗記録も保持します。
+追加の[配列・多階層契約監査](../spikes/schema-generalization-evaluation/nested-reference-contract-audit.md)で、配列内指標の選択制約と深い列参照のSQL誤認を確認しました。
+数値UNNESTのSQL検査通過とは分け、親子粒度・条件付き集計を保った参照案を維持します。実AI・native参照の証明にはしません。
+調査前の`task test-unit`は全617件通過・失敗0・skip0でした（37.327秒）。製品・評価runtime・テストは変更していません。
+文書更新後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（44.600秒）。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
