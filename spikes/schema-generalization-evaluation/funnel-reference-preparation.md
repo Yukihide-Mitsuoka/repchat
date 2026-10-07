@@ -8,7 +8,7 @@ updated: 2026-10-07
 # 順序付きファネル参照の人工検算
 
 要件定義書§9のfunnel不足を補う参照案について、人工入力で段階到達人数の計算と誤答の検出力を確認しました。
-正式採用・公開schemaの参照・独立review・実AI品質は未確認です。時刻間隔の計算や
+公開GA4へ適用する別案も人工検算まで進みましたが、正式採用・公開実値・独立review・実AI品質は未確認です。時刻間隔の計算や
 `ordered_behavior`のlabelをfunnel検証の代替にしません。
 
 ## 評価専用の参照案
@@ -60,6 +60,28 @@ typed inline入力だけを使用する未実行の案です。認証・request�
 検算・新SQL・旧SQL hash・新出力の記録は`/private/tmp/reference-prepared-output-LAau1cJ7/`に保持します。
 旧資料は上書きせず、改訂native SQL2件は未実行です。番号付き表示や描画成功は、
 段階の意味、公開schemaの参照、canonical分析契約、独立内容review、実AI品質の証明ではありません。
+
+## 公開GA4へ適用する参照案の無料検算
+
+[取得済みmetadata](ga4-reference-preparation.md#metadataと参照案の確認)の4tableには、STRINGの主体候補・種類とINTEGERの時刻が存在します。
+[公式schema説明](https://support.google.com/analytics/answer/7029846?hl=en)は時刻をUTCのmicrosecondsによる受信時刻と説明します。
+端末での発生順序や同時刻内の順序、主体文字列と実在人物の同一性は証明しません。外部説明は参照側の根拠で、製品runtimeへ専用知識を追加しません。
+
+参照質問の別案は選定済み4tableのUTC`[2020-11-01,2020-11-05)`へ限定し、NULL・空の主体と種類、NULL時刻を除外します。
+この有効母集団に存在する種類を文字列昇順で3種類選び、その順に同一主体の厳密な時刻増加によるprefix到達を数えます。
+業務上の閲覧・購入等の段階は決め打ちせず、任意の観測値に対する計算検証案とします。業務funnelの意味や目的からの自動発見を証明する案ではありません。
+重複、空白、段階間の別記録は人工案と同じ規則を保ち、出力は番号付き`stage`と`metric_value`、stage昇順・最大3行です。
+
+人工71記録の期待人数15・11・7へ、Pythonの全組合せとSQLiteの最早有効時刻／組合せ計算が一致しました。
+母集団外の種類による段階選択の汚染、逆順、同時刻許容、境界、trim、別主体混在、組合せ数の過大集計、別field、出力逆順等の12誤SQLを区別しました。
+追加1,918入力集合の2SQL・3,836照合も一致しました。この有限集合・人工件数を独立schema数や実AI反復数へ加算しません。
+
+元metadata・旧人工fixture・旧停止計画のhash、質問、2つの未実行BigQuery SQL、全人工入力・誤答結果は
+`/private/tmp/reference-public-funnel-TyR5Qyt9/`の新規private artifactへ保持します。既存資料は上書きしていません。
+BigQuery方言・公開実値・内容reviewは未確認で、provider・実AI呼出しは0回です。
+3種類未満、0人のprefix、人数が減らず誤答を区別しにくい場合は、参照成立・検出力の不足として停止します。黙って種類や母集団を変更しません。
+実取得には別の有限計画・価格・SQL hash・費用上界を固定し、認証停止した5件へ混在させません。
+現在の[時間契約の不足](temporal-reference-contract-audit.md)も残っており、参照SQLを作れたことを汎用AI対応の証明にしません。
 
 ## 次の確認と停止点
 

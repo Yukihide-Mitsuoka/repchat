@@ -90,3 +90,5 @@ SQL来歴、field自動発見、正式fixture成立、内容review、実AI品質
 [公式sampleの説明](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset)は難読化による内部整合性の限界を明記しています。
 [公式順序例](https://developers.google.com/analytics/bigquery/basic-queries)のbatch順序列はこのsampleに存在せず、取得したschemaにもありません。
 日時だけを完全event順序とせず、期間・window・順序・funnel・別entity JOINの参照、正式scopeとsnapshot固定も継続します。
+公開GA4へ適用する[funnel参照の別案](funnel-reference-preparation.md#公開ga4へ適用する参照案の無料検算)も人工検算まで完了しました。
+公開実値の段階成立・検出力・業務上の意味・独立reviewは未確認で、時刻間隔の参照とは別に保持します。

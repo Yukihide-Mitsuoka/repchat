@@ -84,6 +84,9 @@ PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分
 数値UNNESTのSQL検査通過とは分け、親子粒度・条件付き集計を保った参照案を維持します。実AI・native参照の証明にはしません。
 調査前の`task test-unit`は全617件通過・失敗0・skip0でした（37.327秒）。製品・評価runtime・テストは変更していません。
 文書更新後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（44.600秒）。
+公開GA4向けの[funnel参照別案](../spikes/schema-generalization-evaluation/funnel-reference-preparation.md#公開ga4へ適用する参照案の無料検算)は人工71記録・期待3行の検算まで完了しました。
+段階は有効母集団の観測値から選ぶ計算検証案で、業務意味・公開実値・正式採用は未確認です。種類不足・検出力不足は停止し、認証停止計画へ追加しません。
+この文書更新後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（41.053秒）。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は
