@@ -42,6 +42,25 @@ INTEGERで保存された時刻を期間基準・時系列軸に結び付ける�
 根拠は[compiler](../report-generation/analysis_contract_compiler.py)、[生成](../report-generation/analysis_contract_generation.py)、
 [normalizer](../report-generation/analysis_contract_response.py)、[実行policy](../report-generation/analysis_contract_context.py)です。
 
+## 日時型を含む2tableのJOIN確認
+
+同日の追加検算では、対象名に依存しない人工2tableをcompiler・normalizer・execution policyへ渡しました。
+両側にSTRINGの主体fieldを置き、左側の非repeated・非restrictedな日時fieldだけを
+DATE／DATETIME／TIMESTAMP／なしの4条件へ変えました。組立入力と手動候補は診断専用で、正式discovery・実AIではありません。
+
+日時なしでは`period=null`となり、2tableのJOINがschema・期間gateを通過しました。
+日時ありの3条件では、全期間の件数比較という質問でもnormalizerは時間契約を無効にする候補を拒否しました。
+生成候補に有効な期間を置くと契約・policy導出は成功しましたが、同じ日時条件付きSQLは単一tableなら通過し、
+2tableのJOINへ変えると期間gateが拒否しました。コードは期間が非NULLの場合、物理table参照を1件に限定しています。
+これは正しい日時条件付きJOINの現在の制約であり、JOIN一般が未対応という結論ではありません。
+
+[公開JOINの改訂2SQL](public-join-reference-case-plan.md#2026-10-07の共通出力ルールへの適合確認)も、
+両側の`actor` STRINGだけを持つ期間なしの診断policyで、schema・期間・table出力gateの通過を確認しました。
+これは正式scope・全schemaから自動生成した契約の適合、relationshipの自動選択、BigQuery実値、独立reviewを証明しません。
+日時付きJOINの不足を避けるために正式対象の日時fieldを隠したり、期間なしの評価だけへ縮小したりしません。
+追加検算とruntime・SQL bytesのhashは`/private/tmp/reference-join-contract-GZbF2G7O/`へ保存しました。
+provider・実AI呼出しは0回で、runtime・scope・参照の採用状態は変更していません。
+
 ## 次の確認と証拠の境界
 
 整数時刻を使う期間比較・累積・間隔の参照は保持し、shard日付へ変更して元の評価目的を縮小しません。
