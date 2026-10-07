@@ -65,6 +65,11 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 対抗検算と出力契約確認の文書記録は[PR #946](https://github.com/Yukihide-Mitsuoka/repchat/pull/946)で2026-10-07にマージ済みです。
 PR #947はmainをbaseとし、PR #946の取り込み済み変更を除いた文書差分だけを保持します。
 次はPR #947の更新後CIと差分を確認します。文書のマージを参照内容の採用回答とはみなしません。
+続く[時刻契約の適合監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md)では、取得済みmetadataの
+ローカル再生から整数時刻の時間契約への未対応と、shardのscan制約ではイベント時刻条件を証明できない境界を確認しました。
+整数の通常集計・shard日時は利用可能であり、全SQL経路の実行不能とは断定しません。専用処理・手動定義は追加していません。
+次は参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。認証停止した5件を自動再試行しません。
+この監査後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（30.770秒）。
 PR #946取り込み後の`task format`・`task lint`・`task test`も成功し、全617件通過・失敗0・skip0でした（45.164秒）。
 後続検算のローカル検証は2026-10-07に`task format`・`task lint`が成功し、`task test`は617件中614件成功・
 既存描画probeの3件が失敗しました。5秒の子process待ちでstatusがNULLとなり、同じ4payloadの個別診断は

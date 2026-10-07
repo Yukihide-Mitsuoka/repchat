@@ -82,6 +82,8 @@ windowの整数日offsetは、既存のnative案どおりISO日付文字列で�
 SQL来歴、field自動発見、正式fixture成立、内容review、実AI品質の証明へ拡張しません。
 
 実値全行の2計算法照合、区別不能条件の確認、全質問・SQL全文・期待行の独立reviewは未完了です。
+整数時刻の参照と現在の汎用時間契約の違いは[時刻契約の適合監査](temporal-reference-contract-audit.md)で確認しました。
+数値として使えること、shardのscan範囲を満たすこと、イベント時刻の意味を自動生成できることを分けて検証します。
 今回の質問はfieldを明示する計算補助であり、目的からのfield自動発見を証明しません。
 [公式sampleの説明](https://developers.google.com/analytics/bigquery/web-ecommerce-demo-dataset)は難読化による内部整合性の限界を明記しています。
 [公式順序例](https://developers.google.com/analytics/bigquery/basic-queries)のbatch順序列はこのsampleに存在せず、取得したschemaにもありません。
