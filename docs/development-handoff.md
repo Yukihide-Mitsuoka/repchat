@@ -71,7 +71,8 @@ GA4の3参照案と人工funnelはSQL生成条件の順序・番号付き段階�
 次は参照のnative検算・内容reviewと、自動生成契約の意味上の適合を別々に確認します。認証停止した5件を自動再試行しません。
 この監査後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（30.770秒）。
 監査の文書記録は[PR #948](https://github.com/Yukihide-Mitsuoka/repchat/pull/948)のdraftです。
-PR #947マージ後のmainをPR #948へ取り込み、baseをmainへ切り替えて差分・CIを確認します。内容reviewや実AI評価の完了には数えません。
+PR #947マージ後のmainをPR #948へ取り込み、baseはmainです。差分は監査文書4件だけで、次は最新CIとオーナーのレビュー判断です。
+取り込み後の`task format`・`task lint`・`task test`は成功し、全617件通過・失敗0・skip0でした（57.743秒）。内容reviewや実AI評価の完了には数えません。
 追加の[日時付きJOIN監査](../spikes/schema-generalization-evaluation/temporal-reference-contract-audit.md#日時型を含む2tableのjoin確認)では、人工4型条件と公開参照2SQLのgateを確認しました。
 期間契約付き2tableの拒否と、期間なしJOINの通過を分け、日時fieldを隠して評価範囲を縮小しません。
 追加調査前の`task test-unit`は617件中616件成功・1件失敗・skip0でした（303.335秒）。
