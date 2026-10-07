@@ -2,7 +2,7 @@
 id: development-handoff
 title: 開発引き継ぎ
 status: active
-updated: 2026-10-06
+updated: 2026-10-07
 ---
 
 # 開発引き継ぎ
@@ -27,6 +27,15 @@ Issue #160は、リポジトリオーナー本人から明示的な指示がな�
 オーナー指示とみなしてはいけません。
 
 ## 現在の作業
+
+現在の主タスクは、対象固有処理なしでAIの分析を検証するための正解データ作りの充足性確認です。
+オーナーはこの目標内の生成AI・queryについて、1回100円以内なら追加の費用承認なしで進めるよう直接指示しています。
+実行前の上界証明・有限計画・実usage照合は維持し、独立review・scope・IAM・資源・期限変更の承認とは分けます。
+適用範囲は[現在の費用境界](../spikes/schema-generalization-evaluation/reference-coverage-plan.md#現在の実行権限と費用境界)を正本とし、
+過去の個別費用確認待ちを一律の停止条件として引き継ぎません。
+人工6ケースのBigQuery照合は完了しましたが、公開2schemaの参照補強と全独立reviewは未完了です。
+次の順序と完了条件は[正解データ充足性監査](../spikes/schema-generalization-evaluation/schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)を参照します。
+照合結果と不足監査の文書記録は[PR #944](https://github.com/Yukihide-Mitsuoka/repchat/pull/944)でレビュー・マージ待ちです。
 
 基盤の[Taskfile移行（Issue #238）](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/issues/238)では、
 [Foundation PR #254](https://github.com/Yukihide-Mitsuoka/ai-dev-foundation/pull/254)と
@@ -534,8 +543,10 @@ JOIN補助1ケースの正しい参照内容として承認しました。確認
 同日の個別費用承認後、予約の直前確認1回＋同じSQLの本実行1回に成功し、最大6行・128 MiB・分析料金0.2 JPY上限内で6行を取得しました。出力検査と実処理・課金bytes・費用計算は[参照SQL本実行結果](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-06の参照sql本実行結果)を正本とします。
 本実行結果の文書記録は[PR #942](https://github.com/Yukihide-Mitsuoka/repchat/pull/942)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
 SQL全文と6行をprivateレビュー資料へまとめ、元応答の全セル・行順序へ再照合しました。準備範囲と次の個別確認は[参照レビュー資料の準備](../spikes/schema-generalization-evaluation/public-join-reference-case-plan.md#2026-10-06の参照レビュー資料の準備)を正本とします。
-レビュー資料の準備記録は[PR #943](https://github.com/Yukihide-Mitsuoka/repchat/pull/943)でレビュー・マージ待ちです。
-次はオーナーによる参照1ケースのSQL全文・6行・全4列・行順序の限定採用判断です。資料作成や実行承認を参照内容・正式fixture採用の承認へ流用せず、文字列の重なりを実主体の同一性と断定しません。追加読取り・query・正式scope追加・配置・AIへ自動的に進みません。
+レビュー資料の準備記録は[PR #943](https://github.com/Yukihide-Mitsuoka/repchat/pull/943)で2026-10-06にマージ済みで、mainへの取り込みを確認しました。
+このJOIN参照1ケースのSQL全文・6行・全4列・行順序の限定採用判断はオーナー確認待ちです。
+資料作成・費用権限・PRマージを参照内容・正式fixture採用の承認へ流用せず、文字列の重なりを実主体の同一性と断定しません。
+他の認可済み対象の参照補強は上記の現在の費用境界で継続し、正式scope追加・配置・IAM変更へは進みません。
 GA4側の別entity tableとGitHub候補の実key・値対応は未確定です。
 この1件の個別承認を、正式fixture全体の独立review・必須capability網羅・追加クラウド操作の承認へ読み替えません。
 runtime読取り主体の選定と権限確認、table・keyの自動発見、全fixtureの固定・独立review、実AI評価は未完了です。

@@ -2,13 +2,19 @@
 id: schema-generalization-evaluation
 title: 未知schema反復評価の証拠harness
 status: active
-updated: 2026-10-05
+updated: 2026-10-07
 ---
 
 # 未知schema反復評価の証拠harness
 
 `evaluate.py`は、対象非依存runtimeの実行後に得たJSON evidence bundleを検証し、schema別の品質指標と
 合否を決定論的に返すpost-run scorerです。外部APIや製品runtimeは呼びません。
+
+2026-10-07時点では、人工6ケースの参照計算をBigQueryで全列・行順序へ照合済みです。
+実操作と限界は[補強計画](reference-coverage-plan.md#2026-10-07の人工6ケースのbigquery照合)、
+公開schemaの残作業は[充足性監査](schema-coverage-gap-plan.md#2026-10-07の正解データ充足性監査)を正本とします。
+正解データ全体の固定・独立reviewと実AI品質は未完了です。現在の直接費用権限は
+[1回100円以内の費用境界](reference-coverage-plan.md#現在の実行権限と費用境界)を参照し、以下の過去の個別承認記録と区別します。
 
 ## 評価対象の選定
 
